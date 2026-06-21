@@ -244,6 +244,9 @@ router.get('/companies', allowRead, async (req, res, next) => {
     const [data, total] = await Promise.all([
       prisma.m_company.findMany({
         where,
+        include: {
+          m_company_master: true
+        },
         orderBy: { name: 'asc' },
         skip,
         take: parseInt(limit)
@@ -286,6 +289,7 @@ router.get('/companies/:id', allowRead, async (req, res, next) => {
     const company = await prisma.m_company.findUnique({
       where: { id: parseInt(id) },
       include: {
+        m_company_master: true,
         _count: {
           select: {
             assets: true,
@@ -315,7 +319,7 @@ router.get('/companies/:id', allowRead, async (req, res, next) => {
 // POST /api/master/companies — Create new company
 router.post('/companies', allowWrite, async (req, res, next) => {
   try {
-    const { code, name, npwp, address } = req.body;
+    const { code, name, npwp, address, company_master_id } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Company name is required.' });
@@ -327,6 +331,7 @@ router.post('/companies', allowWrite, async (req, res, next) => {
         name: name.trim(),
         npwp: npwp || null,
         address: address || null,
+        company_master_id: company_master_id ? parseInt(company_master_id) : null,
         is_active: true
       }
     });
@@ -345,7 +350,7 @@ router.post('/companies', allowWrite, async (req, res, next) => {
 router.put('/companies/:id', allowWrite, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { code, name, npwp, address, is_active } = req.body;
+    const { code, name, npwp, address, company_master_id, is_active } = req.body;
 
     const company = await prisma.m_company.update({
       where: { id: parseInt(id) },
@@ -354,6 +359,7 @@ router.put('/companies/:id', allowWrite, async (req, res, next) => {
         ...(name !== undefined && { name: name.trim() }),
         ...(npwp !== undefined && { npwp }),
         ...(address !== undefined && { address }),
+        ...(company_master_id !== undefined && { company_master_id: company_master_id ? parseInt(company_master_id) : null }),
         ...(is_active !== undefined && { is_active })
       }
     });
@@ -453,37 +459,43 @@ router.post('/companies/seed', allowWrite, async (req, res, next) => {
 
     // 2. Seed Original Companies List (PT-PT Utama / Tab 1)
     const companies = [
-      { code: 'MRA', name: 'PT Mugi Rekso Abadi' },
-      { code: 'PKA', name: 'PT Paramita Kreasi Abadi' },
-      { code: 'EDI', name: 'PT Emera Digital Indonesia' },
-      { code: 'AAA', name: 'PT Amanda Arumdhani Aishwarya' },
-      { code: 'GEA', name: 'PT Graha Emera Abadi' },
-      { code: 'PLA', name: 'PT Permata Landmarq Abadi' },
-      { code: 'MC', name: 'Medical Claim' },
-      { code: 'MIA', name: 'PT Media Insani Abadi' },
-      { code: 'AJSK', name: 'PT Artindo Jakarta Seni Kini' },
-      { code: 'RKAB', name: 'PT Rupa Kreasi Anak Bangsa' },
-      { code: 'JPI', name: 'PT Jemma Putri International' },
-      { code: 'EBM', name: 'PT Emera Boga Makmur' },
-      { code: 'RAD', name: 'PT Rahayu Arumdhani Distribusindo' },
-      { code: 'RAI', name: 'PT Rahayu Arumdhani International' },
-      { code: 'SSM', name: 'PT Surya Swara Mediatama' },
-      { code: 'RSK', name: 'PT Radio Suara Kedjajaan' },
-      { code: 'RAND', name: 'PT Radio Antar Nusa Djaja' },
-      { code: 'HIP', name: 'PT Hourlogy Indah Perkasa' },
-      { code: 'HIS', name: 'PT Hourlogy Inti Semesta' },
-      { code: 'MPI', name: 'PT Mogems Putri International' }
+      { code: 'MRA', name: 'PT Mugi Rekso Abadi', sector: 'GENERAL' },
+      { code: 'PKA', name: 'PT Paramita Kreasi Abadi', sector: 'GENERAL' },
+      { code: 'EDI', name: 'PT Emera Digital Indonesia', sector: 'GENERAL' },
+      { code: 'AAA', name: 'PT Amanda Arumdhani Aishwarya', sector: 'GENERAL' },
+      { code: 'GEA', name: 'PT Graha Emera Abadi', sector: 'GENERAL' },
+      { code: 'PLA', name: 'PT Permata Landmarq Abadi', sector: 'GENERAL' },
+      { code: 'MC', name: 'Medical Claim', sector: 'GENERAL' },
+      { code: 'MIA', name: 'PT Media Insani Abadi', sector: 'MEDIA' },
+      { code: 'AJSK', name: 'PT Artindo Jakarta Seni Kini', sector: 'MEDIA' },
+      { code: 'RKAB', name: 'PT Rupa Kreasi Anak Bangsa', sector: 'MEDIA' },
+      { code: 'JPI', name: 'PT Jemma Putri International', sector: 'MEDIA' },
+      { code: 'EBM', name: 'PT Emera Boga Makmur', sector: 'FB' },
+      { code: 'RAD', name: 'PT Rahayu Arumdhani Distribusindo', sector: 'FB' },
+      { code: 'RAI', name: 'PT Rahayu Arumdhani International', sector: 'FB' },
+      { code: 'SSM', name: 'PT Surya Swara Mediatama', sector: 'RADIO' },
+      { code: 'RSK', name: 'PT Radio Suara Kedjajaan', sector: 'RADIO' },
+      { code: 'RAND', name: 'PT Radio Antar Nusa Djaja', sector: 'RADIO' },
+      { code: 'HIP', name: 'PT Hourlogy Indah Perkasa', sector: 'RETAIL' },
+      { code: 'HIS', name: 'PT Hourlogy Inti Semesta', sector: 'RETAIL' },
+      { code: 'MPI', name: 'PT Mogems Putri International', sector: 'RETAIL' }
     ];
 
     let compCreated = 0;
     let compSkipped = 0;
 
     for (const c of companies) {
+      const masterId = c.sector ? (masterMap[c.sector.toUpperCase()] || null) : null;
       const existing = await prisma.m_company.findFirst({
         where: { name: c.name }
       });
 
       if (existing) {
+        // Update relation mapping for existing seed company
+        await prisma.m_company.update({
+          where: { id: existing.id },
+          data: { company_master_id: masterId }
+        });
         compSkipped++;
         continue;
       }
@@ -492,6 +504,7 @@ router.post('/companies/seed', allowWrite, async (req, res, next) => {
         data: {
           code: c.code,
           name: c.name,
+          company_master_id: masterId,
           is_active: true
         }
       });

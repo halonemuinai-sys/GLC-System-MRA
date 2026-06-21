@@ -1068,6 +1068,21 @@ export default function MasterCompanyPage() {
                 />
                 <div>
                   <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
+                    Grup Entitas Induk (Master Company)
+                  </label>
+                  <select
+                    value={companyFormData.company_master_id}
+                    onChange={e => setCompanyFormData(d => ({ ...d, company_master_id: e.target.value }))}
+                    className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 text-sm text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40 cursor-pointer"
+                  >
+                    <option value="">-- Tanpa Relasi Induk --</option>
+                    {masters.map(m => (
+                      <option key={m.id} value={m.id}>{m.name} ({m.sector})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
                     Alamat
                   </label>
                   <textarea
