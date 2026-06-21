@@ -37,6 +37,7 @@ model assets {
   condition_id       Int?
   status_id          Int?
   information        String?
+  reference_link     String?
   created_at         DateTime?          @default(now()) @db.Timestamp(6)
   updated_at         DateTime?          @default(now()) @db.Timestamp(6)
   m_asset_category   m_asset_category?  @relation(fields: [asset_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -212,6 +213,55 @@ model legal_audit_logs {
   @@schema("glc_mra")
 }
 
+model compliance_license_audit_logs {
+  id                 Int                 @id @default(autoincrement())
+  license_id         Int?
+  doc_name           String?             @db.VarChar(255)
+  action             String              @db.VarChar(50)
+  performed_by       String?             @default("system") @db.VarChar(100)
+  performed_at       DateTime?           @default(now()) @db.Timestamptz(6)
+  compliance_licenses compliance_licenses? @relation(fields: [license_id], references: [id], onUpdate: NoAction)
+
+  @@index([license_id], map: "idx_compliance_license_audit_id")
+  @@schema("glc_mra")
+}
+
+model compliance_licenses {
+  id                           Int                              @id @default(autoincrement())
+  doc_name                     String                           @db.VarChar(255)
+  category                     String                           @db.VarChar(100)
+  sub_category                 String?                          @db.VarChar(100)
+  id_number                    String?                          @db.VarChar(100)
+  issuing_authority             String?                          @db.VarChar(150)
+  company_id                   Int?
+  business_unit                String?                          @db.VarChar(100)
+  site_location                String?                          @db.VarChar(150)
+  related_product              String?                          @db.VarChar(200)
+  pic                          String                           @db.VarChar(100)
+  pic_department               String?                          @db.VarChar(100)
+  backup_pic                   String?                          @db.VarChar(100)
+  issue_date                   DateTime?                        @db.Date
+  effective_date               DateTime?                        @db.Date
+  expiry_date                  DateTime?                        @db.Date
+  doc_status                   String                           @default("Draft") @db.VarChar(50)
+  renewal_status               String?                          @db.VarChar(50)
+  regulator_submission_status  String?                          @db.VarChar(50)
+  risk_level                   String?                          @db.VarChar(30)
+  confidentiality              String                           @default("Public") @db.VarChar(60)
+  regulator_url                String?
+  file_url                     String?
+  file_name                    String?                          @db.VarChar(255)
+  notes                        String?
+  created_at                   DateTime?                        @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime?                        @default(now()) @db.Timestamptz(6)
+  compliance_license_audit_logs compliance_license_audit_logs[]
+  m_company                    m_company?                       @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+
+  @@index([expiry_date], map: "idx_compliance_license_expiry")
+  @@index([category], map: "idx_compliance_license_category")
+  @@schema("glc_mra")
+}
+
 model legal_documents {
   id               Int                @id @default(autoincrement())
   module           String             @db.VarChar(50)
@@ -295,6 +345,7 @@ model m_company {
   is_active         Boolean?          @default(true)
   created_at        DateTime?         @default(now()) @db.Timestamp(6)
   assets            assets[]
+  compliance_licenses compliance_licenses[]
   device_rentals    device_rentals[]
   documents         documents[]
   expense_budget    expense_budget[]
@@ -423,6 +474,7 @@ model maintenances {
   vendor_id    Int?
   status       String?     @db.VarChar(30)
   information  String?
+  reference_link String?
   created_at   DateTime?   @default(now()) @db.Timestamp(6)
   assets       assets?     @relation(fields: [asset_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   m_company    m_company   @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -431,6 +483,16 @@ model maintenances {
 
   @@index([company_id], map: "idx_mt_company")
   @@index([expired_date], map: "idx_mt_expired")
+  @@schema("glc_mra")
+}
+
+model password_reset_tokens {
+  id         Int       @id @default(autoincrement())
+  email      String    @db.VarChar(120)
+  token      String    @unique @db.VarChar(255)
+  expires_at DateTime  @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+
   @@schema("glc_mra")
 }
 

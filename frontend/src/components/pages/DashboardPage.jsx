@@ -289,22 +289,7 @@ export default function DashboardPage() {
     );
   }
 
-  const CustomChartTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-3 rounded-xl shadow-xl text-xs text-neutral-850 dark:text-neutral-200">
-          <p className="font-bold capitalize mb-1">{data.name}</p>
-          <p className="text-blue-550 font-semibold font-mono">
-            {data.value > 100000 || data.name === 'Total Cost'
-              ? `Value: ${maskPrice(data.value)}`
-              : `Qty: ${maskNum(data.value)} units`}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
+
 
   const totalValSum = (stats?.categoryBreakdown || []).reduce((acc, c) => acc + c.value, 0);
   const sortedCategories = [...(stats?.categoryBreakdown || [])].sort((a, b) => (b.count || 0) - (a.count || 0));
@@ -346,10 +331,8 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-[10px] text-neutral-500 dark:text-neutral-4-50 font-extrabold uppercase tracking-widest leading-none truncate">TOTAL ASSETS</span>
                   <Tooltip>
-                    <TooltipTrigger>
-                      <button type="button" className="text-neutral-450 hover:text-blue-500 dark:hover:text-blue-400 transition-colors focus:outline-none shrink-0 inline-flex items-center cursor-pointer">
-                        <HelpCircle className="w-3 h-3" />
-                      </button>
+                    <TooltipTrigger className="text-neutral-450 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
+                      <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
                       Total unit dan nominal aset fisik yang terdaftar di dalam sistem.
@@ -396,10 +379,8 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">INSURANCE POLICIES</span>
                   <Tooltip>
-                    <TooltipTrigger>
-                      <button type="button" className="text-neutral-455 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors focus:outline-none shrink-0 inline-flex items-center cursor-pointer">
-                        <HelpCircle className="w-3 h-3" />
-                      </button>
+                    <TooltipTrigger className="text-neutral-455 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
+                      <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
                       Jumlah polis asuransi aktif dan nilai premi tahunan perlindungan aset.
@@ -446,10 +427,8 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">VEHICLES FLEET</span>
                   <Tooltip>
-                    <TooltipTrigger>
-                      <button type="button" className="text-neutral-455 hover:text-amber-600 dark:hover:text-amber-400 transition-colors focus:outline-none shrink-0 inline-flex items-center cursor-pointer">
-                        <HelpCircle className="w-3 h-3" />
-                      </button>
+                    <TooltipTrigger className="text-neutral-455 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                      <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
                       Total armada kendaraan operasional dan logistik terdaftar beserta status perawatannya.
@@ -496,10 +475,8 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">VENDORS DIRECTORY</span>
                   <Tooltip>
-                    <TooltipTrigger>
-                      <button type="button" className="text-neutral-455 hover:text-emerald-600 dark:hover:text-emerald-450 transition-colors focus:outline-none shrink-0 inline-flex items-center cursor-pointer">
-                        <HelpCircle className="w-3 h-3" />
-                      </button>
+                    <TooltipTrigger className="text-neutral-455 hover:text-emerald-600 dark:hover:text-emerald-450 transition-colors">
+                      <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
                       Daftar rekanan, penyedia jasa pemeliharaan, sewa, dan pengadaan di dalam sistem.

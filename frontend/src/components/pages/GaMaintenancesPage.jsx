@@ -19,7 +19,11 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  Building
+  Building,
+  Edit3,
+  Trash2,
+  ExternalLink,
+  FileText
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
@@ -231,10 +235,11 @@ export default function GaMaintenancesPage() {
   // Detail drawer & Add modal
   const [selectedMaint, setSelectedMaint] = useState(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [editingMaintenance, setEditingMaintenance] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [maintenanceToDelete, setMaintenanceToDelete] = useState(null);
 
-  // New Maintenance Form State
-  const [formData, setFormData] = useState({
+  const defaultFormData = {
     company_id: '',
     location_id: '',
     room_area: '',
@@ -242,15 +247,69 @@ export default function GaMaintenancesPage() {
     asset_name: '',
     detail: '',
     pic: '',
-    service_type: 'Perbaikan', // default type
+    service_type: 'Perbaikan',
     expired_date: '',
     qty: 1,
     est_cost: '',
     total_cost: '',
     vendor_id: '',
     status: 'Pending',
-    information: ''
-  });
+    information: '',
+    reference_link: ''
+  };
+
+  // New Maintenance Form State
+  const [formData, setFormData] = useState({ ...defaultFormData });
+
+  const handleCloseAddDrawer = () => {
+    setShowAddDrawer(false);
+    setEditingMaintenance(null);
+    setFormData({ ...defaultFormData });
+  };
+
+  const openEditMaintenance = (maint) => {
+    setEditingMaintenance(maint);
+    setFormData({
+      company_id: maint.company_id ? String(maint.company_id) : '',
+      location_id: maint.location_id ? String(maint.location_id) : '',
+      room_area: maint.room_area || '',
+      asset_id: maint.asset_id ? String(maint.asset_id) : '',
+      asset_name: maint.asset_name || maint.assets?.asset_name || '',
+      detail: maint.detail || '',
+      pic: maint.pic || '',
+      service_type: maint.service_type || 'Perbaikan',
+      expired_date: maint.expired_date ? maint.expired_date.split('T')[0] : '',
+      qty: maint.qty || 1,
+      est_cost: maint.est_cost ? String(maint.est_cost) : '',
+      total_cost: maint.total_cost ? String(maint.total_cost) : '',
+      vendor_id: maint.vendor_id ? String(maint.vendor_id) : '',
+      status: maint.status || 'Pending',
+      information: maint.information || '',
+      reference_link: maint.reference_link || ''
+    });
+    setShowAddDrawer(true);
+  };
+
+  const handleDeleteMaintenance = (maint) => {
+    setMaintenanceToDelete(maint);
+  };
+
+  const confirmDeleteMaintenance = async () => {
+    if (!maintenanceToDelete) return;
+    try {
+      setSubmitting(true);
+      await apiClient.delete(`/api/ga/maintenances/${maintenanceToDelete.id}`);
+      if (selectedMaint && selectedMaint.id === maintenanceToDelete.id) {
+        setSelectedMaint(null);
+      }
+      setMaintenanceToDelete(null);
+      fetchData();
+    } catch (err) {
+      alert(err.message || 'Failed to delete maintenance record');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -339,29 +398,17 @@ export default function GaMaintenancesPage() {
         expired_date: formData.expired_date ? new Date(formData.expired_date).toISOString() : null
       };
 
-      await apiClient.post('/api/ga/maintenances', payload);
-      setShowAddDrawer(false);
-      // Reset form
-      setFormData({
-        company_id: '',
-        location_id: '',
-        room_area: '',
-        asset_id: '',
-        asset_name: '',
-        detail: '',
-        pic: '',
-        service_type: 'Perbaikan',
-        expired_date: '',
-        qty: 1,
-        est_cost: '',
-        total_cost: '',
-        vendor_id: '',
-        status: 'Pending',
-        information: ''
-      });
+      if (editingMaintenance) {
+        await apiClient.put(`/api/ga/maintenances/${editingMaintenance.id}`, payload);
+      } else {
+        await apiClient.post('/api/ga/maintenances', payload);
+      }
+      
+      handleCloseAddDrawer();
+      if (!editingMaintenance) setPage(1);
       fetchData();
     } catch (err) {
-      alert(err.message || 'Failed to add maintenance record');
+      alert(err.message || 'Failed to save maintenance record');
     } finally {
       setSubmitting(false);
     }
@@ -622,13 +669,43 @@ export default function GaMaintenancesPage() {
                           </span>
                         </td>
                         <td className="p-4 text-center">
-                          <button 
-                            onClick={() => setSelectedMaint(maint)}
-                            className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
-                            title="View Details"
-                          >
-                            <Maximize2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            {maint.reference_link && (
+                              <a 
+                                href={maint.reference_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 text-neutral-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                title="Open Reference Doc"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            )}
+                            <button 
+                              onClick={() => setSelectedMaint(maint)}
+                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                              title="View Details"
+                            >
+                              <Maximize2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => openEditMaintenance(maint)}
+                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                              title="Edit Maintenance"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <motion.button
+                              type="button"
+                              onClick={() => handleDeleteMaintenance(maint)}
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                              title="Delete Maintenance"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </motion.button>
+                          </div>
                         </td>
                       </motion.tr>
                     ))}
@@ -797,7 +874,7 @@ export default function GaMaintenancesPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowAddDrawer(false)}
+              onClick={handleCloseAddDrawer}
               className="fixed inset-0 bg-black z-40"
             />
             <motion.div 
@@ -809,9 +886,9 @@ export default function GaMaintenancesPage() {
             >
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">Request Service ticket</h3>
+                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">{editingMaintenance ? 'Edit Service Ticket' : 'Request Service Ticket'}</h3>
                   <button 
-                    onClick={() => setShowAddDrawer(false)}
+                    onClick={handleCloseAddDrawer}
                     className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
                   >
                     <X className="w-4 h-4" />
@@ -987,10 +1064,24 @@ export default function GaMaintenancesPage() {
                     />
                   </div>
 
+                  <div>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Reference Document Link</label>
+                    <div className="relative">
+                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                      <input
+                        type="url"
+                        placeholder="e.g. https://drive.google.com/..."
+                        value={formData.reference_link}
+                        onChange={(e) => setFormData({...formData, reference_link: e.target.value})}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
                   <div className="flex gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     <button
                       type="button"
-                      onClick={() => setShowAddDrawer(false)}
+                      onClick={handleCloseAddDrawer}
                       className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white font-bold rounded-xl transition-all cursor-pointer text-center"
                     >
                       Cancel
@@ -1000,12 +1091,80 @@ export default function GaMaintenancesPage() {
                       disabled={submitting}
                       className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40"
                     >
-                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : 'Submit Ticket'}
+                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : (editingMaintenance ? 'Update Ticket' : 'Submit Ticket')}
                     </button>
                   </div>
                 </form>
               </div>
             </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Animated Delete Confirmation Modal */}
+      <AnimatePresence>
+        {maintenanceToDelete && (
+          <>
+            {/* Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMaintenanceToDelete(null)}
+              className="fixed inset-0 bg-black/60 z-[999] backdrop-blur-sm"
+            />
+            {/* Modal Card */}
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                transition={{ type: 'spring', duration: 0.35 }}
+                className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl pointer-events-auto flex flex-col items-center text-center"
+              >
+                {/* Warning Icon Container with Pulses */}
+                <div className="relative mb-4">
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-red-500/10 dark:bg-red-500/20 blur-sm"
+                    animate={{ scale: [1, 1.25, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  <div className="relative w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/20 text-red-500 dark:text-red-400 flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 animate-pulse" />
+                  </div>
+                </div>
+                
+                <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Konfirmasi Hapus Maintenance</h3>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus tiket maintenance <strong className="text-red-500 dark:text-red-400 font-bold">"{maintenanceToDelete.asset_name || maintenanceToDelete.assets?.asset_name || `#${maintenanceToDelete.id}`}"</strong>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+                </p>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2.5 w-full mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setMaintenanceToDelete(null)}
+                    disabled={submitting}
+                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteMaintenance}
+                    disabled={submitting}
+                    className="flex-1 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                    Ya, Hapus
+                  </button>
+                </div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

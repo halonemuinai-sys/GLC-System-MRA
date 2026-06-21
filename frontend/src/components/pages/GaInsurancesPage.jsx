@@ -18,7 +18,12 @@ import {
   Building,
   Activity,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Edit3,
+  Trash2,
+  ExternalLink,
+  AlertTriangle,
+  FileText
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
@@ -228,6 +233,7 @@ export default function GaInsurancesPage() {
   // Detail drawer & Add modal
   const [selectedInsurance, setSelectedInsurance] = useState(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [editingInsurance, setEditingInsurance] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   // New Insurance Form State
@@ -249,8 +255,84 @@ export default function GaInsurancesPage() {
     pic: '',
     contact_person: '',
     information: '',
+    doc_url: '',
     status: 'Active'
   });
+
+  const handleCloseAddDrawer = () => {
+    setShowAddDrawer(false);
+    setEditingInsurance(null);
+    setFormData({
+      company_id: '',
+      insurance_company: '',
+      insurance_type: 'All Risk',
+      category: 'Kendaraan',
+      policy_number: '',
+      start_date: '',
+      end_date: '',
+      vehicle_id: '',
+      vehicle_type: '',
+      premium_idr: '',
+      premium_usd: '',
+      coverage_idr: '',
+      coverage_usd: '',
+      broker: '',
+      pic: '',
+      contact_person: '',
+      information: '',
+      doc_url: '',
+      status: 'Active'
+    });
+  };
+
+  const openEditInsurance = (ins) => {
+    setEditingInsurance(ins);
+    setFormData({
+      company_id: ins.company_id ? String(ins.company_id) : '',
+      insurance_company: ins.insurance_company || '',
+      insurance_type: ins.insurance_type || 'All Risk',
+      category: ins.category || 'Kendaraan',
+      policy_number: ins.policy_number || '',
+      start_date: ins.start_date ? ins.start_date.split('T')[0] : '',
+      end_date: ins.end_date ? ins.end_date.split('T')[0] : '',
+      vehicle_id: ins.vehicle_id ? String(ins.vehicle_id) : '',
+      vehicle_type: ins.vehicle_type || '',
+      premium_idr: ins.premium_idr ? String(ins.premium_idr) : '',
+      premium_usd: ins.premium_usd ? String(ins.premium_usd) : '',
+      coverage_idr: ins.coverage_idr ? String(ins.coverage_idr) : '',
+      coverage_usd: ins.coverage_usd ? String(ins.coverage_usd) : '',
+      broker: ins.broker || '',
+      pic: ins.pic || '',
+      contact_person: ins.contact_person || '',
+      information: ins.information || '',
+      doc_url: ins.doc_url || '',
+      status: ins.status || 'Active'
+    });
+    setShowAddDrawer(true);
+  };
+
+  const [insuranceToDelete, setInsuranceToDelete] = useState(null);
+
+  const handleDeleteInsurance = (ins) => {
+    setInsuranceToDelete(ins);
+  };
+
+  const confirmDeleteInsurance = async () => {
+    if (!insuranceToDelete) return;
+    try {
+      setSubmitting(true);
+      await apiClient.delete(`/api/legal/insurances/${insuranceToDelete.id}`);
+      if (selectedInsurance && selectedInsurance.id === insuranceToDelete.id) {
+        setSelectedInsurance(null);
+      }
+      setInsuranceToDelete(null);
+      fetchData();
+    } catch (err) {
+      alert(err.message || 'Failed to delete insurance record');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -339,32 +421,17 @@ export default function GaInsurancesPage() {
         end_date: formData.end_date ? new Date(formData.end_date).toISOString() : null
       };
 
-      await apiClient.post('/api/legal/insurances', payload);
-      setShowAddDrawer(false);
-      // Reset form
-      setFormData({
-        company_id: '',
-        insurance_company: '',
-        insurance_type: 'All Risk',
-        category: 'Kendaraan',
-        policy_number: '',
-        start_date: '',
-        end_date: '',
-        vehicle_id: '',
-        vehicle_type: '',
-        premium_idr: '',
-        premium_usd: '',
-        coverage_idr: '',
-        coverage_usd: '',
-        broker: '',
-        pic: '',
-        contact_person: '',
-        information: '',
-        status: 'Active'
-      });
+      if (editingInsurance) {
+        await apiClient.put(`/api/legal/insurances/${editingInsurance.id}`, payload);
+      } else {
+        await apiClient.post('/api/legal/insurances', payload);
+      }
+      
+      handleCloseAddDrawer();
+      if (!editingInsurance) setPage(1);
       fetchData();
     } catch (err) {
-      alert(err.message || 'Failed to add insurance policy');
+      alert(err.message || 'Failed to save insurance record');
     } finally {
       setSubmitting(false);
     }
@@ -653,13 +720,43 @@ export default function GaInsurancesPage() {
                             </span>
                           </td>
                           <td className="p-4 text-center">
-                            <button 
-                              onClick={() => setSelectedInsurance(ins)}
-                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
-                              title="View Details"
-                            >
-                              <Maximize2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              {ins.doc_url && (
+                                <a 
+                                  href={ins.doc_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 text-neutral-450 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                  title="Open Policy File"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                              )}
+                              <button 
+                                onClick={() => setSelectedInsurance(ins)}
+                                className="p-1 text-neutral-455 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                                title="View Details"
+                              >
+                                <Maximize2 className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => openEditInsurance(ins)}
+                                className="p-1 text-neutral-455 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Policy"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <motion.button
+                                type="button"
+                                onClick={() => handleDeleteInsurance(ins)}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                className="p-1 text-neutral-455 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                title="Delete Policy"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </motion.button>
+                            </div>
                           </td>
                         </motion.tr>
                       );
@@ -803,15 +900,49 @@ export default function GaInsurancesPage() {
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Additional Information</span>
                     <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 leading-relaxed">{selectedInsurance.information || 'No additional details provided.'}</p>
                   </div>
+
+                  {selectedInsurance.doc_url && (
+                    <div className="bg-blue-50/50 dark:bg-blue-950/10 p-3 rounded-xl border border-blue-100/30 dark:border-blue-900/20 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block leading-none">Policy File</span>
+                          <span className="text-xs text-neutral-800 dark:text-slate-200 font-semibold truncate block mt-0.5">Insurance Contract File</span>
+                        </div>
+                      </div>
+                      <a
+                        href={selectedInsurance.doc_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold rounded-xl text-[10px] transition-all flex items-center gap-1 cursor-pointer shadow-sm shadow-blue-500/20 shrink-0"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open Link
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+              <div className="mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3">
                 <button
-                  onClick={() => setSelectedInsurance(null)}
-                  className="w-full py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
+                  onClick={() => {
+                    setSelectedInsurance(null);
+                    openEditInsurance(selectedInsurance);
+                  }}
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/10"
                 >
-                  Close Detail
+                  <Edit3 className="w-3.5 h-3.5" />
+                  Edit Policy
+                </button>
+                <button
+                  onClick={() => handleDeleteInsurance(selectedInsurance)}
+                  className="px-3.5 py-2 bg-red-50 hover:bg-red-100 active:bg-red-200 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200/40 dark:border-red-900/30 rounded-xl transition-all cursor-pointer"
+                  title="Hapus"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
@@ -827,7 +958,7 @@ export default function GaInsurancesPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowAddDrawer(false)}
+              onClick={handleCloseAddDrawer}
               className="fixed inset-0 bg-black z-40"
             />
             <motion.div 
@@ -839,9 +970,11 @@ export default function GaInsurancesPage() {
             >
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">Add Insurance Policy</h3>
+                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">
+                    {editingInsurance ? 'Edit Insurance Policy' : 'Add Insurance Policy'}
+                  </h3>
                   <button 
-                    onClick={() => setShowAddDrawer(false)}
+                    onClick={handleCloseAddDrawer}
                     className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
                   >
                     <X className="w-4 h-4" />
@@ -1011,10 +1144,21 @@ export default function GaInsurancesPage() {
                     </div>
                   </div>
 
+                  <div>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Policy Attachment Link (URL)</label>
+                    <input
+                      type="url"
+                      placeholder="e.g. https://drive.google.com/..."
+                      value={formData.doc_url}
+                      onChange={(e) => setFormData({...formData, doc_url: e.target.value})}
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                    />
+                  </div>
+
                   <div className="flex gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     <button
                       type="button"
-                      onClick={() => setShowAddDrawer(false)}
+                      onClick={handleCloseAddDrawer}
                       className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white font-bold rounded-xl transition-all cursor-pointer text-center"
                     >
                       Cancel
@@ -1024,12 +1168,80 @@ export default function GaInsurancesPage() {
                       disabled={submitting}
                       className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40"
                     >
-                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : 'Save Policy'}
+                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : (editingInsurance ? 'Update Policy' : 'Save Policy')}
                     </button>
                   </div>
                 </form>
               </div>
             </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Animated Delete Confirmation Modal */}
+      <AnimatePresence>
+        {insuranceToDelete && (
+          <>
+            {/* Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setInsuranceToDelete(null)}
+              className="fixed inset-0 bg-black/60 z-[999] backdrop-blur-sm"
+            />
+            {/* Modal Card */}
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                transition={{ type: 'spring', duration: 0.35 }}
+                className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl pointer-events-auto flex flex-col items-center text-center"
+              >
+                {/* Warning Icon Container with Pulses */}
+                <div className="relative mb-4">
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-red-500/10 dark:bg-red-500/20 blur-sm"
+                    animate={{ scale: [1, 1.25, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  <div className="relative w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/20 text-red-500 dark:text-red-400 flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 animate-pulse" />
+                  </div>
+                </div>
+                
+                <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Konfirmasi Hapus Polis Asuransi</h3>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus polis asuransi <strong className="text-red-500 dark:text-red-400 font-bold">"{insuranceToDelete.policy_number}"</strong>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+                </p>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2.5 w-full mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setInsuranceToDelete(null)}
+                    disabled={submitting}
+                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteInsurance}
+                    disabled={submitting}
+                    className="flex-1 py-2 bg-red-650 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                    Ya, Hapus
+                  </button>
+                </div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

@@ -24,7 +24,9 @@ import {
   EyeOff,
   Trash2,
   Download,
-  Edit3
+  Edit3,
+  ExternalLink,
+  FileText
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { jsPDF } from 'jspdf';
@@ -782,7 +784,8 @@ export default function GaAssetsPage() {
     condition_id: 1, // Default Good
     status_id: 1, // Default Active
     details: '',
-    information: ''
+    information: '',
+    reference_link: ''
   });
 
   // Fetch functions
@@ -887,7 +890,8 @@ export default function GaAssetsPage() {
         status_id: Number(formData.status_id),
         acquisition_cost: formData.acquisition_cost ? Number(formData.acquisition_cost) : 0,
         useful_life_months: formData.useful_life_months ? Number(formData.useful_life_months) : null,
-        acquisition_date: formData.acquisition_date ? new Date(formData.acquisition_date).toISOString() : null
+        acquisition_date: formData.acquisition_date ? new Date(formData.acquisition_date).toISOString() : null,
+        reference_link: formData.reference_link || null
       };
 
       if (editingAsset) {
@@ -922,7 +926,8 @@ export default function GaAssetsPage() {
       condition_id: asset.condition_id || 1,
       status_id: asset.status_id || 1,
       details: asset.details || '',
-      information: asset.information || ''
+      information: asset.information || '',
+      reference_link: asset.reference_link || ''
     });
     setShowAddDrawer(true);
   };
@@ -944,7 +949,8 @@ export default function GaAssetsPage() {
       condition_id: 1,
       status_id: 1,
       details: '',
-      information: ''
+      information: '',
+      reference_link: ''
     });
   };
 
@@ -1443,9 +1449,20 @@ export default function GaAssetsPage() {
                         </td>
                         <td className="p-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
+                            {asset.reference_link && (
+                              <a 
+                                href={asset.reference_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 text-neutral-450 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                title="Open Reference Document"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            )}
                             <button 
                               onClick={() => setSelectedAsset(asset)}
-                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                              className="p-1 text-neutral-455 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
                               title="View Details"
                             >
                               <Maximize2 className="w-4 h-4" />
@@ -1605,6 +1622,29 @@ export default function GaAssetsPage() {
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Additional Info</span>
                     <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 leading-relaxed">{selectedAsset.information || '-'}</p>
                   </div>
+
+                  {selectedAsset.reference_link && (
+                    <div className="bg-blue-50/50 dark:bg-blue-950/10 p-3 rounded-xl border border-blue-100/30 dark:border-blue-900/20 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block leading-none">Document Reference</span>
+                          <span className="text-xs text-neutral-800 dark:text-slate-200 font-semibold truncate block mt-0.5">Google Drive Document</span>
+                        </div>
+                      </div>
+                      <a
+                        href={selectedAsset.reference_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold rounded-xl text-[10px] transition-all flex items-center gap-1 cursor-pointer shadow-sm shadow-blue-500/20 shrink-0"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open Link
+                      </a>
+                    </div>
+                  )}
 
                   {/* PIC Info */}
                   <div className="bg-neutral-50 dark:bg-neutral-950 p-3.5 rounded-xl border border-neutral-100 dark:border-neutral-800">
@@ -1829,6 +1869,17 @@ export default function GaAssetsPage() {
                       placeholder="Processor core i5, 8GB RAM, 256GB SSD..."
                       value={formData.details}
                       onChange={(e) => setFormData({...formData, details: e.target.value})}
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Reference Link (e.g. Google Drive)</label>
+                    <input
+                      type="url"
+                      placeholder="https://drive.google.com/..."
+                      value={formData.reference_link}
+                      onChange={(e) => setFormData({...formData, reference_link: e.target.value})}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
                     />
                   </div>

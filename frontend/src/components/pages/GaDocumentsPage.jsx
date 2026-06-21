@@ -19,7 +19,11 @@ import {
   Users,
   MapPin,
   Building,
-  Activity
+  Activity,
+  Edit3,
+  Trash2,
+  ExternalLink,
+  AlertTriangle
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
@@ -255,6 +259,7 @@ export default function GaDocumentsPage() {
   // Detail drawer & Add modal
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [editingDoc, setEditingDoc] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   // New Document Form State
@@ -277,6 +282,77 @@ export default function GaDocumentsPage() {
     notes: '',
     status: 'Active'
   });
+
+  const handleCloseAddDrawer = () => {
+    setShowAddDrawer(false);
+    setEditingDoc(null);
+    setFormData({
+      doc_number: '',
+      doc_title: '',
+      doc_type_id: '',
+      doc_subtype: 'agreement',
+      division_id: '',
+      mra_party_id: '',
+      counter_party: '',
+      vendor_id: '',
+      pic_internal: '',
+      valid_from: '',
+      valid_until: '',
+      physical_location: '',
+      auto_renewal: false,
+      digital_doc_url: '',
+      amount: '',
+      notes: '',
+      status: 'Active'
+    });
+  };
+
+  const openEditDoc = (doc) => {
+    setEditingDoc(doc);
+    setFormData({
+      doc_number: doc.doc_number || '',
+      doc_title: doc.doc_title || '',
+      doc_type_id: doc.doc_type_id ? String(doc.doc_type_id) : '',
+      doc_subtype: doc.doc_subtype || 'agreement',
+      division_id: doc.division_id ? String(doc.division_id) : '',
+      mra_party_id: doc.mra_party_id ? String(doc.mra_party_id) : '',
+      counter_party: doc.counter_party || '',
+      vendor_id: doc.vendor_id ? String(doc.vendor_id) : '',
+      pic_internal: doc.pic_internal || '',
+      valid_from: doc.valid_from ? doc.valid_from.split('T')[0] : '',
+      valid_until: doc.valid_until ? doc.valid_until.split('T')[0] : '',
+      physical_location: doc.physical_location || '',
+      auto_renewal: doc.auto_renewal || false,
+      digital_doc_url: doc.digital_doc_url || '',
+      amount: doc.amount ? String(doc.amount) : '',
+      notes: doc.notes || '',
+      status: doc.status || 'Active'
+    });
+    setShowAddDrawer(true);
+  };
+
+  const [docToDelete, setDocToDelete] = useState(null);
+
+  const handleDeleteDoc = (doc) => {
+    setDocToDelete(doc);
+  };
+
+  const confirmDeleteDoc = async () => {
+    if (!docToDelete) return;
+    try {
+      setSubmitting(true);
+      await apiClient.delete(`/api/legal/documents/${docToDelete.id}`);
+      if (selectedDoc && selectedDoc.id === docToDelete.id) {
+        setSelectedDoc(null);
+      }
+      setDocToDelete(null);
+      fetchData();
+    } catch (err) {
+      alert(err.message || 'Failed to delete document');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -363,32 +439,17 @@ export default function GaDocumentsPage() {
         valid_until: formData.valid_until ? new Date(formData.valid_until).toISOString() : null
       };
 
-      await apiClient.post('/api/legal/documents', payload);
-      setShowAddDrawer(false);
-      // Reset form
-      setFormData({
-        doc_number: '',
-        doc_title: '',
-        doc_type_id: '',
-        doc_subtype: 'agreement',
-        division_id: '',
-        mra_party_id: '',
-        counter_party: '',
-        vendor_id: '',
-        pic_internal: '',
-        valid_from: '',
-        valid_until: '',
-        physical_location: '',
-        auto_renewal: false,
-        digital_doc_url: '',
-        amount: '',
-        notes: '',
-        status: 'Active'
-      });
-      setPage(1);
+      if (editingDoc) {
+        await apiClient.put(`/api/legal/documents/${editingDoc.id}`, payload);
+      } else {
+        await apiClient.post('/api/legal/documents', payload);
+      }
+      
+      handleCloseAddDrawer();
+      if (!editingDoc) setPage(1);
       fetchData();
     } catch (err) {
-      alert(err.message || 'Failed to add document');
+      alert(err.message || 'Failed to save document');
     } finally {
       setSubmitting(false);
     }
@@ -706,13 +767,43 @@ export default function GaDocumentsPage() {
                         </span>
                       </td>
                       <td className="p-4 text-center">
-                        <button 
-                          onClick={() => setSelectedDoc(doc)}
-                          className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
-                          title="View Details"
-                        >
-                          <Maximize2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          {doc.digital_doc_url && (
+                            <a 
+                              href={doc.digital_doc_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-neutral-450 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                              title="Open Digital Contract"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          )}
+                          <button 
+                            onClick={() => setSelectedDoc(doc)}
+                            className="p-1 text-neutral-455 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                            title="View Details"
+                          >
+                            <Maximize2 className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => openEditDoc(doc)}
+                            className="p-1 text-neutral-455 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                            title="Edit Document"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <motion.button
+                            type="button"
+                            onClick={() => handleDeleteDoc(doc)}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            className="p-1 text-neutral-455 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Document"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </motion.button>
+                        </div>
                       </td>
                     </motion.tr>
                   );
@@ -864,12 +955,23 @@ export default function GaDocumentsPage() {
                 </div>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+              <div className="mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3">
                 <button
-                  onClick={() => setSelectedDoc(null)}
-                  className="w-full py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
+                  onClick={() => {
+                    setSelectedDoc(null);
+                    openEditDoc(selectedDoc);
+                  }}
+                  className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/10"
                 >
-                  Close Detail
+                  <Edit3 className="w-3.5 h-3.5" />
+                  Edit Document
+                </button>
+                <button
+                  onClick={() => handleDeleteDoc(selectedDoc)}
+                  className="px-3.5 py-2 bg-red-50 hover:bg-red-100 active:bg-red-200 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200/40 dark:border-red-900/30 rounded-xl transition-all cursor-pointer"
+                  title="Hapus"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </motion.div>
@@ -885,7 +987,7 @@ export default function GaDocumentsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowAddDrawer(false)}
+              onClick={handleCloseAddDrawer}
               className="fixed inset-0 bg-black z-40"
             />
             <motion.div 
@@ -897,9 +999,11 @@ export default function GaDocumentsPage() {
             >
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">Create Legal Document</h3>
+                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">
+                    {editingDoc ? 'Edit Legal Document' : 'Create Legal Document'}
+                  </h3>
                   <button 
-                    onClick={() => setShowAddDrawer(false)}
+                    onClick={handleCloseAddDrawer}
                     className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
                   >
                     <X className="w-4 h-4" />
@@ -1108,7 +1212,7 @@ export default function GaDocumentsPage() {
                   <div className="flex gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     <button
                       type="button"
-                      onClick={() => setShowAddDrawer(false)}
+                      onClick={handleCloseAddDrawer}
                       className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white font-bold rounded-xl transition-all cursor-pointer text-center"
                     >
                       Cancel
@@ -1118,12 +1222,80 @@ export default function GaDocumentsPage() {
                       disabled={submitting}
                       className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40"
                     >
-                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : 'Save Document'}
+                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : (editingDoc ? 'Update Document' : 'Save Document')}
                     </button>
                   </div>
                 </form>
               </div>
             </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Animated Delete Confirmation Modal */}
+      <AnimatePresence>
+        {docToDelete && (
+          <>
+            {/* Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDocToDelete(null)}
+              className="fixed inset-0 bg-black/60 z-[999] backdrop-blur-sm"
+            />
+            {/* Modal Card */}
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                transition={{ type: 'spring', duration: 0.35 }}
+                className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl pointer-events-auto flex flex-col items-center text-center"
+              >
+                {/* Warning Icon Container with Pulses */}
+                <div className="relative mb-4">
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-red-500/10 dark:bg-red-500/20 blur-sm"
+                    animate={{ scale: [1, 1.25, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  <div className="relative w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/20 text-red-500 dark:text-red-400 flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 animate-pulse" />
+                  </div>
+                </div>
+                
+                <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Konfirmasi Hapus Dokumen</h3>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus dokumen <strong className="text-red-500 dark:text-red-400 font-bold">"{docToDelete.doc_title}"</strong>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+                </p>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2.5 w-full mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setDocToDelete(null)}
+                    disabled={submitting}
+                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteDoc}
+                    disabled={submitting}
+                    className="flex-1 py-2 bg-red-650 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
+                    Ya, Hapus
+                  </button>
+                </div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

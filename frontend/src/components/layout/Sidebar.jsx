@@ -11,7 +11,6 @@ import {
   Truck,
   Laptop,
   Monitor,
-  ClipboardCheck,
   Wrench,
   Users,
   ShieldCheck,
@@ -28,11 +27,17 @@ import {
   Wallet,
   Scale,
   Gavel,
-  FolderOpen,
   Building2,
-  Database
+  Database,
+  BadgeCheck,
+  ClipboardList,
+  BookOpen,
+  UserCheck,
+  Landmark,
+  FlaskConical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/apiClient';
 
 // ─── Leaf Nav Item ──────────────────────────────────────────────────────────────
 function NavItem({
@@ -44,7 +49,8 @@ function NavItem({
   delay = 0,
   onClick,
   collapsed,
-  isChild = false
+  isChild = false,
+  badge = 0
 }) {
   const activeText = accent === 'rose' ? 'text-rose-600 dark:text-rose-400' : 'text-indigo-600 dark:text-indigo-400';
   const activeIcon = accent === 'rose' ? 'bg-rose-100 dark:bg-rose-500/20' : 'bg-indigo-100 dark:bg-indigo-500/20';
@@ -65,7 +71,7 @@ function NavItem({
           transition={{ duration: 0.12 }}
           className={cn(
             "group relative flex items-center gap-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer select-none",
-            isChild && !collapsed ? "pl-10 pr-3 py-2" : "px-3 py-2.5",
+            isChild && !collapsed ? "pl-6 pr-3 py-2" : "px-3 py-2.5",
             isActive
               ? activeText
               : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100/85 dark:hover:bg-neutral-800/60"
@@ -126,10 +132,18 @@ function NavItem({
             {name}
           </motion.span>
 
+          {/* Expiry/notification badge */}
+          {!collapsed && badge > 0 && (
+            <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">
+              {badge}
+            </span>
+          )}
+
           {/* Tooltip for collapsed state */}
           {collapsed && (
             <div className="absolute left-16 top-1/2 -translate-y-1/2 ml-2 px-2 py-1.5 bg-neutral-900 dark:bg-neutral-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg border border-neutral-800 dark:border-neutral-700">
               {name}
+              {badge > 0 && <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">{badge}</span>}
             </div>
           )}
 
@@ -278,7 +292,7 @@ function SubMenu({
               className="overflow-hidden"
             >
               {/* Vertical connector line */}
-              <div className="relative ml-[1.35rem] pl-4 border-l-2 border-neutral-100 dark:border-neutral-800/80 space-y-0.5 py-1">
+              <div className="relative ml-3 pl-3 border-l-2 border-neutral-100 dark:border-neutral-800/80 space-y-0.5 py-1">
                 {visibleChildren.map((child, idx) => (
                   <NavItem
                     key={child.path}
@@ -290,6 +304,7 @@ function SubMenu({
                     onClick={onChildClick}
                     collapsed={false}
                     isChild={true}
+                    badge={child.badge || 0}
                   />
                 ))}
               </div>
@@ -335,7 +350,10 @@ function SubMenu({
                         "w-3.5 h-3.5 flex-shrink-0",
                         isActive ? "text-indigo-500 dark:text-indigo-400" : "text-neutral-400 dark:text-neutral-500"
                       )} />
-                      <span className="whitespace-nowrap">{child.name}</span>
+                      <span className="whitespace-nowrap flex-1">{child.name}</span>
+                      {child.badge > 0 && (
+                        <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">{child.badge}</span>
+                      )}
                       {isActive && <ChevronRight className="w-3 h-3 ml-auto opacity-40" />}
                     </Link>
                   );
@@ -366,6 +384,14 @@ function SidebarContent({
     if (role === 'admin') return true;
     return allowedRoles.includes(role);
   }, [role]);
+
+  // Jumlah dokumen per modul Compliance yang mendekati/lewat kadaluarsa (untuk badge counter)
+  const [complianceBadges, setComplianceBadges] = useState({});
+  useEffect(() => {
+    apiClient.get('/api/compliance/notifications')
+      .then(res => setComplianceBadges(res.perModule || {}))
+      .catch(() => {});
+  }, []);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // MENU CONFIGURATION — Scalable 3-Level Hierarchy
@@ -410,6 +436,23 @@ function SidebarContent({
       ]
     },
     {
+      label: 'COMPLIANCE',
+      submenus: [
+        {
+          name: 'Regulasi & Audit',
+          icon: ShieldCheck,
+          children: [
+            { name: 'License & Permit', path: '/dashboard/compliance/licenses', icon: BadgeCheck, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']), badge: complianceBadges.license },
+            { name: 'Compliance Docs', path: '/dashboard/compliance/docs', icon: ClipboardList, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']), badge: complianceBadges.monitoring },
+            { name: 'SOP & Policy', path: '/dashboard/compliance/sop', icon: BookOpen, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']), badge: complianceBadges.sop },
+            { name: 'HR & Employment', path: '/dashboard/compliance/hr', icon: UserCheck, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']), badge: complianceBadges.hr_compliance },
+            { name: 'Tax & Finance', path: '/dashboard/compliance/tax', icon: Landmark, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']), badge: complianceBadges.tax_finance },
+            { name: 'Product Regulatory', path: '/dashboard/compliance/product', icon: FlaskConical, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']), badge: complianceBadges.product_regulatory },
+          ]
+        }
+      ]
+    },
+    {
       label: 'MASTER DATA',
       submenus: [
         {
@@ -435,20 +478,7 @@ function SidebarContent({
     //     }
     //   ]
     // },
-    // {
-    //   label: 'COMPLIANCE',
-    //   submenus: [
-    //     {
-    //       name: 'Regulasi & Audit',
-    //       icon: ShieldCheck,
-    //       children: [
-    //         { name: 'Compliance Check', path: '/dashboard/compliance/checks', icon: ClipboardCheck, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']) },
-    //         { name: 'Audit Trail', path: '/dashboard/compliance/audits', icon: FolderOpen, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']) },
-    //       ]
-    //     }
-    //   ]
-    // },
-  ], [hasAccess]);
+  ], [hasAccess, complianceBadges]);
 
   // ── Expand/Collapse State ──
   // Key = submenu name, value = boolean
@@ -568,17 +598,28 @@ function SidebarContent({
         )}
       </div>
 
-      {/* ── Dashboard link ── */}
-      <div className="px-3 pt-4 pb-1">
+      {/* ── Dashboard links ── */}
+      <div className="px-3 pt-4 pb-1 space-y-0.5">
         <NavItem
           href="/dashboard"
           icon={LayoutDashboard}
-          name="Dashboard"
+          name="Dashboard GA"
           isActive={pathname === '/dashboard'}
           delay={0}
           onClick={onClose}
           collapsed={collapsed}
         />
+        {hasAccess(['compliance', 'legal_compliance', 'auditor']) && (
+          <NavItem
+            href="/dashboard/compliance"
+            icon={ShieldCheck}
+            name="Dashboard Compliance"
+            isActive={pathname === '/dashboard/compliance'}
+            delay={0.03}
+            onClick={onClose}
+            collapsed={collapsed}
+          />
+        )}
       </div>
 
       {/* ── Main nav with submenus ── */}

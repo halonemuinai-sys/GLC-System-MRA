@@ -613,7 +613,8 @@ router.post('/assets', allowWrite, async (req, res, next) => {
         useful_life_months: data.useful_life_months ? parseInt(data.useful_life_months) : null,
         condition_id: data.condition_id ? parseInt(data.condition_id) : null,
         status_id: data.status_id ? parseInt(data.status_id) : null,
-        information: data.information || null
+        information: data.information || null,
+        reference_link: data.reference_link || null
       }
     });
 
@@ -646,7 +647,8 @@ router.put('/assets/:id', allowWrite, async (req, res, next) => {
         useful_life_months: data.useful_life_months !== undefined ? (data.useful_life_months ? parseInt(data.useful_life_months) : null) : undefined,
         condition_id: data.condition_id !== undefined ? (data.condition_id ? parseInt(data.condition_id) : null) : undefined,
         status_id: data.status_id !== undefined ? (data.status_id ? parseInt(data.status_id) : null) : undefined,
-        information: data.information !== undefined ? data.information : undefined
+        information: data.information !== undefined ? data.information : undefined,
+        reference_link: data.reference_link !== undefined ? data.reference_link : undefined
       }
     });
 
@@ -1197,7 +1199,8 @@ router.post('/maintenances', allowWrite, async (req, res, next) => {
         total_cost: data.total_cost ? parseFloat(data.total_cost) : 0,
         vendor_id: data.vendor_id ? parseInt(data.vendor_id) : null,
         status: data.status || 'Pending',
-        information: data.information || null
+        information: data.information || null,
+        reference_link: data.reference_link || null
       }
     });
     res.status(201).json(newMaint);
@@ -1226,7 +1229,8 @@ router.put('/maintenances/:id', allowWrite, async (req, res, next) => {
         total_cost: data.total_cost !== undefined ? parseFloat(data.total_cost) : undefined,
         vendor_id: data.vendor_id !== undefined ? (data.vendor_id ? parseInt(data.vendor_id) : null) : undefined,
         status: data.status !== undefined ? data.status : undefined,
-        information: data.information !== undefined ? data.information : undefined
+        information: data.information !== undefined ? data.information : undefined,
+        reference_link: data.reference_link !== undefined ? data.reference_link : undefined
       }
     });
     res.json(updated);

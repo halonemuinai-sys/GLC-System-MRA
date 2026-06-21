@@ -18,9 +18,18 @@ export function Tooltip({
 }
 
 export function TooltipTrigger({
+  className,
   ...props
 }) {
-  return <TooltipPrimitive.Trigger {...props} asChild />;
+  return (
+    <TooltipPrimitive.Trigger
+      className={cn(
+        "focus:outline-none shrink-0 inline-flex items-center cursor-pointer",
+        className
+      )}
+      {...props}
+    />
+  );
 }
 
 export function TooltipContent({

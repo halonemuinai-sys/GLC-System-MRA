@@ -274,7 +274,7 @@ router.get('/companies/all', allowRead, async (req, res, next) => {
     const data = await prisma.m_company.findMany({
       where: { is_active: true },
       orderBy: { name: 'asc' },
-      select: { id: true, code: true, name: true }
+      select: { id: true, code: true, name: true, company_master_id: true }
     });
     res.json(data);
   } catch (err) {
