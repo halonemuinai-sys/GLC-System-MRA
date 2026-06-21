@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+/* ── Dark mode: class-based (we force .dark on <html>) ── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+}
+
+.dark {
+  --background: #030712;
+  --foreground: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+
+  /* ── Remap indigo → Blue (#2563eb family) ── */
+  --color-indigo-50:  #eff6ff;
+  --color-indigo-100: #dbeafe;
+  --color-indigo-200: #bfdbfe;
+  --color-indigo-300: #93c5fd;
+  --color-indigo-400: #60a5fa;
+  --color-indigo-500: #3b82f6;
+  --color-indigo-600: #2563eb;
+  --color-indigo-700: #1d4ed8;
+  --color-indigo-800: #1e40af;
+  --color-indigo-900: #1e3a8a;
+  --color-indigo-950: #172554;
+
+  /* ── Deep navy dark surfaces ── */
+  --color-neutral-950: #030712;
+  --color-neutral-900: #0d1424;
+  --color-neutral-800: #1a2236;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, sans-serif;
+  /* Smooth transition when switching theme */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── Smooth theme transition for common elements ── */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+/* Exclude elements that shouldn't animate (e.g. animated components) */
+.no-transition,
+.no-transition *,
+[data-motion],
+[data-motion] * {
+  transition: none !important;
+}
+
+/* ── Dark mode semi-transparent borders ── */
+.dark .border-neutral-800,
+.dark .dark\:border-neutral-800 {
+  border-color: rgba(148, 163, 184, 0.10);
+}
+
+.dark .border-neutral-700,
+.dark .dark\:border-neutral-700 {
+  border-color: rgba(148, 163, 184, 0.14);
+}

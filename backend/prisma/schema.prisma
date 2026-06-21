@@ -1,0 +1,494 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["glc_mra"]
+}
+
+model approval_requests {
+  id                Int       @id @default(autoincrement())
+  asset_id          Int
+  user_id           Int
+  company_id        Int?
+  company_master_id Int?
+  status            String?   @default("PENDING") @db.VarChar(20)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+
+  @@schema("glc_mra")
+}
+
+model assets {
+  id                 Int                @id @default(autoincrement())
+  company_id         Int
+  asset_code         String?            @unique @db.VarChar(50)
+  asset_category_id  Int?
+  asset_type_id      Int?
+  asset_name         String             @db.VarChar(200)
+  details            String?
+  location_id        Int?
+  room               String?            @db.VarChar(100)
+  pic_id             Int?
+  acquisition_date   DateTime?          @db.Date
+  acquisition_cost   Decimal?           @default(0) @db.Decimal(18, 2)
+  useful_life_months Int?
+  condition_id       Int?
+  status_id          Int?
+  information        String?
+  created_at         DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?          @default(now()) @db.Timestamp(6)
+  m_asset_category   m_asset_category?  @relation(fields: [asset_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_asset_type       m_asset_type?      @relation(fields: [asset_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_company          m_company          @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_condition        m_condition?       @relation(fields: [condition_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_location         m_location?        @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_user             m_user?            @relation(fields: [pic_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_status           m_status?          @relation(fields: [status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  inventory_checks   inventory_checks[]
+  maintenances       maintenances[]
+
+  @@index([asset_category_id], map: "idx_assets_category")
+  @@index([company_id], map: "idx_assets_company")
+  @@index([status_id], map: "idx_assets_status")
+  @@schema("glc_mra")
+}
+
+model audit_log {
+  id         BigInt    @id @default(autoincrement())
+  table_name String?   @db.VarChar(50)
+  record_id  Int?
+  action     String?   @db.VarChar(10)
+  old_data   Json?
+  new_data   Json?
+  user_id    Int?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  m_user     m_user?   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("glc_mra")
+}
+
+model device_rentals {
+  id              Int         @id @default(autoincrement())
+  company_id      Int
+  vendor_id       Int?
+  device_type     String?     @db.VarChar(50)
+  order_id        String?     @db.VarChar(80)
+  item_name       String?     @db.VarChar(200)
+  price           Decimal?    @db.Decimal(15, 2)
+  unit_code       String?     @db.VarChar(50)
+  duration_months Int?
+  start_rent      DateTime?   @db.Date
+  end_rent        DateTime?   @db.Date
+  user_id         Int?
+  department      String?     @db.VarChar(80)
+  location_id     Int?
+  status          String?     @default("Active") @db.VarChar(30)
+  created_at      DateTime?   @default(now()) @db.Timestamp(6)
+  m_company       m_company   @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_location      m_location? @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_user          m_user?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendors         vendors?    @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([company_id], map: "idx_rental_company")
+  @@index([end_rent], map: "idx_rental_endrent")
+  @@schema("glc_mra")
+}
+
+model documents {
+  id                Int              @id @default(autoincrement())
+  doc_number        String           @db.VarChar(100)
+  doc_title         String?          @db.VarChar(200)
+  doc_type_id       Int?
+  doc_subtype       String?          @default("agreement") @db.VarChar(20)
+  division_id       Int?
+  mra_party_id      Int?
+  counter_party     String?          @db.VarChar(200)
+  vendor_id         Int?
+  pic_internal      String?          @db.VarChar(80)
+  valid_from        DateTime?        @db.Date
+  valid_until       DateTime?        @db.Date
+  physical_location String?          @db.VarChar(100)
+  auto_renewal      Boolean?         @default(false)
+  digital_doc_url   String?
+  amount            Decimal?         @db.Decimal(18, 2)
+  notes             String?
+  status            String?          @default("Active") @db.VarChar(30)
+  sto_status        String?          @db.VarChar(30)
+  created_at        DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?        @default(now()) @db.Timestamp(6)
+  m_division        m_division?      @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_document_type   m_document_type? @relation(fields: [doc_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_company         m_company?       @relation(fields: [mra_party_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendors           vendors?         @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([doc_subtype], map: "idx_doc_subtype")
+  @@index([valid_until], map: "idx_doc_validuntil")
+  @@schema("glc_mra")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model expense_budget {
+  id            Int        @id @default(autoincrement())
+  fiscal_year   Int        @db.SmallInt
+  period_month  Int        @db.SmallInt
+  coa_id        Int
+  company_id    Int?
+  budget_amount Decimal?   @default(0) @db.Decimal(18, 2)
+  actual_amount Decimal?   @default(0) @db.Decimal(18, 2)
+  variance      Decimal?   @default(dbgenerated("(budget_amount - actual_amount)")) @db.Decimal(18, 2)
+  m_coa         m_coa      @relation(fields: [coa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_company     m_company? @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([fiscal_year, period_month, coa_id, company_id])
+  @@schema("glc_mra")
+}
+
+model insurances {
+  id                Int       @id @default(autoincrement())
+  company_id        Int
+  insurance_company String?   @db.VarChar(150)
+  insurance_type    String?   @db.VarChar(50)
+  category          String?   @db.VarChar(50)
+  policy_number     String?   @db.VarChar(50)
+  start_date        DateTime? @db.Date
+  end_date          DateTime? @db.Date
+  vehicle_id        Int?
+  vehicle_type      String?   @db.VarChar(80)
+  premium_idr       Decimal?  @db.Decimal(18, 2)
+  premium_usd       Decimal?  @db.Decimal(15, 2)
+  coverage_idr      Decimal?  @db.Decimal(18, 2)
+  coverage_usd      Decimal?  @db.Decimal(15, 2)
+  tjh3              Decimal?  @db.Decimal(15, 2)
+  broker            String?   @db.VarChar(100)
+  pic               String?   @db.VarChar(100)
+  contact_person    String?   @db.VarChar(50)
+  information       String?
+  doc_url           String?
+  checklist_status  String?   @db.VarChar(20)
+  status            String?   @default("Active") @db.VarChar(20)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  m_company         m_company @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehicles          vehicles? @relation(fields: [vehicle_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([end_date], map: "idx_ins_enddate")
+  @@schema("glc_mra")
+}
+
+model inventory_checks {
+  id                    Int                   @id @default(autoincrement())
+  session_id            Int
+  asset_id              Int
+  asset_code            String?               @db.VarChar(50)
+  check_status          String?               @default("Pending") @db.VarChar(20)
+  condition_note        String?               @db.VarChar(40)
+  location_found        String?               @db.VarChar(200)
+  checked_by            String?               @db.VarChar(120)
+  checked_at            DateTime?             @db.Timestamp(6)
+  notes                 String?
+  assets                assets                @relation(fields: [asset_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  stock_opname_sessions stock_opname_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([session_id, asset_id])
+  @@index([asset_id], map: "idx_ic_asset")
+  @@index([session_id, asset_code], map: "idx_ic_asset_code")
+  @@index([session_id], map: "idx_ic_session")
+  @@index([check_status], map: "idx_ic_status")
+  @@schema("glc_mra")
+}
+
+model legal_audit_logs {
+  id              Int              @id @default(autoincrement())
+  document_id     Int?
+  doc_name        String?          @db.VarChar(255)
+  module          String?          @db.VarChar(50)
+  action          String           @db.VarChar(50)
+  performed_by    String?          @default("system") @db.VarChar(100)
+  performed_at    DateTime?        @default(now()) @db.Timestamptz(6)
+  legal_documents legal_documents? @relation(fields: [document_id], references: [id], onUpdate: NoAction)
+
+  @@index([document_id], map: "idx_legal_audit_id")
+  @@schema("glc_mra")
+}
+
+model legal_documents {
+  id               Int                @id @default(autoincrement())
+  module           String             @db.VarChar(50)
+  doc_name         String             @db.VarChar(255)
+  category         String             @db.VarChar(100)
+  id_number        String?            @db.VarChar(100)
+  issue_date       DateTime?          @db.Date
+  expiry_date      DateTime?          @db.Date
+  pic              String             @db.VarChar(100)
+  company_id       Int?
+  doc_status       String             @default("Draft") @db.VarChar(50)
+  confidentiality  String             @default("Public/Internal") @db.VarChar(60)
+  file_url         String?
+  file_name        String?            @db.VarChar(255)
+  notes            String?
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  legal_audit_logs legal_audit_logs[]
+  m_company        m_company?         @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+
+  @@index([expiry_date], map: "idx_legal_expiry")
+  @@index([module], map: "idx_legal_module")
+  @@schema("glc_mra")
+}
+
+model m_asset_category {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique @db.VarChar(80)
+  assets       assets[]
+  m_asset_type m_asset_type[]
+
+  @@schema("glc_mra")
+}
+
+model m_asset_type {
+  id               Int               @id @default(autoincrement())
+  category_id      Int?
+  name             String            @db.VarChar(80)
+  assets           assets[]
+  m_asset_category m_asset_category? @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([category_id, name])
+  @@schema("glc_mra")
+}
+
+model m_bank {
+  id      Int       @id @default(autoincrement())
+  name    String    @unique @db.VarChar(50)
+  vendors vendors[]
+
+  @@schema("glc_mra")
+}
+
+model m_coa {
+  id             Int              @id @default(autoincrement())
+  code           String?          @unique @db.VarChar(30)
+  name           String           @db.VarChar(150)
+  expense_budget expense_budget[]
+
+  @@schema("glc_mra")
+}
+
+model m_company {
+  id              Int               @id @default(autoincrement())
+  code            String?           @unique @db.VarChar(20)
+  name            String            @db.VarChar(150)
+  npwp            String?           @db.VarChar(30)
+  address         String?
+  is_active       Boolean?          @default(true)
+  created_at      DateTime?         @default(now()) @db.Timestamp(6)
+  assets          assets[]
+  device_rentals  device_rentals[]
+  documents       documents[]
+  expense_budget  expense_budget[]
+  insurances      insurances[]
+  legal_documents legal_documents[]
+  maintenances    maintenances[]
+  vehicles        vehicles[]
+  vendors         vendors[]
+
+  @@schema("glc_mra")
+}
+
+model m_condition {
+  id     Int      @id @default(autoincrement())
+  name   String   @unique @db.VarChar(40)
+  assets assets[]
+
+  @@schema("glc_mra")
+}
+
+model m_division {
+  id        Int         @id @default(autoincrement())
+  name      String      @unique @db.VarChar(80)
+  documents documents[]
+  vendors   vendors[]
+
+  @@schema("glc_mra")
+}
+
+model m_document_type {
+  id        Int         @id @default(autoincrement())
+  name      String      @unique @db.VarChar(80)
+  documents documents[]
+
+  @@schema("glc_mra")
+}
+
+model m_expense_category {
+  id                       Int                  @id @default(autoincrement())
+  parent_id                Int?
+  name                     String               @db.VarChar(120)
+  level                    Int?                 @default(1) @db.SmallInt
+  m_expense_category       m_expense_category?  @relation("m_expense_categoryTom_expense_category", fields: [parent_id], references: [id], onUpdate: NoAction)
+  other_m_expense_category m_expense_category[] @relation("m_expense_categoryTom_expense_category")
+  vendors                  vendors[]
+
+  @@unique([parent_id, name])
+  @@schema("glc_mra")
+}
+
+model m_location {
+  id             Int              @id @default(autoincrement())
+  building       String?          @db.VarChar(100)
+  floor          String?          @db.VarChar(20)
+  room           String?          @db.VarChar(80)
+  full_name      String?          @default(dbgenerated("(((((COALESCE(building, ''::character varying))::text || ' '::text) || (COALESCE(floor, ''::character varying))::text) || ' '::text) || (COALESCE(room, ''::character varying))::text)")) @db.VarChar(200)
+  assets         assets[]
+  device_rentals device_rentals[]
+  maintenances   maintenances[]
+
+  @@schema("glc_mra")
+}
+
+model m_status {
+  id     Int      @id @default(autoincrement())
+  name   String   @unique @db.VarChar(40)
+  assets assets[]
+
+  @@schema("glc_mra")
+}
+
+model m_user {
+  id             Int              @id @default(autoincrement())
+  full_name      String           @db.VarChar(120)
+  email          String?          @unique @db.VarChar(120)
+  phone          String?          @db.VarChar(30)
+  department     String?          @db.VarChar(80)
+  position       String?          @db.VarChar(80)
+  role           String?          @default("staff") @db.VarChar(30)
+  password       String?          @db.VarChar(255)
+  is_active      Boolean?         @default(true)
+  created_at     DateTime?        @default(now()) @db.Timestamp(6)
+  assets         assets[]
+  audit_log      audit_log[]
+  device_rentals device_rentals[]
+
+  @@schema("glc_mra")
+}
+
+model m_vendor_category {
+  id      Int       @id @default(autoincrement())
+  name    String    @unique @db.VarChar(50)
+  vendors vendors[]
+
+  @@schema("glc_mra")
+}
+
+model maintenances {
+  id           Int         @id @default(autoincrement())
+  company_id   Int
+  location_id  Int?
+  room_area    String?     @db.VarChar(80)
+  asset_id     Int?
+  asset_name   String?     @db.VarChar(200)
+  detail       String?
+  pic          String?     @db.VarChar(80)
+  service_type String?     @db.VarChar(80)
+  expired_date DateTime?   @db.Date
+  qty          Int?        @default(1)
+  est_cost     Decimal?    @default(0) @db.Decimal(15, 2)
+  total_cost   Decimal?    @default(0) @db.Decimal(15, 2)
+  vendor_id    Int?
+  status       String?     @db.VarChar(30)
+  information  String?
+  created_at   DateTime?   @default(now()) @db.Timestamp(6)
+  assets       assets?     @relation(fields: [asset_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_company    m_company   @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_location   m_location? @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendors      vendors?    @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([company_id], map: "idx_mt_company")
+  @@index([expired_date], map: "idx_mt_expired")
+  @@schema("glc_mra")
+}
+
+model stock_opname_sessions {
+  id               Int                @id @default(autoincrement())
+  session_name     String             @db.VarChar(200)
+  description      String?
+  started_at       DateTime?          @default(now()) @db.Timestamp(6)
+  completed_at     DateTime?          @db.Timestamp(6)
+  status           String?            @default("In Progress") @db.VarChar(20)
+  total_assets     Int?               @default(0)
+  checked_count    Int?               @default(0)
+  found_count      Int?               @default(0)
+  missing_count    Int?               @default(0)
+  created_by       String?            @db.VarChar(120)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  inventory_checks inventory_checks[]
+
+  @@schema("glc_mra")
+}
+
+model vehicles {
+  id                Int          @id @default(autoincrement())
+  company_id        Int
+  plate_number      String       @unique @db.VarChar(20)
+  chassis_number    String?      @db.VarChar(50)
+  vehicle_type      String?      @db.VarChar(40)
+  brand_model       String?      @db.VarChar(120)
+  year              Int?         @db.SmallInt
+  color             String?      @db.VarChar(30)
+  driver_name       String?      @db.VarChar(120)
+  department        String?      @db.VarChar(80)
+  tax_date          DateTime?    @db.Date
+  last_km           Int?
+  last_service_date DateTime?    @db.Date
+  status            String?      @default("Aktif") @db.VarChar(20)
+  information       String?
+  created_at        DateTime?    @default(now()) @db.Timestamp(6)
+  doc_url           String?
+  insurances        insurances[]
+  m_company         m_company    @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([company_id], map: "idx_vehicles_company")
+  @@schema("glc_mra")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model vendors {
+  id                     Int                 @id @default(autoincrement())
+  vendor_code            String?             @unique @db.VarChar(30)
+  vendor_name            String              @db.VarChar(200)
+  vendor_category_id     Int?
+  expense_category_id    Int?
+  detail                 String?             @db.VarChar(200)
+  division_id            Int?
+  partnership_company_id Int?
+  pic_name               String?             @db.VarChar(120)
+  pic_position           String?             @db.VarChar(80)
+  phone                  String?             @db.VarChar(30)
+  email                  String?             @db.VarChar(120)
+  address                String?
+  npwp                   String?             @db.VarChar(40)
+  account_name           String?             @db.VarChar(150)
+  bank_id                Int?
+  account_number         String?             @db.VarChar(50)
+  contract_start         DateTime?           @db.Date
+  contract_end           DateTime?           @db.Date
+  top_days               Int?
+  contract_value         Decimal?            @db.Decimal(18, 2)
+  review_status          String?             @db.VarChar(30)
+  rating                 Int?                @db.SmallInt
+  status                 String?             @default("Active") @db.VarChar(30)
+  created_at             DateTime?           @default(now()) @db.Timestamp(6)
+  updated_at             DateTime?           @default(now()) @db.Timestamp(6)
+  device_rentals         device_rentals[]
+  documents              documents[]
+  maintenances           maintenances[]
+  m_bank                 m_bank?             @relation(fields: [bank_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_division             m_division?         @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_expense_category     m_expense_category? @relation(fields: [expense_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_company              m_company?          @relation(fields: [partnership_company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_vendor_category      m_vendor_category?  @relation(fields: [vendor_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([partnership_company_id], map: "idx_vendors_company")
+  @@index([status], map: "idx_vendors_status")
+  @@schema("glc_mra")
+}
