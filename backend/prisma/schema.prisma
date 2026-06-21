@@ -518,3 +518,14 @@ model vendors {
   @@index([status], map: "idx_vendors_status")
   @@schema("glc_mra")
 }
+
+model m_role_permission {
+  id        Int      @id @default(autoincrement())
+  role      String   @db.VarChar(50)
+  module    String   @db.VarChar(50)
+  can_read  Boolean  @default(true)
+  can_write Boolean  @default(false)
+
+  @@unique([role, module])
+  @@schema("glc_mra")
+}

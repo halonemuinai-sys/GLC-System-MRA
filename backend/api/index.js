@@ -19,11 +19,13 @@ app.get('/', (req, res) => {
 });
 
 // Mount modular routes
+const { verifyToken, checkRole } = require('./authMiddleware');
 app.use('/api/auth', require('../routes/authRouter'));
 app.use('/api/ga', require('../routes/gaRouter'));
 app.use('/api/legal', require('../routes/legalRouter'));
 app.use('/api/compliance', require('../routes/complianceRouter'));
 app.use('/api/master', require('../routes/masterRouter'));
+app.use('/api/admin', [verifyToken, checkRole(['admin'])], require('../routes/adminRouter'));
 
 // Global error handler
 app.use((err, req, res, next) => {
