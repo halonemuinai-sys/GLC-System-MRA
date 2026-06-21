@@ -529,9 +529,9 @@ export default function DashboardPage() {
                 Inactive: {maskNum(stats?.inactiveVendors || 0)}
               </span>
             </div>
-          </div>
-        </motion.div>
-      </div>
+          </motion.div>
+        </div>
+      </TooltipProvider>
 
       {/* ─── 2. ASSET OVERVIEW ────────────────────────────────────────────── */}
       <motion.section 
