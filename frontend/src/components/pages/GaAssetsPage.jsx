@@ -23,7 +23,8 @@ import {
   Building,
   EyeOff,
   Trash2,
-  Download
+  Download,
+  Edit3
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { jsPDF } from 'jspdf';
@@ -542,10 +543,12 @@ export default function GaAssetsPage() {
   const [categories, setCategories] = useState([]);
   const [locations, setLocations] = useState([]);
   const [statuses, setStatuses] = useState([]);
+  const [conditions, setConditions] = useState([]);
   const [companies, setCompanies] = useState([]);
 
   // Detail drawer & Add modal
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [editingAsset, setEditingAsset] = useState(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -605,16 +608,18 @@ export default function GaAssetsPage() {
 
   const fetchDropdowns = async () => {
     try {
-      const [cats, locs, stats, comps] = await Promise.all([
+      const [cats, locs, stats, comps, conds] = await Promise.all([
         apiClient.get('/api/ga/assets-categories').catch(() => []),
         apiClient.get('/api/ga/assets-locations').catch(() => []),
         apiClient.get('/api/ga/assets-statuses').catch(() => []),
-        apiClient.get('/api/master/companies/all').catch(() => [])
+        apiClient.get('/api/master/companies/all').catch(() => []),
+        apiClient.get('/api/ga/assets-conditions').catch(() => [])
       ]);
       setCategories(cats);
       setLocations(locs);
       setStatuses(stats);
       setCompanies(comps);
+      setConditions(conds);
     } catch (err) {
       console.error('Failed to load filter options', err);
     }
@@ -670,32 +675,62 @@ export default function GaAssetsPage() {
         acquisition_date: formData.acquisition_date ? new Date(formData.acquisition_date).toISOString() : null
       };
 
-      await apiClient.post('/api/ga/assets', payload);
-      setShowAddDrawer(false);
-      // Reset form
-      setFormData({
-        company_id: '',
-        asset_name: '',
-        asset_code: '',
-        asset_category_id: '',
-        asset_type_id: '',
-        location_id: '',
-        room: '',
-        acquisition_date: '',
-        acquisition_cost: '',
-        useful_life_months: '',
-        condition_id: 1,
-        status_id: 1,
-        details: '',
-        information: ''
-      });
-      setPage(1);
+      if (editingAsset) {
+        await apiClient.put(`/api/ga/assets/${editingAsset.id}`, payload);
+      } else {
+        await apiClient.post('/api/ga/assets', payload);
+      }
+      
+      handleCloseAddDrawer();
+      if (!editingAsset) setPage(1);
       fetchData();
     } catch (err) {
-      alert(err.message || 'Failed to add asset');
+      alert(err.message || 'Failed to save asset');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openEditAsset = (asset) => {
+    setEditingAsset(asset);
+    setFormData({
+      company_id: String(asset.company_id),
+      asset_name: asset.asset_name || '',
+      asset_code: asset.asset_code || '',
+      asset_category_id: asset.asset_category_id ? String(asset.asset_category_id) : '',
+      asset_type_id: asset.asset_type_id ? String(asset.asset_type_id) : '',
+      location_id: asset.location_id ? String(asset.location_id) : '',
+      room: asset.room || '',
+      acquisition_date: asset.acquisition_date ? asset.acquisition_date.split('T')[0] : '',
+      acquisition_cost: asset.acquisition_cost ? String(asset.acquisition_cost) : '',
+      useful_life_months: asset.useful_life_months ? String(asset.useful_life_months) : '',
+      condition_id: asset.condition_id || 1,
+      status_id: asset.status_id || 1,
+      details: asset.details || '',
+      information: asset.information || ''
+    });
+    setShowAddDrawer(true);
+  };
+
+  const handleCloseAddDrawer = () => {
+    setShowAddDrawer(false);
+    setEditingAsset(null);
+    setFormData({
+      company_id: '',
+      asset_name: '',
+      asset_code: '',
+      asset_category_id: '',
+      asset_type_id: '',
+      location_id: '',
+      room: '',
+      acquisition_date: '',
+      acquisition_cost: '',
+      useful_life_months: '',
+      condition_id: 1,
+      status_id: 1,
+      details: '',
+      information: ''
+    });
   };
 
   const handleDeleteAsset = (asset) => {
@@ -788,7 +823,26 @@ export default function GaAssetsPage() {
             </button>
           )}
           <button
-            onClick={() => setShowAddDrawer(true)}
+            onClick={() => {
+              setEditingAsset(null);
+              setFormData({
+                company_id: '',
+                asset_name: '',
+                asset_code: '',
+                asset_category_id: '',
+                asset_type_id: '',
+                location_id: '',
+                room: '',
+                acquisition_date: '',
+                acquisition_cost: '',
+                useful_life_months: '',
+                condition_id: 1,
+                status_id: 1,
+                details: '',
+                information: ''
+              });
+              setShowAddDrawer(true);
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit"
           >
             <Plus className="w-4 h-4" />
@@ -1181,6 +1235,13 @@ export default function GaAssetsPage() {
                             >
                               <Maximize2 className="w-4 h-4" />
                             </button>
+                            <button 
+                              onClick={() => openEditAsset(asset)}
+                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                              title="Edit Aset"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
                             <motion.button
                               type="button"
                               onClick={() => handleDeleteAsset(asset)}
@@ -1347,6 +1408,16 @@ export default function GaAssetsPage() {
               <div className="mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3">
                 <button
                   type="button"
+                  onClick={() => {
+                    setSelectedAsset(null);
+                    openEditAsset(selectedAsset);
+                  }}
+                  className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-650 dark:text-indigo-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-indigo-200/50 dark:border-indigo-900/30"
+                >
+                  Edit Aset
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleDeleteAsset(selectedAsset)}
                   className="flex-1 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-650 dark:text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-red-200/50 dark:border-red-900/30"
                 >
@@ -1372,7 +1443,7 @@ export default function GaAssetsPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowAddDrawer(false)}
+              onClick={handleCloseAddDrawer}
               className="fixed inset-0 bg-black z-40"
             />
             <motion.div 
@@ -1384,9 +1455,11 @@ export default function GaAssetsPage() {
             >
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">Add New Asset</h3>
+                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">
+                    {editingAsset ? 'Edit Asset' : 'Add New Asset'}
+                  </h3>
                   <button 
-                    onClick={() => setShowAddDrawer(false)}
+                    onClick={handleCloseAddDrawer}
                     className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
                   >
                     <X className="w-4 h-4" />
@@ -1504,6 +1577,35 @@ export default function GaAssetsPage() {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Condition *</label>
+                      <select
+                        required
+                        value={formData.condition_id}
+                        onChange={(e) => setFormData({...formData, condition_id: e.target.value})}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none"
+                      >
+                        {conditions.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Status *</label>
+                      <select
+                        required
+                        value={formData.status_id}
+                        onChange={(e) => setFormData({...formData, status_id: e.target.value})}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none"
+                      >
+                        {statuses.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Description/Specs</label>
                     <textarea
@@ -1518,7 +1620,7 @@ export default function GaAssetsPage() {
                   <div className="flex gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     <button
                       type="button"
-                      onClick={() => setShowAddDrawer(false)}
+                      onClick={handleCloseAddDrawer}
                       className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white font-bold rounded-xl transition-all cursor-pointer text-center"
                     >
                       Cancel
@@ -1528,7 +1630,7 @@ export default function GaAssetsPage() {
                       disabled={submitting}
                       className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40"
                     >
-                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : 'Save Asset'}
+                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : (editingAsset ? 'Update Asset' : 'Save Asset')}
                     </button>
                   </div>
                 </form>
