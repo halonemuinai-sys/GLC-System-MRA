@@ -500,7 +500,13 @@ export default function AdminPage() {
           TAB 2: HAK AKSES PERAN (PERMISSION MATRIX)
           ───────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'permissions' && (
-        <div className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="space-y-4"
+        >
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-5 rounded-2xl shadow-sm">
             <h3 className="text-xs font-bold text-neutral-850 dark:text-neutral-100 flex items-center gap-1.5 mb-1.5">
               <ShieldCheck className="w-4 h-4 text-indigo-500" />
