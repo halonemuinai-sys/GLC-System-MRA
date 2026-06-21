@@ -166,6 +166,221 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
   );
 }
 
+// Custom Premium Date Picker Component
+function PremiumDatePicker({ value, onChange, placeholder = 'Select Date' }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  const selectedDate = value ? new Date(value) : null;
+
+  useEffect(() => {
+    if (selectedDate) {
+      setCurrentDate(selectedDate);
+    }
+  }, [value]);
+
+  const toggleOpen = () => setIsOpen(!isOpen);
+
+  const months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  const totalDays = getDaysInMonth(year, month);
+  const firstDayIndex = getFirstDayOfMonth(year, month);
+
+  const prevMonthIndex = month === 0 ? 11 : month - 1;
+  const prevYear = month === 0 ? year - 1 : year;
+  const totalDaysPrev = getDaysInMonth(prevYear, prevMonthIndex);
+  
+  const daysArray = [];
+
+  for (let i = firstDayIndex - 1; i >= 0; i--) {
+    daysArray.push({
+      day: totalDaysPrev - i,
+      month: prevMonthIndex,
+      year: prevYear,
+      isCurrentMonth: false
+    });
+  }
+
+  for (let i = 1; i <= totalDays; i++) {
+    daysArray.push({
+      day: i,
+      month,
+      year,
+      isCurrentMonth: true
+    });
+  }
+
+  const nextMonthIndex = month === 11 ? 0 : month + 1;
+  const nextYear = month === 11 ? year + 1 : year;
+  const remaining = 42 - daysArray.length;
+  for (let i = 1; i <= remaining; i++) {
+    daysArray.push({
+      day: i,
+      month: nextMonthIndex,
+      year: nextYear,
+      isCurrentMonth: false
+    });
+  }
+
+  const handlePrevMonth = () => {
+    setCurrentDate(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDate(new Date(year, month + 1, 1));
+  };
+
+  const handleDaySelect = (dayObj) => {
+    const formattedMonth = String(dayObj.month + 1).padStart(2, '0');
+    const formattedDay = String(dayObj.day).padStart(2, '0');
+    const dateStr = `${dayObj.year}-${formattedMonth}-${formattedDay}`;
+    onChange(dateStr);
+    setIsOpen(false);
+  };
+
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return placeholder;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return placeholder;
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const isSelected = (dayObj) => {
+    if (!selectedDate) return false;
+    return selectedDate.getDate() === dayObj.day &&
+           selectedDate.getMonth() === dayObj.month &&
+           selectedDate.getFullYear() === dayObj.year;
+  };
+
+  const isToday = (dayObj) => {
+    const today = new Date();
+    return today.getDate() === dayObj.day &&
+           today.getMonth() === dayObj.month &&
+           today.getFullYear() === dayObj.year;
+  };
+
+  return (
+    <div className="relative w-full">
+      <div 
+        onClick={toggleOpen}
+        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none text-xs"
+      >
+        <span className={value ? 'text-neutral-850 dark:text-neutral-200 font-medium' : 'text-neutral-400'}>
+          {formatDisplayDate(value)}
+        </span>
+        <Calendar className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-[60]" onClick={() => setIsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.96 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 z-[70] mt-1.5 w-[280px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl p-3.5 space-y-3"
+            >
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={handlePrevMonth}
+                  className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-500 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div className="text-xs font-bold text-neutral-800 dark:text-white select-none">
+                  {months[month]} {year}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleNextMonth}
+                  className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-neutral-500 transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-neutral-400 select-none">
+                <span>Min</span>
+                <span>Sen</span>
+                <span>Sel</span>
+                <span>Rab</span>
+                <span>Kam</span>
+                <span>Jum</span>
+                <span>Sab</span>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {daysArray.map((dayObj, index) => {
+                  const selected = isSelected(dayObj);
+                  const today = isToday(dayObj);
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleDaySelect(dayObj)}
+                      className={`h-7 w-7 text-[10px] font-semibold rounded-lg flex items-center justify-center transition-all ${
+                        !dayObj.isCurrentMonth 
+                          ? 'text-neutral-300 dark:text-neutral-700/60' 
+                          : selected 
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' 
+                            : today
+                              ? 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50'
+                              : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60'
+                      }`}
+                    >
+                      {dayObj.day}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="border-t border-neutral-100 dark:border-neutral-850 pt-2.5 flex justify-between items-center text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const today = new Date();
+                    const formattedMonth = String(today.getMonth() + 1).padStart(2, '0');
+                    const formattedDay = String(today.getDate()).padStart(2, '0');
+                    onChange(`${today.getFullYear()}-${formattedMonth}-${formattedDay}`);
+                    setIsOpen(false);
+                  }}
+                  className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Hari Ini
+                </button>
+                {value && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange('');
+                      setIsOpen(false);
+                    }}
+                    className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 font-medium"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // Modern Interactive Radar & Scanning Animation for Blank State (Assets themed)
 function SearchingRadarAnimation() {
   return (
@@ -1546,11 +1761,10 @@ export default function GaAssetsPage() {
                     </div>
                     <div>
                       <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Purchase Date</label>
-                      <input
-                        type="date"
+                      <PremiumDatePicker
                         value={formData.acquisition_date}
-                        onChange={(e) => setFormData({...formData, acquisition_date: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                        onChange={(val) => setFormData({...formData, acquisition_date: val})}
+                        placeholder="Pilih Tanggal Pembelian"
                       />
                     </div>
                   </div>
