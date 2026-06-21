@@ -88,9 +88,9 @@ function LeftPanel() {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }}
-          className="w-28 h-28 rounded-[2rem] bg-white shadow-2xl shadow-indigo-200/60 flex items-center justify-center border border-indigo-100"
+          className="w-28 h-28 rounded-[2rem] bg-white dark:bg-neutral-900 shadow-2xl shadow-indigo-200/60 dark:shadow-neutral-950/50 flex items-center justify-center border border-indigo-100 dark:border-neutral-800 p-4"
         >
-          <ShieldCheck className="w-14 h-14 text-indigo-600" strokeWidth={1.8} />
+          <img src="/mra_logo.png" alt="MRA Group Logo" className="max-w-full max-h-full object-contain" />
         </motion.div>
 
         {/* Badge Pill */}
@@ -228,10 +228,10 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-8 sm:p-12 md:p-16 bg-white overflow-y-auto h-full">
         <div className="w-full max-w-md">
 
-          {/* Mobile top logo (shows only on small screens) */}
+           {/* Mobile top logo (shows only on small screens) */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm">
-              <ShieldCheck className="w-5 h-5 text-indigo-600" />
+            <div className="w-10 h-10 rounded-xl bg-white border border-indigo-150 flex items-center justify-center shadow-sm p-1.5">
+              <img src="/mra_logo.png" alt="MRA Group Logo" className="max-w-full max-h-full object-contain" />
             </div>
             <span className="text-xl font-bold text-gray-900">MRA</span>
           </div>
@@ -239,8 +239,8 @@ export default function LoginPage() {
           <div className="space-y-7">
             {/* Form Title & Subtitle Header */}
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shadow-sm flex-shrink-0">
-                <ShieldCheck className="w-6 h-6 text-indigo-600" strokeWidth={1.8} />
+              <div className="w-12 h-12 rounded-2xl bg-white border border-indigo-150 flex items-center justify-center shadow-sm flex-shrink-0 p-1.5">
+                <img src="/mra_logo.png" alt="MRA Group Logo" className="max-w-full max-h-full object-contain" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 leading-tight">Welcome Back</h2>

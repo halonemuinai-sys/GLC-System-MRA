@@ -522,8 +522,8 @@ function SidebarContent({
       <div className="h-16 flex items-center justify-between px-4.5 border-b border-neutral-100 dark:border-white/[0.05] flex-shrink-0">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <Link href="/dashboard" className="flex items-center gap-2.5 select-none" onClick={onClose}>
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-600/30 flex-shrink-0">
-              <span className="text-white font-black text-sm">M</span>
+            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+              <img src="/mra_logo.png" alt="MRA Group Logo" className="max-w-full max-h-full object-contain" />
             </div>
             <motion.div
               animate={{ 
