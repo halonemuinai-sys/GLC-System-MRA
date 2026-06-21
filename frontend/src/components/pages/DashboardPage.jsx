@@ -29,7 +29,8 @@ import {
   MoreVertical,
   Printer,
   Tablet,
-  Smartphone
+  Smartphone,
+  HelpCircle
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import {
@@ -330,11 +331,17 @@ export default function DashboardPage() {
             {/* Background Glow */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-blue-500/[0.03] to-blue-500/0 dark:from-blue-500/[0.05] dark:to-blue-500/0 rounded-full blur-2xl -z-10 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none" />
             
-            {/* Left Marker Bar */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-md bg-blue-500 shadow-sm shadow-blue-500/40 transition-transform duration-300 ease-out origin-center group-hover:scale-y-[1.5]" />
-
-            <div className="flex items-start justify-between">
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">TOTAL ASSETS</span>
+            {/* Left Marker Bar */}            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">TOTAL ASSETS</span>
+                <div className="relative group/tooltip inline-block shrink-0">
+                  <HelpCircle className="w-3 h-3 text-neutral-450 hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 bg-neutral-900 text-white text-[11px] leading-relaxed font-medium rounded-xl opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-xl border border-neutral-800 text-center">
+                    Total unit dan nominal aset fisik yang terdaftar di dalam sistem.
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 rotate-45 -mt-1 border-r border-b border-neutral-800" />
+                  </div>
+                </div>
+              </div>
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-500/5 dark:from-blue-500/20 dark:to-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 dark:border-blue-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                 <Database className="w-4 h-4" />
               </div>
@@ -353,7 +360,7 @@ export default function DashboardPage() {
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-450 border-blue-100/50 dark:border-blue-900/30">
                 Good: {maskNum(stats?.goodAssets || 0)}
               </span>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-450 border-emerald-100/50 dark:border-emerald-900/30">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455 border-emerald-100/50 dark:border-emerald-900/30">
                 Damaged: {maskNum(stats?.badAssets || 0)}
               </span>
             </div>
@@ -372,7 +379,16 @@ export default function DashboardPage() {
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-md bg-cyan-500 shadow-sm shadow-cyan-500/40 transition-transform duration-300 ease-out origin-center group-hover:scale-y-[1.5]" />
 
             <div className="flex items-start justify-between">
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">INSURANCE POLICIES</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">INSURANCE POLICIES</span>
+                <div className="relative group/tooltip inline-block shrink-0">
+                  <HelpCircle className="w-3 h-3 text-neutral-455 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors cursor-pointer" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 bg-neutral-900 text-white text-[11px] leading-relaxed font-medium rounded-xl opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-xl border border-neutral-800 text-center">
+                    Jumlah polis asuransi aktif dan nilai premi tahunan perlindungan aset.
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 rotate-45 -mt-1 border-r border-b border-neutral-800" />
+                  </div>
+                </div>
+              </div>
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 dark:from-cyan-500/20 dark:to-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 dark:border-cyan-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                 <ShieldCheck className="w-4 h-4" />
               </div>
@@ -382,7 +398,7 @@ export default function DashboardPage() {
               <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono transition-colors">
                 {maskNum(stats?.totalInsurances || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">policies</span>
               </span>
-              <span className="text-[10.5px] text-neutral-450 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
+              <span className="text-[10.5px] text-neutral-455 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
                 {maskPrice(stats?.totalInsurancePremium || 0)} <span className="text-[9px] font-normal text-neutral-450 dark:text-neutral-555 font-sans normal-case">annual</span>
               </span>
             </div>
@@ -391,7 +407,7 @@ export default function DashboardPage() {
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455 border-emerald-100/50 dark:border-emerald-900/30">
                 Active: {maskNum(stats?.activeInsurances || 0)}
               </span>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-450 border-amber-100/50 dark:border-amber-900/30">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-450 border-amber-100/50 dark:border-amber-900/30">
                 Expiring: {maskNum(stats?.expiringInsurances || 0)}
               </span>
             </div>
@@ -410,7 +426,16 @@ export default function DashboardPage() {
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-md bg-amber-500 shadow-sm shadow-amber-500/40 transition-transform duration-300 ease-out origin-center group-hover:scale-y-[1.5]" />
 
             <div className="flex items-start justify-between">
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">VEHICLES FLEET</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">VEHICLES FLEET</span>
+                <div className="relative group/tooltip inline-block shrink-0">
+                  <HelpCircle className="w-3 h-3 text-neutral-455 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 bg-neutral-900 text-white text-[11px] leading-relaxed font-medium rounded-xl opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-xl border border-neutral-800 text-center">
+                    Total armada kendaraan operasional dan logistik terdaftar beserta status perawatannya.
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 rotate-45 -mt-1 border-r border-b border-neutral-800" />
+                  </div>
+                </div>
+              </div>
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-amber-500/10 text-amber-500 dark:text-amber-455 border border-amber-500/20 dark:border-amber-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                 <Car className="w-4 h-4" />
               </div>
@@ -448,7 +473,16 @@ export default function DashboardPage() {
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-md bg-emerald-500 shadow-sm shadow-emerald-500/40 transition-transform duration-300 ease-out origin-center group-hover:scale-y-[1.5]" />
 
             <div className="flex items-start justify-between">
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">VENDORS DIRECTORY</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">VENDORS DIRECTORY</span>
+                <div className="relative group/tooltip inline-block shrink-0">
+                  <HelpCircle className="w-3 h-3 text-neutral-455 hover:text-emerald-600 dark:hover:text-emerald-450 transition-colors cursor-pointer" />
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2.5 bg-neutral-900 text-white text-[11px] leading-relaxed font-medium rounded-xl opacity-0 group-hover/tooltip:opacity-100 pointer-events-none transition-all duration-200 z-50 shadow-xl border border-neutral-800 text-center">
+                    Daftar rekanan, penyedia jasa pemeliharaan, sewa, dan pengadaan di dalam sistem.
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 rotate-45 -mt-1 border-r border-b border-neutral-800" />
+                  </div>
+                </div>
+              </div>
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 dark:from-emerald-500/20 dark:to-emerald-500/10 text-emerald-500 dark:text-emerald-450 border border-emerald-500/20 dark:border-emerald-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                 <Users className="w-4 h-4" />
               </div>
