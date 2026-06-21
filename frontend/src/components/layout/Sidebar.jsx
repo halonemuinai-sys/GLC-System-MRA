@@ -519,23 +519,27 @@ function SidebarContent({
     <div className="flex flex-col h-full bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-white/[0.06] transition-colors overflow-hidden">
       
       {/* ── Brand ── */}
-      <div className="h-16 flex items-center justify-between px-4.5 border-b border-neutral-100 dark:border-white/[0.05] flex-shrink-0">
+      <div className={cn(
+        "h-16 flex items-center justify-between border-b border-neutral-100 dark:border-white/[0.05] flex-shrink-0 transition-all duration-200",
+        collapsed ? "px-3 justify-center" : "px-4.5"
+      )}>
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <Link href="/dashboard" className="flex items-center gap-2.5 select-none" onClick={onClose}>
+          <Link href="/dashboard" className="flex items-center gap-2.5 select-none justify-center" onClick={onClose}>
             <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
               <img src="/mra_logo.png" alt="MRA Group Logo" className="max-w-full max-h-full object-contain" />
             </div>
-            <motion.div
-              animate={{ 
-                opacity: collapsed ? 0 : 1, 
-                width: collapsed ? 0 : 'auto' 
-              }}
-              transition={{ duration: 0.15 }}
-              className="flex flex-col overflow-hidden whitespace-nowrap"
-            >
-              <p className="font-bold text-sm text-neutral-900 dark:text-white leading-tight">MRA OpsSuite</p>
-              <p className="text-[10px] text-neutral-400 leading-tight mt-0.5">MRA Group Portal</p>
-            </motion.div>
+            {!collapsed && (
+              <motion.div
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex flex-col overflow-hidden whitespace-nowrap"
+              >
+                <p className="font-bold text-sm text-neutral-900 dark:text-white leading-tight">MRA OpsSuite</p>
+                <p className="text-[10px] text-neutral-400 leading-tight mt-0.5">MRA Group Portal</p>
+              </motion.div>
+            )}
           </Link>
         </div>
 
