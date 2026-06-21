@@ -274,6 +274,16 @@ model m_coa {
   @@schema("glc_mra")
 }
 
+model m_company_master {
+  id             Int                 @id @default(autoincrement())
+  name           String              @db.VarChar(150)
+  sector         String              @db.VarChar(50)
+  created_at     DateTime?           @default(now()) @db.Timestamp(6)
+  branches       m_company_branch[]
+
+  @@schema("glc_mra")
+}
+
 model m_company {
   id              Int               @id @default(autoincrement())
   code            String?           @unique @db.VarChar(20)
@@ -291,6 +301,19 @@ model m_company {
   maintenances    maintenances[]
   vehicles        vehicles[]
   vendors         vendors[]
+
+  @@schema("glc_mra")
+}
+
+model m_company_branch {
+  id                 Int               @id @default(autoincrement())
+  name               String            @db.VarChar(150)
+  location           String            @db.VarChar(200)
+  sector             String            @db.VarChar(50)
+  company_master_id  Int?
+  is_active          Boolean?          @default(true)
+  created_at         DateTime?         @default(now()) @db.Timestamp(6)
+  m_company_master   m_company_master? @relation(fields: [company_master_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@schema("glc_mra")
 }
