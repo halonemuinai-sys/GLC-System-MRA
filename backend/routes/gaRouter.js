@@ -700,8 +700,12 @@ router.get('/assets-conditions', allowRead, async (req, res, next) => {
 
 router.get('/assets-locations', allowRead, async (req, res, next) => {
   try {
-    const list = await prisma.m_location.findMany({ orderBy: { full_name: 'asc' } });
-    res.json(list);
+    const list = await prisma.m_company_branch.findMany({ orderBy: { name: 'asc' } });
+    const mapped = list.map(b => ({
+      ...b,
+      full_name: `${b.name} - ${b.location}`
+    }));
+    res.json(mapped);
   } catch (err) {
     next(err);
   }

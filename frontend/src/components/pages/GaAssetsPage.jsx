@@ -1423,7 +1423,7 @@ export default function GaAssetsPage() {
                         <td className="p-4 text-neutral-500">
                           <div className="flex items-center gap-1.5">
                             <MapPin className="w-3.5 h-3.5 text-neutral-400" />
-                            <span>{asset.m_location?.full_name || '-'}</span>
+                            <span>{asset.m_location ? `${asset.m_location.name} - ${asset.m_location.location}` : '-'}</span>
                           </div>
                         </td>
                         <td className="p-4">
@@ -1550,7 +1550,9 @@ export default function GaAssetsPage() {
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Location</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedAsset.m_location?.full_name || '-'}</span>
+                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">
+                        {selectedAsset.m_location ? `${selectedAsset.m_location.name} - ${selectedAsset.m_location.location}` : '-'}
+                      </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Room</span>
