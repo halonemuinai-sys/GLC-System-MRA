@@ -485,18 +485,6 @@ export default function MasterCompanyPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Seed Button */}
-          <motion.button
-            type="button"
-            onClick={handleSeedCompanies}
-            disabled={seeding}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 font-semibold text-sm border border-amber-200 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {seeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {seeding ? 'Seeding...' : 'Seed Helpdesk'}
-          </motion.button>
 
           {/* Add Button */}
           <motion.button
