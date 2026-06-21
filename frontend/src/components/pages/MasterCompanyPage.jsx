@@ -96,6 +96,7 @@ export default function MasterCompanyPage() {
   // Group Dropdown values
   const [masters, setMasters] = useState([]);
   const [companiesList, setCompaniesList] = useState([]); // original companies for selection
+  const [branchesCount, setBranchesCount] = useState(0);
   const [mastersLoading, setMastersLoading] = useState(false);
 
   // Filters
@@ -142,12 +143,14 @@ export default function MasterCompanyPage() {
   const fetchDropdowns = useCallback(async () => {
     try {
       setMastersLoading(true);
-      const [resMasters, resCompanies] = await Promise.all([
+      const [resMasters, resCompanies, resBranches] = await Promise.all([
         apiClient.get('/api/master/companies/master'),
-        apiClient.get('/api/master/companies/all')
+        apiClient.get('/api/master/companies/all'),
+        apiClient.get('/api/master/companies/branch')
       ]);
       setMasters(resMasters || []);
       setCompaniesList(resCompanies || []);
+      setBranchesCount(resBranches ? resBranches.length : 0);
     } catch (err) {
       console.error('Failed to fetch master company groups:', err);
     } finally {
@@ -211,6 +214,7 @@ export default function MasterCompanyPage() {
 
       setData(res || []);
       setMeta({ total: res.length, page: 1, limit: 100, totalPages: 1 });
+      setBranchesCount(res ? res.length : 0);
     } catch (err) {
       setError(err.message || 'Failed to fetch branches');
     } finally {
@@ -540,7 +544,7 @@ export default function MasterCompanyPage() {
               : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
           }`}
         >
-          Data Master Perusahaan ({activeTab === 'companies' ? totalCount : '...'})
+          Data Master Perusahaan ({companiesList.length || totalCount})
           {activeTab === 'companies' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
           )}
@@ -553,7 +557,7 @@ export default function MasterCompanyPage() {
               : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
           }`}
         >
-          Grup Entitas Induk ({activeTab === 'masters' ? totalCount : '...'})
+          Grup Entitas Induk ({masters.length})
           {activeTab === 'masters' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
           )}
@@ -566,7 +570,7 @@ export default function MasterCompanyPage() {
               : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
           }`}
         >
-          Cabang & Lokasi Fisik ({activeTab === 'branches' ? totalCount : '...'})
+          Cabang & Lokasi Fisik ({branchesCount})
           {activeTab === 'branches' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
           )}
