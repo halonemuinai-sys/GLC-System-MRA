@@ -295,22 +295,32 @@ export default function AdminPage() {
   // RENDERING & HELPERS
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const renderTabButton = (tab, icon, label) => (
-    <button
-      onClick={() => {
-        setActiveTab(tab);
-        setError(null);
-      }}
-      className={`flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer border ${
-        activeTab === tab
-          ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/10'
-          : 'bg-white dark:bg-neutral-900 text-neutral-500 border-neutral-200 dark:border-neutral-800 hover:text-neutral-800 dark:hover:text-white'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
-  );
+  const renderTabButton = (tab, icon, label) => {
+    const isActive = activeTab === tab;
+    return (
+      <button
+        onClick={() => {
+          setActiveTab(tab);
+          setError(null);
+        }}
+        className="relative flex items-center gap-2 px-5 py-2.5 text-xs font-bold rounded-xl transition-colors cursor-pointer select-none border border-transparent"
+      >
+        {isActive && (
+          <motion.span
+            layoutId="activeAdminTab"
+            className="absolute inset-0 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-600/10 z-0"
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+          />
+        )}
+        <span className={`relative z-10 flex items-center gap-2 transition-colors duration-200 ${
+          isActive ? 'text-white' : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-white'
+        }`}>
+          {icon}
+          {label}
+        </span>
+      </button>
+    );
+  };
 
   return (
     <div className="space-y-6 relative pb-10">
@@ -326,17 +336,24 @@ export default function AdminPage() {
       </div>
 
       {/* Tabs Menu */}
-      <div className="flex flex-wrap items-center gap-2.5">
+      <motion.div layout className="flex flex-wrap items-center gap-2.5">
         {renderTabButton('users', <Users className="w-4 h-4" />, 'Manajemen User')}
         {renderTabButton('permissions', <Key className="w-4 h-4" />, 'Hak Akses Peran')}
         {renderTabButton('logs', <Database className="w-4 h-4" />, 'Log Audit Sistem')}
-      </div>
+      </motion.div>
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          TAB 1: MANAJEMEN USER
-          ───────────────────────────────────────────────────────────────────────────── */}
-      {activeTab === 'users' && (
-        <div className="space-y-4">
+      <AnimatePresence mode="wait">
+        {/* ─────────────────────────────────────────────────────────────────────────────
+            TAB 1: MANAJEMEN USER
+            ───────────────────────────────────────────────────────────────────────────── */}
+        {activeTab === 'users' && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="space-y-4"
+          >
           {/* Filters Bar */}
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2.5 flex-1 max-w-2xl">
@@ -415,7 +432,13 @@ export default function AdminPage() {
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-xs">
                     {users.map((user, idx) => (
-                      <tr key={user.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors">
+                      <motion.tr 
+                        key={user.id}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.02, ease: 'easeOut' }}
+                        className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors"
+                      >
                         <td className="p-4 font-bold text-neutral-850 dark:text-neutral-100">{user.full_name}</td>
                         <td className="p-4 text-neutral-600 dark:text-neutral-400 font-medium font-mono">{user.email}</td>
                         <td className="p-4 text-neutral-500">
@@ -463,15 +486,15 @@ export default function AdminPage() {
                             </button>
                           </div>
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
-        </div>
-      )}
+          </motion.div>
+        )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
           TAB 2: HAK AKSES PERAN (PERMISSION MATRIX)
@@ -594,14 +617,20 @@ export default function AdminPage() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
-      )}
+          </motion.div>
+        )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
           TAB 3: LOG AUDIT SISTEM
           ───────────────────────────────────────────────────────────────────────────── */}
       {activeTab === 'logs' && (
-        <div className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="space-y-4"
+        >
           {/* Filters Bar */}
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl shadow-sm flex flex-col sm:flex-row sm:items-center gap-3">
             {/* Search actor */}
@@ -693,8 +722,14 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-xs">
-                    {logs.map(log => (
-                      <tr key={log.id} className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors">
+                    {logs.map((log, idx) => (
+                      <motion.tr 
+                        key={log.id}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.015, ease: 'easeOut' }}
+                        className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors"
+                      >
                         <td className="p-4 text-neutral-600 dark:text-neutral-400 font-mono font-medium">
                           {log.created_at ? new Date(log.created_at).toLocaleString('id-ID') : '-'}
                         </td>
@@ -724,7 +759,7 @@ export default function AdminPage() {
                             <Eye className="w-4 h-4" />
                           </button>
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
@@ -754,8 +789,9 @@ export default function AdminPage() {
               </div>
             )}
           </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─────────────────────────────────────────────────────────────────────────────
           MODALS & DRAWERS
