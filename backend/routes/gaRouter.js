@@ -21,26 +21,136 @@ router.get('/dashboard-stats', allowRead, async (req, res, next) => {
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(today.getDate() + 30);
 
-    // 1. Asset Stats
-    const totalAssets = await prisma.assets.count();
-    const assetCostSum = await prisma.assets.aggregate({
-      _sum: { acquisition_cost: true }
-    });
-    const goodAssets = await prisma.assets.count({
-      where: { condition_id: 1 }
-    });
-    const badAssets = await prisma.assets.count({
-      where: { NOT: { condition_id: 1 } }
-    });
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+    const sixtyDaysFromNow = new Date();
+    sixtyDaysFromNow.setDate(today.getDate() + 60);
 
-    // 2. Category Breakdown & Monthly Maintenance
-    const categoryGroup = await prisma.assets.groupBy({
-      by: ['asset_category_id'],
-      _count: { id: true },
-      _sum: { acquisition_cost: true }
-    });
-    
-    const categoriesList = await prisma.m_asset_category.findMany();
+    // Parallelize all 43 queries to avoid sequential RTT latency to DB
+    const [
+      totalAssets,
+      assetCostSum,
+      goodAssets,
+      badAssets,
+      categoryGroup,
+      categoriesList,
+      maintenanceGroup,
+      totalDeviceRentals,
+      activeDeviceRentals,
+      availableDeviceRentals,
+      expiringSoonLeases,
+      returnedThisMonth,
+      deviceRentalCostSum,
+      totalDeviceRentalsLastMonth,
+      deviceRentalCostLastMonthAgg,
+      activeDeviceRentalsLastMonth,
+      deviceTypeGroup,
+      totalVehicles,
+      activeVehicles,
+      inServiceVehicles,
+      expiringTaxVehicles,
+      vehicleTypeGroup,
+      vehicleInsuranceSum,
+      totalInsurances,
+      totalInsurancePremiumAgg,
+      activeInsurances,
+      expiringInsurances,
+      totalVendors,
+      activeVendors,
+      inactiveVendors,
+      maintenanceCostSum,
+      pendingApprovals,
+      conditionGroup,
+      conditionsList,
+      statusGroup,
+      statusesList,
+      insurerGroup,
+      policyTypeGroup,
+      totalAgreements,
+      activeAgreements,
+      expiredAgreements,
+      expiringAgreements,
+      agreementValueSum
+    ] = await Promise.all([
+      prisma.assets.count(),
+      prisma.assets.aggregate({ _sum: { acquisition_cost: true } }),
+      prisma.assets.count({ where: { condition_id: 1 } }),
+      prisma.assets.count({ where: { NOT: { condition_id: 1 } } }),
+      prisma.assets.groupBy({ by: ['asset_category_id'], _count: { id: true }, _sum: { acquisition_cost: true } }),
+      prisma.m_asset_category.findMany(),
+      prisma.maintenances.findMany({ select: { created_at: true, total_cost: true } }),
+      prisma.device_rentals.count({ where: { status: 'Active' } }),
+      prisma.device_rentals.count({ where: { status: 'Active', NOT: { user_id: null } } }),
+      prisma.device_rentals.count({ where: { status: 'Active', user_id: null } }),
+      prisma.device_rentals.count({ where: { status: 'Active', end_rent: { gte: today, lte: thirtyDaysFromNow } } }),
+      prisma.device_rentals.count({ where: { status: 'Inactive', end_rent: { gte: firstDayOfMonth, lte: today } } }),
+      prisma.device_rentals.aggregate({ where: { status: 'Active' }, _sum: { price: true } }),
+      prisma.device_rentals.count({
+        where: {
+          OR: [
+            { status: 'Active' },
+            { status: 'Inactive', end_rent: { gte: prevMonthStart } }
+          ],
+          start_rent: { lte: prevMonthEnd }
+        }
+      }),
+      prisma.device_rentals.aggregate({
+        where: {
+          OR: [
+            { status: 'Active' },
+            { status: 'Inactive', end_rent: { gte: prevMonthStart } }
+          ],
+          start_rent: { lte: prevMonthEnd }
+        },
+        _sum: { price: true }
+      }),
+      prisma.device_rentals.count({
+        where: {
+          OR: [
+            { status: 'Active' },
+            { status: 'Inactive', end_rent: { gte: prevMonthStart } }
+          ],
+          start_rent: { lte: prevMonthEnd },
+          NOT: { user_id: null }
+        }
+      }),
+      prisma.device_rentals.groupBy({ where: { status: 'Active' }, by: ['device_type'], _count: { id: true }, _sum: { price: true } }),
+      prisma.vehicles.count(),
+      prisma.vehicles.count({ where: { status: 'Aktif' } }),
+      prisma.vehicles.count({ where: { status: 'Dalam Service' } }),
+      prisma.vehicles.count({ where: { tax_date: { gte: today, lte: thirtyDaysFromNow } } }),
+      prisma.vehicles.groupBy({ by: ['vehicle_type'], _count: { id: true } }),
+      prisma.insurances.aggregate({ _sum: { premium_idr: true, coverage_idr: true } }),
+      prisma.insurances.count(),
+      prisma.insurances.aggregate({ _sum: { premium_idr: true } }),
+      prisma.insurances.count({ where: { status: 'Active' } }),
+      prisma.insurances.count({ where: { status: 'Active', end_date: { gte: today, lte: sixtyDaysFromNow } } }),
+      prisma.vendors.count(),
+      prisma.vendors.count({ where: { status: 'Active' } }),
+      prisma.vendors.count({ where: { NOT: { status: 'Active' } } }),
+      prisma.maintenances.aggregate({ _sum: { total_cost: true } }),
+      prisma.approval_requests.count({ where: { status: 'PENDING' } }),
+      prisma.assets.groupBy({ by: ['condition_id'], _count: { id: true } }),
+      prisma.m_condition.findMany(),
+      prisma.assets.groupBy({ by: ['status_id'], _count: { id: true } }),
+      prisma.m_status.findMany(),
+      prisma.insurances.groupBy({ by: ['insurance_company'], _count: { id: true }, _sum: { premium_idr: true } }),
+      prisma.insurances.groupBy({ by: ['insurance_type'], _count: { id: true }, _sum: { premium_idr: true } }),
+      prisma.documents.count({ where: { doc_subtype: 'agreement' } }),
+      prisma.documents.count({ where: { doc_subtype: 'agreement', status: 'Active' } }),
+      prisma.documents.count({ where: { doc_subtype: 'agreement', status: 'Expired' } }),
+      prisma.documents.count({
+        where: {
+          doc_subtype: 'agreement',
+          status: 'Active',
+          valid_until: { gte: today, lte: sixtyDaysFromNow }
+        }
+      }),
+      prisma.documents.aggregate({ where: { doc_subtype: 'agreement' }, _sum: { amount: true } })
+    ]);
+
+    // Data Processing & Mapping
     const categoryBreakdown = categoryGroup.map(cg => {
       const cat = categoriesList.find(c => c.id === cg.asset_category_id);
       return {
@@ -48,13 +158,6 @@ router.get('/dashboard-stats', allowRead, async (req, res, next) => {
         count: cg._count.id,
         value: Number(cg._sum.acquisition_cost || 0)
       };
-    });
-
-    const maintenanceGroup = await prisma.maintenances.findMany({
-      select: {
-        created_at: true,
-        total_cost: true
-      }
     });
 
     // Group maintenances by month
@@ -74,195 +177,24 @@ router.get('/dashboard-stats', allowRead, async (req, res, next) => {
       }
     });
 
-    // 3. Device Rental Stats
-    const totalDeviceRentals = await prisma.device_rentals.count({
-      where: { status: 'Active' }
-    });
-    
-    // Allocated: active rentals with a user assigned
-    const activeDeviceRentals = await prisma.device_rentals.count({
-      where: {
-        status: 'Active',
-        NOT: { user_id: null }
-      }
-    });
-
-    // Available: active rentals without a user assigned
-    const availableDeviceRentals = await prisma.device_rentals.count({
-      where: {
-        status: 'Active',
-        user_id: null
-      }
-    });
-
-    // Expiring soon: active rentals ending in next 30 days
-    const expiringSoonLeases = await prisma.device_rentals.count({
-      where: {
-        status: 'Active',
-        end_rent: {
-          gte: today,
-          lte: thirtyDaysFromNow
-        }
-      }
-    });
-
-    // Returned this month: rentals that ended in the current month and are inactive/returned
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const returnedThisMonth = await prisma.device_rentals.count({
-      where: {
-        status: 'Inactive',
-        end_rent: {
-          gte: firstDayOfMonth,
-          lte: today
-        }
-      }
-    });
-
-    const deviceRentalCostSum = await prisma.device_rentals.aggregate({
-      where: { status: 'Active' },
-      _sum: { price: true }
-    });
     const totalDeviceRentalValue = Number(deviceRentalCostSum._sum.price || 0);
-
-    // Calculate historical stats from previous calendar month to determine real variations
-    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
-
-    const totalDeviceRentalsLastMonth = await prisma.device_rentals.count({
-      where: {
-        OR: [
-          { status: 'Active' },
-          {
-            status: 'Inactive',
-            end_rent: { gte: prevMonthStart }
-          }
-        ],
-        start_rent: { lte: prevMonthEnd }
-      }
-    });
-
-    const deviceRentalCostLastMonthAgg = await prisma.device_rentals.aggregate({
-      where: {
-        OR: [
-          { status: 'Active' },
-          {
-            status: 'Inactive',
-            end_rent: { gte: prevMonthStart }
-          }
-        ],
-        start_rent: { lte: prevMonthEnd }
-      },
-      _sum: { price: true }
-    });
     const deviceRentalCostLastMonth = Number(deviceRentalCostLastMonthAgg._sum.price || 0);
-
-    const activeDeviceRentalsLastMonth = await prisma.device_rentals.count({
-      where: {
-        OR: [
-          { status: 'Active' },
-          {
-            status: 'Inactive',
-            end_rent: { gte: prevMonthStart }
-          }
-        ],
-        start_rent: { lte: prevMonthEnd },
-        NOT: { user_id: null }
-      }
-    });
 
     const deviceRentalsDiff = totalDeviceRentals - totalDeviceRentalsLastMonth;
     const deviceRentalValueDiff = totalDeviceRentalValue - deviceRentalCostLastMonth;
     const activeDeviceRentalsDiff = activeDeviceRentals - activeDeviceRentalsLastMonth;
 
-    const deviceTypeGroup = await prisma.device_rentals.groupBy({
-      where: { status: 'Active' },
-      by: ['device_type'],
-      _count: { id: true },
-      _sum: { price: true }
-    });
     const deviceTypeBreakdown = deviceTypeGroup.map(dg => ({
       type: dg.device_type || 'Lainnya',
       count: dg._count.id,
       value: Number(dg._sum.price || 0)
     }));
 
-    // 4. Vehicle Stats
-    const totalVehicles = await prisma.vehicles.count();
-    const activeVehicles = await prisma.vehicles.count({
-      where: { status: 'Aktif' }
-    });
-    const inServiceVehicles = await prisma.vehicles.count({
-      where: { status: 'Dalam Service' }
-    });
-    const expiringTaxVehicles = await prisma.vehicles.count({
-      where: {
-        tax_date: {
-          gte: today,
-          lte: thirtyDaysFromNow
-        }
-      }
-    });
-
-    const vehicleTypeGroup = await prisma.vehicles.groupBy({
-      by: ['vehicle_type'],
-      _count: { id: true }
-    });
     const vehicleTypeBreakdown = vehicleTypeGroup.map(vg => ({
       type: vg.vehicle_type || 'Lainnya',
       count: vg._count.id
     }));
 
-    // Calculate vehicle coverage/premium value from insurances
-    const vehicleInsuranceSum = await prisma.insurances.aggregate({
-      _sum: {
-        premium_idr: true,
-        coverage_idr: true
-      }
-    });
-
-    // 5. Insurance Stats
-    const totalInsurances = await prisma.insurances.count();
-    const totalInsurancePremiumAgg = await prisma.insurances.aggregate({
-      _sum: { premium_idr: true }
-    });
-    const activeInsurances = await prisma.insurances.count({
-      where: { status: 'Active' }
-    });
-    const sixtyDaysFromNow = new Date();
-    sixtyDaysFromNow.setDate(today.getDate() + 60);
-    const expiringInsurances = await prisma.insurances.count({
-      where: {
-        status: 'Active',
-        end_date: {
-          gte: today,
-          lte: sixtyDaysFromNow
-        }
-      }
-    });
-
-    // 6. Vendor Stats
-    const totalVendors = await prisma.vendors.count();
-    const activeVendors = await prisma.vendors.count({
-      where: { status: 'Active' }
-    });
-    const inactiveVendors = await prisma.vendors.count({
-      where: { NOT: { status: 'Active' } }
-    });
-
-    const maintenanceCostSum = await prisma.maintenances.aggregate({
-      _sum: { total_cost: true }
-    });
-
-    const pendingApprovals = await prisma.approval_requests.count({
-      where: { status: 'PENDING' }
-    });
-
-    // 7. Asset Condition Breakdown
-    const conditionGroup = await prisma.assets.groupBy({
-      by: ['condition_id'],
-      _count: { id: true }
-    });
-    const conditionsList = await prisma.m_condition.findMany();
     const assetConditionBreakdown = conditionGroup.map(cg => {
       const cond = conditionsList.find(c => c.id === cg.condition_id);
       return {
@@ -271,12 +203,6 @@ router.get('/dashboard-stats', allowRead, async (req, res, next) => {
       };
     });
 
-    // 7b. Asset Status Breakdown
-    const statusGroup = await prisma.assets.groupBy({
-      by: ['status_id'],
-      _count: { id: true }
-    });
-    const statusesList = await prisma.m_status.findMany();
     const assetStatusBreakdown = statusGroup.map(sg => {
       const st = statusesList.find(s => s.id === sg.status_id);
       return {
@@ -311,12 +237,6 @@ router.get('/dashboard-stats', allowRead, async (req, res, next) => {
       return norm;
     };
 
-    const insurerGroup = await prisma.insurances.groupBy({
-      by: ['insurance_company'],
-      _count: { id: true },
-      _sum: { premium_idr: true }
-    });
-
     const insurerMap = {};
     insurerGroup.forEach(ig => {
       const rawName = ig.insurance_company || 'Unknown';
@@ -331,43 +251,12 @@ router.get('/dashboard-stats', allowRead, async (req, res, next) => {
     const insurerDistribution = Object.values(insurerMap)
       .sort((a, b) => b.count - a.count);
 
-    // 8b. Policy Type Breakdown
-    const policyTypeGroup = await prisma.insurances.groupBy({
-      by: ['insurance_type'],
-      _count: { id: true },
-      _sum: { premium_idr: true }
-    });
-
     const policyTypeBreakdown = policyTypeGroup.map(ptg => ({
       name: ptg.insurance_type || 'Other',
       count: ptg._count.id,
       premium: Number(ptg._sum.premium_idr || 0)
     })).sort((a, b) => b.count - a.count);
 
-    // 9. Agreement Summary
-    const totalAgreements = await prisma.documents.count({
-      where: { doc_subtype: 'agreement' }
-    });
-    const activeAgreements = await prisma.documents.count({
-      where: { doc_subtype: 'agreement', status: 'Active' }
-    });
-    const expiredAgreements = await prisma.documents.count({
-      where: { doc_subtype: 'agreement', status: 'Expired' }
-    });
-    const expiringAgreements = await prisma.documents.count({
-      where: {
-        doc_subtype: 'agreement',
-        status: 'Active',
-        valid_until: {
-          gte: today,
-          lte: sixtyDaysFromNow
-        }
-      }
-    });
-    const agreementValueSum = await prisma.documents.aggregate({
-      where: { doc_subtype: 'agreement' },
-      _sum: { amount: true }
-    });
 
     res.json({
       // GA core

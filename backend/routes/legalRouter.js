@@ -15,30 +15,27 @@ const allowWrite = [verifyToken, checkRole(['admin', 'legal', 'legal_compliance'
  */
 router.get('/dashboard-stats', allowRead, async (req, res, next) => {
   try {
-    const totalDocs = await prisma.documents.count();
-    const activeDocs = await prisma.documents.count({
-      where: { status: 'Active' }
-    });
-
-    // Count expiring documents within 30 days
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    const expiringDocs = await prisma.documents.count({
-      where: {
-        valid_until: {
-          gte: new Date(),
-          lte: thirtyDaysFromNow
-        },
-        status: 'Active'
-      }
-    });
 
-    const totalInsurances = await prisma.insurances.count();
-    const insurancePremiumSum = await prisma.insurances.aggregate({
-      _sum: {
-        premium_idr: true
-      }
-    });
+    const [
+      totalDocs,
+      activeDocs,
+      expiringDocs,
+      totalInsurances,
+      insurancePremiumSum
+    ] = await Promise.all([
+      prisma.documents.count(),
+      prisma.documents.count({ where: { status: 'Active' } }),
+      prisma.documents.count({
+        where: {
+          valid_until: { gte: new Date(), lte: thirtyDaysFromNow },
+          status: 'Active'
+        }
+      }),
+      prisma.insurances.count(),
+      prisma.insurances.aggregate({ _sum: { premium_idr: true } })
+    ]);
 
     res.json({
       totalDocuments: totalDocs,
