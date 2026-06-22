@@ -296,6 +296,14 @@ export default function GaVehiclesPage() {
     doc_url: ''
   });
 
+  const formatIDR = (val) => {
+    if (!val) return 'Rp 0';
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      maximumFractionDigits: 0
+    }).format(Number(val));
+  };
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -958,9 +966,9 @@ export default function GaVehiclesPage() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Mileage (KM)</span>
+                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Biaya Pajak (PKB)</span>
                       <span className="text-xs text-neutral-800 dark:text-slate-200 font-bold font-mono">
-                        {selectedVehicle.last_km ? `${selectedVehicle.last_km.toLocaleString('id-ID')} KM` : '0 KM'}
+                        {formatIDR(selectedVehicle.last_km)}
                       </span>
                     </div>
                     <div>
@@ -1193,10 +1201,10 @@ export default function GaVehiclesPage() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Current Mileage (KM)</label>
+                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Biaya Pajak (PKB)</label>
                       <input
                         type="number"
-                        placeholder="e.g. 54200"
+                        placeholder="e.g. 1500000"
                         value={formData.last_km}
                         onChange={(e) => setFormData({...formData, last_km: e.target.value})}
                         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
