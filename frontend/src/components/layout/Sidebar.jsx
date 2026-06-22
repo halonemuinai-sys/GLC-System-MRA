@@ -422,8 +422,8 @@ function SidebarContent({
           icon: Briefcase,
           children: [
             { name: 'Vendors', path: '/dashboard/vendors', icon: Users, allowed: hasAccess(['ga', 'auditor']) },
-            { name: 'Insurance', path: '/dashboard/insurances', icon: ShieldCheck, allowed: hasAccess(['legal', 'legal_compliance', 'auditor']) },
-            { name: 'Documents', path: '/dashboard/documents', icon: FileText, allowed: hasAccess(['legal', 'legal_compliance', 'auditor']) },
+            { name: 'Insurance', path: '/dashboard/insurances', icon: ShieldCheck, allowed: hasAccess(['ga', 'legal', 'legal_compliance', 'auditor']) },
+            { name: 'Documents', path: '/dashboard/documents', icon: FileText, allowed: hasAccess(['ga', 'legal', 'legal_compliance', 'auditor']) },
           ]
         },
         {
