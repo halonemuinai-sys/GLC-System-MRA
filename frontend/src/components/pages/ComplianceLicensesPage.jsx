@@ -33,6 +33,7 @@ const REGULATOR_SUBMISSION_OPTIONS = ['Not Submitted', 'Submitted', 'Under Verif
 const RISK_LEVEL_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 const CONFIDENTIALITY_OPTIONS = ['Public', 'Internal', 'Restricted', 'Confidential', 'Strictly Confidential'];
 const EXPIRY_STATUS_OPTIONS = ['Valid', 'Warning', 'Critical', 'Expired'];
+const YES_NO_OPTIONS = ['Yes', 'No'];
 
 const DOC_STATUS_BADGE = {
   Draft: 'bg-neutral-200/60 text-neutral-600 dark:bg-neutral-700/40 dark:text-neutral-300',
@@ -89,6 +90,10 @@ const defaultFormData = {
   regulator_submission_status: '',
   risk_level: '',
   confidentiality: 'Public',
+  approval_authority: '',
+  audit_requirement: '',
+  last_audit_date: '',
+  next_audit_date: '',
   regulator_url: '',
   file_url: '',
   file_name: '',
@@ -370,6 +375,10 @@ export default function ComplianceLicensesPage() {
       regulator_submission_status: lic.regulator_submission_status || '',
       risk_level: lic.risk_level || '',
       confidentiality: lic.confidentiality || 'Public',
+      approval_authority: lic.approval_authority || '',
+      audit_requirement: lic.audit_requirement || '',
+      last_audit_date: lic.last_audit_date ? lic.last_audit_date.split('T')[0] : '',
+      next_audit_date: lic.next_audit_date ? lic.next_audit_date.split('T')[0] : '',
       regulator_url: lic.regulator_url || '',
       file_url: lic.file_url || '',
       file_name: lic.file_name || '',
@@ -847,6 +856,21 @@ export default function ComplianceLicensesPage() {
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Klasifikasi</span>
                       <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium flex items-center gap-1"><Lock className="w-3 h-3 text-neutral-400" />{selectedLicense.confidentiality || 'Public'}</span>
                     </div>
+                    <div><span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Approval Authority</span><span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedLicense.approval_authority || '-'}</span></div>
+                  </div>
+
+                  <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Audit Requirement</span><span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedLicense.audit_requirement || '-'}</span></div>
+                    <div><span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Last Audit Date</span><span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedLicense.last_audit_date ? new Date(selectedLicense.last_audit_date).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}</span></div>
+                    <div>
+                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Next Audit Date</span>
+                      <span className="text-xs font-bold text-neutral-800 dark:text-slate-200">{selectedLicense.next_audit_date ? new Date(selectedLicense.next_audit_date).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}</span>
+                      {selectedLicense.audit_status && (
+                        <span className={`inline-flex ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${EXPIRY_STATUS_BADGE[selectedLicense.audit_status] || EXPIRY_STATUS_BADGE.Valid}`}>{selectedLicense.audit_status}</span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
@@ -1071,6 +1095,36 @@ export default function ComplianceLicensesPage() {
                       <select required value={formData.confidentiality} onChange={(e) => setFormData({ ...formData, confidentiality: e.target.value })} className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none">
                         {CONFIDENTIALITY_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Approval Authority</label>
+                    <input type="text" placeholder="e.g. Direktur Legal & Compliance" value={formData.approval_authority} onChange={(e) => setFormData({ ...formData, approval_authority: e.target.value })}
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none" />
+                  </div>
+
+                  {/* Section: Audit */}
+                  <div className="flex items-center gap-2 pb-1 border-b border-neutral-100 dark:border-neutral-800 pt-2">
+                    <div className="w-1.5 h-4 bg-orange-500 rounded-full" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Audit</span>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Audit Requirement</label>
+                    <select value={formData.audit_requirement} onChange={(e) => setFormData({ ...formData, audit_requirement: e.target.value })} className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none">
+                      <option value="">—</option>
+                      {YES_NO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Last Audit Date</label>
+                      <input type="date" value={formData.last_audit_date} onChange={(e) => setFormData({ ...formData, last_audit_date: e.target.value })}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Next Audit Date</label>
+                      <input type="date" value={formData.next_audit_date} onChange={(e) => setFormData({ ...formData, next_audit_date: e.target.value })}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none" />
                     </div>
                   </div>
 

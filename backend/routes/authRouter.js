@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { randomBytes } = require('crypto');
 const prisma = require('../api/db');
 const { verifyToken, JWT_SECRET } = require('../api/authMiddleware');
+const { sendPasswordResetEmail } = require('../api/mailer');
 
 const router = express.Router();
 
@@ -118,7 +119,12 @@ router.post('/forgot-password', async (req, res, next) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
 
-    // TODO production: kirim resetUrl via email (SMTP/Resend). Untuk dev, link dikembalikan langsung.
+    try {
+      await sendPasswordResetEmail({ to: normalizedEmail, fullName: user.full_name, resetUrl });
+    } catch (mailErr) {
+      console.error('Failed to send password reset email:', mailErr.message);
+    }
+
     const isDev = process.env.NODE_ENV !== 'production';
     res.json({ success: true, ...(isDev ? { resetUrl } : {}) });
   } catch (err) {

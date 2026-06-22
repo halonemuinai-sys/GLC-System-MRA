@@ -248,6 +248,10 @@ model compliance_licenses {
   regulator_submission_status  String?                          @db.VarChar(50)
   risk_level                   String?                          @db.VarChar(30)
   confidentiality              String                           @default("Public") @db.VarChar(60)
+  approval_authority           String?                          @db.VarChar(150)
+  audit_requirement            String?                          @db.VarChar(10)
+  last_audit_date               DateTime?                        @db.Date
+  next_audit_date               DateTime?                        @db.Date
   regulator_url                String?
   file_url                     String?
   file_name                    String?                          @db.VarChar(255)
@@ -259,6 +263,124 @@ model compliance_licenses {
 
   @@index([expiry_date], map: "idx_compliance_license_expiry")
   @@index([category], map: "idx_compliance_license_category")
+  @@schema("glc_mra")
+}
+
+model compliance_monitoring_audit_logs {
+  id                     Int                    @id @default(autoincrement())
+  record_id              Int?
+  doc_name               String?                @db.VarChar(255)
+  action                 String                 @db.VarChar(50)
+  performed_by           String?                @default("system") @db.VarChar(100)
+  performed_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  compliance_monitoring  compliance_monitoring? @relation(fields: [record_id], references: [id], onUpdate: NoAction)
+
+  @@index([record_id], map: "idx_compliance_monitoring_audit_id")
+  @@schema("glc_mra")
+}
+
+model compliance_monitoring {
+  id                            Int                                @id @default(autoincrement())
+  doc_name                      String                             @db.VarChar(255)
+  category                      String                             @db.VarChar(100)
+  regulatory_authority          String?                            @db.VarChar(150)
+  business_unit                 String?                            @db.VarChar(100)
+  company_id                    Int?
+  process_activity               String?                            @db.VarChar(200)
+  compliance_obligation         String?
+  pic                           String                             @db.VarChar(100)
+  pic_department                String?                            @db.VarChar(100)
+  risk_level                    String?                            @db.VarChar(30)
+  compliance_status             String                             @default("Under Review") @db.VarChar(50)
+  finding_status                String                             @default("Open") @db.VarChar(50)
+  due_date                      DateTime?                          @db.Date
+  completion_date                DateTime?                          @db.Date
+  monitoring_frequency          String?                            @db.VarChar(30)
+  review_frequency               String?                            @db.VarChar(30)
+  policy_sop_reference          String?                            @db.VarChar(200)
+  document_url                  String?
+  confidentiality               String                             @default("Public") @db.VarChar(60)
+  approval_status               String?                            @db.VarChar(50)
+  approved_by                   String?                            @db.VarChar(100)
+  approval_date                 DateTime?                          @db.Date
+  audit_requirement             String?                            @db.VarChar(10)
+  audit_type                    String?                            @db.VarChar(50)
+  last_audit_date                DateTime?                          @db.Date
+  next_audit_date                DateTime?                          @db.Date
+  notes                         String?
+  created_at                    DateTime?                          @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime?                          @default(now()) @db.Timestamptz(6)
+  compliance_monitoring_audit_logs compliance_monitoring_audit_logs[]
+  m_company                     m_company?                         @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+
+  @@index([due_date], map: "idx_compliance_monitoring_due")
+  @@index([category], map: "idx_compliance_monitoring_category")
+  @@schema("glc_mra")
+}
+
+model compliance_sop_audit_logs {
+  id               Int               @id @default(autoincrement())
+  record_id        Int?
+  doc_name         String?           @db.VarChar(255)
+  action           String            @db.VarChar(50)
+  performed_by     String?           @default("system") @db.VarChar(100)
+  performed_at     DateTime?         @default(now()) @db.Timestamptz(6)
+  compliance_sop   compliance_sop?   @relation(fields: [record_id], references: [id], onUpdate: NoAction)
+
+  @@index([record_id], map: "idx_compliance_sop_audit_id")
+  @@schema("glc_mra")
+}
+
+model compliance_sop {
+  id                       Int                          @id @default(autoincrement())
+  doc_name                 String                       @db.VarChar(255)
+  category                 String                       @db.VarChar(100)
+  id_number                String?                      @db.VarChar(100)
+  version                  String?                      @db.VarChar(30)
+  company_id               Int?
+  business_unit            String?                      @db.VarChar(100)
+  process_owner            String?                      @db.VarChar(100)
+  document_owner           String?                      @db.VarChar(100)
+  pic                      String                       @db.VarChar(100)
+  issue_date               DateTime?                    @db.Date
+  effective_date           DateTime?                    @db.Date
+  review_date              DateTime?                    @db.Date
+  expiry_date              DateTime?                    @db.Date
+  last_revision_date       DateTime?                    @db.Date
+  doc_status               String                       @default("Draft") @db.VarChar(50)
+  risk_level               String?                      @db.VarChar(30)
+  document_classification String?                      @db.VarChar(50)
+  confidentiality          String                       @default("Public") @db.VarChar(60)
+  controlled_copy          String?                      @db.VarChar(10)
+  approval_status          String?                      @db.VarChar(50)
+  approval_authority       String?                      @db.VarChar(150)
+  workflow_status          String?                      @db.VarChar(50)
+  change_request_number    String?                      @db.VarChar(50)
+  audit_requirement        String?                      @db.VarChar(10)
+  audit_status             String?                      @db.VarChar(30)
+  regulatory_reference     String?                      @db.VarChar(200)
+  policy_objective         String?
+  scope_of_application     String?
+  related_sop_policy       String?                      @db.VarChar(200)
+  revision_notes           String?
+  training_required        String?                      @db.VarChar(10)
+  training_status          String?                      @db.VarChar(30)
+  distribution_status      String?                      @db.VarChar(30)
+  acknowledgement_status   String?                      @db.VarChar(30)
+  review_frequency         String?                      @db.VarChar(30)
+  retention_period         String?                      @db.VarChar(50)
+  archive_status           String?                      @db.VarChar(30)
+  document_url             String?
+  supporting_documents     String?
+  legal_compliance_notes   String?
+  notes                    String?
+  created_at               DateTime?                    @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                    @default(now()) @db.Timestamptz(6)
+  compliance_sop_audit_logs compliance_sop_audit_logs[]
+  m_company                m_company?                   @relation(fields: [company_id], references: [id], onUpdate: NoAction)
+
+  @@index([expiry_date], map: "idx_compliance_sop_expiry")
+  @@index([category], map: "idx_compliance_sop_category")
   @@schema("glc_mra")
 }
 
@@ -346,6 +468,8 @@ model m_company {
   created_at        DateTime?         @default(now()) @db.Timestamp(6)
   assets            assets[]
   compliance_licenses compliance_licenses[]
+  compliance_monitoring compliance_monitoring[]
+  compliance_sop    compliance_sop[]
   device_rentals    device_rentals[]
   documents         documents[]
   expense_budget    expense_budget[]
