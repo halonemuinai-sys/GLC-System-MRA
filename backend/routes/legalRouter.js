@@ -299,7 +299,9 @@ router.get('/insurances', allowRead, async (req, res, next) => {
         where,
         _sum: {
           premium_idr: true,
-          coverage_idr: true
+          coverage_idr: true,
+          premium_usd: true,
+          coverage_usd: true
         }
       }),
       prisma.insurances.count({
@@ -331,6 +333,8 @@ router.get('/insurances', allowRead, async (req, res, next) => {
         activeCount,
         totalPremiumIdr: Number(costAggregate._sum.premium_idr || 0),
         totalCoverageIdr: Number(costAggregate._sum.coverage_idr || 0),
+        totalPremiumUsd: Number(costAggregate._sum.premium_usd || 0),
+        totalCoverageUsd: Number(costAggregate._sum.coverage_usd || 0),
         expiringCount,
         uniqueCompaniesCount: companyGroup.filter(g => g.company_id !== null).length
       }

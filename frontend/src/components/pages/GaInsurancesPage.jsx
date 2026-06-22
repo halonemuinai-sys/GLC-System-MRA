@@ -235,6 +235,7 @@ export default function GaInsurancesPage() {
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [editingInsurance, setEditingInsurance] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [activeCurrency, setActiveCurrency] = useState('IDR');
 
   // New Insurance Form State
   const [formData, setFormData] = useState({
@@ -262,6 +263,7 @@ export default function GaInsurancesPage() {
   const handleCloseAddDrawer = () => {
     setShowAddDrawer(false);
     setEditingInsurance(null);
+    setActiveCurrency('IDR');
     setFormData({
       company_id: '',
       insurance_company: '',
@@ -287,6 +289,7 @@ export default function GaInsurancesPage() {
 
   const openEditInsurance = (ins) => {
     setEditingInsurance(ins);
+    setActiveCurrency((Number(ins.premium_usd) > 0 || Number(ins.coverage_usd) > 0) ? 'USD' : 'IDR');
     setFormData({
       company_id: ins.company_id ? String(ins.company_id) : '',
       insurance_company: ins.insurance_company || '',
@@ -443,6 +446,15 @@ export default function GaInsurancesPage() {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
+      maximumFractionDigits: 0
+    }).format(Number(val));
+  };
+
+  const formatUSD = (val) => {
+    if (!val) return '$0';
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       maximumFractionDigits: 0
     }).format(Number(val));
   };
@@ -629,7 +641,14 @@ export default function GaInsurancesPage() {
               </div>
               <div>
                 <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Premium Total</p>
-                <h3 className="text-md font-black text-neutral-800 dark:text-white mt-0.5 truncate">{formatIDR(summary.totalPremiumIdr)}</h3>
+                <h3 className="text-xs font-black text-neutral-800 dark:text-white mt-0.5 truncate">
+                  IDR: {formatIDR(summary.totalPremiumIdr)}
+                  {summary.totalPremiumUsd > 0 && (
+                    <span className="block text-[10px] text-indigo-500 dark:text-indigo-400 font-semibold mt-0.5">
+                      USD: {formatUSD(summary.totalPremiumUsd)}
+                    </span>
+                  )}
+                </h3>
               </div>
             </div>
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl flex items-center gap-4">
@@ -679,7 +698,7 @@ export default function GaInsurancesPage() {
                       <th className="p-4">Company</th>
                       <th className="p-4">Category / Type</th>
                       <th className="p-4">Protected Asset</th>
-                      <th className="p-4">Premium (IDR)</th>
+                      <th className="p-4">Premium</th>
                       <th className="p-4">Expiration Date</th>
                       <th className="p-4 text-center">Action</th>
                     </tr>
@@ -712,7 +731,9 @@ export default function GaInsurancesPage() {
                               <span className="truncate max-w-[150px]">{ins.vehicle_type || 'Gedung / Inventaris'}</span>
                             </div>
                           </td>
-                          <td className="p-4 font-bold text-emerald-600 dark:text-emerald-400">{formatIDR(ins.premium_idr)}</td>
+                          <td className="p-4 font-bold text-emerald-600 dark:text-emerald-400">
+                            {Number(ins.premium_usd) > 0 ? formatUSD(ins.premium_usd) : formatIDR(ins.premium_idr)}
+                          </td>
                           <td className="p-4">
                             <span className={`inline-flex items-center gap-1.5 font-medium ${nearEnd ? 'text-red-500 font-bold animate-pulse' : 'text-neutral-500'}`}>
                               <Calendar className="w-3.5 h-3.5" />
@@ -839,12 +860,16 @@ export default function GaInsurancesPage() {
                       <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedInsurance.insurance_type || '-'}</span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Premium (IDR)</span>
-                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formatIDR(selectedInsurance.premium_idr)}</span>
+                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Premium</span>
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        {Number(selectedInsurance.premium_usd) > 0 ? formatUSD(selectedInsurance.premium_usd) : formatIDR(selectedInsurance.premium_idr)}
+                      </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Coverage Value</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-bold">{formatIDR(selectedInsurance.coverage_idr)}</span>
+                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-bold">
+                        {Number(selectedInsurance.coverage_usd) > 0 ? formatUSD(selectedInsurance.coverage_usd) : formatIDR(selectedInsurance.coverage_idr)}
+                      </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Policy Start</span>
@@ -1051,30 +1076,86 @@ export default function GaInsurancesPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Premium Cost (IDR) *</label>
-                      <input
-                        required
-                        type="number"
-                        placeholder="e.g. 3500000"
-                        value={formData.premium_idr}
-                        onChange={(e) => setFormData({...formData, premium_idr: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Coverage Limit (IDR) *</label>
-                      <input
-                        required
-                        type="number"
-                        placeholder="e.g. 150000000"
-                        value={formData.coverage_idr}
-                        onChange={(e) => setFormData({...formData, coverage_idr: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                      />
+                  <div>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Currency (Mata Uang) *</label>
+                    <div className="flex gap-2 bg-neutral-50 dark:bg-neutral-950 p-1 border border-neutral-200 dark:border-neutral-800 rounded-xl">
+                      {['IDR', 'USD'].map((curr) => (
+                        <button
+                          key={curr}
+                          type="button"
+                          onClick={() => {
+                            setActiveCurrency(curr);
+                            if (curr === 'IDR') {
+                              setFormData(prev => ({ ...prev, premium_usd: '', coverage_usd: '' }));
+                            } else {
+                              setFormData(prev => ({ ...prev, premium_idr: '', coverage_idr: '' }));
+                            }
+                          }}
+                          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                            activeCurrency === curr
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                          }`}
+                        >
+                          {curr}
+                        </button>
+                      ))}
                     </div>
                   </div>
+
+                  {activeCurrency === 'IDR' ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Premium Cost (IDR) *</label>
+                        <input
+                          required
+                          type="number"
+                          placeholder="e.g. 3500000"
+                          value={formData.premium_idr}
+                          onChange={(e) => setFormData({...formData, premium_idr: e.target.value})}
+                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Coverage Limit (IDR) *</label>
+                        <input
+                          required
+                          type="number"
+                          placeholder="e.g. 150000000"
+                          value={formData.coverage_idr}
+                          onChange={(e) => setFormData({...formData, coverage_idr: e.target.value})}
+                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Premium Cost (USD) *</label>
+                        <input
+                          required
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g. 250"
+                          value={formData.premium_usd}
+                          onChange={(e) => setFormData({...formData, premium_usd: e.target.value})}
+                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Coverage Limit (USD) *</label>
+                        <input
+                          required
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g. 10000"
+                          value={formData.coverage_usd}
+                          onChange={(e) => setFormData({...formData, coverage_usd: e.target.value})}
+                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
