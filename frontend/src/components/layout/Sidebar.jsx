@@ -34,7 +34,11 @@ import {
   BookOpen,
   UserCheck,
   Landmark,
-  FlaskConical
+  FlaskConical,
+  FileSignature,
+  Building,
+  Barcode,
+  ClipboardCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
@@ -393,6 +397,14 @@ function SidebarContent({
       .catch(() => {});
   }, []);
 
+  // Jumlah dokumen/kasus per modul Legal yang mendekati/lewat deadline (untuk badge counter)
+  const [legalBadges, setLegalBadges] = useState({});
+  useEffect(() => {
+    apiClient.get('/api/legal/notifications')
+      .then(res => setLegalBadges(res.perModule || {}))
+      .catch(() => {});
+  }, []);
+
   // ═══════════════════════════════════════════════════════════════════════════
   // MENU CONFIGURATION — Scalable 3-Level Hierarchy
   // Section (label) → Submenu (collapsible) → Items (leaf links)
@@ -415,6 +427,8 @@ function SidebarContent({
             { name: 'Device Rental', path: '/dashboard/device-rentals', icon: Laptop, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'IT Rentals', path: '/dashboard/it-rentals', icon: Monitor, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'Maintenance', path: '/dashboard/maintenances', icon: Wrench, allowed: hasAccess(['ga', 'auditor']) },
+            { name: 'Stock Opname', path: '/dashboard/stock-opname', icon: ClipboardCheck, allowed: hasAccess(['ga', 'auditor']) },
+            { name: 'Barcode Generator', path: '/dashboard/barcode', icon: Barcode, allowed: hasAccess(['ga', 'auditor']) },
           ]
         },
         {
@@ -464,21 +478,21 @@ function SidebarContent({
         }
       ]
     },
-    // ── Future sections — uncomment when ready ──
-    // {
-    //   label: 'LEGAL',
-    //   submenus: [
-    //     {
-    //       name: 'Kontrak & Perjanjian',
-    //       icon: Scale,
-    //       children: [
-    //         { name: 'Kontrak PKS', path: '/dashboard/legal/contracts', icon: FileText, allowed: hasAccess(['legal', 'legal_compliance', 'auditor']) },
-    //         { name: 'Legal Review', path: '/dashboard/legal/reviews', icon: Gavel, allowed: hasAccess(['legal', 'legal_compliance', 'auditor']) },
-    //       ]
-    //     }
-    //   ]
-    // },
-  ], [hasAccess, complianceBadges]);
+    {
+      label: 'LEGAL',
+      submenus: [
+        {
+          name: 'Legal & Litigasi',
+          icon: Scale,
+          children: [
+            { name: 'Contract & Agreement', path: '/dashboard/legal/contracts', icon: FileSignature, allowed: hasAccess(['legal', 'legal_compliance', 'auditor']), badge: legalBadges.contract },
+            { name: 'Corporate Legal Documents', path: '/dashboard/legal/corporate', icon: Building, allowed: hasAccess(['legal', 'legal_compliance', 'auditor']), badge: legalBadges.corporate },
+            { name: 'Litigation & Dispute', path: '/dashboard/legal/litigation', icon: Gavel, allowed: hasAccess(['legal', 'legal_compliance', 'auditor']), badge: legalBadges.litigation },
+          ]
+        }
+      ]
+    },
+  ], [hasAccess, complianceBadges, legalBadges]);
 
   // ── Expand/Collapse State ──
   // Key = submenu name, value = boolean
@@ -616,6 +630,17 @@ function SidebarContent({
             name="Dashboard Compliance"
             isActive={pathname === '/dashboard/compliance'}
             delay={0.03}
+            onClick={onClose}
+            collapsed={collapsed}
+          />
+        )}
+        {hasAccess(['legal', 'legal_compliance', 'auditor']) && (
+          <NavItem
+            href="/dashboard/legal"
+            icon={Scale}
+            name="Dashboard Legal"
+            isActive={pathname === '/dashboard/legal'}
+            delay={0.04}
             onClick={onClose}
             collapsed={collapsed}
           />

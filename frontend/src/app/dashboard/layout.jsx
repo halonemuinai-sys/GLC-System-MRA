@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Menu, Sun, Moon, Eye, EyeOff } from 'lucide-react';
+import { Menu, Sun, Moon, Eye, EyeOff, Briefcase, Scale, ShieldCheck } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
+import NotificationBell from '@/components/ui/NotificationBell';
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -105,9 +106,20 @@ export default function DashboardLayout({ children }) {
             <Menu className="w-5 h-5" />
           </button>
 
-          {/* Right Header Section (Theme Toggle + Status Indicator) */}
+          {/* Right Header Section (Notification Bells + Theme Toggle + Status Indicator) */}
           <div className="flex items-center gap-4 ml-auto">
-            
+
+            {/* Notification Bells — terpisah per departemen, tampil sesuai role user */}
+            {(role === 'admin' || role === 'auditor' || role === 'ga') && (
+              <NotificationBell label="GA" endpoint="/api/ga/notifications" icon={Briefcase} color="#6366f1" />
+            )}
+            {(role === 'admin' || role === 'auditor' || role === 'legal' || role === 'legal_compliance') && (
+              <NotificationBell label="Legal" endpoint="/api/legal/notifications" icon={Scale} color="#f43f5e" />
+            )}
+            {(role === 'admin' || role === 'auditor' || role === 'compliance' || role === 'legal_compliance') && (
+              <NotificationBell label="Compliance" endpoint="/api/compliance/notifications" icon={ShieldCheck} color="#10b981" />
+            )}
+
             {/* Hide Nominal Toggle Button */}
             <button
               onClick={toggleHidePrices}

@@ -1107,10 +1107,9 @@ router.get('/notifications', allowRead, async (req, res, next) => {
         where: {
           module: { in: GENERIC_MODULES },
           expiry_date: { not: null, lt: ninetyDaysFromNow }
-        },
-        select: { module: true }
+        }
       }),
-      prisma.compliance_licenses.count({
+      prisma.compliance_licenses.findMany({
         where: {
           OR: [
             { expiry_date: { not: null, lt: ninetyDaysFromNow } },
@@ -1118,7 +1117,7 @@ router.get('/notifications', allowRead, async (req, res, next) => {
           ]
         }
       }),
-      prisma.compliance_monitoring.count({
+      prisma.compliance_monitoring.findMany({
         where: {
           OR: [
             { due_date: { not: null, lt: ninetyDaysFromNow }, completion_date: null },
@@ -1126,7 +1125,7 @@ router.get('/notifications', allowRead, async (req, res, next) => {
           ]
         }
       }),
-      prisma.compliance_sop.count({
+      prisma.compliance_sop.findMany({
         where: { expiry_date: { not: null, lt: ninetyDaysFromNow } }
       })
     ]);
@@ -1135,11 +1134,36 @@ router.get('/notifications', allowRead, async (req, res, next) => {
     genericDocs.forEach(d => {
       perModule[d.module] = (perModule[d.module] || 0) + 1;
     });
-    if (licenseDocs > 0) perModule.license = licenseDocs;
-    if (monitoringDocs > 0) perModule.monitoring = monitoringDocs;
-    if (sopDocs > 0) perModule.sop = sopDocs;
+    if (licenseDocs.length > 0) perModule.license = licenseDocs.length;
+    if (monitoringDocs.length > 0) perModule.monitoring = monitoringDocs.length;
+    if (sopDocs.length > 0) perModule.sop = sopDocs.length;
 
-    res.json({ total: genericDocs.length + licenseDocs + monitoringDocs + sopDocs, perModule });
+    const MODULE_LINK = {
+      license: '/dashboard/compliance/licenses',
+      monitoring: '/dashboard/compliance/docs',
+      sop: '/dashboard/compliance/sop',
+      hr_compliance: '/dashboard/compliance/hr',
+      tax_finance: '/dashboard/compliance/tax',
+      product_regulatory: '/dashboard/compliance/product'
+    };
+
+    const items = [];
+    genericDocs.forEach(d => {
+      const { status, daysUntilExpiry } = computeExpiryStatus(d.expiry_date);
+      if (status) items.push({ id: `${d.module}-${d.id}`, title: d.doc_name, subtitle: MODULE_LABELS[d.module] || d.module, date: d.expiry_date, daysLeft: daysUntilExpiry, status, link: MODULE_LINK[d.module] || '/dashboard/compliance/dashboard' });
+    });
+    licenseDocs.map(licenseToDocShape).map(withCombinedUrgency).forEach(d => {
+      if (d.status) items.push({ id: `license-${d.id}`, title: d.doc_name, subtitle: MODULE_LABELS.license, date: d.expiry_date, daysLeft: d.days_until_expiry, status: d.status, link: MODULE_LINK.license });
+    });
+    monitoringDocs.map(monitoringToDocShape).map(withCombinedUrgency).forEach(d => {
+      if (d.status) items.push({ id: `monitoring-${d.id}`, title: d.doc_name, subtitle: MODULE_LABELS.monitoring, date: d.expiry_date, daysLeft: d.days_until_expiry, status: d.status, link: MODULE_LINK.monitoring });
+    });
+    sopDocs.map(sopToDocShape).map(withExpiryStatus).forEach(d => {
+      if (d.status) items.push({ id: `sop-${d.id}`, title: d.doc_name, subtitle: MODULE_LABELS.sop, date: d.expiry_date, daysLeft: d.days_until_expiry, status: d.status, link: MODULE_LINK.sop });
+    });
+    items.sort((a, b) => a.daysLeft - b.daysLeft);
+
+    res.json({ total: genericDocs.length + licenseDocs.length + monitoringDocs.length + sopDocs.length, perModule, items: items.slice(0, 30) });
   } catch (err) {
     next(err);
   }

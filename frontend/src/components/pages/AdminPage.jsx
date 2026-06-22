@@ -29,12 +29,12 @@ import {
 import { apiClient } from '@/lib/apiClient';
 
 const ROLE_BADGES = {
-  admin: 'bg-red-500/10 text-red-650 dark:text-red-400 border border-red-200 dark:border-red-900/30',
-  ga: 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30',
-  legal: 'bg-purple-500/10 text-purple-650 dark:text-purple-400 border border-purple-200 dark:border-purple-900/30',
-  compliance: 'bg-emerald-500/10 text-emerald-650 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30',
-  legal_compliance: 'bg-cyan-500/10 text-cyan-650 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-900/30',
-  auditor: 'bg-amber-500/10 text-amber-650 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30'
+  admin: 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30',
+  ga: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30',
+  legal: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/30',
+  compliance: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30',
+  legal_compliance: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-900/30',
+  auditor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30'
 };
 
 const MODULE_LABELS = {
@@ -439,7 +439,7 @@ export default function AdminPage() {
                         transition={{ delay: idx * 0.02, ease: 'easeOut' }}
                         className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors"
                       >
-                        <td className="p-4 font-bold text-neutral-850 dark:text-neutral-100">{user.full_name}</td>
+                        <td className="p-4 font-bold text-neutral-800 dark:text-neutral-100">{user.full_name}</td>
                         <td className="p-4 text-neutral-600 dark:text-neutral-400 font-medium font-mono">{user.email}</td>
                         <td className="p-4 text-neutral-500">
                           <div>{user.department || '-'}</div>
@@ -473,7 +473,7 @@ export default function AdminPage() {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={() => handleOpenEditUser(user)}
-                              className="px-2.5 py-1 text-[10px] font-bold bg-neutral-50 dark:bg-neutral-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-neutral-600 dark:text-neutral-300 hover:text-indigo-650 dark:hover:text-indigo-400 rounded-lg transition-colors border border-neutral-200 dark:border-neutral-700/60 cursor-pointer"
+                              className="px-2.5 py-1 text-[10px] font-bold bg-neutral-50 dark:bg-neutral-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-neutral-600 dark:text-neutral-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors border border-neutral-200 dark:border-neutral-700/60 cursor-pointer"
                             >
                               Edit Profile
                             </button>
@@ -508,7 +508,7 @@ export default function AdminPage() {
           className="space-y-4"
         >
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-5 rounded-2xl shadow-sm">
-            <h3 className="text-xs font-bold text-neutral-850 dark:text-neutral-100 flex items-center gap-1.5 mb-1.5">
+            <h3 className="text-xs font-bold text-neutral-800 dark:text-neutral-100 flex items-center gap-1.5 mb-1.5">
               <ShieldCheck className="w-4 h-4 text-indigo-500" />
               Matriks Konfigurasi Hak Akses Modul
             </h3>
@@ -599,7 +599,7 @@ export default function AdminPage() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 15 }}
-                className="bg-indigo-600 dark:bg-indigo-750 text-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-indigo-600/20"
+                className="bg-indigo-600 dark:bg-indigo-700 text-white rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg shadow-indigo-600/20"
               >
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 flex-shrink-0 text-amber-300 animate-pulse" />
@@ -615,7 +615,7 @@ export default function AdminPage() {
                   <button
                     onClick={handleSavePermissions}
                     disabled={savingPermissions}
-                    className="px-4 py-1.5 text-xs font-black bg-white hover:bg-neutral-50 text-indigo-650 rounded-lg transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                    className="px-4 py-1.5 text-xs font-black bg-white hover:bg-neutral-50 text-indigo-600 rounded-lg transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
                   >
                     {savingPermissions ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Simpan Perubahan'}
                   </button>
@@ -695,7 +695,7 @@ export default function AdminPage() {
                 setLogTableFilter('');
                 setLogPage(1);
               }}
-              className="px-3 py-2 bg-neutral-50 dark:bg-neutral-850 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 text-neutral-600 dark:text-neutral-400 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
+              className="px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 text-neutral-600 dark:text-neutral-400 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Refresh
@@ -748,8 +748,8 @@ export default function AdminPage() {
                             log.action === 'INSERT'
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30'
                               : log.action === 'DELETE'
-                                ? 'bg-red-500/10 text-red-650 dark:text-red-400 border border-red-200 dark:border-red-900/30'
-                                : 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30'
+                                ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30'
+                                : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30'
                           }`}>
                             {log.action}
                           </span>
@@ -971,7 +971,7 @@ export default function AdminPage() {
                     <Lock className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Reset Password User</h3>
+                    <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-100">Reset Password User</h3>
                     <p className="text-[10px] text-neutral-400">User: {userToResetPassword.full_name}</p>
                   </div>
                 </div>
@@ -1003,7 +1003,7 @@ export default function AdminPage() {
                     <button
                       type="submit"
                       disabled={resettingPassword}
-                      className="flex-1 py-2 bg-amber-550 hover:bg-amber-600 active:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/15"
+                      className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/15"
                     >
                       {resettingPassword ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1042,7 +1042,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <Database className="w-5 h-5 text-indigo-500" />
                     <div>
-                      <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Detail Log Perubahan Data</h3>
+                      <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-100">Detail Log Perubahan Data</h3>
                       <p className="text-[10px] text-neutral-400">Log ID: #{selectedLog.id} | Tabel: {selectedLog.table_name} | ID: {selectedLog.record_id}</p>
                     </div>
                   </div>
@@ -1056,7 +1056,7 @@ export default function AdminPage() {
 
                 <div className="overflow-y-auto space-y-4 pr-1 flex-1 text-xs">
                   {/* Actor details */}
-                  <div className="grid grid-cols-2 gap-4 bg-neutral-50 dark:bg-neutral-950 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-850">
+                  <div className="grid grid-cols-2 gap-4 bg-neutral-50 dark:bg-neutral-950 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                     <div>
                       <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider block">Aktor Pengubah</span>
                       <span className="font-bold text-neutral-700 dark:text-slate-350">{selectedLog.m_user?.full_name || 'System / Admin'}</span>
@@ -1100,7 +1100,7 @@ export default function AdminPage() {
                 <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 mt-4 flex justify-end flex-shrink-0">
                   <button
                     onClick={() => setSelectedLog(null)}
-                    className="px-5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 dark:bg-neutral-850 dark:hover:bg-neutral-800 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
+                    className="px-5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-800 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
                   >
                     Tutup
                   </button>
