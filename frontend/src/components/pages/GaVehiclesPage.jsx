@@ -766,7 +766,7 @@ export default function GaVehiclesPage() {
                   <th className="p-4">Brand / Model</th>
                   <th className="p-4">Company</th>
                   <th className="p-4">Type</th>
-                  <th className="p-4">Driver Name</th>
+                  <th className="p-4">Biaya Pajak (PKB)</th>
                   <th className="p-4">Tax Payment Date</th>
                   <th className="p-4">Status</th>
                   <th className="p-4 text-center">Action</th>
@@ -790,11 +790,8 @@ export default function GaVehiclesPage() {
                       </td>
                       <td className="p-4 text-neutral-600 dark:text-neutral-400 font-medium">{vehicle.m_company?.name || '-'}</td>
                       <td className="p-4 text-neutral-500 capitalize">{vehicle.vehicle_type || '-'}</td>
-                      <td className="p-4 text-neutral-500">
-                        <div className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5 text-neutral-400" />
-                          <span>{vehicle.driver_name || '-'}</span>
-                        </div>
+                      <td className="p-4 font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {formatIDR(vehicle.last_km)}
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center gap-1.5 font-medium ${nearTax ? 'text-red-500 font-bold' : 'text-neutral-500'}`}>
