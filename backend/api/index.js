@@ -14,6 +14,8 @@ app.use(cors({
 app.use(express.json());
 
 // Rute Dasar
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 app.get('/', (req, res) => {
   res.json({ message: 'GLC MRA System Backend API is running locally.' });
 });
