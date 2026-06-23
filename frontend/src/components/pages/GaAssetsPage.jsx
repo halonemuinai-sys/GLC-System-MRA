@@ -26,11 +26,13 @@ import {
   Download,
   Edit3,
   ExternalLink,
-  FileText
+  FileText,
+  FileSpreadsheet
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ExcelJS from 'exceljs';
 import {
   ResponsiveContainer,
   PieChart,
@@ -486,6 +488,7 @@ export default function GaAssetsPage() {
   const [globalHidePrices, setGlobalHidePrices] = useState(false);
   const [error, setError] = useState(null);
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const handleExportPDF = async () => {
     try {
@@ -737,7 +740,238 @@ export default function GaAssetsPage() {
       setExportingPDF(false);
     }
   };
-  
+
+  const handleExportExcel = async () => {
+    try {
+      setExportingExcel(true);
+
+      const res = await apiClient.get('/api/ga/assets', {
+        params: {
+          page: 1,
+          limit: 9999,
+          search: search || undefined,
+          categoryId: categoryId || undefined,
+          locationId: locationId || undefined,
+          statusId: statusId || undefined,
+          companyId: companyId || undefined
+        }
+      });
+
+      const allAssets = res.data || [];
+      const totalCostVal = res.summary?.totalAcquisitionCost || 0;
+      const selectedCompanyObj = companies.find(c => String(c.id) === String(companyId));
+      const companyName = selectedCompanyObj ? selectedCompanyObj.name : 'Semua Perusahaan (PT)';
+
+      const HEADER_DARK = 'FF1F2937';
+      const HEADER_DARK_LIGHT = 'FF374151';
+      const LIGHT_ROW = 'FFF8FAFC';
+      const BORDER_COLOR = 'FFCBD5E1';
+      const TOTAL_BG = 'FFF1F5F9';
+
+      const thinBorder = {
+        top: { style: 'thin', color: { argb: BORDER_COLOR } },
+        left: { style: 'thin', color: { argb: BORDER_COLOR } },
+        bottom: { style: 'thin', color: { argb: BORDER_COLOR } },
+        right: { style: 'thin', color: { argb: BORDER_COLOR } }
+      };
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'GLC MRA Integrated GA Management Suite';
+      workbook.created = new Date();
+
+      // ── SHEET 1: Data Aset ──────────────────────────────────────────
+      const sheet = workbook.addWorksheet('Data Aset', {
+        views: [{ state: 'frozen', ySplit: 4 }],
+        pageSetup: { orientation: 'landscape', fitToPage: true }
+      });
+
+      const columns = [
+        { header: 'Kode Aset', key: 'asset_code', width: 16 },
+        { header: 'Nama Aset', key: 'asset_name', width: 30 },
+        { header: 'Kategori', key: 'category', width: 22 },
+        { header: 'Tipe', key: 'type', width: 18 },
+        { header: 'Perusahaan', key: 'company', width: 26 },
+        { header: 'Lokasi', key: 'location', width: 20 },
+        { header: 'PIC', key: 'pic', width: 20 },
+        { header: 'Tgl Akuisisi', key: 'acquisition_date', width: 14 },
+        { header: 'Nilai Akuisisi (Rp)', key: 'acquisition_cost', width: 18 },
+        { header: 'Kondisi', key: 'condition', width: 14 },
+        { header: 'Status', key: 'status', width: 14 },
+        { header: 'Catatan', key: 'information', width: 30 }
+      ];
+      sheet.columns = columns;
+
+      // Title row (merged)
+      sheet.mergeCells(1, 1, 1, columns.length);
+      const titleCell = sheet.getCell('A1');
+      titleCell.value = 'LAPORAN DATA ASET — MRA GROUP';
+      titleCell.font = { bold: true, size: 15, color: { argb: 'FFFFFFFF' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(1).height = 26;
+      for (let c = 1; c <= columns.length; c++) sheet.getCell(1, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_DARK } };
+
+      // Subtitle row (merged)
+      sheet.mergeCells(2, 1, 2, columns.length);
+      const subtitleCell = sheet.getCell('A2');
+      subtitleCell.value = `Perusahaan: ${companyName}   |   Total Unit: ${allAssets.length}   |   Total Nilai Buku: Rp ${Number(totalCostVal).toLocaleString('id-ID')}   |   Dicetak: ${new Date().toLocaleString('id-ID')}`;
+      subtitleCell.font = { italic: true, size: 9.5, color: { argb: 'FFFFFFFF' } };
+      subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      sheet.getRow(2).height = 20;
+      for (let c = 1; c <= columns.length; c++) sheet.getCell(2, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_DARK_LIGHT } };
+
+      // Spacer row 3, header row 4
+      sheet.getRow(3).height = 6;
+      const headerRow = sheet.getRow(4);
+      headerRow.values = columns.map(c => c.header);
+      headerRow.height = 22;
+      headerRow.eachCell(cell => {
+        cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_DARK } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = thinBorder;
+      });
+      sheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: columns.length } };
+
+      // Data rows
+      allAssets.forEach((a, idx) => {
+        const row = sheet.addRow({
+          asset_code: a.asset_code || '-',
+          asset_name: a.asset_name,
+          category: a.m_asset_category?.name || '-',
+          type: a.m_asset_type?.name || '-',
+          company: a.m_company?.name || '-',
+          location: a.m_location?.full_name || a.room || '-',
+          pic: a.m_user?.full_name || '-',
+          acquisition_date: a.acquisition_date ? new Date(a.acquisition_date) : null,
+          acquisition_cost: Number(a.acquisition_cost) || 0,
+          condition: a.m_condition?.name || '-',
+          status: a.m_status?.name || '-',
+          information: a.information || '-'
+        });
+        row.eachCell((cell, colNumber) => {
+          cell.border = thinBorder;
+          cell.font = { size: 9.5 };
+          cell.alignment = { vertical: 'middle' };
+          if (idx % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_ROW } };
+          if (columns[colNumber - 1].key === 'acquisition_cost') {
+            cell.numFmt = '"Rp" #,##0';
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          }
+          if (columns[colNumber - 1].key === 'acquisition_date') {
+            cell.numFmt = 'dd/mm/yyyy';
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          }
+        });
+      });
+
+      // Total summary row (live SUM formula)
+      const lastDataRow = 4 + allAssets.length;
+      const totalRow = sheet.getRow(lastDataRow + 1);
+      sheet.mergeCells(lastDataRow + 1, 1, lastDataRow + 1, 8);
+      const totalLabelCell = sheet.getCell(lastDataRow + 1, 1);
+      totalLabelCell.value = `TOTAL (${allAssets.length} unit aset)`;
+      totalLabelCell.font = { bold: true, size: 10 };
+      totalLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
+      const totalValueCell = sheet.getCell(lastDataRow + 1, 9);
+      totalValueCell.value = { formula: `SUM(I5:I${lastDataRow})` };
+      totalValueCell.numFmt = '"Rp" #,##0';
+      totalValueCell.font = { bold: true, size: 10 };
+      totalValueCell.alignment = { horizontal: 'right', vertical: 'middle' };
+      totalRow.eachCell(cell => {
+        cell.border = { top: { style: 'double', color: { argb: HEADER_DARK } } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TOTAL_BG } };
+      });
+
+      // ── SHEET 2: Ringkasan (Category / Status / Condition breakdown) ──
+      const summarySheet = workbook.addWorksheet('Ringkasan');
+      summarySheet.mergeCells('A1:D1');
+      const sumTitle = summarySheet.getCell('A1');
+      sumTitle.value = 'RINGKASAN DISTRIBUSI ASET';
+      sumTitle.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+      sumTitle.alignment = { horizontal: 'center', vertical: 'middle' };
+      summarySheet.getRow(1).height = 24;
+      for (let c = 1; c <= 4; c++) summarySheet.getCell(1, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_DARK } };
+
+      const catMap = {};
+      const statusMap = {};
+      const conditionMap = {};
+      allAssets.forEach(a => {
+        const catName = a.m_asset_category?.name || 'Uncategorized';
+        const cost = Number(a.acquisition_cost) || 0;
+        if (!catMap[catName]) catMap[catName] = { name: catName, count: 0, value: 0 };
+        catMap[catName].count++;
+        catMap[catName].value += cost;
+        const statusName = a.m_status?.name || 'Unknown';
+        statusMap[statusName] = (statusMap[statusName] || 0) + 1;
+        const condName = a.m_condition?.name || 'Unknown';
+        conditionMap[condName] = (conditionMap[condName] || 0) + 1;
+      });
+
+      summarySheet.getCell('A3').value = 'Distribusi per Kategori';
+      summarySheet.getCell('A3').font = { bold: true, size: 11 };
+      summarySheet.columns = [{ width: 28 }, { width: 14 }, { width: 18 }, { width: 14 }];
+      const catHeaderRow = summarySheet.getRow(4);
+      catHeaderRow.values = ['Kategori', 'Jumlah Unit', 'Total Nilai (Rp)', 'Persentase'];
+      catHeaderRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_DARK_LIGHT } };
+        cell.border = thinBorder;
+      });
+      let r = 5;
+      Object.values(catMap).sort((a, b) => b.value - a.value).forEach((c, idx) => {
+        const row = summarySheet.getRow(r);
+        row.values = [c.name, c.count, c.value, totalCostVal > 0 ? `${((c.value / totalCostVal) * 100).toFixed(1)}%` : '0%'];
+        row.getCell(3).numFmt = '"Rp" #,##0';
+        row.eachCell(cell => {
+          cell.border = thinBorder;
+          if (idx % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_ROW } };
+        });
+        r++;
+      });
+
+      r += 1;
+      summarySheet.getCell(`A${r}`).value = 'Distribusi per Status & Kondisi';
+      summarySheet.getCell(`A${r}`).font = { bold: true, size: 11 };
+      r += 1;
+      const statHeaderRow = summarySheet.getRow(r);
+      statHeaderRow.values = ['Status Operasional', 'Jumlah Unit', 'Kondisi Fisik', 'Jumlah Unit'];
+      statHeaderRow.eachCell(cell => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_DARK_LIGHT } };
+        cell.border = thinBorder;
+      });
+      r += 1;
+      const statusEntries = Object.entries(statusMap);
+      const condEntries = Object.entries(conditionMap);
+      const maxRows = Math.max(statusEntries.length, condEntries.length);
+      for (let i = 0; i < maxRows; i++) {
+        const row = summarySheet.getRow(r);
+        row.values = [
+          statusEntries[i]?.[0] || '', statusEntries[i]?.[1] ?? '',
+          condEntries[i]?.[0] || '', condEntries[i]?.[1] ?? ''
+        ];
+        row.eachCell(cell => { cell.border = thinBorder; if (i % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_ROW } }; });
+        r++;
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Laporan_Data_Aset_MRA_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to export Excel: ' + err.message);
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   // Active filters (passed to the API)
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -1020,6 +1254,25 @@ export default function GaAssetsPage() {
                 <>
                   <Eye className="w-4 h-4 text-neutral-500" />
                   Tampilkan Grafik
+                </>
+              )}
+            </button>
+          )}
+          {hasProcessed && (
+            <button
+              onClick={handleExportExcel}
+              disabled={exportingExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 disabled:bg-teal-750 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-teal-600/20 w-fit"
+            >
+              {exportingExcel ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating Excel...
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Export Excel
                 </>
               )}
             </button>
