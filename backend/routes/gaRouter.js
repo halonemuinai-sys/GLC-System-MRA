@@ -1682,4 +1682,188 @@ router.get('/expenses/summary', allowRead, async (req, res, next) => {
   }
 });
 
+/**
+ * ==========================================
+ * BENCHMARK SCORECARD — Performance perusahaan keseluruhan untuk GA: headline
+ * valuasi aset & expense, 7 KPI dengan target/traffic-light, breakdown per perusahaan.
+ * ==========================================
+ */
+function trafficLight(actual, target, lowerIsBetter = false) {
+  if (actual === null || actual === undefined) return 'gray';
+  if (lowerIsBetter) {
+    if (actual <= target) return 'green';
+    if (actual <= target * 1.15) return 'yellow';
+    return 'red';
+  }
+  if (actual >= target) return 'green';
+  if (actual >= target * 0.75) return 'yellow';
+  return 'red';
+}
+
+router.get('/benchmark-scorecard', allowRead, async (req, res, next) => {
+  try {
+    const { fiscalYear, companyId, companyMasterId } = req.query;
+    const year = fiscalYear ? parseInt(fiscalYear) : new Date().getFullYear();
+
+    const assetWhere = {};
+    const expenseWhere = { fiscal_year: year };
+    const vehicleWhere = {};
+    if (companyId) {
+      assetWhere.company_id = parseInt(companyId);
+      expenseWhere.company_id = parseInt(companyId);
+      vehicleWhere.company_id = parseInt(companyId);
+    } else if (companyMasterId) {
+      assetWhere.m_company = { company_master_id: parseInt(companyMasterId) };
+      expenseWhere.m_company = { company_master_id: parseInt(companyMasterId) };
+      vehicleWhere.m_company = { company_master_id: parseInt(companyMasterId) };
+    }
+
+    const [assets, expenseRows, vendors, maintenances, insurances, vehicles, soSessions] = await Promise.all([
+      prisma.assets.findMany({ where: assetWhere, select: { company_id: true, status_id: true, acquisition_cost: true, m_company: { select: { name: true } } } }),
+      prisma.expense_budget.findMany({ where: expenseWhere, select: { company_id: true, budget_amount: true, actual_amount: true, m_company: { select: { name: true } } } }),
+      prisma.vendors.findMany({ select: { status: true } }),
+      prisma.maintenances.findMany({ select: { expired_date: true } }),
+      prisma.insurances.findMany({ select: { vehicle_id: true, end_date: true, status: true } }),
+      prisma.vehicles.findMany({ where: vehicleWhere, select: { id: true, tax_date: true } }),
+      prisma.stock_opname_sessions.findMany({ select: { found_count: true, missing_count: true, checked_count: true } })
+    ]);
+
+    // ── Headline ──
+    const totalAssetValue = assets.reduce((sum, a) => sum + (Number(a.acquisition_cost) || 0), 0);
+    const totalAssetUnits = assets.length;
+    const activeAssetUnits = assets.filter(a => a.status_id === 1).length;
+    const assetUtilizationPct = totalAssetUnits > 0 ? Number(((activeAssetUnits / totalAssetUnits) * 100).toFixed(1)) : null;
+
+    const totalExpenseBudget = expenseRows.reduce((sum, r) => sum + (Number(r.budget_amount) || 0), 0);
+    const totalExpenseActual = expenseRows.reduce((sum, r) => sum + (Number(r.actual_amount) || 0), 0);
+    const budgetAchievementPct = totalExpenseBudget > 0 ? Number(((totalExpenseActual / totalExpenseBudget) * 100).toFixed(1)) : null;
+
+    // ── Vendor Active Rate ──
+    const activeVendors = vendors.filter(v => ['Active', 'Aktif'].includes(v.status)).length;
+    const vendorActiveRatePct = vendors.length > 0 ? Number(((activeVendors / vendors.length) * 100).toFixed(1)) : null;
+
+    // ── Maintenance Health Rate (kontrak belum lewat tanggal kadaluarsa) ──
+    const today = new Date();
+    const healthyMaintenances = maintenances.filter(m => !m.expired_date || new Date(m.expired_date) >= today).length;
+    const maintenanceHealthPct = maintenances.length > 0 ? Number(((healthyMaintenances / maintenances.length) * 100).toFixed(1)) : null;
+
+    // ── Insurance Coverage (kendaraan dengan minimal 1 polis aktif & belum expired) ──
+    const insuredVehicleIds = new Set(
+      insurances.filter(i => i.vehicle_id && i.status === 'Active' && (!i.end_date || new Date(i.end_date) >= today)).map(i => i.vehicle_id)
+    );
+    const insuranceCoveragePct = vehicles.length > 0 ? Number(((vehicles.filter(v => insuredVehicleIds.has(v.id)).length / vehicles.length) * 100).toFixed(1)) : null;
+
+    // ── Vehicle Tax Compliance (pajak belum lewat tanggal jatuh tempo) ──
+    const compliantVehicles = vehicles.filter(v => v.tax_date && new Date(v.tax_date) >= today).length;
+    const vehicleTaxCompliancePct = vehicles.length > 0 ? Number(((compliantVehicles / vehicles.length) * 100).toFixed(1)) : null;
+
+    // ── Stock Opname Accuracy (Found vs Found+Missing dari seluruh sesi) ──
+    const totalFound = soSessions.reduce((sum, s) => sum + (s.found_count || 0), 0);
+    const totalMissing = soSessions.reduce((sum, s) => sum + (s.missing_count || 0), 0);
+    const stockOpnameAccuracyPct = (totalFound + totalMissing) > 0 ? Number(((totalFound / (totalFound + totalMissing)) * 100).toFixed(1)) : null;
+
+    const metrics = [
+      { key: 'assetUtilization', label: 'Asset Utilization Rate', actual: assetUtilizationPct, target: 80, unit: '%', lowerIsBetter: false },
+      { key: 'budgetAchievement', label: 'Budget Achievement', actual: budgetAchievementPct, target: 100, unit: '%', lowerIsBetter: true },
+      { key: 'vendorActiveRate', label: 'Vendor Active Rate', actual: vendorActiveRatePct, target: 90, unit: '%', lowerIsBetter: false },
+      { key: 'maintenanceHealth', label: 'Maintenance Health Rate', actual: maintenanceHealthPct, target: 90, unit: '%', lowerIsBetter: false },
+      { key: 'insuranceCoverage', label: 'Insurance Coverage', actual: insuranceCoveragePct, target: 90, unit: '%', lowerIsBetter: false },
+      { key: 'vehicleTaxCompliance', label: 'Vehicle Tax Compliance', actual: vehicleTaxCompliancePct, target: 90, unit: '%', lowerIsBetter: false },
+      { key: 'stockOpnameAccuracy', label: 'Stock Opname Accuracy', actual: stockOpnameAccuracyPct, target: 90, unit: '%', lowerIsBetter: false }
+    ].map(m => ({ ...m, status: trafficLight(m.actual, m.target, m.lowerIsBetter) }));
+
+    // ── Breakdown per perusahaan (Asset + Expense) ──
+    const companyMap = {};
+    assets.forEach(a => {
+      const id = a.company_id;
+      if (!id) return;
+      if (!companyMap[id]) companyMap[id] = { company_id: id, company_name: a.m_company?.name || 'Unassigned', totalAssetValue: 0, totalAssetUnits: 0, activeAssetUnits: 0, expenseActual: 0, expenseBudget: 0 };
+      companyMap[id].totalAssetValue += Number(a.acquisition_cost) || 0;
+      companyMap[id].totalAssetUnits += 1;
+      if (a.status_id === 1) companyMap[id].activeAssetUnits += 1;
+    });
+    expenseRows.forEach(r => {
+      const id = r.company_id;
+      if (!id) return;
+      if (!companyMap[id]) companyMap[id] = { company_id: id, company_name: r.m_company?.name || 'Unassigned', totalAssetValue: 0, totalAssetUnits: 0, activeAssetUnits: 0, expenseActual: 0, expenseBudget: 0 };
+      companyMap[id].expenseActual += Number(r.actual_amount) || 0;
+      companyMap[id].expenseBudget += Number(r.budget_amount) || 0;
+    });
+
+    const byCompany = Object.values(companyMap).map(c => {
+      const assetUtil = c.totalAssetUnits > 0 ? Number(((c.activeAssetUnits / c.totalAssetUnits) * 100).toFixed(1)) : null;
+      const achievement = c.expenseBudget > 0 ? Number(((c.expenseActual / c.expenseBudget) * 100).toFixed(1)) : null;
+      let status = 'green';
+      if ((achievement !== null && achievement > 110) || (assetUtil !== null && assetUtil < 50)) status = 'red';
+      else if ((achievement !== null && achievement > 100) || (assetUtil !== null && assetUtil < 80)) status = 'yellow';
+      return { ...c, assetUtilizationPct: assetUtil, budgetAchievementPct: achievement, status };
+    }).sort((a, b) => b.totalAssetValue - a.totalAssetValue);
+
+    res.json({
+      headline: { totalAssetValue, totalAssetUnits, totalExpenseActual, totalExpenseBudget, budgetAchievementPct },
+      metrics,
+      byCompany
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * ==========================================
+ * BENCHMARK SCORECARD — Detail per perusahaan (drill-down dari card breakdown):
+ * asset breakdown per kategori + expense breakdown per CoA, khusus 1 perusahaan.
+ * ==========================================
+ */
+router.get('/benchmark-scorecard/company/:companyId', allowRead, async (req, res, next) => {
+  try {
+    const companyId = parseInt(req.params.companyId);
+    const { fiscalYear } = req.query;
+    const year = fiscalYear ? parseInt(fiscalYear) : new Date().getFullYear();
+
+    const [company, assets, expenseRows] = await Promise.all([
+      prisma.m_company.findUnique({ where: { id: companyId }, select: { id: true, name: true, code: true } }),
+      prisma.assets.findMany({
+        where: { company_id: companyId },
+        select: { status_id: true, acquisition_cost: true, m_asset_category: { select: { name: true } } }
+      }),
+      prisma.expense_budget.findMany({
+        where: { company_id: companyId, fiscal_year: year },
+        select: { budget_amount: true, actual_amount: true, m_coa: { select: { id: true, code: true, name: true } } }
+      })
+    ]);
+
+    if (!company) {
+      return res.status(404).json({ error: 'Company not found.' });
+    }
+
+    // Asset breakdown per kategori
+    const categoryMap = {};
+    assets.forEach(a => {
+      const name = a.m_asset_category?.name || 'Uncategorized';
+      if (!categoryMap[name]) categoryMap[name] = { category: name, count: 0, activeCount: 0, value: 0 };
+      categoryMap[name].count += 1;
+      if (a.status_id === 1) categoryMap[name].activeCount += 1;
+      categoryMap[name].value += Number(a.acquisition_cost) || 0;
+    });
+    const assetByCategory = Object.values(categoryMap).sort((a, b) => b.value - a.value || b.count - a.count);
+
+    // Expense breakdown per CoA
+    const coaMap = {};
+    expenseRows.forEach(r => {
+      const id = r.m_coa.id;
+      if (!coaMap[id]) coaMap[id] = { coa_id: id, coa_code: r.m_coa.code, coa_name: r.m_coa.name, budget: 0, actual: 0 };
+      coaMap[id].budget += Number(r.budget_amount) || 0;
+      coaMap[id].actual += Number(r.actual_amount) || 0;
+    });
+    const expenseByCoa = Object.values(coaMap)
+      .map(c => ({ ...c, variance: c.budget - c.actual }))
+      .sort((a, b) => b.actual - a.actual);
+
+    res.json({ company, assetByCategory, expenseByCoa });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

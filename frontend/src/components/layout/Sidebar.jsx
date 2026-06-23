@@ -38,7 +38,8 @@ import {
   FileSignature,
   Building,
   Barcode,
-  ClipboardCheck
+  ClipboardCheck,
+  Award
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
@@ -418,6 +419,13 @@ function SidebarContent({
     {
       label: 'GENERAL AFFAIRS',
       submenus: [
+        {
+          name: 'Performance',
+          icon: Award,
+          children: [
+            { name: 'Benchmark Scorecard', path: '/dashboard/ga-benchmark', icon: Award, allowed: hasAccess(['ga', 'auditor']) },
+          ]
+        },
         {
           name: 'Aset & Kendaraan',
           icon: Package,
