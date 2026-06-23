@@ -1604,4 +1604,82 @@ router.get('/notifications', allowRead, async (req, res, next) => {
   }
 });
 
+/**
+ * ==========================================
+ * EXPENSES & BUDGETS — Budget vs Actual per Chart of Accounts (expense_budget table,
+ * sudah diisi penuh per company/CoA/bulan). Dipakai oleh halaman Expenses & Budgets GA.
+ * ==========================================
+ */
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+router.get('/expenses/years', allowRead, async (req, res, next) => {
+  try {
+    const rows = await prisma.expense_budget.findMany({
+      select: { fiscal_year: true },
+      distinct: ['fiscal_year'],
+      orderBy: { fiscal_year: 'desc' }
+    });
+    res.json(rows.map(r => r.fiscal_year));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/expenses/summary', allowRead, async (req, res, next) => {
+  try {
+    const { fiscalYear, companyId, companyMasterId } = req.query;
+
+    const where = {};
+    if (fiscalYear) where.fiscal_year = parseInt(fiscalYear);
+    if (companyId) where.company_id = parseInt(companyId);
+    else if (companyMasterId) where.m_company = { company_master_id: parseInt(companyMasterId) };
+
+    const rows = await prisma.expense_budget.findMany({
+      where,
+      include: { m_coa: true }
+    });
+
+    let totalBudget = 0;
+    let totalActual = 0;
+    const byMonth = {};
+    const byCoa = {};
+
+    rows.forEach(r => {
+      const budget = Number(r.budget_amount) || 0;
+      const actual = Number(r.actual_amount) || 0;
+      totalBudget += budget;
+      totalActual += actual;
+
+      if (!byMonth[r.period_month]) byMonth[r.period_month] = { Budget: 0, Actual: 0 };
+      byMonth[r.period_month].Budget += budget;
+      byMonth[r.period_month].Actual += actual;
+
+      const coaKey = r.coa_id;
+      if (!byCoa[coaKey]) byCoa[coaKey] = { coa_id: coaKey, coa_code: r.m_coa.code, coa_name: r.m_coa.name, budget: 0, actual: 0 };
+      byCoa[coaKey].budget += budget;
+      byCoa[coaKey].actual += actual;
+    });
+
+    const monthlyTrend = MONTH_LABELS.map((label, idx) => {
+      const m = byMonth[idx + 1] || { Budget: 0, Actual: 0 };
+      return { name: label, Budget: m.Budget, Actual: m.Actual };
+    });
+
+    const coaBreakdown = Object.values(byCoa)
+      .map(c => ({ ...c, variance: c.budget - c.actual }))
+      .sort((a, b) => b.budget - a.budget);
+
+    const totalVariance = totalBudget - totalActual;
+    const burnRatePercent = totalBudget > 0 ? Number(((totalActual / totalBudget) * 100).toFixed(1)) : 0;
+
+    res.json({
+      kpi: { totalBudget, totalActual, totalVariance, burnRatePercent },
+      monthlyTrend,
+      coaBreakdown
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
