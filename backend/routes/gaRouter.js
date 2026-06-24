@@ -513,6 +513,144 @@ router.post('/assets', allowWrite, async (req, res, next) => {
   }
 });
 
+router.post('/assets/bulk-import', allowWrite, async (req, res, next) => {
+  try {
+    const { assets } = req.body;
+    if (!Array.isArray(assets) || assets.length === 0) {
+      return res.status(400).json({ error: 'Assets array is required and cannot be empty.' });
+    }
+
+    // Pre-fetch all relations for name-to-id mapping
+    const [companies, categories, types, branches, users, conditions, statuses] = await Promise.all([
+      prisma.m_company.findMany({ select: { id: true, name: true } }),
+      prisma.m_asset_category.findMany({ select: { id: true, name: true } }),
+      prisma.m_asset_type.findMany({ select: { id: true, category_id: true, name: true } }),
+      prisma.m_company_branch.findMany({ select: { id: true, name: true } }),
+      prisma.m_user.findMany({ select: { id: true, full_name: true } }),
+      prisma.m_condition.findMany({ select: { id: true, name: true } }),
+      prisma.m_status.findMany({ select: { id: true, name: true } })
+    ]);
+
+    const companyMap = {}; companies.forEach(x => companyMap[x.name.trim().toLowerCase()] = x.id);
+    const categoryMap = {}; categories.forEach(x => categoryMap[x.name.trim().toLowerCase()] = x.id);
+    const typeMap = {}; types.forEach(x => typeMap[`${x.category_id}_${x.name.trim().toLowerCase()}`] = x.id);
+    const typeNameMap = {}; types.forEach(x => typeNameMap[x.name.trim().toLowerCase()] = x.id);
+    const branchMap = {}; branches.forEach(x => branchMap[x.name.trim().toLowerCase()] = x.id);
+    const userMap = {}; users.forEach(x => userMap[x.full_name.trim().toLowerCase()] = x.id);
+    const conditionMap = {}; conditions.forEach(x => conditionMap[x.name.trim().toLowerCase()] = x.id);
+    const statusMap = {}; statuses.forEach(x => statusMap[x.name.trim().toLowerCase()] = x.id);
+
+    const errors = [];
+
+    // Validation
+    for (let i = 0; i < assets.length; i++) {
+      const item = assets[i];
+      const rowNum = i + 1;
+
+      if (!item.asset_name) {
+        errors.push(`Baris ${rowNum}: Nama Aset wajib diisi.`);
+        continue;
+      }
+      if (!item.company_name) {
+        errors.push(`Baris ${rowNum}: Perusahaan (PT) wajib diisi.`);
+        continue;
+      } else {
+        const compKey = item.company_name.trim().toLowerCase();
+        if (!companyMap[compKey]) {
+          errors.push(`Baris ${rowNum}: Perusahaan "${item.company_name}" tidak ditemukan.`);
+        }
+      }
+
+      if (item.asset_category_name) {
+        const catKey = item.asset_category_name.trim().toLowerCase();
+        if (!categoryMap[catKey]) {
+          errors.push(`Baris ${rowNum}: Kategori "${item.asset_category_name}" tidak ditemukan.`);
+        }
+      }
+
+      if (item.location_name) {
+        const locKey = item.location_name.trim().toLowerCase();
+        if (!branchMap[locKey]) {
+          errors.push(`Baris ${rowNum}: Lokasi "${item.location_name}" tidak ditemukan.`);
+        }
+      }
+
+      if (item.pic_name) {
+        const picKey = item.pic_name.trim().toLowerCase();
+        if (!userMap[picKey]) {
+          errors.push(`Baris ${rowNum}: PIC "${item.pic_name}" tidak ditemukan.`);
+        }
+      }
+
+      if (item.condition_name) {
+        const condKey = item.condition_name.trim().toLowerCase();
+        if (!conditionMap[condKey]) {
+          errors.push(`Baris ${rowNum}: Kondisi "${item.condition_name}" tidak ditemukan.`);
+        }
+      }
+
+      if (item.status_name) {
+        const statusKey = item.status_name.trim().toLowerCase();
+        if (!statusMap[statusKey]) {
+          errors.push(`Baris ${rowNum}: Status "${item.status_name}" tidak ditemukan.`);
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ errors });
+    }
+
+    // Batch insert inside a transaction
+    const createdAssets = await prisma.$transaction(async (tx) => {
+      const inserted = [];
+      for (const item of assets) {
+        const compId = companyMap[item.company_name.trim().toLowerCase()];
+        const catId = item.asset_category_name ? categoryMap[item.asset_category_name.trim().toLowerCase()] : null;
+        
+        let typeId = null;
+        if (item.asset_type_name) {
+          const typeKey = item.asset_type_name.trim().toLowerCase();
+          typeId = catId ? (typeMap[`${catId}_${typeKey}`] || typeNameMap[typeKey] || null) : (typeNameMap[typeKey] || null);
+        }
+
+        const locId = item.location_name ? branchMap[item.location_name.trim().toLowerCase()] : null;
+        const picId = item.pic_name ? userMap[item.pic_name.trim().toLowerCase()] : null;
+        const condId = item.condition_name ? conditionMap[item.condition_name.trim().toLowerCase()] : null;
+        const statId = item.status_name ? statusMap[item.status_name.trim().toLowerCase()] : null;
+
+        const newAsset = await tx.assets.create({
+          data: {
+            company_id: compId,
+            asset_code: item.asset_code || null,
+            asset_category_id: catId,
+            asset_type_id: typeId,
+            asset_name: item.asset_name,
+            details: item.details || null,
+            location_id: locId,
+            room: item.room || null,
+            pic_id: picId,
+            acquisition_date: item.acquisition_date ? new Date(item.acquisition_date) : null,
+            acquisition_cost: item.acquisition_cost ? parseFloat(item.acquisition_cost) : 0,
+            useful_life_months: item.useful_life_months ? parseInt(item.useful_life_months) : null,
+            condition_id: condId,
+            status_id: statId,
+            information: item.information || null,
+            reference_link: item.reference_link || null
+          }
+        });
+
+        inserted.push(newAsset);
+      }
+      return inserted;
+    });
+
+    res.status(201).json({ message: `Berhasil mengimpor ${createdAssets.length} aset.`, data: createdAssets });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PUT Update Asset
 router.put('/assets/:id', allowWrite, async (req, res, next) => {
   try {
