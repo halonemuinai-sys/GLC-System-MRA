@@ -292,6 +292,99 @@ router.post('/documents', allowWrite, async (req, res, next) => {
   }
 });
 
+router.post('/documents/bulk-import', allowWrite, async (req, res, next) => {
+  try {
+    const { module, documents } = req.body;
+    if (!module || !GENERIC_MODULES.includes(module)) {
+      return res.status(400).json({ error: 'Valid module is required.' });
+    }
+    if (!Array.isArray(documents) || documents.length === 0) {
+      return res.status(400).json({ error: 'Documents array is required and cannot be empty.' });
+    }
+
+    // Fetch all companies to map name -> id
+    const companies = await prisma.m_company.findMany({
+      select: { id: true, name: true }
+    });
+
+    const companyMap = {};
+    companies.forEach(c => {
+      const key = c.name.trim().toLowerCase();
+      companyMap[key] = c.id;
+    });
+
+    const errors = [];
+
+    // Simple validation before inserting
+    for (let i = 0; i < documents.length; i++) {
+      const doc = documents[i];
+      const rowNum = i + 1;
+      
+      if (!doc.doc_name || !doc.category || !doc.pic) {
+        errors.push(`Baris ${rowNum}: Nama Dokumen, Kategori, dan PIC wajib diisi.`);
+        continue;
+      }
+      
+      if (doc.company_name) {
+        const compKey = doc.company_name.trim().toLowerCase();
+        if (!companyMap[compKey]) {
+          errors.push(`Baris ${rowNum}: Perusahaan "${doc.company_name}" tidak ditemukan di master data.`);
+        }
+      }
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ errors });
+    }
+
+    // Insert all inside a transaction
+    const createdDocs = await prisma.$transaction(async (tx) => {
+      const inserted = [];
+      for (const doc of documents) {
+        let companyId = null;
+        if (doc.company_name) {
+          const compKey = doc.company_name.trim().toLowerCase();
+          companyId = companyMap[compKey];
+        }
+
+        const newDoc = await tx.legal_documents.create({
+          data: {
+            module,
+            doc_name: doc.doc_name,
+            category: doc.category,
+            id_number: doc.id_number || null,
+            issue_date: doc.issue_date ? new Date(doc.issue_date) : null,
+            expiry_date: doc.expiry_date ? new Date(doc.expiry_date) : null,
+            pic: doc.pic,
+            company_id: companyId,
+            doc_status: doc.doc_status || 'Draft',
+            confidentiality: doc.confidentiality || 'Public/Internal',
+            file_url: doc.file_url || null,
+            notes: doc.notes || null
+          }
+        });
+
+        await tx.legal_audit_logs.create({
+          data: {
+            document_id: newDoc.id,
+            doc_name: newDoc.doc_name,
+            module: newDoc.module,
+            action: 'CREATE',
+            performed_by: req.user.full_name || 'System'
+          }
+        });
+
+        inserted.push(newDoc);
+      }
+      return inserted;
+    });
+
+    res.status(201).json({ message: `Berhasil mengimpor ${createdDocs.length} dokumen.`, data: createdDocs });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.put('/documents/:id', allowWrite, async (req, res, next) => {
   try {
     const data = req.body;
