@@ -6,7 +6,7 @@ const router = express.Router();
 
 // Role checking definitions
 const allowRead = verifyToken; 
-const allowWrite = [verifyToken, checkRole(['admin', 'legal', 'legal_compliance'])];
+const allowWrite = [verifyToken, checkRole(['admin', 'legal', 'legal_compliance', 'ga'])];
 
 /**
  * ==========================================
