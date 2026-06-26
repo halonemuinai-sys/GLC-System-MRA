@@ -1064,6 +1064,7 @@ router.post('/vendors', allowWrite, async (req, res, next) => {
         contract_end: data.contract_end ? new Date(data.contract_end) : null,
         top_days: data.top_days ? parseInt(data.top_days) : null,
         contract_value: data.contract_value ? parseFloat(data.contract_value) : null,
+        rating: data.rating ? parseInt(data.rating) : null,
         status: data.status || 'Active'
       }
     });
@@ -1099,6 +1100,7 @@ router.put('/vendors/:id', allowWrite, async (req, res, next) => {
         contract_end: data.contract_end !== undefined ? (data.contract_end ? new Date(data.contract_end) : null) : undefined,
         top_days: data.top_days !== undefined ? (data.top_days ? parseInt(data.top_days) : null) : undefined,
         contract_value: data.contract_value !== undefined ? (data.contract_value ? parseFloat(data.contract_value) : null) : undefined,
+        rating: data.rating !== undefined ? (data.rating ? parseInt(data.rating) : null) : undefined,
         status: data.status !== undefined ? data.status : undefined
       }
     });

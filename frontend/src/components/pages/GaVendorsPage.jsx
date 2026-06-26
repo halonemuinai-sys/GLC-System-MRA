@@ -20,7 +20,10 @@ import {
   Phone,
   Briefcase,
   Building,
-  Activity
+  Activity,
+  Edit3,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
@@ -244,13 +247,16 @@ export default function GaVendorsPage() {
   // Dropdown list
   const [companies, setCompanies] = useState([]);
 
-  // Detail drawer & Add modal
+  // Detail drawer & Add/Edit modal
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [editingVendor, setEditingVendor] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [vendorToDelete, setVendorToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // New Vendor Form State
-  const [formData, setFormData] = useState({
+  const defaultFormData = {
     vendor_code: '',
     vendor_name: '',
     partnership_company_id: '',
@@ -266,7 +272,8 @@ export default function GaVendorsPage() {
     top_days: '',
     rating: 5,
     status: 'Active'
-  });
+  };
+  const [formData, setFormData] = useState({ ...defaultFormData });
 
   const fetchData = async () => {
     try {
@@ -320,7 +327,35 @@ export default function GaVendorsPage() {
     setHasProcessed(true);
   };
 
-  const handleAddVendor = async (e) => {
+  const handleCloseDrawer = () => {
+    setShowAddDrawer(false);
+    setEditingVendor(null);
+    setFormData({ ...defaultFormData });
+  };
+
+  const handleOpenEdit = (vendor) => {
+    setEditingVendor(vendor);
+    setFormData({
+      vendor_code: vendor.vendor_code || '',
+      vendor_name: vendor.vendor_name || '',
+      partnership_company_id: vendor.partnership_company_id ? String(vendor.partnership_company_id) : '',
+      pic_name: vendor.pic_name || '',
+      pic_position: vendor.pic_position || '',
+      phone: vendor.phone || '',
+      email: vendor.email || '',
+      address: vendor.address || '',
+      npwp: vendor.npwp || '',
+      contract_start: vendor.contract_start ? vendor.contract_start.split('T')[0] : '',
+      contract_end: vendor.contract_end ? vendor.contract_end.split('T')[0] : '',
+      contract_value: vendor.contract_value || '',
+      top_days: vendor.top_days || '',
+      rating: vendor.rating || 5,
+      status: vendor.status || 'Active'
+    });
+    setShowAddDrawer(true);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.partnership_company_id) {
       alert('Please select a company.');
@@ -338,32 +373,36 @@ export default function GaVendorsPage() {
         contract_end: formData.contract_end ? new Date(formData.contract_end).toISOString() : null
       };
 
-      await apiClient.post('/api/ga/vendors', payload);
-      setShowAddDrawer(false);
-      // Reset form
-      setFormData({
-        vendor_code: '',
-        vendor_name: '',
-        partnership_company_id: '',
-        pic_name: '',
-        pic_position: '',
-        phone: '',
-        email: '',
-        address: '',
-        npwp: '',
-        contract_start: '',
-        contract_end: '',
-        contract_value: '',
-        top_days: '',
-        rating: 5,
-        status: 'Active'
-      });
-      setPage(1);
+      if (editingVendor) {
+        await apiClient.put(`/api/ga/vendors/${editingVendor.id}`, payload);
+      } else {
+        await apiClient.post('/api/ga/vendors', payload);
+      }
+
+      handleCloseDrawer();
+      if (!editingVendor) setPage(1);
       fetchData();
     } catch (err) {
-      alert(err.message || 'Failed to add vendor');
+      alert(err.message || 'Failed to save vendor');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteVendor = (vendor) => setVendorToDelete(vendor);
+
+  const confirmDeleteVendor = async () => {
+    if (!vendorToDelete) return;
+    try {
+      setDeleting(true);
+      await apiClient.delete(`/api/ga/vendors/${vendorToDelete.id}`);
+      fetchData();
+      if (selectedVendor && selectedVendor.id === vendorToDelete.id) setSelectedVendor(null);
+      setVendorToDelete(null);
+    } catch (err) {
+      alert(err.message || 'Failed to delete vendor');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -387,7 +426,7 @@ export default function GaVendorsPage() {
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Daftar rekanan, penyedia jasa pemeliharaan, sewa, dan pengadaan di GLC MRA.</p>
         </div>
         <button
-          onClick={() => setShowAddDrawer(true)}
+          onClick={() => { setEditingVendor(null); setFormData({ ...defaultFormData }); setShowAddDrawer(true); }}
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit"
         >
           <Plus className="w-4 h-4" />
@@ -622,13 +661,29 @@ export default function GaVendorsPage() {
                           </span>
                         </td>
                         <td className="p-4 text-center">
-                          <button 
-                            onClick={() => setSelectedVendor(vendor)}
-                            className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
-                            title="View Details"
-                          >
-                            <Maximize2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => setSelectedVendor(vendor)}
+                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                              title="View Details"
+                            >
+                              <Maximize2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleOpenEdit(vendor)}
+                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                              title="Edit"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteVendor(vendor)}
+                              className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                              title="Hapus"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </motion.tr>
                     ))}
@@ -798,12 +853,26 @@ export default function GaVendorsPage() {
                 </div>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+              <div className="mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedVendor(null); handleOpenEdit(selectedVendor); }}
+                  className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-650 dark:text-indigo-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-indigo-200/50 dark:border-indigo-900/30"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteVendor(selectedVendor)}
+                  className="flex-1 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-650 dark:text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-red-200/50 dark:border-red-900/30"
+                >
+                  Hapus
+                </button>
                 <button
                   onClick={() => setSelectedVendor(null)}
-                  className="w-full py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
+                  className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
                 >
-                  Close Detail
+                  Tutup
                 </button>
               </div>
             </motion.div>
@@ -831,16 +900,16 @@ export default function GaVendorsPage() {
             >
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">Register New Vendor</h3>
-                  <button 
-                    onClick={() => setShowAddDrawer(false)}
+                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">{editingVendor ? `Edit — ${editingVendor.vendor_name}` : 'Register New Vendor'}</h3>
+                  <button
+                    onClick={handleCloseDrawer}
                     className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <form onSubmit={handleAddVendor} className="mt-6 space-y-4 text-xs">
+                <form onSubmit={handleSubmit} className="mt-6 space-y-4 text-xs">
                   <div>
                     <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Vendor Name *</label>
                     <input
@@ -1020,7 +1089,7 @@ export default function GaVendorsPage() {
                   <div className="flex gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                     <button
                       type="button"
-                      onClick={() => setShowAddDrawer(false)}
+                      onClick={handleCloseDrawer}
                       className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white font-bold rounded-xl transition-all cursor-pointer text-center"
                     >
                       Cancel
@@ -1030,12 +1099,72 @@ export default function GaVendorsPage() {
                       disabled={submitting}
                       className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40"
                     >
-                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : 'Register Vendor'}
+                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : (editingVendor ? 'Simpan Perubahan' : 'Register Vendor')}
                     </button>
                   </div>
                 </form>
               </div>
             </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {vendorToDelete && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setVendorToDelete(null)}
+              className="fixed inset-0 bg-black/60 z-[999] backdrop-blur-sm"
+            />
+            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 pointer-events-none">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 15 }}
+                transition={{ type: 'spring', duration: 0.35 }}
+                className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl pointer-events-auto flex flex-col items-center text-center"
+              >
+                <div className="relative mb-4">
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-red-500/10 dark:bg-red-500/20 blur-sm"
+                    animate={{ scale: [1, 1.25, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  <div className="relative w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/20 text-red-500 dark:text-red-400 flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 animate-pulse" />
+                  </div>
+                </div>
+
+                <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Konfirmasi Hapus Vendor</h3>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus vendor <strong className="text-red-500 dark:text-red-400 font-bold">"{vendorToDelete.vendor_name}"</strong>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+                </p>
+
+                <div className="flex items-center gap-2.5 w-full mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setVendorToDelete(null)}
+                    disabled={deleting}
+                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmDeleteVendor}
+                    disabled={deleting}
+                    className="flex-1 py-2 bg-red-650 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50"
+                  >
+                    {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    Ya, Hapus
+                  </button>
+                </div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
