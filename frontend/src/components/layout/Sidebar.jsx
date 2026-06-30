@@ -466,8 +466,8 @@ function SidebarContent({
           name: 'Marketing Budget',
           icon: BarChart3,
           children: [
-            { name: 'Marketing Plan', path: '/dashboard/marketing', icon: ClipboardList, allowed: role === 'admin' || role === 'auditor' || (role && !['ga', 'legal', 'compliance', 'legal_compliance'].includes(role)) },
-            { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: role === 'admin' || role === 'auditor' || (role && !['ga', 'legal', 'compliance', 'legal_compliance'].includes(role)) },
+            { name: 'Marketing Plan', path: '/dashboard/marketing', icon: ClipboardList, allowed: hasAccess(['marketing', 'auditor']) },
+            { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: hasAccess(['marketing', 'auditor']) },
             { name: 'Konfigurasi Approval', path: '/dashboard/marketing-approval-settings', icon: Settings, allowed: hasAccess(['admin']) }
           ]
         }

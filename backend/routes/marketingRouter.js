@@ -245,7 +245,7 @@ router.get('/metadata', verifyToken, async (req, res, next) => {
  * POST /api/marketing/plans
  * Membuat rencana anggaran pemasaran (Marketing Plan Campaign) baru
  */
-router.post('/plans', verifyToken, async (req, res, next) => {
+router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req, res, next) => {
   try {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
@@ -395,7 +395,7 @@ router.post('/plans', verifyToken, async (req, res, next) => {
  * Revisi & ajukan ulang rencana pemasaran yang berstatus REJECTED
  * Plan ID tetap sama (reuse reference), items di-replace, approval chain di-reset
  */
-router.put('/plans/:id/revise', verifyToken, async (req, res, next) => {
+router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), async (req, res, next) => {
   try {
     const planId = parseInt(req.params.id, 10);
     const employee = await resolveEmployee(req.user.email);
@@ -697,7 +697,7 @@ router.delete('/plans/:id', verifyToken, async (req, res, next) => {
  * POST /api/marketing/payments
  * Mengajukan realisasi pembayaran biaya pemasaran (Payment Request)
  */
-router.post('/payments', verifyToken, async (req, res, next) => {
+router.post('/payments', verifyToken, checkRole(['admin', 'marketing']), async (req, res, next) => {
   try {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
