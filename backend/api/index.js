@@ -27,6 +27,10 @@ app.use('/api/ga', require('../routes/gaRouter'));
 app.use('/api/legal', require('../routes/legalRouter'));
 app.use('/api/compliance', require('../routes/complianceRouter'));
 app.use('/api/master', require('../routes/masterRouter'));
+// Catatan: verifyToken TIDAK dipasang di level mount ini (beda dari router lain) —
+// setiap route di marketingRouter.js sudah memanggil verifyToken sendiri-sendiri,
+// KECUALI 2 endpoint /magic/:token yang sengaja publik untuk approval via email (magic link)
+app.use('/api/marketing', require('../routes/marketingRouter'));
 app.use('/api/admin', [verifyToken, checkRole(['admin'])], require('../routes/adminRouter'));
 
 // Global error handler

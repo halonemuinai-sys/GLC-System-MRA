@@ -564,4 +564,210 @@ router.post('/companies/seed', allowWrite, async (req, res, next) => {
   }
 });
 
+/**
+ * ==========================================
+ * MASTER BRAND / MEREK ENDPOINTS
+ * ==========================================
+ */
+
+// GET /api/master/brands — List all brands (with pagination/search)
+router.get('/brands', allowRead, async (req, res, next) => {
+  try {
+    const { search = '', page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const where = {};
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.m_brand.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: parseInt(skip),
+        take: parseInt(limit)
+      }),
+      prisma.m_brand.count({ where })
+    ]);
+
+    res.json({
+      data,
+      meta: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/master/brands — Create new brand
+router.post('/brands', allowWrite, async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Brand name is required.' });
+    }
+
+    const brand = await prisma.m_brand.create({
+      data: { name: name.trim() }
+    });
+
+    res.status(201).json(brand);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/master/brands/:id — Update brand
+router.put('/brands/:id', allowWrite, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Brand name is required.' });
+    }
+
+    const brand = await prisma.m_brand.update({
+      where: { id: parseInt(id) },
+      data: { name: name.trim() }
+    });
+
+    res.json(brand);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/master/brands/:id — Delete brand
+router.delete('/brands/:id', allowWrite, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if brand is referenced in marketing items
+    const linkedItems = await prisma.marketing_plan_items.count({
+      where: { brand_id: parseInt(id) }
+    });
+
+    if (linkedItems > 0) {
+      return res.status(400).json({ error: 'Cannot delete brand as it is linked to marketing plans.' });
+    }
+
+    await prisma.m_brand.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: 'Brand deleted successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * ==========================================
+ * MASTER LINE OF BUSINESS (LOB) ENDPOINTS
+ * ==========================================
+ */
+
+// GET /api/master/lobs — List all LOBs (with pagination/search)
+router.get('/lobs', allowRead, async (req, res, next) => {
+  try {
+    const { search = '', page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const where = {};
+    if (search) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.m_line_business.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        skip: parseInt(skip),
+        take: parseInt(limit)
+      }),
+      prisma.m_line_business.count({ where })
+    ]);
+
+    res.json({
+      data,
+      meta: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/master/lobs — Create new LOB
+router.post('/lobs', allowWrite, async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'LOB name is required.' });
+    }
+
+    const lob = await prisma.m_line_business.create({
+      data: { name: name.trim() }
+    });
+
+    res.status(201).json(lob);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/master/lobs/:id — Update LOB
+router.put('/lobs/:id', allowWrite, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'LOB name is required.' });
+    }
+
+    const lob = await prisma.m_line_business.update({
+      where: { id: parseInt(id) },
+      data: { name: name.trim() }
+    });
+
+    res.json(lob);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/master/lobs/:id — Delete LOB
+router.delete('/lobs/:id', allowWrite, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Check if LOB is referenced in marketing items
+    const linkedItems = await prisma.marketing_plan_items.count({
+      where: { lob_id: parseInt(id) }
+    });
+
+    if (linkedItems > 0) {
+      return res.status(400).json({ error: 'Cannot delete Line of Business as it is linked to marketing plans.' });
+    }
+
+    await prisma.m_line_business.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: 'Line of Business deleted successfully.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

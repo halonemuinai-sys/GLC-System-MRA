@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["glc_mra"]
+  schemas  = ["glc_mra", "marketing_budget", "helpdesk"]
 }
 
 model approval_requests {
@@ -482,10 +482,11 @@ model m_bank {
 }
 
 model m_coa {
-  id             Int              @id @default(autoincrement())
-  code           String?          @unique @db.VarChar(30)
-  name           String           @db.VarChar(150)
-  expense_budget expense_budget[]
+  id                   Int                    @id @default(autoincrement())
+  code                 String?                @unique @db.VarChar(30)
+  name                 String                 @db.VarChar(150)
+  expense_budget       expense_budget[]
+  marketing_plan_items marketing_plan_items[]
 
   @@schema("glc_mra")
 }
@@ -497,6 +498,7 @@ model m_company_master {
   created_at     DateTime?           @default(now()) @db.Timestamp(6)
   branches       m_company_branch[]
   companies      m_company[]
+  approval_role_contacts approval_role_contacts[]
 
   @@schema("glc_mra")
 }
@@ -523,6 +525,7 @@ model m_company {
   maintenances      maintenances[]
   vehicles          vehicles[]
   vendors           vendors[]
+  marketing_plans   marketing_plans[]
   m_company_master  m_company_master? @relation(fields: [company_master_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@schema("glc_mra")
@@ -538,6 +541,7 @@ model m_company_branch {
   created_at         DateTime?         @default(now()) @db.Timestamp(6)
   m_company_master   m_company_master? @relation(fields: [company_master_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
   assets             assets[]
+  marketing_plan_items marketing_plan_items[]
 
   @@schema("glc_mra")
 }
@@ -739,6 +743,7 @@ model vendors {
   device_rentals         device_rentals[]
   documents              documents[]
   maintenances           maintenances[]
+  marketing_plan_items   marketing_plan_items[]
   m_bank                 m_bank?             @relation(fields: [bank_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   m_division             m_division?         @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   m_expense_category     m_expense_category? @relation(fields: [expense_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -759,4 +764,200 @@ model m_role_permission {
 
   @@unique([role, module])
   @@schema("glc_mra")
+}
+
+model helpdesk_user {
+  id        String             @id @db.VarChar(50)
+  email     String             @unique
+  name      String
+  role      String
+  companyId Int
+  company   helpdesk_company   @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  marketing_plans   marketing_plans[]
+  payment_requests  payment_requests[]
+  approval_history  approval_history[]
+
+  @@map("User")
+  @@schema("helpdesk")
+}
+
+model helpdesk_company {
+  id              Int                     @id
+  name            String
+  location        String
+  companyMasterId Int?
+  companyMaster   helpdesk_company_master? @relation(fields: [companyMasterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users           helpdesk_user[]
+
+  @@map("Company")
+  @@schema("helpdesk")
+}
+
+model helpdesk_company_master {
+  id        Int                @id
+  name      String             @unique
+  companies helpdesk_company[]
+
+  @@map("CompanyMaster")
+  @@schema("helpdesk")
+}
+
+model marketing_plans {
+  id                Int                     @id @default(autoincrement())
+  title             String                  @db.VarChar(200)
+  description       String?
+  company_id        Int
+  fiscal_year       Int                     @db.SmallInt
+  start_date        DateTime?               @db.Date
+  end_date          DateTime?               @db.Date
+  total_budget      Decimal                 @default(0) @db.Decimal(18, 2)
+  status            String                  @default("DRAFT") @db.VarChar(20) // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED
+  creator_id        String                  @db.VarChar(50)
+  created_at        DateTime                @default(now()) @db.Timestamp(6)
+  updated_at        DateTime                @default(now()) @db.Timestamp(6)
+  
+  company           m_company               @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator           helpdesk_user           @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  items             marketing_plan_items[]
+  approval_history  approval_history[]
+
+  @@schema("marketing_budget")
+}
+
+model marketing_plan_items {
+  id                Int                     @id @default(autoincrement())
+  marketing_plan_id Int
+  coa_id            Int
+  brand_id          Int?
+  lob_id            Int?
+  branch_id         Int?
+  vendor_id         Int?
+  period_month      Int                     @db.SmallInt // 1-12
+  budget_amount     Decimal                 @default(0) @db.Decimal(18, 2)
+  actual_amount     Decimal                 @default(0) @db.Decimal(18, 2)
+  description       String?                 @db.VarChar(255)
+
+  marketing_plan    marketing_plans         @relation(fields: [marketing_plan_id], references: [id], onDelete: Cascade)
+  m_coa             m_coa                   @relation(fields: [coa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_brand           m_brand?                @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_line_business   m_line_business?        @relation(fields: [lob_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_branch          m_company_branch?       @relation(fields: [branch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendors           vendors?                @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  payment_requests  payment_requests[]
+
+  @@schema("marketing_budget")
+}
+
+model m_brand {
+  id        Int                    @id @default(autoincrement())
+  name      String                 @unique @db.VarChar(100)
+  items     marketing_plan_items[]
+
+  @@schema("marketing_budget")
+}
+
+model m_line_business {
+  id        Int                    @id @default(autoincrement())
+  name      String                 @unique @db.VarChar(100)
+  items     marketing_plan_items[]
+
+  @@schema("marketing_budget")
+}
+
+model m_branch {
+  id        Int                    @id @default(autoincrement())
+  name      String                 @unique @db.VarChar(100)
+
+  @@schema("marketing_budget")
+}
+
+model payment_requests {
+  id                     Int                    @id @default(autoincrement())
+  marketing_plan_item_id Int
+  title                  String                 @db.VarChar(200)
+  amount                 Decimal                @db.Decimal(18, 2)
+  status                 String                 @default("PENDING") @db.VarChar(20) // PENDING, APPROVED, REJECTED, PAID
+  notes                  String?
+  doc_url                String?
+  creator_id             String                 @db.VarChar(50)
+  created_at             DateTime               @default(now()) @db.Timestamp(6)
+  updated_at             DateTime               @default(now()) @db.Timestamp(6)
+  
+  marketing_plan_item    marketing_plan_items   @relation(fields: [marketing_plan_item_id], references: [id], onDelete: NoAction)
+  creator                helpdesk_user          @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  approval_history       approval_history[]
+
+  @@schema("marketing_budget")
+}
+
+model approval_rules {
+  id            Int                     @id @default(autoincrement())
+  company_id    Int?
+  module        String                  @db.VarChar(50) // MARKETING_PLAN, PAYMENT_REQUEST
+  min_amount    Decimal                 @default(0) @db.Decimal(18, 2)
+  max_amount    Decimal?                @db.Decimal(18, 2)
+  step_number   Int                     @db.SmallInt
+  approver_role String                  @db.VarChar(50)
+
+  @@schema("marketing_budget")
+}
+
+model approval_history {
+  id                 Int                    @id @default(autoincrement())
+  marketing_plan_id  Int?
+  payment_request_id Int?
+  approver_id        String                 @db.VarChar(50)
+  step_number        Int                    @db.SmallInt
+  status             String                 @db.VarChar(20) // PENDING, APPROVED, REJECTED
+  comment            String?
+  signature_url      String?
+  action_at          DateTime?              @db.Timestamp(6)
+  created_at         DateTime               @default(now()) @db.Timestamp(6)
+  
+  marketing_plan     marketing_plans?       @relation(fields: [marketing_plan_id], references: [id], onDelete: Cascade)
+  payment_request    payment_requests?      @relation(fields: [payment_request_id], references: [id], onDelete: Cascade)
+  approver           helpdesk_user          @relation(fields: [approver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  magic_links        approval_magic_links[]
+
+  @@schema("marketing_budget")
+}
+
+// Token sekali-pakai untuk approval via email (gaya DocHub) — klik link di email
+// langsung membuka halaman approve/reject tanpa perlu login ke aplikasi dulu.
+model approval_magic_links {
+  id                  Int              @id @default(autoincrement())
+  token               String           @unique @db.VarChar(100)
+  approval_history_id Int
+  recipient_email     String           @db.VarChar(150)
+  expires_at          DateTime         @db.Timestamp(6)
+  used_at             DateTime?        @db.Timestamp(6)
+  created_at          DateTime         @default(now()) @db.Timestamp(6)
+
+  approval_history    approval_history @relation(fields: [approval_history_id], references: [id], onDelete: Cascade)
+
+  @@index([token], map: "idx_magic_link_token")
+  @@schema("marketing_budget")
+}
+
+// Konfigurasi email penerima magic-link approval per role DOA — dikelola lewat menu
+// Settings (admin), menggantikan mapping yang sebelumnya hardcode di kode backend.
+// Email penerima magic-link per role DOA. company_master_id NULL = default global;
+// diisi = override khusus untuk 1 Holding Group (semua PT di bawahnya ikut override ini).
+// Project/Marketing Plan tetap per PT, tapi approval tier VP/BU/COO ditentukan dari
+// Holding Group PT tersebut, bukan dari PT secara individual.
+model approval_role_contacts {
+  id                Int                @id @default(autoincrement())
+  role              String             @db.VarChar(50)
+  email             String             @db.VarChar(150)
+  label             String?            @db.VarChar(100)
+  company_master_id Int?
+  updated_at        DateTime           @default(now()) @db.Timestamp(6)
+
+  m_company_master  m_company_master?  @relation(fields: [company_master_id], references: [id], onDelete: Cascade)
+
+  @@unique([role, company_master_id])
+  @@schema("marketing_budget")
 }

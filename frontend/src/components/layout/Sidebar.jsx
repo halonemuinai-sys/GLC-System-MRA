@@ -39,7 +39,9 @@ import {
   Building,
   Barcode,
   ClipboardCheck,
-  Award
+  Award,
+  Settings,
+  Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
@@ -458,6 +460,20 @@ function SidebarContent({
       ]
     },
     {
+      label: 'MARKETING BUDGET',
+      submenus: [
+        {
+          name: 'Marketing Budget',
+          icon: BarChart3,
+          children: [
+            { name: 'Marketing Plan', path: '/dashboard/marketing', icon: ClipboardList, allowed: role === 'admin' || role === 'auditor' || (role && !['ga', 'legal', 'compliance', 'legal_compliance'].includes(role)) },
+            { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: role === 'admin' || role === 'auditor' || (role && !['ga', 'legal', 'compliance', 'legal_compliance'].includes(role)) },
+            { name: 'Konfigurasi Approval', path: '/dashboard/marketing-approval-settings', icon: Settings, allowed: hasAccess(['admin']) }
+          ]
+        }
+      ]
+    },
+    {
       label: 'COMPLIANCE',
       submenus: [
         {
@@ -482,6 +498,8 @@ function SidebarContent({
           icon: Database,
           children: [
             { name: 'Perusahaan', path: '/dashboard/master/companies', icon: Building2, allowed: hasAccess(['ga', 'legal', 'compliance', 'auditor']) },
+            { name: 'Brand / Merek', path: '/dashboard/master/brands', icon: Tag, allowed: true },
+            { name: 'Line of Business', path: '/dashboard/master/lobs', icon: ClipboardList, allowed: true }
           ]
         }
       ]

@@ -115,6 +115,7 @@ export default function MasterCompanyPage() {
 
   const [showBranchForm, setShowBranchForm] = useState(false);
   const [editingBranch, setEditingBranch] = useState(null);
+  const [branchFormError, setBranchFormError] = useState(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -383,6 +384,7 @@ export default function MasterCompanyPage() {
   // ── Tab 3: Branch Handlers ──
   const openAddBranch = () => {
     setEditingBranch(null);
+    setBranchFormError(null);
     setBranchFormData({
       name: '',
       location: '',
@@ -394,8 +396,9 @@ export default function MasterCompanyPage() {
 
   const openEditBranch = (branch) => {
     setEditingBranch(branch);
+    setBranchFormError(null);
     setBranchFormData({
-      name: branch.name,
+      name: branch.name || '',
       location: branch.location || '',
       sector: branch.sector || 'GENERAL',
       company_master_id: branch.company_master_id || ''
@@ -405,7 +408,12 @@ export default function MasterCompanyPage() {
 
   const handleBranchSubmit = async (e) => {
     e.preventDefault();
-    if (!branchFormData.name.trim() || !branchFormData.location.trim()) return;
+    setBranchFormError(null);
+
+    if (!String(branchFormData.name || '').trim() || !String(branchFormData.location || '').trim()) {
+      setBranchFormError('Nama Perusahaan dan Lokasi / Cabang Fisik wajib diisi.');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -423,7 +431,8 @@ export default function MasterCompanyPage() {
       setEditingBranch(null);
       fetchBranchesList();
     } catch (err) {
-      alert(err.message || 'Failed to save branch');
+      console.error('Branch save failed:', err);
+      setBranchFormError(err.message || 'Gagal menyimpan data cabang.');
     } finally {
       setSubmitting(false);
     }
@@ -1207,6 +1216,12 @@ export default function MasterCompanyPage() {
               </div>
 
               <form onSubmit={handleBranchSubmit} className="p-5 space-y-4">
+                {branchFormError && (
+                  <div className="flex items-start gap-2 px-3.5 py-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    {branchFormError}
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
                     Nama Perusahaan *
@@ -1276,7 +1291,7 @@ export default function MasterCompanyPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting || !branchFormData.name.trim() || !branchFormData.location.trim()}
+                    disabled={submitting || !String(branchFormData.name || '').trim() || !String(branchFormData.location || '').trim()}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-700 transition-colors cursor-pointer"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
