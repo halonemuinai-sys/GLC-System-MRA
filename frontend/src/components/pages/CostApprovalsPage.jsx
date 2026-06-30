@@ -540,6 +540,19 @@ export default function CostApprovalsPage() {
                       <div>PT: <span className="font-normal text-neutral-900 dark:text-white">{activeTask.marketing_plan.company?.name || ''}</span></div>
                       <div>Diajukan Oleh: <span className="font-normal text-neutral-900 dark:text-white">{activeTask.marketing_plan.creator?.name || ''}</span></div>
                       <div className="sm:col-span-2">Deskripsi: <span className="font-normal text-neutral-550 dark:text-neutral-400">{activeTask.marketing_plan.description || '-'}</span></div>
+                      {activeTask.marketing_plan.doc_url && (
+                        <div className="sm:col-span-2">
+                          Proposal Acuan: 
+                          <a
+                            href={activeTask.marketing_plan.doc_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-1 text-indigo-500 font-bold hover:underline inline-flex items-center gap-1.5"
+                          >
+                            <Paperclip className="w-3.5 h-3.5" /> Lihat Proposal
+                          </a>
+                        </div>
+                      )}
                       <div className="sm:col-span-2 pt-2 border-t border-neutral-200 dark:border-neutral-800 flex justify-between items-center text-xs">
                         <span>Total Anggaran Plan:</span>
                         <span className="text-indigo-600 dark:text-indigo-400 text-sm font-black">{formatIDR(activeTask.marketing_plan.total_budget)}</span>

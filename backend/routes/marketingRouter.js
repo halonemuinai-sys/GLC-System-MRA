@@ -252,7 +252,7 @@ router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req
       return res.status(403).json({ error: 'User email not registered in employee database.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, items } = req.body;
+    const { title, description, company_id, fiscal_year, start_date, end_date, items, doc_url } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
@@ -278,7 +278,8 @@ router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req
           end_date: end_date ? new Date(end_date) : null,
           total_budget: totalBudget,
           status: 'PENDING_APPROVAL',
-          creator_id: employee.id
+          creator_id: employee.id,
+          doc_url
         }
       });
 
@@ -412,7 +413,7 @@ router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), 
       return res.status(400).json({ error: 'Hanya rencana yang berstatus REJECTED yang bisa direvisi.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, items } = req.body;
+    const { title, description, company_id, fiscal_year, start_date, end_date, items, doc_url } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
@@ -437,6 +438,7 @@ router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), 
           end_date: end_date ? new Date(end_date) : null,
           total_budget: totalBudget,
           status: 'PENDING_APPROVAL',
+          doc_url,
           updated_at: new Date()
         }
       });

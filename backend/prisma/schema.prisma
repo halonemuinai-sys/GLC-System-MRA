@@ -816,6 +816,7 @@ model marketing_plans {
   creator_id        String                  @db.VarChar(50)
   created_at        DateTime                @default(now()) @db.Timestamp(6)
   updated_at        DateTime                @default(now()) @db.Timestamp(6)
+  doc_url           String?
   
   company           m_company               @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   creator           helpdesk_user           @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)

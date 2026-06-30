@@ -194,7 +194,17 @@ export default function PublicApprovalPage({ token }) {
                   <div>PT / Entitas: <span className="font-normal text-neutral-900 dark:text-white">{companyName || '-'}</span></div>
                   <div>Diajukan Oleh: <span className="font-normal text-neutral-900 dark:text-white">{requesterName || '-'}</span></div>
                   {isPlan && (
-                    <div>Tahun Fiskal: <span className="font-normal text-neutral-900 dark:text-white">{task.marketing_plan.fiscal_year}</span></div>
+                    <>
+                      <div>Tahun Fiskal: <span className="font-normal text-neutral-900 dark:text-white">{task.marketing_plan.fiscal_year}</span></div>
+                      {task.marketing_plan.doc_url && (
+                        <div>
+                          Proposal: 
+                          <a href={task.marketing_plan.doc_url} target="_blank" rel="noreferrer" className="ml-1 text-indigo-500 font-bold hover:underline inline-flex items-center gap-1">
+                            <Paperclip className="w-3.5 h-3.5" /> Lihat Proposal
+                          </a>
+                        </div>
+                      )}
+                    </>
                   )}
                   {!isPlan && task.payment_request.doc_url && (
                     <div>

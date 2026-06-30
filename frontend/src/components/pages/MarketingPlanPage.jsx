@@ -208,7 +208,8 @@ export default function MarketingPlanPage() {
     end_date: '',
     brand_id: '',
     lob_id: '',
-    branch_id: ''
+    branch_id: '',
+    doc_url: ''
   });
   const [wizardItems, setWizardItems] = useState([
     { coa_id: '', vendor_id: '', period_month: '1', budget_amount: '', description: '' }
@@ -434,7 +435,8 @@ export default function MarketingPlanPage() {
         end_date: '',
         brand_id: '',
         lob_id: '',
-        branch_id: ''
+        branch_id: '',
+        doc_url: ''
       });
       setWizardItems([{ coa_id: '', vendor_id: '', period_month: '1', budget_amount: '', description: '' }]);
       setWizardStep(1);
@@ -522,7 +524,8 @@ export default function MarketingPlanPage() {
       end_date: formatDate(plan.end_date),
       brand_id: firstItem.brand_id ? String(firstItem.brand_id) : '',
       lob_id: firstItem.lob_id ? String(firstItem.lob_id) : '',
-      branch_id: firstItem.branch_id ? String(firstItem.branch_id) : ''
+      branch_id: firstItem.branch_id ? String(firstItem.branch_id) : '',
+      doc_url: plan.doc_url || ''
     });
 
     if (plan.items && plan.items.length > 0) {
@@ -1277,13 +1280,25 @@ export default function MarketingPlanPage() {
                     <p className="text-xs text-neutral-750 dark:text-neutral-350">{selectedPlan.description || 'Tidak ada deskripsi.'}</p>
                   </div>
                   <div className="bg-neutral-50 dark:bg-neutral-950 p-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1.5">
-                    <span className="text-[9px] font-bold text-neutral-400 uppercase">Periode Anggaran</span>
+                    <span className="text-[9px] font-bold text-neutral-400 uppercase">Periode & Lampiran</span>
                     <div className="flex items-center gap-1.5 text-xs text-neutral-800 dark:text-white font-bold">
                       <Calendar className="w-4 h-4 text-indigo-500" />
                       <span>
-                        {selectedPlan.start_date ? new Date(selectedPlan.start_date).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : ''} - {selectedPlan.end_date ? new Date(selectedPlan.end_date).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : ''}
+                        {selectedPlan.start_date ? new Date(selectedPlan.start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : ''} - {selectedPlan.end_date ? new Date(selectedPlan.end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : ''}
                       </span>
                     </div>
+                    {selectedPlan.doc_url && (
+                      <div className="pt-1.5 border-t border-neutral-200 dark:border-neutral-800 mt-1.5">
+                        <a
+                          href={selectedPlan.doc_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-indigo-500 hover:text-indigo-650 hover:underline inline-flex items-center gap-1 font-bold"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" /> Lihat Proposal Acuan
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1831,6 +1846,20 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
           ))}
         </select>
       </div>
+
+      {/* Proposal Document Link */}
+      <div className="space-y-2 md:col-span-2">
+        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
+          Link Dokumen Proposal / Acuan (URL) (Opsional)
+        </label>
+        <input
+          type="text"
+          placeholder="https://link-proposal-kampanye.pdf"
+          value={wizardHeader.doc_url}
+          onChange={(e) => setWizardHeader(prev => ({ ...prev, doc_url: e.target.value }))}
+          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+        />
+      </div>
     </div>
   );
 }
@@ -2035,6 +2064,16 @@ function WizardStep3ReviewSubmit({ wizardHeader, wizardItems, metadata, getMonth
           <div className="space-y-2 text-xs font-bold text-neutral-600 dark:text-neutral-450">
             <div>Fiscal Year: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.fiscal_year}</span></div>
             <div>Period: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.start_date} to {wizardHeader.end_date}</span></div>
+            {wizardHeader.doc_url && (
+              <div>
+                Proposal: 
+                <span className="block mt-0.5">
+                  <a href={wizardHeader.doc_url} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 font-bold">
+                    <Paperclip className="w-3.5 h-3.5" /> Lihat Proposal
+                  </a>
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
