@@ -63,6 +63,19 @@ export default function MarketingApprovalSettingsPage() {
   const globalDefaults = useMemo(() => contacts.filter(c => !c.company_master_id), [contacts]);
   const holdingOverrides = useMemo(() => contacts.filter(c => c.company_master_id), [contacts]);
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.04 }
+    }
+  };
+
+  const rowVariants = {
+    hidden: { opacity: 0, y: 4 },
+    show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 350, damping: 25 } }
+  };
+
   const startEdit = (contact) => {
     setEditingId(contact.id);
     setEditEmail(contact.email);
@@ -139,7 +152,7 @@ export default function MarketingApprovalSettingsPage() {
     <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex items-center gap-3.5">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-600/25 shrink-0">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-600/20 shrink-0">
           <Settings className="w-6 h-6 text-white" />
         </div>
         <div>
@@ -182,7 +195,7 @@ export default function MarketingApprovalSettingsPage() {
 
       {loading ? (
         <div className="py-24 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           <span className="text-xs text-neutral-400 font-medium">Memuat konfigurasi...</span>
         </div>
       ) : (
@@ -201,11 +214,20 @@ export default function MarketingApprovalSettingsPage() {
                       <th className="px-5 py-4 text-center">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium">
+                  <motion.tbody 
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="show"
+                    className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium"
+                  >
                     {globalDefaults.map(contact => {
                       const isEditing = editingId === contact.id;
                       return (
-                        <tr key={contact.id} className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/5 text-neutral-700 dark:text-neutral-300 transition-colors">
+                        <motion.tr 
+                          variants={rowVariants}
+                          key={contact.id} 
+                          className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/5 text-neutral-700 dark:text-neutral-300 transition-colors"
+                        >
                           <td className="px-5 py-4">
                             <span className="font-black text-neutral-900 dark:text-white">{contact.label || contact.role}</span>
                             <p className="text-[10px] text-neutral-400 font-mono mt-0.5">{contact.role}</p>
@@ -216,13 +238,13 @@ export default function MarketingApprovalSettingsPage() {
                           <td className="px-5 py-4">
                             {isEditing ? (
                               <div className="flex items-center gap-1.5">
-                                <Mail className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                                <Mail className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
                                 <input
                                   type="email"
                                   value={editEmail}
                                   onChange={(e) => setEditEmail(e.target.value)}
                                   autoFocus
-                                  className="bg-neutral-50 dark:bg-neutral-950 border border-indigo-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-850 dark:text-white focus:outline-none w-56"
+                                  className="bg-neutral-50 dark:bg-neutral-955 border border-blue-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-850 dark:text-white focus:outline-none w-56 focus:ring-2 focus:ring-blue-550/20"
                                 />
                               </div>
                             ) : (
@@ -235,7 +257,7 @@ export default function MarketingApprovalSettingsPage() {
                           <td className="px-5 py-4 text-center">
                             {isEditing ? (
                               <div className="flex items-center justify-center gap-1.5">
-                                <button onClick={() => saveEdit(contact)} disabled={saving} className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50 cursor-pointer" title="Simpan">
+                                <button onClick={() => saveEdit(contact)} disabled={saving} className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50 cursor-pointer animate-pulse" title="Simpan">
                                   {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                                 </button>
                                 <button onClick={cancelEdit} disabled={saving} className="p-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-lg text-neutral-500 cursor-pointer" title="Batal">
@@ -243,15 +265,15 @@ export default function MarketingApprovalSettingsPage() {
                                 </button>
                               </div>
                             ) : (
-                              <button onClick={() => startEdit(contact)} className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-indigo-500 hover:border-indigo-500 text-[11px] font-bold shadow-sm transition-all cursor-pointer inline-flex items-center gap-1">
+                              <button onClick={() => startEdit(contact)} className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-blue-500 hover:border-blue-500 text-[11px] font-bold shadow-sm transition-all cursor-pointer inline-flex items-center gap-1">
                                 <Edit3 className="w-3 h-3" /> Ubah
                               </button>
                             )}
                           </td>
-                        </tr>
+                        </motion.tr>
                       );
                     })}
-                  </tbody>
+                  </motion.tbody>
                 </table>
               </div>
             </div>
@@ -263,7 +285,7 @@ export default function MarketingApprovalSettingsPage() {
               <h2 className="text-xs font-black text-neutral-700 dark:text-neutral-300 uppercase tracking-wide">Override per Holding Group</h2>
               <button
                 onClick={() => setIsAddOpen(true)}
-                className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-[11px] font-bold shadow-md shadow-indigo-600/10 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-xl text-[11px] font-bold shadow-md shadow-blue-600/10 transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Tambah Override
               </button>
@@ -279,21 +301,30 @@ export default function MarketingApprovalSettingsPage() {
                       <th className="px-5 py-4 text-center">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium">
+                  <motion.tbody 
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="show"
+                    className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium"
+                  >
                     {holdingOverrides.length === 0 ? (
-                      <tr>
+                      <motion.tr variants={rowVariants}>
                         <td colSpan={4} className="px-5 py-12 text-center text-neutral-450 font-normal">
                           Belum ada override khusus per Holding. Semua PT pakai default global di atas.
                         </td>
-                      </tr>
+                      </motion.tr>
                     ) : (
                       holdingOverrides.map(contact => {
                         const isEditing = editingId === contact.id;
                         return (
-                          <tr key={contact.id} className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/5 text-neutral-700 dark:text-neutral-300 transition-colors">
+                          <motion.tr 
+                            variants={rowVariants}
+                            key={contact.id} 
+                            className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/5 text-neutral-700 dark:text-neutral-300 transition-colors"
+                          >
                             <td className="px-5 py-4">
                               <span className="inline-flex items-center gap-1.5 font-bold text-neutral-900 dark:text-white">
-                                <Building2 className="w-3.5 h-3.5 text-indigo-500" />
+                                <Building2 className="w-3.5 h-3.5 text-blue-500" />
                                 {contact.m_company_master?.name || '-'}
                               </span>
                             </td>
@@ -301,13 +332,13 @@ export default function MarketingApprovalSettingsPage() {
                             <td className="px-5 py-4">
                               {isEditing ? (
                                 <div className="flex items-center gap-1.5">
-                                  <Mail className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                                  <Mail className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
                                   <input
                                     type="email"
                                     value={editEmail}
                                     onChange={(e) => setEditEmail(e.target.value)}
                                     autoFocus
-                                    className="bg-neutral-50 dark:bg-neutral-950 border border-indigo-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-850 dark:text-white focus:outline-none w-56"
+                                    className="bg-neutral-50 dark:bg-neutral-955 border border-blue-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-850 dark:text-white focus:outline-none w-56 focus:ring-2 focus:ring-blue-500/20"
                                   />
                                 </div>
                               ) : (
@@ -320,7 +351,7 @@ export default function MarketingApprovalSettingsPage() {
                             <td className="px-5 py-4 text-center">
                               {isEditing ? (
                                 <div className="flex items-center justify-center gap-1.5">
-                                  <button onClick={() => saveEdit(contact)} disabled={saving} className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50 cursor-pointer" title="Simpan">
+                                  <button onClick={() => saveEdit(contact)} disabled={saving} className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg disabled:opacity-50 cursor-pointer animate-pulse" title="Simpan">
                                     {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                                   </button>
                                   <button onClick={cancelEdit} disabled={saving} className="p-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-lg text-neutral-500 cursor-pointer" title="Batal">
@@ -329,7 +360,7 @@ export default function MarketingApprovalSettingsPage() {
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-center gap-1.5">
-                                  <button onClick={() => startEdit(contact)} className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-indigo-500 hover:border-indigo-500 text-[11px] font-bold shadow-sm transition-all cursor-pointer inline-flex items-center gap-1">
+                                  <button onClick={() => startEdit(contact)} className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-blue-500 hover:border-blue-500 text-[11px] font-bold shadow-sm transition-all cursor-pointer inline-flex items-center gap-1">
                                     <Edit3 className="w-3 h-3" /> Ubah
                                   </button>
                                   <button onClick={() => handleDeleteOverride(contact)} className="p-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-red-500 hover:border-red-400 transition-all cursor-pointer" title="Hapus Override">
@@ -338,11 +369,11 @@ export default function MarketingApprovalSettingsPage() {
                                 </div>
                               )}
                             </td>
-                          </tr>
+                          </motion.tr>
                         );
                       })
                     )}
-                  </tbody>
+                  </motion.tbody>
                 </table>
               </div>
             </div>
@@ -409,7 +440,7 @@ export default function MarketingApprovalSettingsPage() {
                     placeholder="nama@mraretail.co.id"
                     value={newOverride.email}
                     onChange={(e) => setNewOverride(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
               </div>
@@ -424,7 +455,7 @@ export default function MarketingApprovalSettingsPage() {
                 <button
                   onClick={handleAddOverride}
                   disabled={saving}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Simpan Override
