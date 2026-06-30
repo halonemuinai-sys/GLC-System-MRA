@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Menu, Sun, Moon, Eye, EyeOff, Briefcase, Scale, ShieldCheck } from 'lucide-react';
+import { Menu, Sun, Moon, Eye, EyeOff, Briefcase, Scale, ShieldCheck, Calendar } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 
@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }) {
   const [theme, setTheme] = useState('dark');
   const [hidePrices, setHidePrices] = useState(false);
   const [timeString, setTimeString] = useState('');
+  const [dateString, setDateString] = useState('');
 
   useEffect(() => {
     // Read user role and session on mount
@@ -39,6 +40,14 @@ export default function DashboardLayout({ children }) {
           minute: '2-digit',
           second: '2-digit',
           hour12: false
+        })
+      );
+      setDateString(
+        now.toLocaleDateString('id-ID', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
         })
       );
     };
@@ -138,9 +147,12 @@ export default function DashboardLayout({ children }) {
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            <div className="flex items-center gap-2.5 text-xs border-l border-neutral-200 dark:border-white/[0.05] pl-4 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-neutral-600 dark:text-slate-300 font-bold tracking-widest">{timeString || '00:00:00'}</span>
+            <div className="flex items-center gap-3 text-xs border-l border-neutral-200 dark:border-white/[0.05] pl-4">
+              <Calendar className="w-4 h-4 text-neutral-450 dark:text-neutral-500 shrink-0" />
+              <span className="text-neutral-600 dark:text-slate-300 font-bold hidden md:inline">{dateString}</span>
+              <span className="text-neutral-350 dark:text-neutral-700 hidden md:inline">•</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="text-neutral-600 dark:text-slate-300 font-mono font-bold tracking-widest">{timeString || '00:00:00'}</span>
             </div>
           </div>
         </header>
