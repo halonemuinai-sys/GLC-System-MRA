@@ -962,3 +962,13 @@ model approval_role_contacts {
   @@unique([role, company_master_id])
   @@schema("marketing_budget")
 }
+
+model attachments {
+  id         Int      @id @default(autoincrement())
+  filename   String   @db.VarChar(255)
+  mime_type  String   @db.VarChar(100)
+  data       Bytes
+  created_at DateTime @default(now()) @db.Timestamp(6)
+
+  @@schema("glc_mra")
+}

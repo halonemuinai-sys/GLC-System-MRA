@@ -40,6 +40,7 @@ import {
   Legend
 } from 'recharts';
 import { apiClient } from '@/lib/apiClient';
+import Cookies from 'js-cookie';
 import CampaignDateRangePicker from '@/components/ui/CampaignDateRangePicker';
 
 // Helper: Format to IDR Currency
@@ -223,6 +224,50 @@ export default function MarketingPlanPage() {
     doc_url: ''
   });
   const [paymentError, setPaymentError] = useState(null);
+  const [paymentUploading, setPaymentUploading] = useState(false);
+  const [paymentUploadError, setPaymentUploadError] = useState('');
+
+  const handlePaymentFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setPaymentUploadError('Ukuran file maksimal 10MB.');
+      return;
+    }
+
+    setPaymentUploading(true);
+    setPaymentUploadError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = Cookies.get('glc_mra_token');
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005';
+      const res = await fetch(`${apiBase}/api/marketing/upload`, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Gagal mengunggah file.');
+      }
+
+      const data = await res.json();
+      setPaymentForm(prev => ({ ...prev, doc_url: data.url }));
+    } catch (err) {
+      setPaymentUploadError(err.message || 'Gagal mengunggah file.');
+    } finally {
+      setPaymentUploading(false);
+    }
+  };
 
   // Fetch Metadata & Plans on mount / filter change
   const loadMetadata = async () => {
@@ -1590,16 +1635,50 @@ export default function MarketingPlanPage() {
                       required
                     />
                   </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Dokumen Pendukung (URL)</label>
-                    <input
-                      type="text"
-                      placeholder="http://link-file-invoice.pdf"
-                      value={paymentForm.doc_url}
-                      onChange={(e) => setPaymentForm(prev => ({ ...prev, doc_url: e.target.value }))}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-850 dark:text-white focus:outline-none focus:border-indigo-500"
-                    />
+                               <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Dokumen Pendukung / Bukti Pembayaran</label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-grow">
+                        <input
+                          type="text"
+                          placeholder="http://link-file-invoice.pdf atau upload file di samping"
+                          value={paymentForm.doc_url || ''}
+                          onChange={(e) => setPaymentForm(prev => ({ ...prev, doc_url: e.target.value }))}
+                          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-850 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-medium"
+                        />
+                      </div>
+                      <div className="relative shrink-0">
+                        <input
+                          type="file"
+                          id="payment-doc-upload"
+                          className="hidden"
+                          accept="image/*,application/pdf"
+                          onChange={handlePaymentFileChange}
+                          disabled={paymentUploading}
+                        />
+                        <label
+                          htmlFor="payment-doc-upload"
+                          className={`px-4 py-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 text-neutral-750 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-750 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 h-full ${paymentUploading ? 'opacity-50 pointer-events-none' : ''}`}
+                        >
+                          {paymentUploading ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                              <span>Uploading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Paperclip className="w-3.5 h-3.5" />
+                              <span>Upload Bukti</span>
+                            </>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                    {paymentUploadError && (
+                      <p className="text-[10px] text-red-500 font-bold mt-1 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" /> {paymentUploadError}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1712,9 +1791,53 @@ export default function MarketingPlanPage() {
 
 // ==========================================
 // MODULAR WIZARD STEP SUBCOMPONENTS
-// ==========================================
-
 function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCAL_YEAR_OPTIONS, SearchableCompanySelect, CampaignDateRangePicker }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Limit to 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('Ukuran file maksimal 10MB.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = Cookies.get('glc_mra_token');
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005';
+      const res = await fetch(`${apiBase}/api/marketing/upload`, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Gagal mengunggah file.');
+      }
+
+      const data = await res.json();
+      setWizardHeader(prev => ({ ...prev, doc_url: data.url }));
+    } catch (err) {
+      setUploadError(err.message || 'Gagal mengunggah file.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2">
       {/* Title */}
@@ -1766,7 +1889,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
         <select
           value={wizardHeader.fiscal_year}
           onChange={(e) => setWizardHeader(prev => ({ ...prev, fiscal_year: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-855 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
         >
           {FISCAL_YEAR_OPTIONS.map(y => (
             <option key={y} value={y}>{y}</option>
@@ -1835,7 +1958,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
         <select
           value={wizardHeader.branch_id}
           onChange={(e) => setWizardHeader(prev => ({ ...prev, branch_id: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-855 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
           required
         >
           <option value="">Pilih Lokasi / Cabang</option>
@@ -1849,16 +1972,51 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
       {/* Proposal Document Link */}
       <div className="space-y-2 md:col-span-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-          Link Dokumen Proposal / Acuan (URL) (Opsional)
+        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-550 uppercase tracking-wider block">
+          Dokumen Proposal / Acuan (Opsional)
         </label>
-        <input
-          type="text"
-          placeholder="https://link-proposal-kampanye.pdf"
-          value={wizardHeader.doc_url}
-          onChange={(e) => setWizardHeader(prev => ({ ...prev, doc_url: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
-        />
+        <div className="flex gap-2">
+          <div className="relative flex-grow">
+            <input
+              type="text"
+              placeholder="https://link-proposal-kampanye.pdf atau upload file di samping"
+              value={wizardHeader.doc_url || ''}
+              onChange={(e) => setWizardHeader(prev => ({ ...prev, doc_url: e.target.value }))}
+              className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+            />
+          </div>
+          <div className="relative shrink-0">
+            <input
+              type="file"
+              id="wizard-proposal-upload"
+              className="hidden"
+              accept="image/*,application/pdf"
+              onChange={handleFileChange}
+              disabled={uploading}
+            />
+            <label
+              htmlFor="wizard-proposal-upload"
+              className={`px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 text-neutral-750 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-750 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 h-full ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                  <span>Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <Paperclip className="w-3.5 h-3.5" />
+                  <span>Upload File</span>
+                </>
+              )}
+            </label>
+          </div>
+        </div>
+        {uploadError && (
+          <p className="text-[10px] text-red-500 font-bold mt-1 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" /> {uploadError}
+          </p>
+        )}
       </div>
     </div>
   );

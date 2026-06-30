@@ -1,10 +1,18 @@
 const express = require('express');
 const crypto = require('crypto');
+const multer = require('multer');
 const prisma = require('../api/db');
 const { verifyToken, checkRole } = require('../api/authMiddleware');
 const { sendMail, sendApprovalMagicLinkEmail } = require('../api/mailer');
 
 const router = express.Router();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
 
 // Helper: Resolve NIK from JWT req.user.email
 async function resolveEmployee(email) {
@@ -1271,6 +1279,70 @@ router.delete('/approval-contacts/:id', verifyToken, checkRole(['admin']), async
 
     await prisma.approval_role_contacts.delete({ where: { id: parseInt(id, 10) } });
     res.json({ message: 'Override berhasil dihapus.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/marketing/upload
+ * Upload document to database (attachments table) and return public url
+ */
+router.post('/upload', verifyToken, upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded.' });
+    }
+
+    const { originalname, mimetype, buffer } = req.file;
+
+    const newAttachment = await prisma.attachments.create({
+      data: {
+        filename: originalname,
+        mime_type: mimetype,
+        data: buffer
+      }
+    });
+
+    // Construct public download url dynamically from host request
+    const host = req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const url = `${protocol}://${host}/api/marketing/attachments/${newAttachment.id}`;
+
+    res.json({
+      success: true,
+      id: newAttachment.id,
+      filename: originalname,
+      mime_type: mimetype,
+      url: url
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/marketing/attachments/:id
+ * Serve document binary directly with appropriate content-type headers
+ */
+router.get('/attachments/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const attachment = await prisma.attachments.findUnique({
+      where: { id }
+    });
+
+    if (!attachment) {
+      return res.status(404).send('Document not found.');
+    }
+
+    res.setHeader('Content-Type', attachment.mime_type);
+    if (attachment.mime_type.startsWith('image/') || attachment.mime_type === 'application/pdf') {
+      res.setHeader('Content-Disposition', `inline; filename="${attachment.filename}"`);
+    } else {
+      res.setHeader('Content-Disposition', `attachment; filename="${attachment.filename}"`);
+    }
+    res.send(attachment.data);
   } catch (err) {
     next(err);
   }
