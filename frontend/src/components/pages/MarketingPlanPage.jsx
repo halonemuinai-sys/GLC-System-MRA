@@ -269,14 +269,20 @@ export default function MarketingPlanPage() {
     }
   };
 
+  const getDefaultCompanyId = useCallback((companiesList) => {
+    if (!companiesList || companiesList.length === 0) return '';
+    const mogems = companiesList.find(c => c.name.toLowerCase().includes('mogems'));
+    return String(mogems ? mogems.id : companiesList[0].id);
+  }, []);
+
   // Fetch Metadata & Plans on mount / filter change
   const loadMetadata = async () => {
     try {
       const res = await apiClient.get('/api/marketing/metadata');
       setMetadata(res);
-      // Auto-set first company as default in wizard if available
+      // Auto-set default company in wizard if available
       if (res.companies && res.companies.length > 0 && !wizardHeader.company_id) {
-        setWizardHeader(prev => ({ ...prev, company_id: String(res.companies[0].id) }));
+        setWizardHeader(prev => ({ ...prev, company_id: getDefaultCompanyId(res.companies) }));
       }
     } catch (err) {
       console.error('Failed to load marketing metadata:', err);
@@ -474,7 +480,7 @@ export default function MarketingPlanPage() {
       setWizardHeader({
         title: '',
         description: '',
-        company_id: metadata.companies[0]?.id || '',
+        company_id: getDefaultCompanyId(metadata.companies),
         fiscal_year: String(new Date().getFullYear()),
         start_date: '',
         end_date: '',
