@@ -202,7 +202,7 @@ router.get('/metadata', verifyToken, async (req, res, next) => {
   try {
     const brands = await prisma.m_brand.findMany({ orderBy: { name: 'asc' } });
     const lobs = await prisma.m_line_business.findMany({ orderBy: { name: 'asc' } });
-    const branches = await prisma.m_company_branch.findMany({ where: { is_active: true }, orderBy: { name: 'asc' } });
+    const branches = await prisma.m_branch.findMany({ orderBy: { name: 'asc' } });
     
     // Ambil CoA dari skema glc_mra (terutama kategori pengeluaran/beban 62xxxx/5xxxxx)
     const marketingCoaNames = [

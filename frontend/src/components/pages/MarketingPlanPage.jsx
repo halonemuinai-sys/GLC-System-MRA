@@ -1991,7 +1991,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
           <option value="">Pilih Lokasi / Cabang</option>
           {metadata.branches.map(b => (
             <option key={b.id} value={b.id}>
-              {b.location ? `${b.location} (${b.name})` : b.name}
+              {b.name}
             </option>
           ))}
         </select>
@@ -2274,7 +2274,7 @@ function WizardStep3ReviewSubmit({ wizardHeader, wizardItems, metadata, getMonth
             <div>PT / Company: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{companyName}</span></div>
             <div>Brand: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.brands.find(b => String(b.id) === String(wizardHeader.brand_id))?.name || '-'}</span></div>
             <div>Line of Business: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.lobs.find(l => String(l.id) === String(wizardHeader.lob_id))?.name || '-'}</span></div>
-            <div>Lokasi / Cabang: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.branch_id)); return br ? `${br.location} (${br.name})` : '-'; })()}</span></div>
+            <div>Lokasi / Cabang: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.branch_id)); return br ? br.name : '-'; })()}</span></div>
           </div>
         </div>
 
