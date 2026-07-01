@@ -207,6 +207,10 @@ export default function MarketingPlanPage() {
     fiscal_year: String(new Date().getFullYear()),
     start_date: '',
     end_date: '',
+    event_start_date: '',
+    event_end_date: '',
+    cta_start_date: '',
+    cta_end_date: '',
     brand_id: '',
     lob_id: '',
     branch_id: '',
@@ -469,6 +473,8 @@ export default function MarketingPlanPage() {
     try {
       const payload = {
         ...wizardHeader,
+        start_date: wizardHeader.event_start_date || null,
+        end_date: wizardHeader.event_end_date || null,
         branch_id: wizardHeader.branch_id && wizardHeader.branch_id !== 'global' ? Number(wizardHeader.branch_id) : null,
         event_location_id: wizardHeader.event_location_id ? Number(wizardHeader.event_location_id) : null,
         items: wizardItems.map(item => ({
@@ -502,6 +508,10 @@ export default function MarketingPlanPage() {
         fiscal_year: String(new Date().getFullYear()),
         start_date: '',
         end_date: '',
+        event_start_date: '',
+        event_end_date: '',
+        cta_start_date: '',
+        cta_end_date: '',
         brand_id: '',
         lob_id: '',
         branch_id: '',
@@ -592,6 +602,10 @@ export default function MarketingPlanPage() {
       fiscal_year: plan.fiscal_year ? String(plan.fiscal_year) : '2026',
       start_date: formatDate(plan.start_date),
       end_date: formatDate(plan.end_date),
+      event_start_date: formatDate(plan.event_start_date || plan.start_date),
+      event_end_date: formatDate(plan.event_end_date || plan.end_date),
+      cta_start_date: formatDate(plan.cta_start_date),
+      cta_end_date: formatDate(plan.cta_end_date),
       brand_id: firstItem.brand_id ? String(firstItem.brand_id) : '',
       lob_id: firstItem.lob_id ? String(firstItem.lob_id) : '',
       branch_id: firstItem.branch_id ? String(firstItem.branch_id) : 'global',
@@ -1092,7 +1106,14 @@ export default function MarketingPlanPage() {
                           {plan.company?.name || 'N/A'}
                         </td>
                         <td className="px-5 py-4 text-neutral-500">
-                          {plan.start_date ? new Date(plan.start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : ''} - {plan.end_date ? new Date(plan.end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : ''}
+                          <span className="font-bold text-neutral-800 dark:text-neutral-200 block">
+                            {plan.event_start_date ? new Date(plan.event_start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : (plan.start_date ? new Date(plan.start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : '-')} - {plan.event_end_date ? new Date(plan.event_end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : (plan.end_date ? new Date(plan.end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : '-')}
+                          </span>
+                          {plan.cta_start_date && (
+                            <span className="text-[9px] text-neutral-450 dark:text-neutral-500 block mt-0.5">
+                              CTA: {new Date(plan.cta_start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })} - {new Date(plan.cta_end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
+                            </span>
+                          )}
                         </td>
                         <td className="px-5 py-4 text-right font-bold text-neutral-850 dark:text-white">
                           {formatIDR(plan.total_budget)}
@@ -1356,11 +1377,19 @@ export default function MarketingPlanPage() {
                   </div>
                   <div className="bg-neutral-50 dark:bg-neutral-950 p-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1.5">
                     <span className="text-[9px] font-bold text-neutral-400 uppercase">Periode & Lampiran</span>
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-800 dark:text-white font-bold">
-                      <Calendar className="w-4 h-4 text-indigo-500" />
-                      <span>
-                        {selectedPlan.start_date ? new Date(selectedPlan.start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : ''} - {selectedPlan.end_date ? new Date(selectedPlan.end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : ''}
-                      </span>
+                    <div className="space-y-1.5 text-[11px] text-neutral-800 dark:text-white font-bold">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                        <span className="truncate">
+                          Event: {selectedPlan.event_start_date ? new Date(selectedPlan.event_start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (selectedPlan.start_date ? new Date(selectedPlan.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-')} s/d {selectedPlan.event_end_date ? new Date(selectedPlan.event_end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (selectedPlan.end_date ? new Date(selectedPlan.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 pt-1.5 border-t border-neutral-200 dark:border-neutral-800">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-550 flex-shrink-0" />
+                        <span className="truncate">
+                          CTA: {selectedPlan.cta_start_date ? new Date(selectedPlan.cta_start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} s/d {selectedPlan.cta_end_date ? new Date(selectedPlan.cta_end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                        </span>
+                      </div>
                     </div>
                     {selectedPlan.doc_url && (
                       <div className="pt-1.5 border-t border-neutral-200 dark:border-neutral-800 mt-1.5">
@@ -1941,19 +1970,37 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
         </select>
       </div>
 
-      {/* Period Dates */}
+      {/* Event Period Dates */}
       <div className="space-y-2">
         <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-          Campaign Duration / Period *
+          Tanggal Event / Kegiatan *
         </label>
         <CampaignDateRangePicker
-          startValue={wizardHeader.start_date}
-          endValue={wizardHeader.end_date}
+          startValue={wizardHeader.event_start_date}
+          endValue={wizardHeader.event_end_date}
+          placeholder="Pilih rentang tanggal Event"
           onChange={({ start, end }) => setWizardHeader(prev => ({
             ...prev,
-            start_date: start,
-            end_date: end,
+            event_start_date: start,
+            event_end_date: end,
             fiscal_year: start ? String(new Date(start).getFullYear()) : prev.fiscal_year
+          }))}
+        />
+      </div>
+
+      {/* CTA / Promo Period Dates */}
+      <div className="space-y-2">
+        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
+          Tanggal Promo / CTA *
+        </label>
+        <CampaignDateRangePicker
+          startValue={wizardHeader.cta_start_date}
+          endValue={wizardHeader.cta_end_date}
+          placeholder="Pilih rentang tanggal Promo / CTA"
+          onChange={({ start, end }) => setWizardHeader(prev => ({
+            ...prev,
+            cta_start_date: start,
+            cta_end_date: end
           }))}
         />
       </div>
@@ -2088,15 +2135,30 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
 function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, removeWizardItem, handleItemChange, metadata, getMonthName, formatThousands, Plus, X }) {
   const getAvailableMonths = () => {
-    if (!wizardHeader.start_date || !wizardHeader.end_date) {
+    const start_date = wizardHeader.event_start_date || wizardHeader.cta_start_date || wizardHeader.start_date;
+    const end_date = wizardHeader.event_end_date || wizardHeader.cta_end_date || wizardHeader.end_date;
+    
+    if (!start_date || !end_date) {
       return Array.from({ length: 12 }, (_, i) => i + 1);
     }
-    const start = new Date(wizardHeader.start_date);
-    const end = new Date(wizardHeader.end_date);
-    const months = [];
     
-    let current = new Date(start.getFullYear(), start.getMonth(), 1);
-    const limit = new Date(end.getFullYear(), end.getMonth(), 1);
+    const dates = [];
+    if (wizardHeader.event_start_date) dates.push(new Date(wizardHeader.event_start_date));
+    if (wizardHeader.cta_start_date) dates.push(new Date(wizardHeader.cta_start_date));
+    if (wizardHeader.start_date) dates.push(new Date(wizardHeader.start_date));
+    
+    const minStart = new Date(Math.min(...dates));
+    
+    const endDates = [];
+    if (wizardHeader.event_end_date) endDates.push(new Date(wizardHeader.event_end_date));
+    if (wizardHeader.cta_end_date) endDates.push(new Date(wizardHeader.cta_end_date));
+    if (wizardHeader.end_date) endDates.push(new Date(wizardHeader.end_date));
+    
+    const maxEnd = new Date(Math.max(...endDates));
+
+    const months = [];
+    let current = new Date(minStart.getFullYear(), minStart.getMonth(), 1);
+    const limit = new Date(maxEnd.getFullYear(), maxEnd.getMonth(), 1);
     
     let iterations = 0;
     while (current <= limit && iterations < 36) {
@@ -2320,7 +2382,8 @@ function WizardStep3ReviewSubmit({ wizardHeader, wizardItems, metadata, getMonth
           <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Timeline & Scope</h4>
           <div className="space-y-2 text-xs font-bold text-neutral-600 dark:text-neutral-450">
             <div>Fiscal Year: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.fiscal_year}</span></div>
-            <div>Period: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.start_date} to {wizardHeader.end_date}</span></div>
+            <div>Periode Event: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.event_start_date || '-'} s/d {wizardHeader.event_end_date || '-'}</span></div>
+            <div>Periode Promo / CTA: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.cta_start_date || '-'} s/d {wizardHeader.cta_end_date || '-'}</span></div>
             {wizardHeader.doc_url && (
               <div>
                 Proposal: 

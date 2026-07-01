@@ -810,6 +810,10 @@ model marketing_plans {
   fiscal_year       Int                     @db.SmallInt
   start_date        DateTime?               @db.Date
   end_date          DateTime?               @db.Date
+  event_start_date  DateTime?               @db.Date
+  event_end_date    DateTime?               @db.Date
+  cta_start_date    DateTime?               @db.Date
+  cta_end_date      DateTime?               @db.Date
   total_budget      Decimal                 @default(0) @db.Decimal(18, 2)
   status            String                  @default("DRAFT") @db.VarChar(20) // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED
   creator_id        String                  @db.VarChar(50)

@@ -260,7 +260,7 @@ router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req
       return res.status(403).json({ error: 'User email not registered in employee database.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, items, doc_url } = req.body;
+    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
@@ -284,6 +284,10 @@ router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req
           fiscal_year: parseInt(fiscal_year, 10),
           start_date: start_date ? new Date(start_date) : null,
           end_date: end_date ? new Date(end_date) : null,
+          event_start_date: event_start_date ? new Date(event_start_date) : (start_date ? new Date(start_date) : null),
+          event_end_date: event_end_date ? new Date(event_end_date) : (end_date ? new Date(end_date) : null),
+          cta_start_date: cta_start_date ? new Date(cta_start_date) : (start_date ? new Date(start_date) : null),
+          cta_end_date: cta_end_date ? new Date(cta_end_date) : (end_date ? new Date(end_date) : null),
           total_budget: totalBudget,
           status: 'PENDING_APPROVAL',
           creator_id: employee.id,
@@ -424,7 +428,7 @@ router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), 
       return res.status(400).json({ error: 'Hanya rencana yang berstatus REJECTED yang bisa direvisi.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, items, doc_url } = req.body;
+    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
@@ -447,6 +451,10 @@ router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), 
           fiscal_year: parseInt(fiscal_year, 10),
           start_date: start_date ? new Date(start_date) : null,
           end_date: end_date ? new Date(end_date) : null,
+          event_start_date: event_start_date ? new Date(event_start_date) : (start_date ? new Date(start_date) : null),
+          event_end_date: event_end_date ? new Date(event_end_date) : (end_date ? new Date(end_date) : null),
+          cta_start_date: cta_start_date ? new Date(cta_start_date) : (start_date ? new Date(start_date) : null),
+          cta_end_date: cta_end_date ? new Date(cta_end_date) : (end_date ? new Date(end_date) : null),
           total_budget: totalBudget,
           status: 'PENDING_APPROVAL',
           doc_url,
