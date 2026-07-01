@@ -327,6 +327,7 @@ router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req
             brand_id: item.brand_id ? parseInt(item.brand_id, 10) : null,
             lob_id: item.lob_id ? parseInt(item.lob_id, 10) : null,
             branch_id: item.branch_id ? parseInt(item.branch_id, 10) : null,
+            event_location_id: item.event_location_id ? parseInt(item.event_location_id, 10) : null,
             vendor_id: resolvedVendorId,
             period_month: parseInt(item.period_month, 10),
             budget_amount: parseFloat(item.budget_amount || 0),
@@ -488,6 +489,7 @@ router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), 
             brand_id: item.brand_id ? parseInt(item.brand_id, 10) : null,
             lob_id: item.lob_id ? parseInt(item.lob_id, 10) : null,
             branch_id: item.branch_id ? parseInt(item.branch_id, 10) : null,
+            event_location_id: item.event_location_id ? parseInt(item.event_location_id, 10) : null,
             vendor_id: resolvedVendorId,
             period_month: parseInt(item.period_month, 10),
             budget_amount: parseFloat(item.budget_amount || 0),
@@ -648,6 +650,7 @@ router.get('/plans/:id', verifyToken, async (req, res, next) => {
             m_brand: true,
             m_line_business: true,
             m_branch: true,
+            m_event_location: true,
             vendors: true,
             payment_requests: {
               include: {
@@ -1085,7 +1088,7 @@ router.get('/magic/:token', async (req, res, next) => {
               include: {
                 company: true,
                 creator: true,
-                items: { include: { m_coa: true, m_brand: true, m_line_business: true, m_branch: true, vendors: true } }
+                items: { include: { m_coa: true, m_brand: true, m_line_business: true, m_branch: true, m_event_location: true, vendors: true } }
               }
             },
             payment_request: {

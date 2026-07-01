@@ -210,6 +210,7 @@ export default function MarketingPlanPage() {
     brand_id: '',
     lob_id: '',
     branch_id: '',
+    event_location_id: '',
     doc_url: ''
   });
   const [wizardItems, setWizardItems] = useState([
@@ -468,12 +469,15 @@ export default function MarketingPlanPage() {
     try {
       const payload = {
         ...wizardHeader,
+        branch_id: wizardHeader.branch_id && wizardHeader.branch_id !== 'global' ? Number(wizardHeader.branch_id) : null,
+        event_location_id: wizardHeader.event_location_id ? Number(wizardHeader.event_location_id) : null,
         items: wizardItems.map(item => ({
           ...item,
           coa_id: Number(item.coa_id),
           brand_id: wizardHeader.brand_id ? Number(wizardHeader.brand_id) : null,
           lob_id: wizardHeader.lob_id ? Number(wizardHeader.lob_id) : null,
-          branch_id: wizardHeader.branch_id ? Number(wizardHeader.branch_id) : null,
+          branch_id: wizardHeader.branch_id && wizardHeader.branch_id !== 'global' ? Number(wizardHeader.branch_id) : null,
+          event_location_id: wizardHeader.event_location_id ? Number(wizardHeader.event_location_id) : null,
           vendor_id: item.vendor_id || null,
           period_month: Number(item.period_month),
           budget_amount: Number(item.budget_amount)
@@ -501,6 +505,7 @@ export default function MarketingPlanPage() {
         brand_id: '',
         lob_id: '',
         branch_id: '',
+        event_location_id: '',
         doc_url: ''
       });
       setWizardItems([{ coa_id: '', vendor_id: '', period_month: '1', qty: '1', unit_price: '', budget_amount: '', description: '' }]);
@@ -589,7 +594,8 @@ export default function MarketingPlanPage() {
       end_date: formatDate(plan.end_date),
       brand_id: firstItem.brand_id ? String(firstItem.brand_id) : '',
       lob_id: firstItem.lob_id ? String(firstItem.lob_id) : '',
-      branch_id: firstItem.branch_id ? String(firstItem.branch_id) : '',
+      branch_id: firstItem.branch_id ? String(firstItem.branch_id) : 'global',
+      event_location_id: firstItem.event_location_id ? String(firstItem.event_location_id) : '',
       doc_url: plan.doc_url || ''
     });
 
@@ -601,10 +607,12 @@ export default function MarketingPlanPage() {
         budget_amount: String(item.budget_amount || '0'),
         description: item.description || '',
         qty: String(item.qty || '1'),
-        unit_price: String(item.unit_price || item.budget_amount || '0')
+        unit_price: String(item.unit_price || item.budget_amount || '0'),
+        event_location_id: item.event_location_id ? String(item.event_location_id) : '',
+        branch_id: item.branch_id ? String(item.branch_id) : 'global'
       })));
     } else {
-      setWizardItems([{ period_month: '', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '' }]);
+      setWizardItems([{ period_month: '', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }]);
     }
 
     setRevisingPlanId(plan.id);
@@ -1409,7 +1417,16 @@ export default function MarketingPlanPage() {
                                   <span className="text-neutral-900 dark:text-neutral-200">{item.m_brand?.name || '-'}</span>
                                   {item.m_line_business && <p className="text-[10px] text-neutral-450 font-normal mt-0.5">{item.m_line_business?.name}</p>}
                                 </td>
-                                <td className="px-4 py-3">{item.m_branch?.name || '-'}</td>
+                                <td className="px-4 py-3">
+                                  <span className="font-semibold text-neutral-850 dark:text-neutral-200 block">
+                                    {item.m_branch?.name ? `Cabang ${item.m_branch.name}` : 'Global Sales'}
+                                  </span>
+                                  {item.m_event_location?.name && (
+                                    <span className="text-[9px] text-neutral-450 dark:text-neutral-500 block mt-0.5">
+                                      Event: {item.m_event_location.name}
+                                    </span>
+                                  )}
+                                </td>
                                 <td className="px-4 py-3">
                                   {item.vendors ? (
                                     <span className="inline-flex items-center gap-1 text-neutral-700 dark:text-neutral-300">
@@ -1977,21 +1994,41 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
         </select>
       </div>
 
-      {/* Branch Selection */}
+      {/* Event Location Selection */}
       <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-555 uppercase tracking-wider block">
-          Lokasi / Cabang *
+        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
+          Lokasi Kegiatan / Event *
         </label>
         <select
-          value={wizardHeader.branch_id}
-          onChange={(e) => setWizardHeader(prev => ({ ...prev, branch_id: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-855 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+          value={wizardHeader.event_location_id || ''}
+          onChange={(e) => setWizardHeader(prev => ({ ...prev, event_location_id: e.target.value }))}
+          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
           required
         >
-          <option value="">Pilih Lokasi / Cabang</option>
+          <option value="">Pilih Lokasi Kegiatan / Event</option>
           {metadata.branches.map(b => (
             <option key={b.id} value={b.id}>
               {b.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Target Impact Selection */}
+      <div className="space-y-2">
+        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
+          Cabang Sasaran / Terdampak *
+        </label>
+        <select
+          value={wizardHeader.branch_id || 'global'}
+          onChange={(e) => setWizardHeader(prev => ({ ...prev, branch_id: e.target.value }))}
+          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+          required
+        >
+          <option value="global">Global Sales (Semua Toko)</option>
+          {metadata.branches.map(b => (
+            <option key={b.id} value={b.id}>
+              Cabang {b.name}
             </option>
           ))}
         </select>
@@ -2274,7 +2311,8 @@ function WizardStep3ReviewSubmit({ wizardHeader, wizardItems, metadata, getMonth
             <div>PT / Company: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{companyName}</span></div>
             <div>Brand: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.brands.find(b => String(b.id) === String(wizardHeader.brand_id))?.name || '-'}</span></div>
             <div>Line of Business: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.lobs.find(l => String(l.id) === String(wizardHeader.lob_id))?.name || '-'}</span></div>
-            <div>Lokasi / Cabang: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.branch_id)); return br ? br.name : '-'; })()}</span></div>
+            <div>Lokasi Kegiatan / Event: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.event_location_id)); return br ? br.name : '-'; })()}</span></div>
+            <div>Cabang Sasaran / Impact: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { if (!wizardHeader.branch_id || wizardHeader.branch_id === 'global') return 'Global Sales (Semua Toko)'; const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.branch_id)); return br ? `Cabang ${br.name}` : 'Global Sales'; })()}</span></div>
           </div>
         </div>
 

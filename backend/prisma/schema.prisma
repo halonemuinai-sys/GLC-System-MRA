@@ -833,6 +833,7 @@ model marketing_plan_items {
   brand_id          Int?
   lob_id            Int?
   branch_id         Int?
+  event_location_id Int?
   vendor_id         Int?
   period_month      Int                     @db.SmallInt // 1-12
   budget_amount     Decimal                 @default(0) @db.Decimal(18, 2)
@@ -845,7 +846,8 @@ model marketing_plan_items {
   m_coa             m_coa                   @relation(fields: [coa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   m_brand           m_brand?                @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   m_line_business   m_line_business?        @relation(fields: [lob_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  m_branch          m_branch?               @relation(fields: [branch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_branch          m_branch?               @relation("ImpactBranchRelation", fields: [branch_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_event_location  m_branch?               @relation("EventLocationRelation", fields: [event_location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   vendors           vendors?                @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   payment_requests  payment_requests[]
@@ -870,9 +872,10 @@ model m_line_business {
 }
 
 model m_branch {
-  id        Int                    @id @default(autoincrement())
-  name      String                 @unique @db.VarChar(100)
-  items     marketing_plan_items[]
+  id              Int                    @id @default(autoincrement())
+  name            String                 @unique @db.VarChar(100)
+  impacted_items  marketing_plan_items[] @relation("ImpactBranchRelation")
+  event_items     marketing_plan_items[] @relation("EventLocationRelation")
 
   @@schema("marketing_budget")
 }
