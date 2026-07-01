@@ -42,7 +42,7 @@ import {
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
 import CampaignDateRangePicker from '@/components/ui/CampaignDateRangePicker';
-
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 // Helper: Format to IDR Currency
 const formatIDR = (val) => {
   if (val === undefined || val === null) return 'Rp 0';
@@ -1864,6 +1864,28 @@ export default function MarketingPlanPage() {
 
 // ==========================================
 // MODULAR WIZARD STEP SUBCOMPONENTS
+// Label component with interactive tooltip
+function FormLabel({ label, tooltip }) {
+  return (
+    <div className="flex items-center gap-1.5 mb-1.5">
+      <span className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
+        {label}
+      </span>
+      {tooltip && (
+        <Tooltip>
+          <TooltipTrigger type="button" className="text-neutral-450 hover:text-neutral-700 dark:text-neutral-450 dark:hover:text-neutral-200 transition-colors p-0.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-help">
+            <Info className="w-3 h-3" />
+          </TooltipTrigger>
+          <TooltipContent className="text-[11px] leading-relaxed max-w-[220px]" side="top" align="center">
+            {tooltip}
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
+  );
+}
+
+// MODULAR WIZARD STEP SUBCOMPONENTS
 function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCAL_YEAR_OPTIONS, SearchableCompanySelect, CampaignDateRangePicker }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -1912,224 +1934,204 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2">
-      {/* Title */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-          Campaign Title / Name *
-        </label>
-        <input
-          type="text"
-          placeholder="e.g. Ramadhan Promotion Campaign Bvlgari"
-          value={wizardHeader.title}
-          onChange={(e) => setWizardHeader(prev => ({ ...prev, title: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
-          required
-        />
-      </div>
-
-      {/* Company Selection */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-550 uppercase tracking-wider block">
-          Company (PT) *
-        </label>
-        <SearchableCompanySelect
-          companies={metadata.companies}
-          value={wizardHeader.company_id}
-          onChange={(id) => setWizardHeader(prev => ({ ...prev, company_id: String(id) }))}
-        />
-      </div>
-
-      {/* Description */}
-      <div className="space-y-2 md:col-span-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-          Campaign Description / Scope
-        </label>
-        <textarea
-          rows="3"
-          placeholder="Provide details about the marketing campaign, channels, targeted audience, and goals..."
-          value={wizardHeader.description}
-          onChange={(e) => setWizardHeader(prev => ({ ...prev, description: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none font-medium leading-relaxed"
-        />
-      </div>
-
-      {/* Fiscal Year */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-          Fiscal Year *
-        </label>
-        <select
-          value={wizardHeader.fiscal_year}
-          onChange={(e) => setWizardHeader(prev => ({ ...prev, fiscal_year: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
-        >
-          {FISCAL_YEAR_OPTIONS.map(y => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Event Period Dates */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-          Tanggal Event / Kegiatan *
-        </label>
-        <CampaignDateRangePicker
-          startValue={wizardHeader.event_start_date}
-          endValue={wizardHeader.event_end_date}
-          placeholder="Pilih rentang tanggal Event"
-          onChange={({ start, end }) => setWizardHeader(prev => ({
-            ...prev,
-            event_start_date: start,
-            event_end_date: end,
-            fiscal_year: start ? String(new Date(start).getFullYear()) : prev.fiscal_year
-          }))}
-        />
-      </div>
-
-      {/* CTA / Promo Period Dates */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-          Tanggal Promo / CTA *
-        </label>
-        <CampaignDateRangePicker
-          startValue={wizardHeader.cta_start_date}
-          endValue={wizardHeader.cta_end_date}
-          placeholder="Pilih rentang tanggal Promo / CTA"
-          onChange={({ start, end }) => setWizardHeader(prev => ({
-            ...prev,
-            cta_start_date: start,
-            cta_end_date: end
-          }))}
-        />
-      </div>
-
-      {/* Brand Selection */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-550 uppercase tracking-wider block">
-          Brand *
-        </label>
-        <select
-          value={wizardHeader.brand_id}
-          onChange={(e) => setWizardHeader(prev => ({ ...prev, brand_id: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
-          required
-        >
-          <option value="">Select Brand</option>
-          {metadata.brands.map(b => (
-            <option key={b.id} value={b.id}>{b.name}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* LOB Selection */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-555 uppercase tracking-wider block">
-          Line of Business (LOB) *
-        </label>
-        <select
-          value={wizardHeader.lob_id}
-          onChange={(e) => setWizardHeader(prev => ({ ...prev, lob_id: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
-          required
-        >
-          <option value="">Select LOB</option>
-          {metadata.lobs.map(l => (
-            <option key={l.id} value={l.id}>{l.name}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Event Location Selection */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-          Lokasi Kegiatan / Event *
-        </label>
-        <select
-          value={wizardHeader.event_location_id || ''}
-          onChange={(e) => setWizardHeader(prev => ({ ...prev, event_location_id: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
-          required
-        >
-          <option value="">Pilih Lokasi Kegiatan / Event</option>
-          {metadata.branches.map(b => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Target Impact Selection */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-          Cabang Sasaran / Terdampak *
-        </label>
-        <select
-          value={wizardHeader.branch_id || 'global'}
-          onChange={(e) => setWizardHeader(prev => ({ ...prev, branch_id: e.target.value }))}
-          className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
-          required
-        >
-          <option value="global">Global Sales (Semua Toko)</option>
-          {metadata.branches.map(b => (
-            <option key={b.id} value={b.id}>
-              Cabang {b.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Proposal Document Link */}
-      <div className="space-y-2 md:col-span-2">
-        <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-550 uppercase tracking-wider block">
-          Dokumen Proposal / Acuan (Opsional)
-        </label>
-        <div className="flex gap-2">
-          <div className="relative flex-grow">
-            <input
-              type="text"
-              placeholder="https://link-proposal-kampanye.pdf atau upload file di samping"
-              value={wizardHeader.doc_url || ''}
-              onChange={(e) => setWizardHeader(prev => ({ ...prev, doc_url: e.target.value }))}
-              className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
-            />
-          </div>
-          <div className="relative shrink-0">
-            <input
-              type="file"
-              id="wizard-proposal-upload"
-              className="hidden"
-              accept="image/*,application/pdf"
-              onChange={handleFileChange}
-              disabled={uploading}
-            />
-            <label
-              htmlFor="wizard-proposal-upload"
-              className={`px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 text-neutral-750 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-750 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 h-full ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
-                  <span>Uploading...</span>
-                </>
-              ) : (
-                <>
-                  <Paperclip className="w-3.5 h-3.5" />
-                  <span>Upload File</span>
-                </>
-              )}
-            </label>
-          </div>
+    <TooltipProvider delay={100}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2">
+        {/* Title */}
+        <div className="space-y-2">
+          <FormLabel label="Campaign Title / Name *" tooltip="Nama atau judul kampanye pemasaran Anda." />
+          <input
+            type="text"
+            placeholder="e.g. Ramadhan Promotion Campaign Bvlgari"
+            value={wizardHeader.title}
+            onChange={(e) => setWizardHeader(prev => ({ ...prev, title: e.target.value }))}
+            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+            required
+          />
         </div>
-        {uploadError && (
-          <p className="text-[10px] text-red-500 font-bold mt-1 flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> {uploadError}
-          </p>
-        )}
+
+        {/* Company Selection */}
+        <div className="space-y-2">
+          <FormLabel label="Company (PT) *" tooltip="Badan hukum / PT Mogems yang menanggung anggaran kegiatan ini." />
+          <SearchableCompanySelect
+            companies={metadata.companies}
+            value={wizardHeader.company_id}
+            onChange={(id) => setWizardHeader(prev => ({ ...prev, company_id: String(id) }))}
+          />
+        </div>
+
+        {/* Description */}
+        <div className="space-y-2 md:col-span-2">
+          <FormLabel label="Campaign Description / Scope" tooltip="Penjelasan rinci mengenai kampanye, kanal iklan, sasaran audiens, dan tujuan." />
+          <textarea
+            rows="3"
+            placeholder="Provide details about the marketing campaign, channels, targeted audience, and goals..."
+            value={wizardHeader.description}
+            onChange={(e) => setWizardHeader(prev => ({ ...prev, description: e.target.value }))}
+            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none font-medium leading-relaxed"
+          />
+        </div>
+
+        {/* Fiscal Year */}
+        <div className="space-y-2">
+          <FormLabel label="Fiscal Year *" tooltip="Tahun pembukuan keuangan untuk alokasi anggaran ini." />
+          <select
+            value={wizardHeader.fiscal_year}
+            onChange={(e) => setWizardHeader(prev => ({ ...prev, fiscal_year: e.target.value }))}
+            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+          >
+            {FISCAL_YEAR_OPTIONS.map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Event Period Dates */}
+        <div className="space-y-2">
+          <FormLabel label="Tanggal Event / Kegiatan *" tooltip="Periode fisik berlangsungnya acara atau kegiatan lapangan." />
+          <CampaignDateRangePicker
+            startValue={wizardHeader.event_start_date}
+            endValue={wizardHeader.event_end_date}
+            placeholder="Pilih rentang tanggal Event"
+            onChange={({ start, end }) => setWizardHeader(prev => ({
+              ...prev,
+              event_start_date: start,
+              event_end_date: end,
+              fiscal_year: start ? String(new Date(start).getFullYear()) : prev.fiscal_year
+            }))}
+          />
+        </div>
+
+        {/* CTA / Promo Period Dates */}
+        <div className="space-y-2">
+          <FormLabel label="Tanggal Promo / CTA *" tooltip="CTA (Call to Action) / Periode Promosi: Durasi aktifnya iklan atau materi promosi dipublikasikan kepada konsumen." />
+          <CampaignDateRangePicker
+            startValue={wizardHeader.cta_start_date}
+            endValue={wizardHeader.cta_end_date}
+            placeholder="Pilih rentang tanggal Promo / CTA"
+            onChange={({ start, end }) => setWizardHeader(prev => ({
+              ...prev,
+              cta_start_date: start,
+              cta_end_date: end
+            }))}
+          />
+        </div>
+
+        {/* Brand Selection */}
+        <div className="space-y-2">
+          <FormLabel label="Brand *" tooltip="Merek produk yang diiklankan / dipromosikan." />
+          <select
+            value={wizardHeader.brand_id}
+            onChange={(e) => setWizardHeader(prev => ({ ...prev, brand_id: e.target.value }))}
+            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            required
+          >
+            <option value="">Select Brand</option>
+            {metadata.brands.map(b => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* LOB Selection */}
+        <div className="space-y-2">
+          <FormLabel label="Line of Business (LOB) *" tooltip="Sektor bisnis / kategori produk yang menaungi kampanye ini." />
+          <select
+            value={wizardHeader.lob_id}
+            onChange={(e) => setWizardHeader(prev => ({ ...prev, lob_id: e.target.value }))}
+            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            required
+          >
+            <option value="">Select LOB</option>
+            {metadata.lobs.map(l => (
+              <option key={l.id} value={l.id}>{l.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Event Location Selection */}
+        <div className="space-y-2">
+          <FormLabel label="Lokasi Kegiatan / Event *" tooltip="Lokasi fisik tempat acara pemasaran diselenggarakan." />
+          <select
+            value={wizardHeader.event_location_id || ''}
+            onChange={(e) => setWizardHeader(prev => ({ ...prev, event_location_id: e.target.value }))}
+            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            required
+          >
+            <option value="">Pilih Lokasi Kegiatan / Event</option>
+            {metadata.branches.map(b => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Target Impact Selection */}
+        <div className="space-y-2">
+          <FormLabel label="Cabang Sasaran / Terdampak *" tooltip="Cabang toko yang diharapkan menerima kenaikan penjualan atau kunjungan akibat aktivitas pemasaran ini." />
+          <select
+            value={wizardHeader.branch_id || 'global'}
+            onChange={(e) => setWizardHeader(prev => ({ ...prev, branch_id: e.target.value }))}
+            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            required
+          >
+            <option value="global">Global Sales (Semua Toko)</option>
+            {metadata.branches.map(b => (
+              <option key={b.id} value={b.id}>
+                Cabang {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Proposal Document Link */}
+        <div className="space-y-2 md:col-span-2">
+          <FormLabel label="Dokumen Proposal / Acuan (Opsional)" tooltip="Unggah dokumen proposal, konsep event, atau acuan persetujuan anggaran (opsional)." />
+          <div className="flex gap-2">
+            <div className="relative flex-grow">
+              <input
+                type="text"
+                placeholder="https://link-proposal-kampanye.pdf atau upload file di samping"
+                value={wizardHeader.doc_url || ''}
+                onChange={(e) => setWizardHeader(prev => ({ ...prev, doc_url: e.target.value }))}
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+              />
+            </div>
+            <div className="relative shrink-0">
+              <input
+                type="file"
+                id="wizard-proposal-upload"
+                className="hidden"
+                accept="image/*,application/pdf"
+                onChange={handleFileChange}
+                disabled={uploading}
+              />
+              <label
+                htmlFor="wizard-proposal-upload"
+                className={`px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 text-neutral-750 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-750 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 h-full ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="w-3.5 h-3.5" />
+                    <span>Upload File</span>
+                  </>
+                )}
+              </label>
+            </div>
+          </div>
+          {uploadError && (
+            <p className="text-[10px] text-red-500 font-bold mt-1 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> {uploadError}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
 
