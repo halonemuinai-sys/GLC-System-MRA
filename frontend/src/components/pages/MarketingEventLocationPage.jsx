@@ -14,8 +14,7 @@ import {
   ChevronRight,
   Sparkles,
   AlertTriangle,
-  RefreshCw,
-  Building
+  RefreshCw
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
@@ -46,7 +45,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
   );
 }
 
-export default function MarketingBranchPage() {
+export default function MarketingEventLocationPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
@@ -71,10 +70,10 @@ export default function MarketingBranchPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiClient.get('/api/marketing/branches');
+      const res = await apiClient.get('/api/marketing/event-locations');
       setData(res || []);
     } catch (err) {
-      setError(err.message || 'Gagal memuat data cabang sasaran.');
+      setError(err.message || 'Gagal memuat data lokasi event.');
     } finally {
       setLoading(false);
     }
@@ -121,15 +120,15 @@ export default function MarketingBranchPage() {
       setFormError(null);
 
       if (editingItem) {
-        await apiClient.put(`/api/marketing/branches/${editingItem.id}`, formData);
+        await apiClient.put(`/api/marketing/event-locations/${editingItem.id}`, formData);
       } else {
-        await apiClient.post('/api/marketing/branches', formData);
+        await apiClient.post('/api/marketing/event-locations', formData);
       }
 
       setShowDrawer(false);
       fetchData();
     } catch (err) {
-      setFormError(err.message || 'Gagal menyimpan data cabang.');
+      setFormError(err.message || 'Gagal menyimpan data lokasi event.');
     } finally {
       setSubmitting(false);
     }
@@ -141,11 +140,11 @@ export default function MarketingBranchPage() {
 
     try {
       setSubmitting(true);
-      await apiClient.delete(`/api/marketing/branches/${deleteTarget.id}`);
+      await apiClient.delete(`/api/marketing/event-locations/${deleteTarget.id}`);
       setDeleteTarget(null);
       fetchData();
     } catch (err) {
-      alert(err.message || 'Gagal menghapus cabang.');
+      alert(err.message || 'Gagal menghapus lokasi event.');
     } finally {
       setSubmitting(false);
     }
@@ -158,14 +157,14 @@ export default function MarketingBranchPage() {
         <div>
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <Building className="w-4 h-4" />
+              <MapPin className="w-4 h-4" />
             </div>
             <h1 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">
-              Manajemen Cabang Sasaran / Terdampak
+              Manajemen Lokasi Event / Kegiatan
             </h1>
           </div>
           <p className="text-xs text-neutral-450 dark:text-neutral-500 mt-1">
-            Konfigurasi daftar cabang toko / unit sasaran yang menerima dampak aktivitas pemasaran.
+            Konfigurasi daftar lokasi fisik atau wilayah diselenggarakannya aktivitas pemasaran.
           </p>
         </div>
 
@@ -176,16 +175,16 @@ export default function MarketingBranchPage() {
           className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
-          Tambah Cabang
+          Tambah Lokasi
         </motion.button>
       </div>
 
       {/* ── Summary Stats Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <StatCard
-          label="Total Cabang Toko"
+          label="Total Lokasi Event"
           value={data.length}
-          icon={Building}
+          icon={MapPin}
           color="blue"
           delay={0.05}
         />
@@ -204,13 +203,13 @@ export default function MarketingBranchPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-450" />
           <input
             type="text"
-            placeholder="Cari cabang toko..."
+            placeholder="Cari lokasi event..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-neutral-855 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
           />
         </div>
 
@@ -228,7 +227,7 @@ export default function MarketingBranchPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            <p className="text-xs text-neutral-400 dark:text-neutral-500 font-bold">Memuat data cabang...</p>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500 font-bold">Memuat data lokasi...</p>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-red-500">
@@ -237,8 +236,8 @@ export default function MarketingBranchPage() {
           </div>
         ) : paginatedData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
-            <Building className="w-8 h-8 text-neutral-300 dark:text-neutral-700" />
-            <p className="text-xs text-neutral-450 font-bold">Tidak ada cabang ditemukan.</p>
+            <MapPin className="w-8 h-8 text-neutral-300 dark:text-neutral-700" />
+            <p className="text-xs text-neutral-450 font-bold">Tidak ada lokasi ditemukan.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -246,7 +245,7 @@ export default function MarketingBranchPage() {
               <thead>
                 <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
                   <th className="px-6 py-3.5 w-[15%]">ID</th>
-                  <th className="px-6 py-3.5 w-[65%]">Nama Cabang / Toko</th>
+                  <th className="px-6 py-3.5 w-[65%]">Nama Lokasi Event</th>
                   <th className="px-6 py-3.5 w-[20%] text-center">Tindakan</th>
                 </tr>
               </thead>
@@ -259,14 +258,14 @@ export default function MarketingBranchPage() {
                       <button
                         onClick={() => handleEdit(item)}
                         className="p-1.5 text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors cursor-pointer"
-                        title="Edit Cabang"
+                        title="Edit Lokasi"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(item)}
                         className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                        title="Hapus Cabang"
+                        title="Hapus Lokasi"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -280,9 +279,9 @@ export default function MarketingBranchPage() {
 
         {/* ── Pagination Footer ── */}
         {!loading && filteredData.length > 0 && (
-          <div className="bg-neutral-50 dark:bg-neutral-950/40 border-t border-neutral-200/60 dark:border-neutral-800 px-6 py-3.5 flex items-center justify-between">
+          <div className="bg-neutral-50 dark:bg-neutral-955/40 border-t border-neutral-200/60 dark:border-neutral-800 px-6 py-3.5 flex items-center justify-between">
             <span className="text-[10px] font-bold text-neutral-450 dark:text-neutral-500">
-              Menampilkan {Math.min(filteredData.length, (page - 1) * itemsPerPage + 1)} - {Math.min(filteredData.length, page * itemsPerPage)} dari {filteredData.length} Cabang
+              Menampilkan {Math.min(filteredData.length, (page - 1) * itemsPerPage + 1)} - {Math.min(filteredData.length, page * itemsPerPage)} dari {filteredData.length} Lokasi
             </span>
 
             <div className="flex items-center gap-2">
@@ -324,16 +323,16 @@ export default function MarketingBranchPage() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-850 z-50 shadow-2xl p-6 flex flex-col justify-between"
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-955 border-l border-neutral-200 dark:border-neutral-850 z-50 shadow-2xl p-6 flex flex-col justify-between"
             >
               <div className="space-y-6">
                 <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-850 pb-4">
                   <div>
-                    <h3 className="text-sm font-black text-neutral-850 dark:text-white">
-                      {editingItem ? 'Edit Cabang Sasaran' : 'Tambah Cabang Sasaran Baru'}
+                    <h3 className="text-sm font-black text-neutral-855 dark:text-white">
+                      {editingItem ? 'Edit Lokasi Event' : 'Tambah Lokasi Event Baru'}
                     </h3>
                     <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
-                      {editingItem ? 'Ubah data nama cabang toko saat ini.' : 'Daftarkan data nama cabang toko sasaran baru.'}
+                      {editingItem ? 'Ubah data nama lokasi event saat ini.' : 'Daftarkan data nama lokasi event baru.'}
                     </p>
                   </div>
                   <button
@@ -347,11 +346,11 @@ export default function MarketingBranchPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">
-                      Nama Cabang Sasaran / Terdampak *
+                      Nama Lokasi Kegiatan / Event *
                     </label>
                     <input
                       type="text"
-                      placeholder="Contoh: Toko Jakarta, Toko Bali"
+                      placeholder="Contoh: Jakarta Pusat, Bali Kuta, Mall Gandaria"
                       value={formData.name}
                       onChange={(e) => setFormData({ name: e.target.value })}
                       className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
@@ -369,7 +368,7 @@ export default function MarketingBranchPage() {
                 </form>
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-neutral-850 pt-4 flex gap-3">
+              <div className="border-t border-neutral-100 dark:border-neutral-855 pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowDrawer(false)}
@@ -381,7 +380,7 @@ export default function MarketingBranchPage() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={submitting || !formData.name.trim()}
-                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Simpan'}
                 </button>
@@ -412,9 +411,9 @@ export default function MarketingBranchPage() {
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-neutral-800 dark:text-white">Konfirmasi Hapus Cabang</h4>
+                <h4 className="text-xs font-bold text-neutral-800 dark:text-white">Konfirmasi Hapus Lokasi</h4>
                 <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">
-                  Apakah Anda yakin ingin menghapus cabang sasaran <span className="font-bold text-neutral-700 dark:text-white">"{deleteTarget.name}"</span>? Tindakan ini tidak dapat dibatalkan.
+                  Apakah Anda yakin ingin menghapus lokasi event <span className="font-bold text-neutral-700 dark:text-white">"{deleteTarget.name}"</span>? Tindakan ini tidak dapat dibatalkan.
                 </p>
               </div>
               <div className="flex gap-3 pt-2">

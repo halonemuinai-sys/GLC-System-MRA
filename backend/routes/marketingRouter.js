@@ -203,6 +203,7 @@ router.get('/metadata', verifyToken, async (req, res, next) => {
     const brands = await prisma.m_brand.findMany({ orderBy: { name: 'asc' } });
     const lobs = await prisma.m_line_business.findMany({ orderBy: { name: 'asc' } });
     const branches = await prisma.m_branch.findMany({ orderBy: { name: 'asc' } });
+    const event_locations = await prisma.m_event_location.findMany({ orderBy: { name: 'asc' } });
     
     // Ambil CoA dari skema glc_mra (terutama kategori pengeluaran/beban 62xxxx/5xxxxx)
     const marketingCoaNames = [
@@ -243,7 +244,7 @@ router.get('/metadata', verifyToken, async (req, res, next) => {
       select: { id: true, vendor_code: true, vendor_name: true }
     });
 
-    res.json({ brands, lobs, branches, coas, companies, vendors });
+    res.json({ brands, lobs, branches, event_locations, coas, companies, vendors });
   } catch (err) {
     next(err);
   }
@@ -1450,6 +1451,101 @@ router.delete('/branches/:id', verifyToken, async (req, res, next) => {
     }
 
     await prisma.m_branch.delete({
+      where: { id }
+    });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * ==========================================
+ * LOKASI EVENT (M_EVENT_LOCATION) CRUD ENDPOINTS
+ * ==========================================
+ */
+
+// GET /api/marketing/event-locations - List all event locations
+router.get('/event-locations', verifyToken, async (req, res, next) => {
+  try {
+    const locations = await prisma.m_event_location.findMany({
+      orderBy: { name: 'asc' }
+    });
+    res.json(locations);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/marketing/event-locations - Create a new event location
+router.post('/event-locations', verifyToken, async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Nama lokasi event wajib diisi.' });
+    }
+
+    // Check duplicate name
+    const existing = await prisma.m_event_location.findUnique({
+      where: { name: name.trim() }
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Nama lokasi event sudah terdaftar.' });
+    }
+
+    const location = await prisma.m_event_location.create({
+      data: { name: name.trim() }
+    });
+    res.status(201).json(location);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/marketing/event-locations/:id - Update an event location name
+router.put('/event-locations/:id', verifyToken, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Nama lokasi event wajib diisi.' });
+    }
+
+    // Check duplicate name
+    const existing = await prisma.m_event_location.findFirst({
+      where: {
+        name: name.trim(),
+        id: { not: id }
+      }
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Nama lokasi event sudah terdaftar.' });
+    }
+
+    const location = await prisma.m_event_location.update({
+      where: { id },
+      data: { name: name.trim() }
+    });
+    res.json(location);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/marketing/event-locations/:id - Delete an event location
+router.delete('/event-locations/:id', verifyToken, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    // Check if the event location is referenced by any plan item
+    const linked = await prisma.marketing_plan_items.findFirst({
+      where: { event_location_id: id }
+    });
+    if (linked) {
+      return res.status(400).json({ error: 'Lokasi event tidak bisa dihapus karena sedang digunakan dalam rencana anggaran.' });
+    }
+
+    await prisma.m_event_location.delete({
       where: { id }
     });
     res.status(204).end();

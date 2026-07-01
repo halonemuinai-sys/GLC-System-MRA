@@ -172,7 +172,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Pi
 
 export default function MarketingPlanPage() {
   // State for metadata & data
-  const [metadata, setMetadata] = useState({ brands: [], lobs: [], branches: [], coas: [], companies: [], vendors: [] });
+  const [metadata, setMetadata] = useState({ brands: [], lobs: [], branches: [], event_locations: [], coas: [], companies: [], vendors: [] });
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -2058,7 +2058,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
             required
           >
             <option value="">Pilih Lokasi Kegiatan / Event</option>
-            {metadata.branches.map(b => (
+            {metadata.event_locations.map(b => (
               <option key={b.id} value={b.id}>
                 {b.name}
               </option>
@@ -2375,7 +2375,7 @@ function WizardStep3ReviewSubmit({ wizardHeader, wizardItems, metadata, getMonth
             <div>PT / Company: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{companyName}</span></div>
             <div>Brand: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.brands.find(b => String(b.id) === String(wizardHeader.brand_id))?.name || '-'}</span></div>
             <div>Line of Business: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.lobs.find(l => String(l.id) === String(wizardHeader.lob_id))?.name || '-'}</span></div>
-            <div>Lokasi Kegiatan / Event: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.event_location_id)); return br ? br.name : '-'; })()}</span></div>
+            <div>Lokasi Kegiatan / Event: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.event_locations.find(b => String(b.id) === String(wizardHeader.event_location_id)); return br ? br.name : '-'; })()}</span></div>
             <div>Cabang Sasaran / Impact: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { if (!wizardHeader.branch_id || wizardHeader.branch_id === 'global') return 'Global Sales (Semua Toko)'; const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.branch_id)); return br ? `Cabang ${br.name}` : 'Global Sales'; })()}</span></div>
           </div>
         </div>
