@@ -41,7 +41,8 @@ import {
   ClipboardCheck,
   Award,
   Settings,
-  Tag
+  Tag,
+  MapPin
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
@@ -468,6 +469,7 @@ function SidebarContent({
           children: [
             { name: 'Marketing Plan', path: '/dashboard/marketing', icon: ClipboardList, allowed: hasAccess(['marketing', 'auditor']) },
             { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: hasAccess(['marketing', 'auditor']) },
+            { name: 'Lokasi / Cabang', path: '/dashboard/marketing/branches', icon: MapPin, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Konfigurasi Approval', path: '/dashboard/marketing-approval-settings', icon: Settings, allowed: hasAccess(['admin']) }
           ]
         }

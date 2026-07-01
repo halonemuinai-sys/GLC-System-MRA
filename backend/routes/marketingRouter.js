@@ -1352,4 +1352,99 @@ router.get('/attachments/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * ==========================================
+ * LOKASI / CABANG (M_BRANCH) CRUD ENDPOINTS
+ * ==========================================
+ */
+
+// GET /api/marketing/branches - List all branches
+router.get('/branches', verifyToken, async (req, res, next) => {
+  try {
+    const branches = await prisma.m_branch.findMany({
+      orderBy: { name: 'asc' }
+    });
+    res.json(branches);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/marketing/branches - Create a new branch
+router.post('/branches', verifyToken, async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Nama lokasi/cabang wajib diisi.' });
+    }
+
+    // Check duplicate name
+    const existing = await prisma.m_branch.findUnique({
+      where: { name: name.trim() }
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Nama lokasi/cabang sudah terdaftar.' });
+    }
+
+    const branch = await prisma.m_branch.create({
+      data: { name: name.trim() }
+    });
+    res.status(201).json(branch);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/marketing/branches/:id - Update a branch name
+router.put('/branches/:id', verifyToken, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Nama lokasi/cabang wajib diisi.' });
+    }
+
+    // Check duplicate name
+    const existing = await prisma.m_branch.findFirst({
+      where: {
+        name: name.trim(),
+        id: { not: id }
+      }
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Nama lokasi/cabang sudah terdaftar.' });
+    }
+
+    const branch = await prisma.m_branch.update({
+      where: { id },
+      data: { name: name.trim() }
+    });
+    res.json(branch);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/marketing/branches/:id - Delete a branch
+router.delete('/branches/:id', verifyToken, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    // Check if the branch is referenced by any plan item
+    const linked = await prisma.marketing_plan_items.findFirst({
+      where: { branch_id: id }
+    });
+    if (linked) {
+      return res.status(400).json({ error: 'Lokasi/cabang tidak bisa dihapus karena sedang digunakan dalam rencana anggaran.' });
+    }
+
+    await prisma.m_branch.delete({
+      where: { id }
+    });
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;
