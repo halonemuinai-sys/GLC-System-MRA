@@ -331,7 +331,9 @@ router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req
             period_month: parseInt(item.period_month, 10),
             budget_amount: parseFloat(item.budget_amount || 0),
             actual_amount: 0,
-            description: item.description
+            description: item.description,
+            qty: item.qty ? parseInt(item.qty, 10) : 1,
+            unit_price: item.unit_price ? parseFloat(item.unit_price) : parseFloat(item.budget_amount || 0)
           }
         });
       }
@@ -490,7 +492,9 @@ router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), 
             period_month: parseInt(item.period_month, 10),
             budget_amount: parseFloat(item.budget_amount || 0),
             actual_amount: 0,
-            description: item.description
+            description: item.description,
+            qty: item.qty ? parseInt(item.qty, 10) : 1,
+            unit_price: item.unit_price ? parseFloat(item.unit_price) : parseFloat(item.budget_amount || 0)
           }
         });
       }

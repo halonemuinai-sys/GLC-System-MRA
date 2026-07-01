@@ -213,7 +213,7 @@ export default function MarketingPlanPage() {
     doc_url: ''
   });
   const [wizardItems, setWizardItems] = useState([
-    { coa_id: '', vendor_id: '', period_month: '1', budget_amount: '', description: '' }
+    { coa_id: '', vendor_id: '', period_month: '1', qty: '1', unit_price: '', budget_amount: '', description: '' }
   ]);
 
   // Payment Request Form state
@@ -413,7 +413,7 @@ export default function MarketingPlanPage() {
   const addWizardItem = () => {
     setWizardItems(prev => [
       ...prev,
-      { coa_id: '', vendor_id: '', period_month: '1', budget_amount: '', description: '' }
+      { coa_id: '', vendor_id: '', period_month: '1', qty: '1', unit_price: '', budget_amount: '', description: '' }
     ]);
   };
 
@@ -426,6 +426,20 @@ export default function MarketingPlanPage() {
     setWizardItems(prev => {
       const next = [...prev];
       next[idx][field] = val;
+      
+      // Auto compute budget_amount if qty or unit_price changes
+      if (field === 'qty' || field === 'unit_price') {
+        const qtyVal = next[idx].qty ? next[idx].qty.replace(/\D/g, '') : '1';
+        const unitVal = next[idx].unit_price ? next[idx].unit_price.replace(/\D/g, '') : '0';
+        
+        // Update cleaned values in state
+        if (field === 'qty') next[idx].qty = qtyVal;
+        if (field === 'unit_price') next[idx].unit_price = unitVal;
+        
+        const qty = parseInt(qtyVal || '0', 10);
+        const unitPrice = parseFloat(unitVal || '0');
+        next[idx].budget_amount = String(qty * unitPrice);
+      }
       return next;
     });
   };
@@ -489,7 +503,7 @@ export default function MarketingPlanPage() {
         branch_id: '',
         doc_url: ''
       });
-      setWizardItems([{ coa_id: '', vendor_id: '', period_month: '1', budget_amount: '', description: '' }]);
+      setWizardItems([{ coa_id: '', vendor_id: '', period_month: '1', qty: '1', unit_price: '', budget_amount: '', description: '' }]);
       setWizardStep(1);
       setRevisingPlanId(null);
       loadPlans();
@@ -585,10 +599,12 @@ export default function MarketingPlanPage() {
         coa_id: item.coa_id ? String(item.coa_id) : '',
         vendor_id: item.vendor_id ? String(item.vendor_id) : '',
         budget_amount: String(item.budget_amount || '0'),
-        description: item.description || ''
+        description: item.description || '',
+        qty: String(item.qty || '1'),
+        unit_price: String(item.unit_price || item.budget_amount || '0')
       })));
     } else {
-      setWizardItems([{ period_month: '', coa_id: '', vendor_id: '', budget_amount: '0', description: '' }]);
+      setWizardItems([{ period_month: '', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '' }]);
     }
 
     setRevisingPlanId(plan.id);
@@ -1403,7 +1419,12 @@ export default function MarketingPlanPage() {
                                     <span className="text-neutral-400">-</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-right font-bold text-neutral-850 dark:text-white">{formatIDR(budget)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className="font-bold text-neutral-850 dark:text-white block">{formatIDR(budget)}</span>
+                                  <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-normal block mt-0.5">
+                                    {item.qty || 1} x {formatIDR(item.unit_price || budget)}
+                                  </span>
+                                </td>
                                 <td className="px-4 py-3 text-right text-emerald-600 dark:text-emerald-450 font-bold">{formatIDR(actual)}</td>
                                 <td className={`px-4 py-3 text-right font-bold ${remaining <= 0 ? 'text-red-500' : 'text-neutral-850 dark:text-white'}`}>
                                   {formatIDR(remaining)}
@@ -2080,122 +2101,156 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
             <thead>
               <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
                 <th className="px-1 py-2 text-center w-[4%]">No</th>
-                <th className="px-1 py-2 w-[14%]">Month *</th>
-                <th className="px-1 py-2 w-[32%]">CoA Account *</th>
-                <th className="px-1 py-2 w-[20%]">Vendor Partner</th>
-                <th className="px-1 py-2 w-[13%]">Budget (IDR) *</th>
-                <th className="px-1 py-2 w-[14%]">Cost Notes</th>
+                <th className="px-1 py-2 w-[11%]">Month *</th>
+                <th className="px-1 py-2 w-[22%]">CoA Account *</th>
+                <th className="px-1 py-2 w-[16%]">Vendor Partner</th>
+                <th className="px-1 py-2 w-[8%] text-center">Qty *</th>
+                <th className="px-1 py-2 w-[13%] text-right pr-2">Harga Satuan *</th>
+                <th className="px-1 py-2 w-[13%] text-right pr-2">Sub Total</th>
+                <th className="px-1 py-2 w-[10%]">Cost Notes</th>
                 <th className="px-1 py-2 text-center w-[3%]"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-855 text-neutral-700 dark:text-neutral-300">
-              {wizardItems.map((item, idx) => (
-                <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-neutral-950/10 transition-colors">
-                  <td className="px-1 py-1.5 text-center text-neutral-400 font-bold">
-                    {idx + 1}
-                  </td>
-                  
-                  {/* Month */}
-                  <td className="px-1 py-1.5">
-                    <select
-                      value={item.period_month}
-                      onChange={(e) => handleItemChange(idx, 'period_month', e.target.value)}
-                      className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-805 dark:text-white"
-                    >
-                      <option value="">Month</option>
-                      {availableMonths.map((m) => (
-                        <option key={m} value={m}>{getMonthName(m)}</option>
-                      ))}
-                    </select>
-                  </td>
-
-                  {/* CoA select */}
-                  <td className="px-1 py-1.5">
-                    <select
-                      value={item.coa_id}
-                      onChange={(e) => handleItemChange(idx, 'coa_id', e.target.value)}
-                      className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
-                      required
-                    >
-                      <option value="">Select Account</option>
-                      {metadata.coas.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-
-                  {/* Vendor input with autocomplete datalist */}
-                  <td className="px-1 py-1.5">
-                    <input
-                      type="text"
-                      list={`vendors-datalist-${idx}`}
-                      placeholder="Ketik nama vendor..."
-                      value={(() => {
-                        if (/^\d+$/.test(item.vendor_id)) {
-                          const vObj = metadata.vendors.find(v => String(v.id) === String(item.vendor_id));
-                          return vObj ? vObj.vendor_name : '';
-                        }
-                        return item.vendor_id || '';
-                      })()}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const matched = metadata.vendors.find(v => v.vendor_name === val);
-                        if (matched) {
-                          handleItemChange(idx, 'vendor_id', String(matched.id));
-                        } else {
-                          handleItemChange(idx, 'vendor_id', val);
-                        }
-                      }}
-                      className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
-                    />
-                    <datalist id={`vendors-datalist-${idx}`}>
-                      {metadata.vendors.map(v => (
-                        <option key={v.id} value={v.vendor_name} />
-                      ))}
-                    </datalist>
-                  </td>
-
-                  {/* Budget Amount */}
-                  <td className="px-1 py-1.5">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="0"
-                      value={formatThousands(item.budget_amount)}
-                      onChange={(e) => handleItemChange(idx, 'budget_amount', e.target.value.replace(/\D/g, ''))}
-                      className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-neutral-850 dark:text-white text-right"
-                      required
-                    />
-                  </td>
-
-                  {/* Cost detail description */}
-                  <td className="px-1 py-1.5">
-                    <input
-                      type="text"
-                      placeholder="Activity notes..."
-                      value={item.description}
-                      onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                      className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-855 dark:text-white"
-                    />
-                  </td>
-
-                  {/* Delete Button */}
-                  <td className="px-1 py-1.5 text-center">
-                    {wizardItems.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeWizardItem(idx)}
-                        className="text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-1.5 rounded-lg transition-colors cursor-pointer"
-                        title="Remove Row"
+              {wizardItems.map((item, idx) => {
+                const subTotal = Number(item.qty || 1) * Number(item.unit_price || 0);
+                return (
+                  <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-neutral-955/10 transition-colors">
+                    <td className="px-1 py-1.5 text-center text-neutral-400 font-bold">
+                      {idx + 1}
+                    </td>
+                    
+                    {/* Month */}
+                    <td className="px-1 py-1.5">
+                      <select
+                        value={item.period_month}
+                        onChange={(e) => handleItemChange(idx, 'period_month', e.target.value)}
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-805 dark:text-white"
                       >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                        <option value="">Month</option>
+                        {availableMonths.map((m) => (
+                          <option key={m} value={m}>{getMonthName(m)}</option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* CoA select */}
+                    <td className="px-1 py-1.5">
+                      <select
+                        value={item.coa_id}
+                        onChange={(e) => handleItemChange(idx, 'coa_id', e.target.value)}
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
+                        required
+                      >
+                        <option value="">Select Account</option>
+                        {metadata.coas.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* Vendor input with autocomplete datalist */}
+                    <td className="px-1 py-1.5">
+                      <input
+                        type="text"
+                        list={`vendors-datalist-${idx}`}
+                        placeholder="Ketik nama vendor..."
+                        value={(() => {
+                          if (/^\d+$/.test(item.vendor_id)) {
+                            const vObj = metadata.vendors.find(v => String(v.id) === String(item.vendor_id));
+                            return vObj ? vObj.vendor_name : '';
+                          }
+                          return item.vendor_id || '';
+                        })()}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const matched = metadata.vendors.find(v => v.vendor_name === val);
+                          if (matched) {
+                            handleItemChange(idx, 'vendor_id', String(matched.id));
+                          } else {
+                            handleItemChange(idx, 'vendor_id', val);
+                          }
+                        }}
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
+                      />
+                      <datalist id={`vendors-datalist-${idx}`}>
+                        {metadata.vendors.map(v => (
+                          <option key={v.id} value={v.vendor_name} />
+                        ))}
+                      </datalist>
+                    </td>
+
+                    {/* Qty */}
+                    <td className="px-1 py-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="1"
+                        value={item.qty || '1'}
+                        onChange={(e) => handleItemChange(idx, 'qty', e.target.value.replace(/\D/g, ''))}
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-850 dark:text-white text-center"
+                        required
+                      />
+                    </td>
+
+                    {/* Harga Satuan */}
+                    <td className="px-1 py-1.5">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="0"
+                        value={formatThousands(item.unit_price || '')}
+                        onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value.replace(/\D/g, ''))}
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-neutral-850 dark:text-white text-right pr-2"
+                        required
+                      />
+                    </td>
+
+                    {/* Sub Total */}
+                    <td className="px-1 py-1.5 text-right font-bold text-neutral-800 dark:text-neutral-100 pr-2">
+                      {formatThousands(subTotal)}
+                    </td>
+
+                    {/* Cost detail description */}
+                    <td className="px-1 py-1.5">
+                      <input
+                        type="text"
+                        placeholder="Activity notes..."
+                        value={item.description}
+                        onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-855 dark:text-white"
+                      />
+                    </td>
+
+                    {/* Delete Button */}
+                    <td className="px-1 py-1.5 text-center">
+                      {wizardItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeWizardItem(idx)}
+                          className="text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 p-1.5 rounded-lg transition-colors cursor-pointer"
+                          title="Remove Row"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              
+              {/* Total Row */}
+              <tr className="bg-neutral-50/70 dark:bg-neutral-955/60 border-t border-neutral-200 dark:border-neutral-800 font-bold">
+                <td colSpan="6" className="px-3 py-2.5 text-right text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-450">
+                  Total Anggaran Rencana:
+                </td>
+                <td className="px-1 py-2.5 text-right text-xs text-blue-600 dark:text-blue-400 pr-2 font-black">
+                  {formatThousands(wizardItems.reduce((acc, curr) => acc + (Number(curr.qty || 1) * Number(curr.unit_price || 0)), 0))}
+                </td>
+                <td colSpan="2" className="px-1 py-2.5"></td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -2261,32 +2316,33 @@ function WizardStep3ReviewSubmit({ wizardHeader, wizardItems, metadata, getMonth
       </div>
 
       {/* Review list Table */}
-      <div className="border border-neutral-200 dark:border-neutral-850 rounded-2xl overflow-hidden shadow-sm">
+      <div className="border border-neutral-200 dark:border-neutral-855 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[11px] border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200 dark:border-neutral-850 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
+              <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200 dark:border-neutral-855 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
                 <th className="px-4.5 py-3">Month</th>
                 <th className="px-4.5 py-3">CoA Account</th>
-                <th className="px-4.5 py-3">Brand</th>
-                <th className="px-4.5 py-3">LoB</th>
-                <th className="px-4.5 py-3">Branch</th>
                 <th className="px-4.5 py-3">Vendor</th>
-                <th className="px-4.5 py-3 text-right">Budget (IDR)</th>
+                <th className="px-4.5 py-3 text-center">Qty</th>
+                <th className="px-4.5 py-3 text-right">Harga Satuan (IDR)</th>
+                <th className="px-4.5 py-3 text-right">Sub Total (IDR)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850/80 font-medium text-neutral-700 dark:text-neutral-300">
-              {wizardItems.map((item, idx) => (
-                <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-neutral-950/10 transition-colors">
-                  <td className="px-4.5 py-3 font-semibold text-neutral-900 dark:text-white">{getMonthName(Number(item.period_month))}</td>
-                  <td className="px-4.5 py-3">{metadata.coas.find(c => String(c.id) === String(item.coa_id))?.name || 'N/A'}</td>
-                  <td className="px-4.5 py-3">{metadata.brands.find(b => String(b.id) === String(item.brand_id || wizardHeader.brand_id))?.name || '-'}</td>
-                  <td className="px-4.5 py-3">{metadata.lobs.find(l => String(l.id) === String(item.lob_id || wizardHeader.lob_id))?.name || '-'}</td>
-                  <td className="px-4.5 py-3">{(() => { const br = metadata.branches.find(b => String(b.id) === String(item.branch_id || wizardHeader.branch_id)); return br ? `${br.location} (${br.name})` : '-'; })()}</td>
-                  <td className="px-4.5 py-3">{metadata.vendors.find(v => String(v.id) === String(item.vendor_id))?.vendor_name || '-'}</td>
-                  <td className="px-4.5 py-3 text-right font-black text-neutral-855 dark:text-white">{formatIDR(item.budget_amount)}</td>
-                </tr>
-              ))}
+              {wizardItems.map((item, idx) => {
+                const subTotal = Number(item.qty || 1) * Number(item.unit_price || 0);
+                return (
+                  <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-neutral-955/10 transition-colors">
+                    <td className="px-4.5 py-3 font-semibold text-neutral-900 dark:text-white">{getMonthName(Number(item.period_month))}</td>
+                    <td className="px-4.5 py-3">{metadata.coas.find(c => String(c.id) === String(item.coa_id))?.name || 'N/A'}</td>
+                    <td className="px-4.5 py-3">{metadata.vendors.find(v => String(v.id) === String(item.vendor_id))?.vendor_name || item.vendor_id || '-'}</td>
+                    <td className="px-4.5 py-3 text-center">{item.qty || '1'}</td>
+                    <td className="px-4.5 py-3 text-right">{formatIDR(item.unit_price || item.budget_amount)}</td>
+                    <td className="px-4.5 py-3 text-right font-black text-neutral-855 dark:text-white">{formatIDR(subTotal)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

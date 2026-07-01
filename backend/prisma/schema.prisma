@@ -839,6 +839,8 @@ model marketing_plan_items {
   budget_amount     Decimal                 @default(0) @db.Decimal(18, 2)
   actual_amount     Decimal                 @default(0) @db.Decimal(18, 2)
   description       String?                 @db.VarChar(255)
+  qty               Int                     @default(1)
+  unit_price        Decimal                 @default(0) @db.Decimal(18, 2)
 
   marketing_plan    marketing_plans         @relation(fields: [marketing_plan_id], references: [id], onDelete: Cascade)
   m_coa             m_coa                   @relation(fields: [coa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
