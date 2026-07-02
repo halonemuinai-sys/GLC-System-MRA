@@ -215,11 +215,15 @@ export default function MarketingPlanPage() {
     lob_id: '',
     branch_id: '',
     event_location_id: '',
-    doc_url: ''
+    doc_url: '',
+    over_budget_reason: ''
   });
   const [wizardItems, setWizardItems] = useState([
     { coa_id: '', vendor_id: '', period_month: '1', qty: '1', unit_price: '', budget_amount: '', description: '' }
   ]);
+
+  const [budgetAvailability, setBudgetAvailability] = useState(null);
+  const [checkingBudget, setCheckingBudget] = useState(false);
 
   // Payment Request Form state
   const [paymentForm, setPaymentForm] = useState({
@@ -319,6 +323,62 @@ export default function MarketingPlanPage() {
   useEffect(() => {
     loadPlans();
   }, [loadPlans]);
+
+  const checkBudgetAvailability = useCallback(async () => {
+    const { company_id, brand_id, lob_id, fiscal_year } = wizardHeader;
+    if (!company_id || !brand_id || !lob_id || !fiscal_year) {
+      setBudgetAvailability(null);
+      return;
+    }
+
+    try {
+      setCheckingBudget(true);
+      const res = await apiClient.get('/api/marketing/budgets/check', {
+        params: {
+          company_id,
+          brand_id,
+          lob_id,
+          fiscal_year
+        }
+      });
+      setBudgetAvailability(res || null);
+    } catch (err) {
+      console.error('Failed to check budget availability:', err);
+    } finally {
+      setCheckingBudget(false);
+    }
+  }, [wizardHeader.company_id, wizardHeader.brand_id, wizardHeader.lob_id, wizardHeader.fiscal_year]);
+
+  useEffect(() => {
+    checkBudgetAvailability();
+  }, [checkBudgetAvailability]);
+
+  const overBudgetMonths = useMemo(() => {
+    if (!budgetAvailability || !budgetAvailability.is_locked) return [];
+
+    const monthlyProposed = Array.from({ length: 12 }, () => 0);
+    wizardItems.forEach(item => {
+      const m = parseInt(item.period_month, 10) || 1;
+      monthlyProposed[m - 1] += parseFloat(item.budget_amount || 0);
+    });
+
+    const over = [];
+    budgetAvailability.monthly.forEach(mObj => {
+      const mIdx = mObj.month - 1;
+      const proposed = monthlyProposed[mIdx];
+      if (proposed + mObj.committed > mObj.limit) {
+        over.push({
+          month: mObj.month,
+          limit: mObj.limit,
+          committed: mObj.committed,
+          proposed,
+          excess: (proposed + mObj.committed) - mObj.limit
+        });
+      }
+    });
+
+    return over;
+  }, [budgetAvailability, wizardItems]);
 
   // Refetch wrapper
   const handleRefresh = () => {
@@ -470,6 +530,13 @@ export default function MarketingPlanPage() {
       return;
     }
 
+    // Validate over-budget justification
+    if (overBudgetMonths.length > 0 && !wizardHeader.over_budget_reason?.trim()) {
+      setError('Pengajuan ini melebihi limit anggaran bulanan yang dikunci. Anda wajib menyertakan alasan/justifikasi over-budget.');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const payload = {
         ...wizardHeader,
@@ -516,7 +583,8 @@ export default function MarketingPlanPage() {
         lob_id: '',
         branch_id: '',
         event_location_id: '',
-        doc_url: ''
+        doc_url: '',
+        over_budget_reason: ''
       });
       setWizardItems([{ coa_id: '', vendor_id: '', period_month: '1', qty: '1', unit_price: '', budget_amount: '', description: '' }]);
       setWizardStep(1);
@@ -1282,16 +1350,19 @@ export default function MarketingPlanPage() {
                     formatThousands={formatThousands}
                     Plus={Plus}
                     X={X}
+                    overBudgetMonths={overBudgetMonths}
                   />
                 )}
 
                 {wizardStep === 3 && (
                   <WizardStep3ReviewSubmit
                     wizardHeader={wizardHeader}
+                    setWizardHeader={setWizardHeader}
                     wizardItems={wizardItems}
                     metadata={metadata}
                     getMonthName={getMonthName}
                     formatIDR={formatIDR}
+                    overBudgetMonths={overBudgetMonths}
                   />
                 )}
               </div>
@@ -2135,7 +2206,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
   );
 }
 
-function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, removeWizardItem, handleItemChange, metadata, getMonthName, formatThousands, Plus, X }) {
+function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, removeWizardItem, handleItemChange, metadata, getMonthName, formatThousands, Plus, X, overBudgetMonths }) {
   const getAvailableMonths = () => {
     const start_date = wizardHeader.event_start_date || wizardHeader.cta_start_date || wizardHeader.start_date;
     const end_date = wizardHeader.event_end_date || wizardHeader.cta_end_date || wizardHeader.end_date;
@@ -2356,11 +2427,30 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
           </table>
         </div>
       </div>
+      {/* Over-budget warning banner */}
+      {overBudgetMonths && overBudgetMonths.length > 0 && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl space-y-2">
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold">
+            <AlertTriangle className="w-4 h-4" />
+            <span>Peringatan: Pengajuan Over-Budget Terdeteksi</span>
+          </div>
+          <p className="text-[10px] text-neutral-500 dark:text-neutral-450 leading-relaxed font-semibold">
+            Total rencana pengeluaran Anda melebihi plafon anggaran bulanan yang dikunci. Pengajuan tetap dapat dikirimkan namun memerlukan persetujuan khusus (override) dan alasan justifikasi tambahan di Step 3.
+          </p>
+          <div className="space-y-1">
+            {overBudgetMonths.map(ob => (
+              <div key={ob.month} className="text-[10px] text-neutral-650 dark:text-neutral-400 font-medium">
+                • Bulan <strong>{getMonthName(ob.month)}</strong>: Plafon Rp {ob.limit.toLocaleString('id-ID')}, Terpakai Rp {ob.committed.toLocaleString('id-ID')}, Pengajuan Baru Rp {ob.proposed.toLocaleString('id-ID')} (Lebih Rp {ob.excess.toLocaleString('id-ID')})
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function WizardStep3ReviewSubmit({ wizardHeader, wizardItems, metadata, getMonthName, formatIDR }) {
+function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, metadata, getMonthName, formatIDR, overBudgetMonths }) {
   const totalEstimation = wizardItems.reduce((acc, curr) => acc + Number(curr.budget_amount || 0), 0);
   const companyName = metadata.companies.find(c => String(c.id) === String(wizardHeader.company_id))?.name || '';
   
@@ -2402,7 +2492,7 @@ function WizardStep3ReviewSubmit({ wizardHeader, wizardItems, metadata, getMonth
         {wizardHeader.description && (
           <div className="bg-neutral-50 dark:bg-neutral-955 p-5 rounded-2xl border border-neutral-200/60 dark:border-neutral-850/80 space-y-2 md:col-span-2">
             <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Description</h4>
-            <p className="text-xs text-neutral-650 dark:text-neutral-350 leading-relaxed font-medium">{wizardHeader.description}</p>
+            <p className="text-xs text-neutral-655 dark:text-neutral-355 leading-relaxed font-medium">{wizardHeader.description}</p>
           </div>
         )}
       </div>
@@ -2417,6 +2507,39 @@ function WizardStep3ReviewSubmit({ wizardHeader, wizardItems, metadata, getMonth
           {formatIDR(totalEstimation)}
         </span>
       </div>
+
+      {/* Over-budget warning banner & justification input */}
+      {overBudgetMonths && overBudgetMonths.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-black">
+            <AlertTriangle className="w-4 h-4" />
+            <span>Pengajuan Over-Budget Terdeteksi</span>
+          </div>
+          <p className="text-[10px] text-neutral-550 dark:text-neutral-450 leading-relaxed font-semibold">
+            Rencana pengajuan anggaran Anda melebihi kuota bulanan yang telah dikunci. Rencana ini tetap dapat diajukan tetapi wajib menyertakan alasan justifikasi untuk persetujuan penyesuaian khusus (over-budget override).
+          </p>
+          <div className="space-y-1.5 border-t border-amber-500/10 pt-3">
+            {overBudgetMonths.map(ob => (
+              <div key={ob.month} className="text-[10px] text-neutral-650 dark:text-neutral-400">
+                • Bulan <strong>{getMonthName(ob.month)}</strong>: Limit Rp {ob.limit.toLocaleString('id-ID')}, Terpakai Rp {ob.committed.toLocaleString('id-ID')}, Pengajuan Baru Rp {ob.proposed.toLocaleString('id-ID')} (Lebih Rp {ob.excess.toLocaleString('id-ID')})
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2 pt-2 border-t border-amber-500/10">
+            <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
+              Justifikasi / Alasan Over-Budget *
+            </label>
+            <textarea
+              rows="3"
+              required
+              placeholder="Tuliskan justifikasi detail mengapa alokasi bulan ini harus melebihi plafon..."
+              value={wizardHeader.over_budget_reason || ''}
+              onChange={(e) => setWizardHeader(prev => ({ ...prev, over_budget_reason: e.target.value }))}
+              className="w-full bg-white dark:bg-neutral-900 border border-neutral-250 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all font-medium leading-relaxed resize-none"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Review list Table */}
       <div className="border border-neutral-200 dark:border-neutral-855 rounded-2xl overflow-hidden shadow-sm">

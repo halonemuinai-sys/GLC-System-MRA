@@ -251,6 +251,67 @@ router.get('/metadata', verifyToken, async (req, res, next) => {
 });
 
 /**
+ * Helper function to check if the proposed marketing plan items exceed the locked monthly budget.
+ */
+async function checkBudgetLimits(company_id, fiscal_year, items) {
+  try {
+    for (const item of items) {
+      const brand_id = item.brand_id ? parseInt(item.brand_id, 10) : null;
+      const lob_id = item.lob_id ? parseInt(item.lob_id, 10) : null;
+      const month = item.period_month ? parseInt(item.period_month, 10) : null;
+      const amount = parseFloat(item.budget_amount || 0);
+
+      if (!brand_id || !lob_id || !month) continue;
+
+      // Fetch budget limit
+      const budget = await prisma.m_marketing_budget.findUnique({
+        where: {
+          company_id_brand_id_lob_id_fiscal_year: {
+            company_id: parseInt(company_id, 10),
+            brand_id,
+            lob_id,
+            fiscal_year: parseInt(fiscal_year, 10)
+          }
+        },
+        include: {
+          monthly_limits: true
+        }
+      });
+
+      if (budget && budget.is_locked) {
+        const limitObj = budget.monthly_limits.find(ml => ml.period_month === month);
+        const limit = limitObj ? parseFloat(limitObj.budget_limit || 0) : 0;
+
+        // Calculate committed costs
+        const committedItems = await prisma.marketing_plan_items.findMany({
+          where: {
+            brand_id,
+            lob_id,
+            period_month: month,
+            marketing_plan: {
+              company_id: parseInt(company_id, 10),
+              fiscal_year: parseInt(fiscal_year, 10),
+              status: { in: ['APPROVED', 'PENDING_APPROVAL'] }
+            }
+          },
+          select: {
+            budget_amount: true
+          }
+        });
+
+        const totalCommitted = committedItems.reduce((sum, ci) => sum + parseFloat(ci.budget_amount || 0), 0);
+        if (totalCommitted + amount > limit) {
+          return true; // Over budget detected
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error in checkBudgetLimits:', err.message);
+  }
+  return false;
+}
+
+/**
  * POST /api/marketing/plans
  * Membuat rencana anggaran pemasaran (Marketing Plan Campaign) baru
  */
@@ -261,7 +322,7 @@ router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req
       return res.status(403).json({ error: 'User email not registered in employee database.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url } = req.body;
+    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url, over_budget_reason } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
@@ -272,6 +333,9 @@ router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req
     for (const item of items) {
       totalBudget += parseFloat(item.budget_amount || 0);
     }
+
+    // Check budget limits
+    const isOverBudget = await checkBudgetLimits(company_id, fiscal_year, items);
 
     // Gunakan db transaction untuk membuat plan & items secara atomic
     const magicLinkQueue = [];
@@ -292,7 +356,9 @@ router.post('/plans', verifyToken, checkRole(['admin', 'marketing']), async (req
           total_budget: totalBudget,
           status: 'PENDING_APPROVAL',
           creator_id: employee.id,
-          doc_url
+          doc_url,
+          is_over_budget: isOverBudget,
+          over_budget_reason: isOverBudget ? over_budget_reason : null
         }
       });
 
@@ -429,7 +495,7 @@ router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), 
       return res.status(400).json({ error: 'Hanya rencana yang berstatus REJECTED yang bisa direvisi.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url } = req.body;
+    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url, over_budget_reason } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
@@ -439,6 +505,9 @@ router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), 
     for (const item of items) {
       totalBudget += parseFloat(item.budget_amount || 0);
     }
+
+    // Check budget limits
+    const isOverBudget = await checkBudgetLimits(company_id, fiscal_year, items);
 
     const magicLinkQueue = [];
     const updatedPlan = await prisma.$transaction(async (tx) => {
@@ -459,6 +528,8 @@ router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), 
           total_budget: totalBudget,
           status: 'PENDING_APPROVAL',
           doc_url,
+          is_over_budget: isOverBudget,
+          over_budget_reason: isOverBudget ? over_budget_reason : null,
           updated_at: new Date()
         }
       });
@@ -1549,6 +1620,435 @@ router.delete('/event-locations/:id', verifyToken, async (req, res, next) => {
       where: { id }
     });
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * ==========================================
+ * MARKETING BUDGET CONTROL CRUD ENDPOINTS
+ * ==========================================
+ */
+
+// GET /api/marketing/budgets - List budgets
+router.get('/budgets', verifyToken, async (req, res, next) => {
+  try {
+    const { company_id, brand_id, lob_id, fiscal_year } = req.query;
+    const where = {};
+    if (company_id) where.company_id = parseInt(company_id, 10);
+    if (brand_id) where.brand_id = parseInt(brand_id, 10);
+    if (lob_id) where.lob_id = parseInt(lob_id, 10);
+    if (fiscal_year) where.fiscal_year = parseInt(fiscal_year, 10);
+
+    const budgets = await prisma.m_marketing_budget.findMany({
+      where,
+      include: {
+        company: { select: { id: true, name: true } },
+        brand: { select: { id: true, name: true } },
+        lob: { select: { id: true, name: true } },
+        monthly_limits: { orderBy: { period_month: 'asc' } }
+      },
+      orderBy: { fiscal_year: 'desc' }
+    });
+
+    res.json(budgets);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/marketing/budgets/check - Check budget availability
+router.get('/budgets/check', verifyToken, async (req, res, next) => {
+  try {
+    const company_id = parseInt(req.query.company_id, 10);
+    const brand_id = parseInt(req.query.brand_id, 10);
+    const lob_id = parseInt(req.query.lob_id, 10);
+    const fiscal_year = parseInt(req.query.fiscal_year, 10);
+
+    if (!company_id || !brand_id || !lob_id || !fiscal_year) {
+      return res.status(400).json({ error: 'Parameter company_id, brand_id, lob_id, dan fiscal_year wajib diisi.' });
+    }
+
+    // 1. Get the locked budget limit
+    const budget = await prisma.m_marketing_budget.findUnique({
+      where: {
+        company_id_brand_id_lob_id_fiscal_year: {
+          company_id,
+          brand_id,
+          lob_id,
+          fiscal_year
+        }
+      },
+      include: {
+        monthly_limits: true
+      }
+    });
+
+    // 2. Fetch all matching committed plan items for this fiscal year
+    // Note: status APPROVED or PENDING_APPROVAL
+    const committedPlans = await prisma.marketing_plans.findMany({
+      where: {
+        company_id,
+        fiscal_year,
+        status: { in: ['APPROVED', 'PENDING_APPROVAL'] }
+      },
+      include: {
+        items: true
+      }
+    });
+
+    // Map month => committed cost
+    const monthlyCommitted = Array.from({ length: 12 }, () => 0);
+    for (const plan of committedPlans) {
+      for (const item of plan.items) {
+        // Resolve item's brand & lob (fallback to plan header)
+        const itemBrandId = item.brand_id || plan.brand_id;
+        const itemLobId = item.lob_id || plan.lob_id;
+
+        if (itemBrandId === brand_id && itemLobId === lob_id) {
+          const mIdx = item.period_month - 1;
+          if (mIdx >= 0 && mIdx < 12) {
+            monthlyCommitted[mIdx] += parseFloat(item.budget_amount || 0);
+          }
+        }
+      }
+    }
+
+    // Prepare response per month
+    const result = Array.from({ length: 12 }, (_, i) => {
+      const monthNum = i + 1;
+      const limitObj = budget ? budget.monthly_limits.find(ml => ml.period_month === monthNum) : null;
+      const budgetLimit = limitObj ? parseFloat(limitObj.budget_limit || 0) : 0;
+      const committed = monthlyCommitted[i];
+      const available = budgetLimit - committed;
+
+      return {
+        month: monthNum,
+        limit: budgetLimit,
+        committed,
+        available,
+        is_locked: budget ? budget.is_locked : false
+      };
+    });
+
+    res.json({
+      is_locked: budget ? budget.is_locked : false,
+      total_budget: budget ? parseFloat(budget.total_budget || 0) : 0,
+      monthly: result
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/marketing/budgets/:id - Single budget
+router.get('/budgets/:id', verifyToken, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const budget = await prisma.m_marketing_budget.findUnique({
+      where: { id },
+      include: {
+        company: { select: { id: true, name: true } },
+        brand: { select: { id: true, name: true } },
+        lob: { select: { id: true, name: true } },
+        monthly_limits: { orderBy: { period_month: 'asc' } }
+      }
+    });
+
+    if (!budget) {
+      return res.status(404).json({ error: 'Budget control tidak ditemukan.' });
+    }
+
+    res.json(budget);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/marketing/budgets - Create budget control
+router.post('/budgets', verifyToken, async (req, res, next) => {
+  try {
+    const { company_id, brand_id, lob_id, fiscal_year, total_budget, monthly_limits } = req.body;
+
+    if (!company_id || !brand_id || !lob_id || !fiscal_year) {
+      return res.status(400).json({ error: 'Perusahaan, Brand, LOB, dan Tahun Fiskal wajib diisi.' });
+    }
+
+    // Check unique key duplicate
+    const existing = await prisma.m_marketing_budget.findUnique({
+      where: {
+        company_id_brand_id_lob_id_fiscal_year: {
+          company_id: parseInt(company_id, 10),
+          brand_id: parseInt(brand_id, 10),
+          lob_id: parseInt(lob_id, 10),
+          fiscal_year: parseInt(fiscal_year, 10)
+        }
+      }
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Konfigurasi budget untuk entitas, brand, LOB, dan tahun fiskal ini sudah terdaftar.' });
+    }
+
+    // Create header and monthly breakdowns in transaction
+    const budget = await prisma.$transaction(async (tx) => {
+      const bHeader = await tx.m_marketing_budget.create({
+        data: {
+          company_id: parseInt(company_id, 10),
+          brand_id: parseInt(brand_id, 10),
+          lob_id: parseInt(lob_id, 10),
+          fiscal_year: parseInt(fiscal_year, 10),
+          total_budget: parseFloat(total_budget || 0)
+        }
+      });
+
+      // Create 12 months
+      const monthlyData = [];
+      for (let m = 1; m <= 12; m++) {
+        const val = monthly_limits ? (monthly_limits.find(ml => ml.period_month === m)?.budget_limit || 0) : 0;
+        monthlyData.push({
+          marketing_budget_id: bHeader.id,
+          period_month: m,
+          budget_limit: parseFloat(val)
+        });
+      }
+
+      await tx.m_marketing_budget_monthly.createMany({
+        data: monthlyData
+      });
+
+      return bHeader;
+    });
+
+    res.status(201).json(budget);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/marketing/budgets/:id - Update budget limits
+router.put('/budgets/:id', verifyToken, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { total_budget, monthly_limits } = req.body;
+
+    const existing = await prisma.m_marketing_budget.findUnique({
+      where: { id }
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Budget control tidak ditemukan.' });
+    }
+
+    if (existing.is_locked) {
+      return res.status(400).json({ error: 'Anggaran telah dikunci (Locked). Buka kunci terlebih dahulu untuk mengubah.' });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // Update header
+      const bHeader = await tx.m_marketing_budget.update({
+        where: { id },
+        data: {
+          total_budget: parseFloat(total_budget || 0)
+        }
+      });
+
+      // Upsert monthly limits
+      if (monthly_limits && Array.isArray(monthly_limits)) {
+        for (const ml of monthly_limits) {
+          await tx.m_marketing_budget_monthly.upsert({
+            where: {
+              marketing_budget_id_period_month: {
+                marketing_budget_id: id,
+                period_month: ml.period_month
+              }
+            },
+            update: {
+              budget_limit: parseFloat(ml.budget_limit || 0)
+            },
+            create: {
+              marketing_budget_id: id,
+              period_month: ml.period_month,
+              budget_limit: parseFloat(ml.budget_limit || 0)
+            }
+          });
+        }
+      }
+
+      return bHeader;
+    });
+
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/marketing/budgets/:id/lock - Lock budget
+router.put('/budgets/:id/lock', verifyToken, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const updated = await prisma.m_marketing_budget.update({
+      where: { id },
+      data: {
+        is_locked: true,
+        locked_at: new Date(),
+        locked_by: req.user?.id ? String(req.user.id) : 'admin'
+      }
+    });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/marketing/budgets/:id/unlock - Unlock budget
+router.put('/budgets/:id/unlock', verifyToken, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const updated = await prisma.m_marketing_budget.update({
+      where: { id },
+      data: {
+        is_locked: false,
+        locked_at: null,
+        locked_by: null
+      }
+    });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/marketing/approvals-overview - Get overview of all marketing plans & their approval steps
+router.get('/approvals-overview', verifyToken, async (req, res, next) => {
+  try {
+    const { company_id, fiscal_year, status } = req.query;
+
+    const where = {};
+    if (company_id) where.company_id = parseInt(company_id, 10);
+    if (fiscal_year) where.fiscal_year = parseInt(fiscal_year, 10);
+    if (status) where.status = status;
+
+    // Fetch marketing plans
+    const plans = await prisma.marketing_plans.findMany({
+      where,
+      include: {
+        company: { select: { id: true, name: true, company_master_id: true } },
+        creator: { select: { id: true, name: true, email: true } },
+        approval_history: {
+          include: {
+            approver: { select: { id: true, name: true, email: true } },
+            magic_links: true
+          },
+          orderBy: { step_number: 'asc' }
+        }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    // Process each plan to calculate its full approval step path
+    const results = [];
+    for (const plan of plans) {
+      const totalBudget = parseFloat(plan.total_budget || 0);
+
+      // Fetch all approval rules that apply to this plan's budget amount
+      // Match rules for plan's company, fallback to global rules (company_id IS NULL)
+      const rules = await prisma.approval_rules.findMany({
+        where: {
+          module: 'MARKETING_PLAN',
+          min_amount: { lte: totalBudget },
+          OR: [
+            { max_amount: { gte: totalBudget } },
+            { max_amount: null }
+          ],
+          OR: [
+            { company_id: plan.company_id },
+            { company_id: null }
+          ]
+        },
+        orderBy: { step_number: 'asc' }
+      });
+
+      // Group rules by step_number to resolve overrides
+      // (company-specific rule overrides global rule at same step_number)
+      const stepRulesMap = {};
+      for (const rule of rules) {
+        if (!stepRulesMap[rule.step_number] || rule.company_id !== null) {
+          stepRulesMap[rule.step_number] = rule;
+        }
+      }
+      const sortedRules = Object.values(stepRulesMap).sort((a, b) => a.step_number - b.step_number);
+
+      // Map rules to approval steps
+      const steps = [];
+      let currentActiveStep = null;
+
+      for (const rule of sortedRules) {
+        // Find matching history record
+        const historyRecord = plan.approval_history.find(h => h.step_number === rule.step_number);
+
+        // Fetch configured contacts for this step's role
+        const contacts = await prisma.approval_role_contacts.findMany({
+          where: {
+            role: rule.approver_role,
+            OR: [
+              { company_master_id: plan.company.company_master_id },
+              { company_master_id: null }
+            ]
+          },
+          orderBy: { company_master_id: 'desc' } // Override specific first
+        });
+
+        // Resolve recipient emails for this step
+        const recipientEmails = contacts.map(c => c.email);
+
+        // Get details of magic links generated for this step
+        const magicLinks = historyRecord ? historyRecord.magic_links.map(ml => ({
+          email: ml.recipient_email,
+          expires_at: ml.expires_at,
+          used_at: ml.used_at
+        })) : [];
+
+        let stepStatus = 'WAITING'; // WAITING, PENDING, APPROVED, REJECTED
+        if (historyRecord) {
+          stepStatus = historyRecord.status; // APPROVED, REJECTED, PENDING
+        }
+
+        // Identify the first un-approved/un-rejected step as the active one
+        if (stepStatus === 'PENDING' && !currentActiveStep) {
+          currentActiveStep = rule.step_number;
+        }
+
+        steps.push({
+          step_number: rule.step_number,
+          role: rule.approver_role,
+          status: stepStatus,
+          approver_name: historyRecord?.approver?.name || null,
+          action_at: historyRecord?.action_at || null,
+          comment: historyRecord?.comment || null,
+          recipients: recipientEmails,
+          magic_links: magicLinks
+        });
+      }
+
+      results.push({
+        id: plan.id,
+        title: plan.title,
+        company_id: plan.company_id,
+        company_name: plan.company.name,
+        fiscal_year: plan.fiscal_year,
+        total_budget: totalBudget,
+        status: plan.status,
+        is_over_budget: plan.is_over_budget,
+        over_budget_reason: plan.over_budget_reason,
+        creator_name: plan.creator.name,
+        created_at: plan.created_at,
+        current_active_step: currentActiveStep,
+        steps
+      });
+    }
+
+    res.json(results);
   } catch (err) {
     next(err);
   }

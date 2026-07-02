@@ -469,6 +469,8 @@ function SidebarContent({
           children: [
             { name: 'Marketing Plan', path: '/dashboard/marketing', icon: ClipboardList, allowed: hasAccess(['marketing', 'auditor']) },
             { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: hasAccess(['marketing', 'auditor']) },
+            { name: 'Overview Approval', path: '/dashboard/marketing/approval-overview', icon: ClipboardCheck, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
+            { name: 'Budget Control', path: '/dashboard/marketing/budgeting', icon: Wallet, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Lokasi Event', path: '/dashboard/marketing/event-locations', icon: MapPin, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Cabang Sasaran', path: '/dashboard/marketing/branches', icon: Building, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Konfigurasi Approval', path: '/dashboard/marketing-approval-settings', icon: Settings, allowed: hasAccess(['admin']) }
