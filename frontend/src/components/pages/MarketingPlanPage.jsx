@@ -22,7 +22,13 @@ import {
   Info,
   Check,
   FileSpreadsheet,
-  Trash2
+  Trash2,
+  Save,
+  Send,
+  Undo2,
+  Pencil,
+  Target,
+  BarChart2
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -178,6 +184,22 @@ export default function MarketingPlanPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState(null);
   const [revisingPlanId, setRevisingPlanId] = useState(null); // Track revision of rejected plan
+  const [draftPlanId, setDraftPlanId] = useState(null); // Track editing of a saved draft
+
+  // Lifecycle action states
+  const [submittingDraft, setSubmittingDraft] = useState(false);
+  const [recallingPlanId, setRecallingPlanId] = useState(null);
+  const [submittingActuals, setSubmittingActuals] = useState(false);
+  const [actualsMsg, setActualsMsg] = useState(null);
+
+  // Post-campaign actuals form
+  const [actualsForm, setActualsForm] = useState({
+    actual_sales: '', actual_leads: '', actual_reach: '',
+    actual_impressions: '', actual_roi_pct: '', actual_notes: ''
+  });
+
+  // Current user role (for Recall button visibility)
+  const userRole = React.useMemo(() => (typeof window !== 'undefined' ? (Cookies.get('glc_user_role') || '').toLowerCase() : ''), []);
 
   // Multi-step Wizard Form state
   const [wizardStep, setWizardStep] = useState(1);
@@ -197,7 +219,13 @@ export default function MarketingPlanPage() {
     branch_id: '',
     event_location_id: '',
     doc_url: '',
-    over_budget_reason: ''
+    over_budget_reason: '',
+    target_sales: '',
+    target_leads: '',
+    target_reach: '',
+    target_impressions: '',
+    target_roi_pct: '',
+    target_notes: ''
   });
   const [wizardItems, setWizardItems] = useState([
     { coa_id: '', vendor_id: '', period_month: '1', qty: '1', unit_price: '', budget_amount: '', description: '' }
@@ -361,6 +389,20 @@ export default function MarketingPlanPage() {
     return over;
   }, [budgetAvailability, wizardItems]);
 
+  // Pre-populate actuals form when detail modal opens with an APPROVED plan
+  React.useEffect(() => {
+    if (selectedPlan?.status === 'APPROVED') {
+      setActualsForm({
+        actual_sales: selectedPlan.actual_sales != null ? String(selectedPlan.actual_sales) : '',
+        actual_leads: selectedPlan.actual_leads != null ? String(selectedPlan.actual_leads) : '',
+        actual_reach: selectedPlan.actual_reach != null ? String(selectedPlan.actual_reach) : '',
+        actual_impressions: selectedPlan.actual_impressions != null ? String(selectedPlan.actual_impressions) : '',
+        actual_roi_pct: selectedPlan.actual_roi_pct != null ? String(selectedPlan.actual_roi_pct) : '',
+        actual_notes: selectedPlan.actual_notes || ''
+      });
+    }
+  }, [selectedPlan?.id, selectedPlan?.status]);
+
   // Refetch wrapper
   const handleRefresh = () => {
     loadPlans();
@@ -467,6 +509,12 @@ export default function MarketingPlanPage() {
         end_date: wizardHeader.event_end_date || null,
         branch_id: wizardHeader.branch_id && wizardHeader.branch_id !== 'global' ? Number(wizardHeader.branch_id) : null,
         event_location_id: wizardHeader.event_location_id ? Number(wizardHeader.event_location_id) : null,
+        target_sales: wizardHeader.target_sales ? Number(String(wizardHeader.target_sales).replace(/\D/g, '')) : null,
+        target_leads: wizardHeader.target_leads ? parseInt(wizardHeader.target_leads, 10) : null,
+        target_reach: wizardHeader.target_reach ? parseInt(wizardHeader.target_reach, 10) : null,
+        target_impressions: wizardHeader.target_impressions ? parseInt(wizardHeader.target_impressions, 10) : null,
+        target_roi_pct: wizardHeader.target_roi_pct ? parseFloat(wizardHeader.target_roi_pct) : null,
+        target_notes: wizardHeader.target_notes || null,
         items: wizardItems.map(item => ({
           ...item,
           coa_id: Number(item.coa_id),
@@ -480,14 +528,17 @@ export default function MarketingPlanPage() {
         }))
       };
 
-      if (revisingPlanId) {
+      if (draftPlanId) {
+        await apiClient.post(`/api/marketing/plans/${draftPlanId}/submit`, payload);
+      } else if (revisingPlanId) {
         await apiClient.put(`/api/marketing/plans/${revisingPlanId}/revise`, payload);
       } else {
         await apiClient.post('/api/marketing/plans', payload);
       }
-      setSuccessMsg(revisingPlanId
-        ? `Revisi Rencana Pemasaran (ID: ${revisingPlanId}) berhasil diajukan ulang.`
-        : 'Rencana Pemasaran berhasil diajukan dan masuk rantai approval.'
+      setSuccessMsg(
+        draftPlanId ? `Rencana Pemasaran (ID: ${draftPlanId}) berhasil diajukan ke rantai approval.` :
+        revisingPlanId ? `Revisi Rencana Pemasaran (ID: ${revisingPlanId}) berhasil diajukan ulang.` :
+        'Rencana Pemasaran berhasil diajukan dan masuk rantai approval.'
       );
       setIsWizardOpen(false);
       // Reset Form
@@ -507,11 +558,14 @@ export default function MarketingPlanPage() {
         branch_id: '',
         event_location_id: '',
         doc_url: '',
-        over_budget_reason: ''
+        over_budget_reason: '',
+        target_sales: '', target_leads: '', target_reach: '',
+        target_impressions: '', target_roi_pct: '', target_notes: ''
       });
       setWizardItems([{ coa_id: '', vendor_id: '', period_month: '1', qty: '1', unit_price: '', budget_amount: '', description: '' }]);
       setWizardStep(1);
       setRevisingPlanId(null);
+      setDraftPlanId(null);
       loadPlans();
       
       // Auto clear message
@@ -639,6 +693,163 @@ export default function MarketingPlanPage() {
       alert(err.message || 'Gagal menghapus Rencana Pemasaran.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const buildWizardPayload = () => ({
+    ...wizardHeader,
+    start_date: wizardHeader.event_start_date || null,
+    end_date: wizardHeader.event_end_date || null,
+    branch_id: wizardHeader.branch_id && wizardHeader.branch_id !== 'global' ? Number(wizardHeader.branch_id) : null,
+    event_location_id: wizardHeader.event_location_id ? Number(wizardHeader.event_location_id) : null,
+    target_sales: wizardHeader.target_sales ? Number(String(wizardHeader.target_sales).replace(/\D/g, '')) : null,
+    target_leads: wizardHeader.target_leads ? parseInt(wizardHeader.target_leads, 10) : null,
+    target_reach: wizardHeader.target_reach ? parseInt(wizardHeader.target_reach, 10) : null,
+    target_impressions: wizardHeader.target_impressions ? parseInt(wizardHeader.target_impressions, 10) : null,
+    target_roi_pct: wizardHeader.target_roi_pct ? parseFloat(wizardHeader.target_roi_pct) : null,
+    target_notes: wizardHeader.target_notes || null,
+    items: wizardItems.map(item => ({
+      ...item,
+      coa_id: Number(item.coa_id),
+      brand_id: wizardHeader.brand_id ? Number(wizardHeader.brand_id) : null,
+      lob_id: wizardHeader.lob_id ? Number(wizardHeader.lob_id) : null,
+      branch_id: wizardHeader.branch_id && wizardHeader.branch_id !== 'global' ? Number(wizardHeader.branch_id) : null,
+      event_location_id: wizardHeader.event_location_id ? Number(wizardHeader.event_location_id) : null,
+      vendor_id: item.vendor_id || null,
+      period_month: Number(item.period_month),
+      budget_amount: Number(item.budget_amount)
+    }))
+  });
+
+  const handleSaveDraft = async () => {
+    if (!wizardHeader.title || !wizardHeader.company_id || !wizardHeader.fiscal_year) {
+      setError('Judul Kampanye, Perusahaan, dan Tahun Anggaran wajib diisi sebelum menyimpan draft.');
+      return;
+    }
+    setSubmittingDraft(true);
+    setError(null);
+    try {
+      const payload = buildWizardPayload();
+      if (draftPlanId) {
+        await apiClient.put(`/api/marketing/plans/${draftPlanId}`, payload);
+        setSuccessMsg('Draft berhasil diperbarui.');
+      } else {
+        const result = await apiClient.post('/api/marketing/plans', { ...payload, save_as_draft: true });
+        setDraftPlanId(result.id);
+        setSuccessMsg(`Draft berhasil disimpan (ID: ${result.id}). Lanjutkan pengisian kapan saja.`);
+      }
+      loadPlans();
+      setTimeout(() => setSuccessMsg(null), 6000);
+    } catch (err) {
+      setError(err.message || 'Gagal menyimpan draft.');
+    } finally {
+      setSubmittingDraft(false);
+    }
+  };
+
+  const handleEditDraft = async (planId) => {
+    try {
+      const plan = await apiClient.get(`/api/marketing/plans/${planId}`);
+      const formatDate = (d) => { if (!d) return ''; const dt = new Date(d); return isNaN(dt) ? '' : dt.toISOString().split('T')[0]; };
+      const firstItem = plan.items && plan.items[0] ? plan.items[0] : {};
+      setWizardHeader({
+        title: plan.title || '',
+        description: plan.description || '',
+        company_id: plan.company_id ? String(plan.company_id) : '',
+        fiscal_year: plan.fiscal_year ? String(plan.fiscal_year) : String(CURRENT_YEAR),
+        start_date: formatDate(plan.start_date),
+        end_date: formatDate(plan.end_date),
+        event_start_date: formatDate(plan.event_start_date || plan.start_date),
+        event_end_date: formatDate(plan.event_end_date || plan.end_date),
+        cta_start_date: formatDate(plan.cta_start_date),
+        cta_end_date: formatDate(plan.cta_end_date),
+        brand_id: firstItem.brand_id ? String(firstItem.brand_id) : '',
+        lob_id: firstItem.lob_id ? String(firstItem.lob_id) : '',
+        branch_id: firstItem.branch_id ? String(firstItem.branch_id) : 'global',
+        event_location_id: firstItem.event_location_id ? String(firstItem.event_location_id) : '',
+        doc_url: plan.doc_url || '',
+        over_budget_reason: plan.over_budget_reason || '',
+        target_sales: plan.target_sales ? String(plan.target_sales) : '',
+        target_leads: plan.target_leads ? String(plan.target_leads) : '',
+        target_reach: plan.target_reach ? String(plan.target_reach) : '',
+        target_impressions: plan.target_impressions ? String(plan.target_impressions) : '',
+        target_roi_pct: plan.target_roi_pct ? String(plan.target_roi_pct) : '',
+        target_notes: plan.target_notes || ''
+      });
+      setWizardItems(plan.items && plan.items.length > 0
+        ? plan.items.map(it => ({
+            period_month: it.period_month || '',
+            coa_id: it.coa_id ? String(it.coa_id) : '',
+            vendor_id: it.vendor_id ? String(it.vendor_id) : '',
+            budget_amount: String(it.budget_amount || '0'),
+            description: it.description || '',
+            qty: String(it.qty || '1'),
+            unit_price: String(it.unit_price || it.budget_amount || '0'),
+            event_location_id: it.event_location_id ? String(it.event_location_id) : '',
+            branch_id: it.branch_id ? String(it.branch_id) : 'global'
+          }))
+        : [{ period_month: '', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }]
+      );
+      setDraftPlanId(plan.id);
+      setIsWizardOpen(true);
+      setWizardStep(1);
+    } catch (err) {
+      alert('Gagal memuat rincian draft: ' + err.message);
+    }
+  };
+
+  const handleRecallPlan = async (planId) => {
+    if (!window.confirm('Tarik kembali rencana ini ke status DRAFT? Semua rantai approval akan dibatalkan.')) return;
+    setRecallingPlanId(planId);
+    try {
+      await apiClient.post(`/api/marketing/plans/${planId}/recall`);
+      setSuccessMsg('Rencana berhasil ditarik kembali ke status DRAFT.');
+      setIsDetailOpen(false);
+      loadPlans();
+      setTimeout(() => setSuccessMsg(null), 5000);
+    } catch (err) {
+      alert(err.message || 'Gagal menarik kembali rencana.');
+    } finally {
+      setRecallingPlanId(null);
+    }
+  };
+
+  const handleSubmitDraft = async (planId) => {
+    if (!window.confirm('Ajukan rencana ini ke rantai approval sekarang?')) return;
+    try {
+      setSubmitting(true);
+      await apiClient.post(`/api/marketing/plans/${planId}/submit`);
+      setSuccessMsg('Rencana berhasil diajukan ke rantai approval.');
+      loadPlans();
+      setTimeout(() => setSuccessMsg(null), 5000);
+    } catch (err) {
+      alert(err.message || 'Gagal mengajukan rencana.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleActualsSubmit = async () => {
+    setSubmittingActuals(true);
+    setActualsMsg(null);
+    try {
+      const payload = {
+        actual_sales: actualsForm.actual_sales !== '' ? actualsForm.actual_sales : null,
+        actual_leads: actualsForm.actual_leads !== '' ? actualsForm.actual_leads : null,
+        actual_reach: actualsForm.actual_reach !== '' ? actualsForm.actual_reach : null,
+        actual_impressions: actualsForm.actual_impressions !== '' ? actualsForm.actual_impressions : null,
+        actual_roi_pct: actualsForm.actual_roi_pct !== '' ? actualsForm.actual_roi_pct : null,
+        actual_notes: actualsForm.actual_notes || null
+      };
+      await apiClient.put(`/api/marketing/plans/${selectedPlan.id}/actuals`, payload);
+      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
+      setSelectedPlan(updated);
+      setActualsMsg('Data aktual berhasil disimpan.');
+      setTimeout(() => setActualsMsg(null), 5000);
+    } catch (err) {
+      alert(err.message || 'Gagal menyimpan data aktual.');
+    } finally {
+      setSubmittingActuals(false);
     }
   };
 
@@ -813,6 +1024,7 @@ export default function MarketingPlanPage() {
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
               <option value="">Semua Status</option>
+              <option value="DRAFT">Draft</option>
               <option value="PENDING_APPROVAL">Pending Approval</option>
               <option value="APPROVED">Approved</option>
               <option value="REJECTED">Rejected</option>
@@ -942,10 +1154,42 @@ export default function MarketingPlanPage() {
                           </div>
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            {/* DRAFT actions */}
+                            {plan.status === 'DRAFT' && (
+                              <>
+                                <button
+                                  onClick={() => handleEditDraft(plan.id)}
+                                  className="px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-indigo-500 hover:border-indigo-500 text-[10px] font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1"
+                                >
+                                  <Pencil className="w-3 h-3" /> Lanjut Isi
+                                </button>
+                                <button
+                                  onClick={() => handleSubmitDraft(plan.id)}
+                                  disabled={submitting}
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                >
+                                  <Send className="w-3 h-3" /> Ajukan
+                                </button>
+                              </>
+                            )}
+
+                            {/* PENDING_APPROVAL recall */}
+                            {plan.status === 'PENDING_APPROVAL' && (userRole === 'marketing' || userRole === 'admin') && (
+                              <button
+                                onClick={() => handleRecallPlan(plan.id)}
+                                disabled={recallingPlanId === plan.id}
+                                className="px-2.5 py-1.5 bg-amber-500/10 dark:bg-amber-500/5 border border-amber-300/60 dark:border-amber-700/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/15 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                title="Tarik kembali ke DRAFT"
+                              >
+                                {recallingPlanId === plan.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />}
+                                Recall
+                              </button>
+                            )}
+
                             <button
                               onClick={() => openDetail(plan.id)}
-                              className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-indigo-500 hover:border-indigo-500 text-[11px] font-bold shadow-sm transition-all cursor-pointer"
+                              className="px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-indigo-500 hover:border-indigo-500 text-[10px] font-bold shadow-sm transition-all cursor-pointer"
                             >
                               Rincian
                             </button>
@@ -992,14 +1236,18 @@ export default function MarketingPlanPage() {
               <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
                 <div>
                   <h3 className="text-md font-black text-neutral-850 dark:text-white">
-                    {revisingPlanId ? `Revisi Rencana Anggaran (ID: ${revisingPlanId})` : 'Ajukan Rencana Anggaran Pemasaran'}
+                    {revisingPlanId ? `Revisi Rencana Anggaran (ID: ${revisingPlanId})` :
+                     draftPlanId ? `Lanjutkan Draft (ID: ${draftPlanId})` :
+                     'Ajukan Rencana Anggaran Pemasaran'}
                   </h3>
                   <p className="text-[10px] text-neutral-400 mt-0.5">
-                    {revisingPlanId ? 'Koreksi & ajukan ulang rencana yang ditolak — nomor referensi tetap sama' : 'Wizard Pengisian Rincian Anggaran Tahunan'}
+                    {revisingPlanId ? 'Koreksi & ajukan ulang rencana yang ditolak — nomor referensi tetap sama' :
+                     draftPlanId ? 'Simpan ulang sebagai draft atau ajukan langsung ke rantai approval' :
+                     'Wizard Pengisian Rincian Anggaran Tahunan'}
                   </p>
                 </div>
                 <button
-                  onClick={() => { setIsWizardOpen(false); setRevisingPlanId(null); }}
+                  onClick={() => { setIsWizardOpen(false); setRevisingPlanId(null); setDraftPlanId(null); }}
                   className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-450 hover:text-neutral-800 dark:hover:text-white"
                 >
                   <X className="w-4 h-4" />
@@ -1109,7 +1357,7 @@ export default function MarketingPlanPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    if (wizardStep === 1) { setIsWizardOpen(false); setRevisingPlanId(null); }
+                    if (wizardStep === 1) { setIsWizardOpen(false); setRevisingPlanId(null); setDraftPlanId(null); }
                     else setWizardStep(prev => prev - 1);
                   }}
                   className="px-4 py-2 border border-neutral-250 dark:border-neutral-750 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold cursor-pointer"
@@ -1117,18 +1365,34 @@ export default function MarketingPlanPage() {
                   {wizardStep === 1 ? 'Batalkan' : 'Kembali'}
                 </button>
 
-                <button
-                  type="button"
-                  disabled={submitting}
-                  onClick={(e) => {
-                    if (wizardStep < 3) setWizardStep(prev => prev + 1);
-                    else handleWizardSubmit(e);
-                  }}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  {wizardStep === 3 ? (revisingPlanId ? 'Ajukan Ulang (Revisi)' : 'Ajukan Plan') : 'Lanjut'}
-                </button>
+                <div className="flex items-center gap-2">
+                  {!revisingPlanId && (
+                    <button
+                      type="button"
+                      disabled={submittingDraft || submitting}
+                      onClick={handleSaveDraft}
+                      className="px-4 py-2 border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      {submittingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      {draftPlanId ? 'Perbarui Draft' : 'Simpan Draft'}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    disabled={submitting || submittingDraft}
+                    onClick={(e) => {
+                      if (wizardStep < 3) setWizardStep(prev => prev + 1);
+                      else handleWizardSubmit(e);
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {wizardStep === 3
+                      ? (revisingPlanId ? 'Ajukan Ulang (Revisi)' : draftPlanId ? 'Ajukan Plan' : 'Ajukan Plan')
+                      : 'Lanjut'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -1144,7 +1408,7 @@ export default function MarketingPlanPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => setIsDetailOpen(false)}
+              onClick={() => { setIsDetailOpen(false); setActualsMsg(null); }}
             />
 
             <motion.div
@@ -1168,7 +1432,7 @@ export default function MarketingPlanPage() {
                   <p className="text-[10px] text-neutral-400 mt-0.5">Diajukan oleh {selectedPlan.creator?.name || 'N/A'} • {selectedPlan.company?.name || ''}</p>
                 </div>
                 <button
-                  onClick={() => setIsDetailOpen(false)}
+                  onClick={() => { setIsDetailOpen(false); setActualsMsg(null); }}
                   className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-450 hover:text-neutral-850 dark:hover:text-white"
                 >
                   <X className="w-4 h-4" />
@@ -1346,6 +1610,211 @@ export default function MarketingPlanPage() {
                   </div>
                 </div>
 
+                {/* KPI Targets Display */}
+                {(selectedPlan.target_sales || selectedPlan.target_leads || selectedPlan.target_reach ||
+                  selectedPlan.target_impressions || selectedPlan.target_roi_pct || selectedPlan.target_notes) && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Target className="w-4 h-4 text-indigo-500" />
+                      Target KPI Campaign
+                    </h4>
+                    <div className="bg-neutral-50 dark:bg-neutral-950/30 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {selectedPlan.target_sales && (
+                          <div className="space-y-0.5">
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target Penjualan</p>
+                            <p className="text-xs font-black text-neutral-800 dark:text-white">{formatIDR(selectedPlan.target_sales)}</p>
+                          </div>
+                        )}
+                        {selectedPlan.target_leads && (
+                          <div className="space-y-0.5">
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target Leads</p>
+                            <p className="text-xs font-black text-neutral-800 dark:text-white">{Number(selectedPlan.target_leads).toLocaleString('id-ID')}</p>
+                          </div>
+                        )}
+                        {selectedPlan.target_reach && (
+                          <div className="space-y-0.5">
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target Reach</p>
+                            <p className="text-xs font-black text-neutral-800 dark:text-white">{Number(selectedPlan.target_reach).toLocaleString('id-ID')}</p>
+                          </div>
+                        )}
+                        {selectedPlan.target_impressions && (
+                          <div className="space-y-0.5">
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target Impressi</p>
+                            <p className="text-xs font-black text-neutral-800 dark:text-white">{Number(selectedPlan.target_impressions).toLocaleString('id-ID')}</p>
+                          </div>
+                        )}
+                        {selectedPlan.target_roi_pct && (
+                          <div className="space-y-0.5">
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target ROI</p>
+                            <p className="text-xs font-black text-neutral-800 dark:text-white">{parseFloat(selectedPlan.target_roi_pct).toFixed(2)}%</p>
+                          </div>
+                        )}
+                      </div>
+                      {selectedPlan.target_notes && (
+                        <p className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-800 font-medium italic">{selectedPlan.target_notes}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Post-Campaign Actuals — only for APPROVED plans */}
+                {selectedPlan.status === 'APPROVED' && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <BarChart2 className="w-4 h-4 text-emerald-500" />
+                      Hasil Aktual Post-Campaign
+                      {selectedPlan.actuals_filled_at && (
+                        <span className="text-[9px] font-normal text-neutral-400 normal-case ml-1">
+                          · Terisi {new Date(selectedPlan.actuals_filled_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      )}
+                    </h4>
+
+                    {/* Actuals summary if already filled */}
+                    {selectedPlan.actuals_filled_at && (
+                      <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                          {selectedPlan.actual_sales !== null && (
+                            <div className="space-y-0.5">
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual Penjualan</p>
+                              <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{formatIDR(selectedPlan.actual_sales)}</p>
+                              {selectedPlan.target_sales && (
+                                <p className="text-[9px] text-neutral-400">Target: {formatIDR(selectedPlan.target_sales)}</p>
+                              )}
+                            </div>
+                          )}
+                          {selectedPlan.actual_leads !== null && (
+                            <div className="space-y-0.5">
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual Leads</p>
+                              <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{Number(selectedPlan.actual_leads).toLocaleString('id-ID')}</p>
+                              {selectedPlan.target_leads && (
+                                <p className="text-[9px] text-neutral-400">Target: {Number(selectedPlan.target_leads).toLocaleString('id-ID')}</p>
+                              )}
+                            </div>
+                          )}
+                          {selectedPlan.actual_reach !== null && (
+                            <div className="space-y-0.5">
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual Reach</p>
+                              <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{Number(selectedPlan.actual_reach).toLocaleString('id-ID')}</p>
+                              {selectedPlan.target_reach && (
+                                <p className="text-[9px] text-neutral-400">Target: {Number(selectedPlan.target_reach).toLocaleString('id-ID')}</p>
+                              )}
+                            </div>
+                          )}
+                          {selectedPlan.actual_impressions !== null && (
+                            <div className="space-y-0.5">
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual Impressi</p>
+                              <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{Number(selectedPlan.actual_impressions).toLocaleString('id-ID')}</p>
+                              {selectedPlan.target_impressions && (
+                                <p className="text-[9px] text-neutral-400">Target: {Number(selectedPlan.target_impressions).toLocaleString('id-ID')}</p>
+                              )}
+                            </div>
+                          )}
+                          {selectedPlan.actual_roi_pct !== null && (
+                            <div className="space-y-0.5">
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual ROI</p>
+                              <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{parseFloat(selectedPlan.actual_roi_pct).toFixed(2)}%</p>
+                              {selectedPlan.target_roi_pct && (
+                                <p className="text-[9px] text-neutral-400">Target: {parseFloat(selectedPlan.target_roi_pct).toFixed(2)}%</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {selectedPlan.actual_notes && (
+                          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 border-t border-emerald-500/10 pt-2.5 italic">{selectedPlan.actual_notes}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Input form for actuals */}
+                    <div className="bg-neutral-50 dark:bg-neutral-950/20 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 space-y-3">
+                      <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
+                        {selectedPlan.actuals_filled_at ? 'Perbarui Data Aktual' : 'Input Hasil Aktual'}
+                      </p>
+                      {actualsMsg && (
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold px-3 py-2 rounded-xl flex items-center gap-2">
+                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" /> {actualsMsg}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Penjualan Aktual (Rp)</label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={actualsForm.actual_sales}
+                            onChange={(e) => setActualsForm(p => ({ ...p, actual_sales: e.target.value }))}
+                            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Leads Aktual</label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={actualsForm.actual_leads}
+                            onChange={(e) => setActualsForm(p => ({ ...p, actual_leads: e.target.value }))}
+                            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Reach Aktual</label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={actualsForm.actual_reach}
+                            onChange={(e) => setActualsForm(p => ({ ...p, actual_reach: e.target.value }))}
+                            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Impressi Aktual</label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={actualsForm.actual_impressions}
+                            onChange={(e) => setActualsForm(p => ({ ...p, actual_impressions: e.target.value }))}
+                            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">ROI Aktual (%)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={actualsForm.actual_roi_pct}
+                            onChange={(e) => setActualsForm(p => ({ ...p, actual_roi_pct: e.target.value }))}
+                            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Catatan Hasil / Insight</label>
+                        <textarea
+                          rows={2}
+                          placeholder="Catatan singkat hasil campaign, insight untuk campaign berikutnya..."
+                          value={actualsForm.actual_notes}
+                          onChange={(e) => setActualsForm(p => ({ ...p, actual_notes: e.target.value }))}
+                          className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-emerald-500 resize-none"
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleActualsSubmit}
+                          disabled={submittingActuals}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-600/10"
+                        >
+                          {submittingActuals ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BarChart2 className="w-3.5 h-3.5" />}
+                          Simpan Hasil Aktual
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Approval Audit Trail */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
@@ -1424,17 +1893,29 @@ export default function MarketingPlanPage() {
               </div>
 
               {/* Detail Footer */}
-              <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end bg-neutral-50/30 dark:bg-neutral-950/10">
-                {selectedPlan && selectedPlan.status === 'REJECTED' && (
-                  <button
-                    onClick={() => handleRevisePlan(selectedPlan)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold cursor-pointer shadow-lg shadow-blue-600/10 flex items-center gap-1.5"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> Revisi Pengajuan
-                  </button>
-                )}
+              <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/30 dark:bg-neutral-950/10">
+                <div className="flex items-center gap-2">
+                  {selectedPlan && selectedPlan.status === 'PENDING_APPROVAL' && (userRole === 'marketing' || userRole === 'admin') && (
+                    <button
+                      onClick={() => handleRecallPlan(selectedPlan.id)}
+                      disabled={recallingPlanId === selectedPlan.id}
+                      className="px-4 py-2 bg-amber-500/10 border border-amber-300/60 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/15 rounded-xl text-xs font-extrabold cursor-pointer flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                    >
+                      {recallingPlanId === selectedPlan.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
+                      Tarik Kembali
+                    </button>
+                  )}
+                  {selectedPlan && selectedPlan.status === 'REJECTED' && (
+                    <button
+                      onClick={() => handleRevisePlan(selectedPlan)}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold cursor-pointer shadow-lg shadow-blue-600/10 flex items-center gap-1.5"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Revisi Pengajuan
+                    </button>
+                  )}
+                </div>
                 <button
-                  onClick={() => setIsDetailOpen(false)}
+                  onClick={() => { setIsDetailOpen(false); setActualsMsg(null); }}
                   className="px-4 py-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-250 dark:border-neutral-700/60 rounded-xl hover:text-neutral-850 dark:hover:text-white text-xs font-bold cursor-pointer"
                 >
                   Tutup Rincian
@@ -1939,7 +2420,106 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
           )}
         </div>
       </div>
+
+      {/* KPI Targets — opsional, collapsible */}
+      <KpiTargetSection wizardHeader={wizardHeader} setWizardHeader={setWizardHeader} />
     </TooltipProvider>
+  );
+}
+
+function KpiTargetSection({ wizardHeader, setWizardHeader }) {
+  const [open, setOpen] = React.useState(
+    !!(wizardHeader.target_sales || wizardHeader.target_leads || wizardHeader.target_reach ||
+       wizardHeader.target_impressions || wizardHeader.target_roi_pct || wizardHeader.target_notes)
+  );
+
+  return (
+    <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-3.5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800/30 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          <Target className="w-4 h-4 text-indigo-500" />
+          <span className="text-xs font-extrabold text-neutral-700 dark:text-neutral-300">Target KPI Campaign (Opsional)</span>
+          {(wizardHeader.target_sales || wizardHeader.target_leads || wizardHeader.target_reach ||
+            wizardHeader.target_impressions || wizardHeader.target_roi_pct) && (
+            <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md">Ada Target</span>
+          )}
+        </div>
+        <span className="text-neutral-400 text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 pt-4 space-y-4 bg-white dark:bg-transparent">
+          <p className="text-[10px] text-neutral-400 font-medium">Tentukan sasaran kuantitatif campaign untuk dibandingkan dengan hasil aktual setelah campaign selesai.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target Penjualan (Rp)</label>
+              <input
+                type="number"
+                placeholder="0"
+                value={wizardHeader.target_sales || ''}
+                onChange={(e) => setWizardHeader(p => ({ ...p, target_sales: e.target.value }))}
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target Leads</label>
+              <input
+                type="number"
+                placeholder="0"
+                value={wizardHeader.target_leads || ''}
+                onChange={(e) => setWizardHeader(p => ({ ...p, target_leads: e.target.value }))}
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target Jangkauan (Reach)</label>
+              <input
+                type="number"
+                placeholder="0"
+                value={wizardHeader.target_reach || ''}
+                onChange={(e) => setWizardHeader(p => ({ ...p, target_reach: e.target.value }))}
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target Impressi</label>
+              <input
+                type="number"
+                placeholder="0"
+                value={wizardHeader.target_impressions || ''}
+                onChange={(e) => setWizardHeader(p => ({ ...p, target_impressions: e.target.value }))}
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target ROI (%)</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={wizardHeader.target_roi_pct || ''}
+                onChange={(e) => setWizardHeader(p => ({ ...p, target_roi_pct: e.target.value }))}
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Catatan Target / Indikator Lain</label>
+            <textarea
+              rows={2}
+              placeholder="Misal: target 500 pengunjung booth, 200 trial product, 50 member baru..."
+              value={wizardHeader.target_notes || ''}
+              onChange={(e) => setWizardHeader(p => ({ ...p, target_notes: e.target.value }))}
+              className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

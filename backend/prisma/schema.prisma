@@ -820,13 +820,27 @@ model marketing_plans {
   creator_id        String                  @db.VarChar(50)
   created_at        DateTime                @default(now()) @db.Timestamp(6)
   updated_at        DateTime                @default(now()) @db.Timestamp(6)
-  doc_url           String?
-  is_over_budget    Boolean                 @default(false)
-  over_budget_reason String?
-  
+  doc_url              String?
+  is_over_budget       Boolean                 @default(false)
+  over_budget_reason   String?
+  target_sales         Decimal?                @db.Decimal(18, 2)
+  target_leads         Int?
+  target_reach         Int?
+  target_impressions   Int?
+  target_roi_pct       Decimal?                @db.Decimal(5, 2)
+  target_notes         String?
+  actual_sales         Decimal?                @db.Decimal(18, 2)
+  actual_leads         Int?
+  actual_reach         Int?
+  actual_impressions   Int?
+  actual_roi_pct       Decimal?                @db.Decimal(5, 2)
+  actual_notes         String?
+  actuals_filled_at    DateTime?               @db.Timestamptz(6)
+  actuals_filled_by    String?                 @db.VarChar(50)
+
   company           m_company               @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   creator           helpdesk_user           @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  
+
   items             marketing_plan_items[]
   approval_history  approval_history[]
 
