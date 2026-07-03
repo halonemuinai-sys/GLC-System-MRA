@@ -10,7 +10,6 @@ import {
   TrendingUp,
   TrendingDown,
   Calendar,
-  ArrowUpRight,
   Loader2,
   X,
   RefreshCw,
@@ -19,26 +18,12 @@ import {
   Clock,
   User,
   Paperclip,
-  Building,
-  Briefcase,
   Layers,
   Info,
   Check,
   FileSpreadsheet,
   Trash2
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend
-} from 'recharts';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
 import CampaignDateRangePicker from '@/components/ui/CampaignDateRangePicker';
@@ -184,10 +169,6 @@ export default function MarketingPlanPage() {
   const [companyId, setCompanyId] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Active Tab — default ke 'plans' (daftar pengajuan & pipeline approval) supaya
-  // begitu menu dibuka, yang terlihat adalah status request, bukan dashboard grafik
-  const [activeTab, setActiveTab] = useState('plans'); // 'plans', 'analytics'
 
   // Modals
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -414,64 +395,6 @@ export default function MarketingPlanPage() {
       burnRate,
       activeCampaigns
     };
-  }, [plans]);
-
-  // Chart Data: Monthly Budget vs Actual Trend
-  const monthlyTrendData = useMemo(() => {
-    const monthsData = Array.from({ length: 12 }, (_, i) => ({
-      name: getMonthName(i + 1).substring(0, 3),
-      Budget: 0,
-      Realisasi: 0
-    }));
-
-    plans.forEach(p => {
-      // We only map approved or pending plans to visualize budget
-      if (p.items) {
-        p.items.forEach(item => {
-          const mIdx = Number(item.period_month) - 1;
-          if (mIdx >= 0 && mIdx < 12) {
-            monthsData[mIdx].Budget += Number(item.budget_amount || 0);
-            monthsData[mIdx].Realisasi += Number(item.actual_amount || 0);
-          }
-        });
-      }
-    });
-
-    return monthsData;
-  }, [plans]);
-
-  // Chart Data: Brand Budget Breakdown
-  const brandBreakdownData = useMemo(() => {
-    const brandMap = {};
-    plans.forEach(p => {
-      if (p.items) {
-        p.items.forEach(item => {
-          const brandName = item.m_brand?.name || 'Lain-lain';
-          brandMap[brandName] = (brandMap[brandName] || 0) + Number(item.budget_amount || 0);
-        });
-      }
-    });
-
-    return Object.entries(brandMap)
-      .map(([name, value]) => ({ name, Budget: value }))
-      .sort((a, b) => b.Budget - a.Budget)
-      .slice(0, 7); // Show top 7 brands
-  }, [plans]);
-
-  // Gantt Timeline Matrix Data
-  const timelineCampaigns = useMemo(() => {
-    return plans.map(p => {
-      const startMonth = p.start_date ? new Date(p.start_date).getMonth() + 1 : 1;
-      const endMonth = p.end_date ? new Date(p.end_date).getMonth() + 1 : 12;
-      return {
-        id: p.id,
-        title: p.title,
-        status: p.status,
-        total_budget: Number(p.total_budget || 0),
-        startMonth,
-        endMonth
-      };
-    });
   }, [plans]);
 
   // Wizard Row Handlers
@@ -859,37 +782,18 @@ export default function MarketingPlanPage() {
       {/* Navigation Tabs & Filter Bar */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-3">
-          <div className="flex items-center gap-2 bg-neutral-100 dark:bg-neutral-950 p-1 rounded-xl w-fit">
-            <button
-              onClick={() => setActiveTab('plans')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'plans'
-                  ? 'bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-neutral-500 hover:text-neutral-850 dark:hover:text-white'
-              }`}
-            >
-              Pengajuan & Pipeline Approval ({plans.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'analytics'
-                  ? 'bg-white dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-neutral-500 hover:text-neutral-850 dark:hover:text-white'
-              }`}
-            >
-              Timeline & Grafik Analisis
-            </button>
-          </div>
-
+          <p className="text-xs font-black text-neutral-700 dark:text-neutral-300">
+            Pengajuan & Pipeline Approval <span className="font-normal text-neutral-400">({plans.length})</span>
+          </p>
           <div className="flex items-center gap-2">
             <select
               value={fiscalYear}
               onChange={(e) => setFiscalYear(e.target.value)}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
-              <option value="2026">Tahun Anggaran 2026</option>
-              <option value="2027">Tahun Anggaran 2027</option>
+              {FISCAL_YEAR_OPTIONS.map(y => (
+                <option key={y} value={y}>Tahun Anggaran {y}</option>
+              ))}
             </select>
 
             <select
@@ -932,173 +836,6 @@ export default function MarketingPlanPage() {
         <div className="py-24 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
           <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
           <span className="text-xs text-neutral-400 font-medium">Memuat data kampanye pemasaran...</span>
-        </div>
-      ) : activeTab === 'analytics' ? (
-        <div className="space-y-6">
-          {/* Timeline Grid (Gantt representation) */}
-          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h2 className="text-sm font-extrabold text-neutral-850 dark:text-white flex items-center gap-2">
-                <Calendar className="w-4.5 h-4.5 text-indigo-500" />
-                Campaign Timeline & Gantt Chart ({fiscalYear})
-              </h2>
-              <div className="flex gap-4 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/30" /> Approved</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/30" /> Pending</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/30" /> Rejected</span>
-              </div>
-            </div>
-
-            {timelineCampaigns.length === 0 ? (
-              <div className="py-12 text-center text-xs text-neutral-450 dark:text-neutral-500 font-medium">
-                No campaign plans found for the current filters.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <div className="min-w-[850px] space-y-4">
-                  {/* Grid Header Month Labels (Perfect alignment using 3-span / 9-span split) */}
-                  <div className="grid grid-cols-12 text-center text-[10px] font-bold text-neutral-400 border-b border-neutral-100 dark:border-neutral-800 pb-3">
-                    <div className="col-span-3 text-left pl-3 text-neutral-450 dark:text-neutral-500 uppercase tracking-wider">Campaign Name</div>
-                    <div className="col-span-9 grid grid-cols-12 text-center">
-                      {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m) => (
-                        <div key={m} className="uppercase tracking-wider font-extrabold">{m}</div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Campaign Rows */}
-                  <div className="divide-y divide-neutral-100 dark:divide-neutral-850">
-                    {timelineCampaigns.map(camp => {
-                      const colStart = camp.startMonth;
-                      const colSpan = camp.endMonth - camp.startMonth + 1;
-                      
-                      let colorClass = 'bg-gradient-to-r from-amber-500/10 to-orange-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:border-amber-500/40 shadow-sm';
-                      if (camp.status === 'APPROVED') {
-                        colorClass = 'bg-gradient-to-r from-emerald-500/10 to-teal-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:border-emerald-500/40 shadow-sm';
-                      } else if (camp.status === 'REJECTED') {
-                        colorClass = 'bg-gradient-to-r from-red-500/10 to-rose-500/15 text-red-700 dark:text-red-400 border-red-500/20 hover:border-red-500/40 shadow-sm';
-                      }
-
-                      return (
-                        <div key={camp.id} className="grid grid-cols-12 py-3.5 items-center hover:bg-neutral-50/40 dark:hover:bg-neutral-850/20 transition-colors">
-                          <button
-                            onClick={() => openDetail(camp.id)}
-                            className="col-span-3 pr-4 text-left text-xs font-bold text-neutral-800 dark:text-neutral-250 truncate hover:text-indigo-600 transition-colors pl-3"
-                          >
-                            {camp.title}
-                          </button>
-                          
-                          <div className="col-span-9 grid grid-cols-12 h-8 relative w-full items-center">
-                            {/* Horizontal grid lines */}
-                            <div className="absolute inset-0 grid grid-cols-12 pointer-events-none">
-                              {Array.from({ length: 12 }, (_, i) => (
-                                <div key={i} className="border-r border-neutral-100 dark:border-neutral-800/40 h-full last:border-r-0" />
-                              ))}
-                            </div>
-
-                            {/* Gantt Bar representation */}
-                            <div
-                              style={{
-                                gridColumnStart: colStart,
-                                gridColumnEnd: colStart + colSpan
-                              }}
-                              className={`h-7 rounded-xl border flex items-center px-3 text-[10px] font-black truncate transition-all duration-300 hover:scale-[1.01] cursor-pointer ${colorClass}`}
-                              onClick={() => openDetail(camp.id)}
-                              title={`${camp.title} (${formatIDR(camp.total_budget)})`}
-                            >
-                              <span className="truncate">{formatIDR(camp.total_budget)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Graphics Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Monthly budget vs actual trend area chart */}
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-sm lg:col-span-2">
-              <h2 className="text-sm font-bold text-neutral-850 dark:text-white mb-4 flex items-center gap-2">
-                <TrendingUp className="w-4.5 h-4.5 text-indigo-500" />
-                Tren Anggaran Bulanan vs Realisasi Terbayar
-              </h2>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorBudget" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.08)" />
-                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} tickFormatter={(val) => `${(val / 1000000).toFixed(0)}M`} />
-                    <RechartsTooltip
-                      content={({ active, payload, label }) => {
-                        if (active && payload && payload.length) {
-                          return (
-                            <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-3 rounded-xl shadow-xl text-[11px] font-medium space-y-1">
-                              <p className="font-bold text-neutral-800 dark:text-white">{label}</p>
-                              <p className="text-indigo-500">Anggaran: {formatIDR(payload[0].value)}</p>
-                              <p className="text-emerald-500">Realisasi: {formatIDR(payload[1].value)}</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-                    <Area type="monotone" dataKey="Budget" name="Anggaran Rencana" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorBudget)" />
-                    <Area type="monotone" dataKey="Realisasi" name="Realisasi Terbayar" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorActual)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Brand distribution breakdown */}
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-sm">
-              <h2 className="text-sm font-bold text-neutral-850 dark:text-white mb-4 flex items-center gap-2">
-                <Layers className="w-4.5 h-4.5 text-indigo-500" />
-                Alokasi Budget Terbesar per Brand
-              </h2>
-              <div className="h-64">
-                {brandBreakdownData.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-xs text-neutral-400">Tidak ada data brand</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={brandBreakdownData} layout="vertical" margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(148,163,184,0.08)" />
-                      <XAxis type="number" stroke="#94a3b8" fontSize={9} tickLine={false} tickFormatter={(val) => `${(val / 1000000).toFixed(0)}M`} />
-                      <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={9} tickLine={false} width={80} />
-                      <RechartsTooltip
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-2.5 rounded-lg shadow-xl text-[10px] font-bold">
-                                <p className="text-neutral-800 dark:text-white">{label}</p>
-                                <p className="text-indigo-500 mt-0.5">Budget: {formatIDR(payload[0].value)}</p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar dataKey="Budget" name="Alokasi Anggaran" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={12} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       ) : (
         /* Plans Table View */
