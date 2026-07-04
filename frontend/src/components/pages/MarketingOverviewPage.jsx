@@ -43,16 +43,16 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 const STATUS_CONFIG = {
   APPROVED: { label: 'Approved', color: '#10b981', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200/60', icon: CheckCircle },
-  PENDING_APPROVAL: { label: 'Pending', color: '#f59e0b', bg: 'bg-amber-500/10', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-200/60', icon: Clock },
-  REJECTED: { label: 'Rejected', color: '#ef4444', bg: 'bg-red-500/10', text: 'text-red-600 dark:text-red-400', border: 'border-red-200/60', icon: XCircle },
-  DRAFT: { label: 'Draft', color: '#94a3b8', bg: 'bg-neutral-500/10', text: 'text-neutral-500', border: 'border-neutral-200/60', icon: Info },
+  PENDING_APPROVAL: { label: 'Pending', color: '#f97316', bg: 'bg-amber-500/10', text: 'text-amber-655 dark:text-amber-400', border: 'border-amber-200/60', icon: Clock },
+  REJECTED: { label: 'Rejected', color: '#f43f5e', bg: 'bg-red-500/10', text: 'text-red-600 dark:text-red-400', border: 'border-red-200/60', icon: XCircle },
+  DRAFT: { label: 'Draft', color: '#64748b', bg: 'bg-neutral-500/10', text: 'text-neutral-500', border: 'border-neutral-200/60', icon: Info },
 };
 
 const GANTT_BAR_COLORS = {
   APPROVED: '#10b981',
-  PENDING_APPROVAL: '#f59e0b',
-  REJECTED: '#ef4444',
-  DRAFT: '#94a3b8',
+  PENDING_APPROVAL: '#f97316',
+  REJECTED: '#f43f5e',
+  DRAFT: '#64748b',
 };
 
 // ── Gantt Hover Tooltip (compact card) ────────────────────────────────────────
@@ -650,7 +650,7 @@ function GanttChart({ plans, fiscalYear }) {
                   return (
                     <div key={plan.id} className="relative grid grid-cols-12 h-10 border-b border-neutral-100/60 dark:border-neutral-800/40 hover:bg-neutral-50/30 dark:hover:bg-neutral-800/10 transition-colors">
                       {Number(fiscalYear) === CURRENT_YEAR_N && (
-                        <div className="absolute inset-y-0 bg-indigo-50/60 dark:bg-indigo-500/[0.04] pointer-events-none" style={{ left: `${((CURRENT_MONTH_N - 1) / 12) * 100}%`, width: `${(1 / 12) * 100}%` }} />
+                        <div className="absolute inset-y-0 bg-blue-50/40 dark:bg-blue-500/[0.03] pointer-events-none" style={{ left: `${((CURRENT_MONTH_N - 1) / 12) * 100}%`, width: `${(1 / 12) * 100}%` }} />
                       )}
                       {Array.from({ length: 12 }).map((_, ci) => (
                         <div key={ci} className="border-r border-neutral-100/40 dark:border-neutral-800/30 last:border-r-0" />
@@ -661,15 +661,23 @@ function GanttChart({ plans, fiscalYear }) {
                         onMouseMove={e => showTooltip(e, plan)}
                         onMouseLeave={hideTooltip}
                       >
-                        <div className="relative w-full rounded-xl overflow-hidden cursor-pointer" style={{ height: 26, backgroundColor: color + '20', border: `1px solid ${color}38` }}>
+                        <div 
+                          className="relative w-full rounded-xl overflow-hidden cursor-pointer transition-all hover:scale-[1.02] shadow-sm hover:shadow flex items-center px-2.5" 
+                          style={{ height: 26, backgroundColor: color, border: `1px solid ${color}` }}
+                        >
                           {progress > 0 && (
-                            <div className="absolute inset-y-0 left-0 rounded-xl" style={{ width: `${progress}%`, backgroundColor: color + '50' }} />
+                            <div className="absolute inset-y-0 left-0 bg-black/15 pointer-events-none rounded-l-xl" style={{ width: `${progress}%` }} />
                           )}
-                          {span >= 2 && (
-                            <div className="absolute inset-0 flex items-center px-2 pointer-events-none">
-                              <span className="text-[9px] font-black truncate" style={{ color }}>{formatIDRCompact(plan.total_budget)}</span>
-                            </div>
-                          )}
+                          <div className="relative z-10 flex items-center w-full justify-between pointer-events-none text-white text-[9px] font-black tracking-tight select-none">
+                            {span >= 3 ? (
+                              <>
+                                <span className="truncate max-w-[55%]">{plan.title}</span>
+                                <span className="shrink-0">{formatIDRCompact(plan.total_budget)}</span>
+                              </>
+                            ) : (
+                              <span className="truncate w-full text-center">{formatIDRCompact(plan.total_budget)}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
