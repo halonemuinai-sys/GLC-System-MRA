@@ -739,19 +739,50 @@ export default function MarketingOverviewPage() {
     return { totalBudget, totalActual, burnRate, approved, pending, rejected, total: plans.length };
   }, [plans]);
 
+  const CARD_THEMES = {
+    blue: {
+      border: 'border-blue-500/20 dark:border-blue-500/10',
+      indicator: 'bg-blue-600',
+      iconBg: 'bg-gradient-to-br from-blue-500/15 to-blue-500/5 border-blue-500/20',
+      iconText: 'text-blue-600 dark:text-blue-455',
+      glow: 'bg-blue-500/10 dark:bg-blue-500/5'
+    },
+    emerald: {
+      border: 'border-emerald-500/20 dark:border-emerald-500/10',
+      indicator: 'bg-emerald-600',
+      iconBg: 'bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border-emerald-500/20',
+      iconText: 'text-emerald-600 dark:text-emerald-455',
+      glow: 'bg-emerald-500/10 dark:bg-emerald-500/5'
+    },
+    amber: {
+      border: 'border-amber-500/20 dark:border-amber-500/10',
+      indicator: 'bg-amber-600',
+      iconBg: 'bg-gradient-to-br from-amber-500/15 to-amber-500/5 border-amber-500/20',
+      iconText: 'text-amber-600 dark:text-amber-455',
+      glow: 'bg-amber-500/10 dark:bg-amber-500/5'
+    },
+    slate: {
+      border: 'border-slate-500/20 dark:border-slate-500/10',
+      indicator: 'bg-slate-500',
+      iconBg: 'bg-gradient-to-br from-slate-500/15 to-slate-500/5 border-slate-500/20',
+      iconText: 'text-slate-500 dark:text-slate-400',
+      glow: 'bg-slate-500/10 dark:bg-slate-500/5'
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-600/25 shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0">
             <BarChart3 className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
               Overview & Analytics
             </h1>
-            <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
+            <p className="text-neutral-500 dark:text-neutral-450 text-xs mt-0.5">
               Visualisasi timeline campaign — ringkasan anggaran dan realisasi per periode.
             </p>
           </div>
@@ -760,7 +791,7 @@ export default function MarketingOverviewPage() {
           <select
             value={fiscalYear}
             onChange={e => setFiscalYear(e.target.value)}
-            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none shadow-sm"
+            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-455 focus:outline-none shadow-sm font-semibold"
           >
             {FISCAL_YEAR_OPTIONS.map(y => (
               <option key={y} value={y}>Tahun {y}</option>
@@ -768,7 +799,7 @@ export default function MarketingOverviewPage() {
           </select>
           <button
             onClick={loadPlans}
-            className="p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-indigo-500 shadow-sm transition-colors cursor-pointer"
+            className="p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 shadow-sm transition-colors cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -783,39 +814,43 @@ export default function MarketingOverviewPage() {
 
       {loading ? (
         <div className="py-32 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-          <span className="text-xs text-neutral-400 font-medium">Memuat data overview...</span>
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          <span className="text-xs text-neutral-455 font-bold">Memuat data overview...</span>
         </div>
       ) : (
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total Anggaran', value: formatIDRCompact(kpis.totalBudget), sub: `${kpis.total} campaign`, color: 'indigo', icon: DollarSign },
-              { label: 'Realisasi Terbayar', value: formatIDRCompact(kpis.totalActual), sub: `${kpis.burnRate.toFixed(1)}% burn rate`, color: 'emerald', icon: TrendingUp },
-              { label: 'Sisa Anggaran', value: formatIDRCompact(kpis.totalBudget - kpis.totalActual), sub: 'belum terserap', color: 'blue', icon: TrendingDown },
-              { label: 'Status Campaign', value: `${kpis.approved} Approved`, sub: `${kpis.pending} pending · ${kpis.rejected} ditolak`, color: 'violet', icon: Layers },
-            ].map(({ label, value, sub, color, icon: Icon }) => (
-              <motion.div
-                key={label}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-4 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group`}
-              >
-                <div className={`absolute -right-4 -top-4 w-20 h-20 bg-${color}-500/10 rounded-full blur-2xl group-hover:bg-${color}-500/20 transition-colors`} />
-                <div className={`absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-${color}-500`} />
-                <div className="flex items-center gap-3 relative z-10">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br from-${color}-500/15 to-${color}-500/5 border border-${color}-500/20 flex items-center justify-center text-${color}-500 shrink-0`}>
-                    <Icon className="w-5 h-5" />
+              { label: 'Total Anggaran', value: formatIDRCompact(kpis.totalBudget), sub: `${kpis.total} campaign`, theme: 'blue', icon: DollarSign },
+              { label: 'Realisasi Terbayar', value: formatIDRCompact(kpis.totalActual), sub: `${kpis.burnRate.toFixed(1)}% burn rate`, theme: 'emerald', icon: TrendingUp },
+              { label: 'Sisa Anggaran', value: formatIDRCompact(kpis.totalBudget - kpis.totalActual), sub: 'belum terserap', theme: 'amber', icon: TrendingDown },
+              { label: 'Status Campaign', value: `${kpis.approved} Approved`, sub: `${kpis.pending} pending · ${kpis.rejected} ditolak`, theme: 'slate', icon: Layers },
+            ].map(({ label, value, sub, theme, icon: Icon }, idx) => {
+              const currentTheme = CARD_THEMES[theme];
+              return (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.08, duration: 0.4, ease: 'easeOut' }}
+                  className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-5 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 hover:-translate-y-0.5 transition-all duration-300 group"
+                >
+                  <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full blur-2xl group-hover:opacity-100 opacity-60 transition-opacity duration-350 ${currentTheme.glow}`} />
+                  <div className={`absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md transition-all duration-300 group-hover:top-3 group-hover:bottom-3 ${currentTheme.indicator}`} />
+                  <div className="flex items-center gap-3 relative z-10">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105 ${currentTheme.iconBg}`}>
+                      <Icon className={`w-5.5 h-5.5 ${currentTheme.iconText}`} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider leading-none">{label}</p>
+                      <h3 className="text-lg font-black text-neutral-900 dark:text-white truncate mt-1.5 leading-none">{value}</h3>
+                      <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-2 font-semibold truncate leading-none">{sub}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{label}</p>
-                    <h3 className="text-base font-black text-neutral-850 dark:text-white truncate">{value}</h3>
-                    <p className="text-[10px] text-neutral-400 mt-0.5 truncate">{sub}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
 
           {/* Gantt Chart */}
