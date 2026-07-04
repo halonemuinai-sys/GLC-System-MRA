@@ -28,7 +28,8 @@ import {
   Undo2,
   Pencil,
   Target,
-  BarChart2
+  BarChart2,
+  Building
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -1128,7 +1129,7 @@ export default function MarketingPlanPage() {
                           </span>
                           {plan.cta_start_date && (
                             <span className="text-[9px] text-neutral-450 dark:text-neutral-500 block mt-0.5">
-                              CTA: {new Date(plan.cta_start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })} - {new Date(plan.cta_end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
+                              Promosi: {new Date(plan.cta_start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })} - {new Date(plan.cta_end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
                             </span>
                           )}
                         </td>
@@ -1459,7 +1460,7 @@ export default function MarketingPlanPage() {
                       <div className="flex items-center gap-1.5 pt-1.5 border-t border-neutral-200 dark:border-neutral-800">
                         <Calendar className="w-3.5 h-3.5 text-emerald-550 flex-shrink-0" />
                         <span className="truncate">
-                          CTA: {selectedPlan.cta_start_date ? new Date(selectedPlan.cta_start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} s/d {selectedPlan.cta_end_date ? new Date(selectedPlan.cta_end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                          Promosi: {selectedPlan.cta_start_date ? new Date(selectedPlan.cta_start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} s/d {selectedPlan.cta_end_date ? new Date(selectedPlan.cta_end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                         </span>
                       </div>
                     </div>
@@ -2292,11 +2293,11 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* CTA / Promo Period Dates */}
         <div className="space-y-2">
-          <FormLabel label="Tanggal Promo / CTA *" tooltip="CTA (Call to Action) / Periode Promosi: Durasi aktifnya iklan atau materi promosi dipublikasikan kepada konsumen." />
+          <FormLabel label="Periode Promosi *" tooltip="Durasi aktifnya iklan atau materi promosi dipublikasikan kepada konsumen — biasanya dimulai sebelum event untuk drive traffic." />
           <CampaignDateRangePicker
             startValue={wizardHeader.cta_start_date}
             endValue={wizardHeader.cta_end_date}
-            placeholder="Pilih rentang tanggal Promo / CTA"
+            placeholder="Pilih rentang tanggal Periode Promosi"
             onChange={({ start, end }) => setWizardHeader(prev => ({
               ...prev,
               cta_start_date: start,
@@ -2792,7 +2793,7 @@ function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, m
           <div className="space-y-2 text-xs font-bold text-neutral-600 dark:text-neutral-450">
             <div>Fiscal Year: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.fiscal_year}</span></div>
             <div>Periode Event: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.event_start_date || '-'} s/d {wizardHeader.event_end_date || '-'}</span></div>
-            <div>Periode Promo / CTA: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.cta_start_date || '-'} s/d {wizardHeader.cta_end_date || '-'}</span></div>
+            <div>Periode Promosi: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.cta_start_date || '-'} s/d {wizardHeader.cta_end_date || '-'}</span></div>
             {wizardHeader.doc_url && (
               <div>
                 Proposal: 
