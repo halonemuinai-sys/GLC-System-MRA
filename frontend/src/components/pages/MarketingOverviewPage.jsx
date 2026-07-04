@@ -21,6 +21,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Search
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
