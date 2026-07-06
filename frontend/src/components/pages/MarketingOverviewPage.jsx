@@ -90,7 +90,10 @@ function GanttTooltip({ plan, position }) {
       )}
     </motion.div>
   );
-}function GanttModal({ plans, fiscalYear, onClose }) {
+}
+
+function GanttModal({ plans, fiscalYear, onClose }) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [brandFilter, setBrandFilter] = useState('');
   const scrollRef = useRef(null);
@@ -514,6 +517,7 @@ function GanttTooltip({ plan, position }) {
 
 // ── Gantt Chart (compact inline card) ─────────────────────────────────────────
 function GanttChart({ plans, fiscalYear }) {
+  const { t } = useLanguage();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tooltip, setTooltip] = useState({ plan: null, x: 0, y: 0 });
   const scrollRef = useRef(null);
