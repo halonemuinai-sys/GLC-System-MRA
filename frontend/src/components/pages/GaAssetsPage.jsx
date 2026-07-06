@@ -31,6 +31,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
@@ -479,6 +480,7 @@ function SearchingRadarAnimation() {
 }
 
 export default function GaAssetsPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 15, totalPages: 1 });
@@ -1599,7 +1601,7 @@ export default function GaAssetsPage() {
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <Box className="w-6 h-6 text-indigo-500" />
-            Asset Management
+            {t('gaAssets_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Pengelolaan aset dan inventaris kantor di GLC MRA.</p>
         </div>
@@ -1636,7 +1638,7 @@ export default function GaAssetsPage() {
               ) : (
                 <>
                   <FileSpreadsheet className="w-4 h-4" />
-                  Export Excel
+                  {t('exportExcel')}
                 </>
               )}
             </button>
@@ -1684,14 +1686,14 @@ export default function GaAssetsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit"
           >
             <Plus className="w-4 h-4" />
-            Add Asset
+            {t('ga_addAsset')}
           </button>
           <button
             onClick={() => setShowImportModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-600/20 w-fit"
           >
             <Upload className="w-4 h-4" />
-            Import Excel
+            {t('importExcel')}
           </button>
         </div>
       </div>
@@ -1705,7 +1707,7 @@ export default function GaAssetsPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
               <input
                 type="text"
-                placeholder="Search assets by code, name, room..."
+                placeholder={t('ga_searchAssets')}
                 value={tempSearch}
                 onChange={(e) => setTempSearch(e.target.value)}
                 className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 text-neutral-800 dark:text-white"
@@ -1717,7 +1719,7 @@ export default function GaAssetsPage() {
               companies={companies}
               value={tempCompanyId}
               onChange={(val) => setTempCompanyId(val)}
-              placeholder="All Companies (PT)"
+              placeholder={t('allCompanies')}
             />
 
             {/* Category Dropdown */}
@@ -1726,7 +1728,7 @@ export default function GaAssetsPage() {
               onChange={(e) => setTempCategoryId(e.target.value)}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
-              <option value="">All Categories</option>
+              <option value="">{t('allCategories')}</option>
               {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -1753,7 +1755,7 @@ export default function GaAssetsPage() {
                 onChange={(e) => setTempStatusId(e.target.value)}
                 className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
               >
-                <option value="">All Statuses</option>
+                <option value="">{t('allStatuses')}</option>
                 {statuses.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -1781,7 +1783,7 @@ export default function GaAssetsPage() {
                   }}
                   className="w-full sm:w-auto px-4 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
                 >
-                  Reset Filter
+                  {t('resetFilter')}
                 </button>
               )}
               <button
@@ -1789,7 +1791,7 @@ export default function GaAssetsPage() {
                 className="w-full sm:w-auto px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
               >
                 <Activity className="w-4 h-4" />
-                Proses Data
+                {t('processData')}
               </button>
             </div>
           </div>
@@ -1869,7 +1871,7 @@ export default function GaAssetsPage() {
                                 : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
                             }`}
                           >
-                            Unit
+                            {t('gaAssets_unitView')}
                           </button>
                           <button
                             type="button"
@@ -1880,7 +1882,7 @@ export default function GaAssetsPage() {
                                 : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
                             }`}
                           >
-                            Nilai
+                            {t('gaAssets_valueView')}
                           </button>
                         </div>
                       </div>
@@ -2010,7 +2012,7 @@ export default function GaAssetsPage() {
             {loading ? (
               <div className="py-20 flex flex-col items-center justify-center gap-3">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-                <span className="text-xs text-neutral-400">Loading data...</span>
+                <span className="text-xs text-neutral-400">{t('loading')}</span>
               </div>
             ) : error ? (
               <div className="py-20 text-center text-red-500 text-xs">

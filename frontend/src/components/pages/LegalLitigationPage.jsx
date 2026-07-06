@@ -25,6 +25,7 @@ import {
   Landmark
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 import ComplianceDatePicker from '@/components/ui/ComplianceDatePicker';
 
 const CATEGORY_OPTIONS = ['Gugatan', 'Somasi', 'Mediasi', 'Arbitrase', 'Lainnya'];
@@ -228,6 +229,7 @@ function SearchingRadarAnimation() {
 }
 
 export default function LegalLitigationPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });
@@ -498,7 +500,7 @@ export default function LegalLitigationPage() {
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <Gavel className="w-6 h-6 text-indigo-500" />
-            Litigation & Dispute
+            {t('legal_litigation_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Pengelolaan kasus sengketa dan litigasi MRA Group — tracking sidang, risiko, dan nilai gugatan.</p>
         </div>
@@ -536,19 +538,19 @@ export default function LegalLitigationPage() {
               onChange={(e) => { setTempCompanyMasterId(e.target.value); setTempCompanyId(''); }}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
-              <option value="">All Holding Groups</option>
+              <option value="">{t('allHoldingGroups')}</option>
               {companyMasters.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
-            <SearchableCompanySelect companies={filteredCompaniesForGroup} value={tempCompanyId} onChange={setTempCompanyId} placeholder="All Companies (PT)" />
+            <SearchableCompanySelect companies={filteredCompaniesForGroup} value={tempCompanyId} onChange={setTempCompanyId} placeholder={t('allCompanies')} />
             <select value={tempCategory} onChange={(e) => setTempCategory(e.target.value)} className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none">
-              <option value="">All Categories</option>
+              <option value="">{t('allCategories')}</option>
               {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <select value={tempCaseStatus} onChange={(e) => setTempCaseStatus(e.target.value)} className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none">
-              <option value="">All Case Status</option>
+              <option value="">{t('allStatuses')}</option>
               {CASE_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             <select value={tempRiskLevel} onChange={(e) => setTempRiskLevel(e.target.value)} className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none">
@@ -567,12 +569,12 @@ export default function LegalLitigationPage() {
                   setHasProcessed(false);
                   setData([]);
                 }} className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer text-center">
-                  Reset
+                  {t('resetFilter')}
                 </button>
               )}
               <button type="submit" className="flex-1 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10">
                 <Activity className="w-4 h-4" />
-                Proses Data
+                {t('processData')}
               </button>
             </div>
           </div>
@@ -644,7 +646,7 @@ export default function LegalLitigationPage() {
             ) : data.length === 0 ? (
               <div className="py-20 text-center text-neutral-400 text-xs">
                 <Gavel className="w-8 h-8 mx-auto mb-2 text-neutral-300" />
-                Tidak ada kasus ditemukan.
+                {t('legal_emptyCase')}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -654,13 +656,13 @@ export default function LegalLitigationPage() {
                       <th className="p-4 w-10">
                         <input type="checkbox" checked={data.length > 0 && data.every(d => selectedIds.includes(d.id))} onChange={toggleSelectAll} className="rounded border-neutral-300 dark:border-neutral-700" title="Pilih semua baris" />
                       </th>
-                      <th className="p-4">Nama Kasus</th>
-                      <th className="p-4">Kategori</th>
-                      <th className="p-4">Company</th>
-                      <th className="p-4">PIC</th>
-                      <th className="p-4">Tgl Sidang</th>
-                      <th className="p-4">Risk</th>
-                      <th className="p-4">Status Kasus</th>
+                      <th className="p-4">{t('legal_colCase')}</th>
+                      <th className="p-4">{t('legal_colCategory')}</th>
+                      <th className="p-4">{t('company')}</th>
+                      <th className="p-4">{t('legal_colPic')}</th>
+                      <th className="p-4">{t('legal_colHearing')}</th>
+                      <th className="p-4">{t('legal_colRisk')}</th>
+                      <th className="p-4">{t('legal_colStatus')}</th>
                       <th className="p-4 text-center">Action</th>
                     </tr>
                   </thead>

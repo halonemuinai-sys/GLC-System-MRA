@@ -2,6 +2,7 @@
 
 import ComplianceDocPage from '@/components/pages/ComplianceDocPage';
 import { UserCheck } from 'lucide-react';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const CONFIG = {
   module: 'hr_compliance',

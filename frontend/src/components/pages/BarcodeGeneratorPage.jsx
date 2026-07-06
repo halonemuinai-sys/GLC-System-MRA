@@ -8,6 +8,7 @@ import {
   Palette, Copy, Check, Plus, Trash2, Package, Loader2
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const FORMAT_OPTIONS = [
   { value: 'CODE128', label: 'Code 128', example: 'ABC-12345' },
@@ -126,6 +127,7 @@ function PrintCard({ item, config }) {
 }
 
 export default function BarcodeGeneratorPage() {
+  const { lang, t } = useLanguage();
   const [config, setConfig] = useState({ ...defaultConfig });
   const [items, setItems] = useState([
     { id: uid(), text: 'MRA-ASSET-001', label: 'MRA-ASSET-001', format: 'CODE128', type: 'barcode' }
@@ -239,7 +241,7 @@ export default function BarcodeGeneratorPage() {
       <div>
         <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
           <Barcode className="w-6 h-6 text-indigo-500" />
-          Barcode Generator
+          {t('barcode_title')}
         </h1>
         <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Generate &amp; cetak barcode / QR Code untuk aset, dokumen, dan label kustom.</p>
       </div>
@@ -249,14 +251,14 @@ export default function BarcodeGeneratorPage() {
         <div className="space-y-4">
           {/* Tab switcher */}
           <div className="flex bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl p-1">
-            {['design', 'bulk', 'assets'].map(t => (
+            {['design', 'bulk', 'assets'].map(tabKey => (
               <button
-                key={t}
+                key={tabKey}
                 type="button"
-                onClick={() => setTab(t)}
-                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${tab === t ? 'bg-indigo-600 text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white'}`}
+                onClick={() => setTab(tabKey)}
+                className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${tab === tabKey ? 'bg-indigo-600 text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-white'}`}
               >
-                {t === 'design' ? 'Desain' : t === 'bulk' ? 'Bulk' : 'Aset'}
+                {tabKey === 'design' ? t('barcode_tabDesign') : tabKey === 'bulk' ? t('barcode_tabBulk') : t('barcode_tabAsset')}
               </button>
             ))}
           </div>
@@ -265,39 +267,39 @@ export default function BarcodeGeneratorPage() {
           {tab === 'design' && (
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 space-y-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2">Tipe Output</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2">{t('barcode_outputType')}</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {['barcode', 'qr'].map(t => (
+                  {['barcode', 'qr'].map(typeKey => (
                     <button
-                      key={t}
+                      key={typeKey}
                       type="button"
-                      onClick={() => { cfg('type', t); updateItem(activeId, { type: t }); }}
-                      className={`flex items-center justify-center gap-2 py-2 rounded-xl border-2 transition-all font-bold text-xs cursor-pointer ${config.type === t ? 'bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800 text-neutral-500'}`}
+                      onClick={() => { cfg('type', typeKey); updateItem(activeId, { type: typeKey }); }}
+                      className={`flex items-center justify-center gap-2 py-2 rounded-xl border-2 transition-all font-bold text-xs cursor-pointer ${config.type === typeKey ? 'bg-indigo-500/10 border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800 text-neutral-500'}`}
                     >
-                      {t === 'barcode' ? <Barcode className="w-3.5 h-3.5" /> : <QrCode className="w-3.5 h-3.5" />}
-                      {t === 'barcode' ? 'Barcode' : 'QR Code'}
+                      {typeKey === 'barcode' ? <Barcode className="w-3.5 h-3.5" /> : <QrCode className="w-3.5 h-3.5" />}
+                      {typeKey === 'barcode' ? t('barcode_typeBarcode') : t('barcode_typeQr')}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Konten</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">{t('barcode_content')}</p>
                 <div>
-                  <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1">Teks / Kode</label>
-                  <input className={inputCls} value={activeItem.text} placeholder="Masukkan kode atau teks..."
+                  <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1">{t('barcode_textCode')}</label>
+                  <input className={inputCls} value={activeItem.text} placeholder={t('barcode_placeholder')}
                     onChange={e => updateItem(activeId, { text: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1">Label (teks di bawah)</label>
-                  <input className={inputCls} value={activeItem.label} placeholder="Label opsional..."
+                  <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1">{t('barcode_label')}</label>
+                  <input className={inputCls} value={activeItem.label} placeholder={t('barcode_labelPlaceholder')}
                     onChange={e => updateItem(activeId, { label: e.target.value })} />
                 </div>
               </div>
 
               {config.type === 'barcode' && (
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2">Format Barcode</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-2">{t('barcode_format')}</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {FORMAT_OPTIONS.map(f => (
                       <button

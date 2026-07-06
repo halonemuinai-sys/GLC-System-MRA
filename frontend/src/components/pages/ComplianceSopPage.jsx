@@ -23,6 +23,7 @@ import {
   Download
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const CATEGORY_OPTIONS = ['Finance SOP', 'HR Policy', 'Code of Conduct', 'Procurement Policy', 'IT Security Policy', 'Operational SOP', 'Compliance Policy', 'Risk Management Policy', 'Whistleblowing Policy', 'Data Privacy Policy'];
 const DOC_STATUS_OPTIONS = ['Draft', 'Under Review', 'Approved', 'Active', 'Obsolete', 'Archived'];
@@ -257,6 +258,7 @@ function SearchingRadarAnimation() {
 }
 
 export default function ComplianceSopPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });

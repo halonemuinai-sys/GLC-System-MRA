@@ -24,6 +24,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const CATEGORY_OPTIONS = ['Regulatory Compliance', 'Corporate Compliance', 'Operational Compliance', 'HR Compliance', 'Tax Compliance', 'Product Compliance', 'Data Privacy Compliance', 'IT Security Compliance', 'Environmental Compliance', 'Anti-Bribery & Anti-Corruption'];
 const RISK_LEVEL_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
@@ -253,6 +254,7 @@ function SearchingRadarAnimation() {
 }
 
 export default function ComplianceDocsPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });

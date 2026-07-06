@@ -2,6 +2,7 @@
 
 import LegalDocPage from '@/components/pages/LegalDocPage';
 import { Building } from 'lucide-react';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const CONFIG = {
   module: 'corporate',

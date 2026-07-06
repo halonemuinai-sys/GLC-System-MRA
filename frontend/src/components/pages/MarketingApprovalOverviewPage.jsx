@@ -23,6 +23,7 @@ import {
   Award
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const FISCAL_YEAR_OPTIONS = ['2024', '2025', '2026', '2027'];
 
@@ -93,6 +94,7 @@ function HorizontalStepper({ steps }) {
 }
 
 export default function MarketingApprovalOverviewPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [metadata, setMetadata] = useState({ companies: [] });
@@ -232,7 +234,7 @@ export default function MarketingApprovalOverviewPage() {
             <ClipboardCheck className="w-4 h-4" />
           </div>
           <h1 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">
-            Monitoring Approval
+            {t('marketing_approval_title')}
           </h1>
         </div>
         <p className="text-xs text-neutral-450 dark:text-neutral-500 mt-1">
@@ -299,21 +301,21 @@ export default function MarketingApprovalOverviewPage() {
           className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-800 dark:hover:bg-neutral-750 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 mt-4"
         >
           {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          Proses Data
+          {t('processData')}
         </button>
       </div>
 
       {/* ── Summary Stats Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Pengajuan (Plan)"
+          label={t('marketing_approval_kpiTotal')}
           value={totalCount}
           icon={ClipboardCheck}
           color="blue"
           delay={0.05}
         />
         <StatCard
-          label="Pending Approval"
+          label={t('marketing_approval_kpiPending')}
           value={pendingCount}
           icon={Clock}
           color="amber"

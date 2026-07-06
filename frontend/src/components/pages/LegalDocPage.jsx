@@ -24,6 +24,7 @@ import {
   Download
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 import ComplianceDatePicker from '@/components/ui/ComplianceDatePicker';
 
 const DOC_STATUS_OPTIONS = ['Draft', 'Under Review', 'Approved', 'Active', 'Expiring Soon', 'Expired', 'Archived'];
@@ -205,6 +206,7 @@ function SearchingRadarAnimation({ Icon }) {
 }
 
 export default function LegalDocPage({ config }) {
+  const { lang, t } = useLanguage();
   const { module, title, subtitle, icon: Icon, categories, idLabel, expiryLabel, requireExpiry } = config;
 
   const [loading, setLoading] = useState(true);
@@ -512,14 +514,14 @@ export default function LegalDocPage({ config }) {
               />
             </div>
 
-            <SearchableCompanySelect companies={companies} value={tempCompanyId} onChange={setTempCompanyId} placeholder="All Companies (PT)" />
+            <SearchableCompanySelect companies={companies} value={tempCompanyId} onChange={setTempCompanyId} placeholder={t('allCompanies')} />
 
             <select
               value={tempCategory}
               onChange={(e) => setTempCategory(e.target.value)}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
-              <option value="">All Categories</option>
+              <option value="">{t('allCategories')}</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
@@ -530,7 +532,7 @@ export default function LegalDocPage({ config }) {
               onChange={(e) => setTempDocStatus(e.target.value)}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
-              <option value="">All Document Status</option>
+              <option value="">{t('allDocStatus')}</option>
               {DOC_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
 
@@ -539,7 +541,7 @@ export default function LegalDocPage({ config }) {
               onChange={(e) => setTempConfidentiality(e.target.value)}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
-              <option value="">All Classifications</option>
+              <option value="">{t('allClassifications')}</option>
               {CONFIDENTIALITY_OPTIONS.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
 
@@ -549,7 +551,7 @@ export default function LegalDocPage({ config }) {
                 onChange={(e) => setTempExpiryStatus(e.target.value)}
                 className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
               >
-                <option value="">All Expiry Status</option>
+                <option value="">{t('allExpiryStatus')}</option>
                 {EXPIRY_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             )}
@@ -566,7 +568,7 @@ export default function LegalDocPage({ config }) {
                   }}
                   className="flex-1 px-4 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
                 >
-                  Reset
+                  {t('resetFilter')}
                 </button>
               )}
               <button
@@ -574,7 +576,7 @@ export default function LegalDocPage({ config }) {
                 className="flex-1 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
               >
                 <Activity className="w-4 h-4" />
-                Proses Data
+                {t('processData')}
               </button>
             </div>
           </div>
@@ -668,7 +670,7 @@ export default function LegalDocPage({ config }) {
             {loading ? (
               <div className="py-20 flex flex-col items-center justify-center gap-3">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-                <span className="text-xs text-neutral-400">Loading data...</span>
+                <span className="text-xs text-neutral-400">{t('loading')}</span>
               </div>
             ) : error ? (
               <div className="py-20 text-center text-red-500 text-xs">

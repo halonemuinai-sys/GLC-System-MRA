@@ -2,6 +2,7 @@
 
 import ComplianceDocPage from '@/components/pages/ComplianceDocPage';
 import { FlaskConical } from 'lucide-react';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const CONFIG = {
   module: 'product_regulatory',

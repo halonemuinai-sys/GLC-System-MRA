@@ -21,6 +21,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 // Searchable Dropdown for Companies (PT) — copied inline per project convention
 function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)' }) {
@@ -158,6 +159,7 @@ const defaultData = {
 };
 
 export default function GaBenchmarkScorecardPage() {
+  const { lang, t } = useLanguage();
   const [years, setYears] = useState([]);
   const [fiscalYear, setFiscalYear] = useState('');
   const [companyMasterId, setCompanyMasterId] = useState('');
@@ -245,7 +247,7 @@ export default function GaBenchmarkScorecardPage() {
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <Award className="w-6 h-6 text-indigo-500" />
-            Benchmark Scorecard
+            {t('gaBenchmark_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Performance perusahaan keseluruhan GA — valuasi aset, anggaran, dan kepatuhan operasional.</p>
         </div>
@@ -273,7 +275,7 @@ export default function GaBenchmarkScorecardPage() {
             <option value="">All Holding Groups</option>
             {companyMasters.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
-          <SearchableCompanySelect companies={filteredCompaniesForGroup} value={companyId} onChange={setCompanyId} placeholder="All Companies (PT)" />
+          <SearchableCompanySelect companies={filteredCompaniesForGroup} value={companyId} onChange={setCompanyId} placeholder={t('allCompanies')} />
         </div>
       </div>
 
@@ -286,7 +288,7 @@ export default function GaBenchmarkScorecardPage() {
       {loading ? (
         <div className="py-24 flex flex-col items-center justify-center gap-3">
           <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-          <span className="text-xs text-neutral-400">Memuat scorecard...</span>
+          <span className="text-xs text-neutral-400">{t('loading')}</span>
         </div>
       ) : (
         <>
@@ -294,7 +296,7 @@ export default function GaBenchmarkScorecardPage() {
           <div className="bg-neutral-950 border border-neutral-900 text-white rounded-2xl p-5 grid grid-cols-2 sm:grid-cols-4 gap-6 shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-36 h-36 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
             <div>
-              <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest">Total Asset Value</p>
+              <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest">{t('gaBenchmark_kpiAssetValue')}</p>
               <p className="text-xl font-black text-amber-400 leading-none mt-1.5 truncate">{formatIDR(totalAssetValue)}</p>
             </div>
             <div className="border-l border-neutral-800 pl-4 sm:pl-6">
@@ -302,11 +304,11 @@ export default function GaBenchmarkScorecardPage() {
               <p className="text-xl font-black text-white leading-none mt-1.5">{totalAssetUnits.toLocaleString('id-ID')}</p>
             </div>
             <div className="border-l border-neutral-800 pl-4 sm:pl-6">
-              <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest">Expense Actual YTD</p>
+              <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest">{t('gaBenchmark_kpiExpenseYtd')}</p>
               <p className="text-xl font-black text-emerald-400 leading-none mt-1.5 truncate">{formatIDR(totalExpenseActual)}</p>
             </div>
             <div className="border-l border-neutral-800 pl-4 sm:pl-6">
-              <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest">Budget Achievement</p>
+              <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest">{t('gaBenchmark_kpiBudgetAchiev')}</p>
               <p className="text-xl font-black text-white leading-none mt-1.5">{budgetAchievementPct !== null ? `${budgetAchievementPct}%` : '-'}</p>
               <p className="text-neutral-500 text-[9px] font-semibold mt-1 truncate">Budget: {formatIDR(totalExpenseBudget)}</p>
             </div>
@@ -314,7 +316,7 @@ export default function GaBenchmarkScorecardPage() {
 
           {/* KPI Scorecard Grid */}
           <div>
-            <h2 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-3">Key Performance Indicators</h2>
+            <h2 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 mb-3">{t('gaBenchmark_kpiSection')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {data.metrics.map(m => {
                 const Icon = METRIC_ICON[m.key] || Building2;

@@ -17,6 +17,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 // ─── Stat Card Component ────────────────────────────────────────────────────────
 function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
@@ -46,6 +47,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
 }
 
 export default function MasterBrandPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
@@ -166,7 +168,7 @@ export default function MasterBrandPage() {
             <Tag className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-black text-neutral-900 dark:text-white tracking-wide">Brand & Merek</h1>
+            <h1 className="text-xl font-black text-neutral-900 dark:text-white tracking-wide">{t('masterBrand_title')}</h1>
             <p className="text-xs text-neutral-450 dark:text-neutral-500 font-semibold mt-1">
               Kelola daftar nama merek dagang yang digunakan dalam alokasi budget kampanye marketing.
             </p>
@@ -176,7 +178,7 @@ export default function MasterBrandPage() {
           onClick={handleAdd}
           className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-5 py-3 rounded-2xl transition-all cursor-pointer shadow-lg shadow-blue-600/10"
         >
-          <Plus className="w-4 h-4" /> Tambah Brand
+          <Plus className="w-4 h-4" /> {t('masterBrand_addBtn')}
         </button>
       </div>
 
@@ -196,15 +198,15 @@ export default function MasterBrandPage() {
           type="submit"
           className="w-full md:w-auto bg-neutral-900 dark:bg-white hover:bg-neutral-850 dark:hover:bg-neutral-100 text-white dark:text-neutral-950 text-xs font-extrabold px-6 py-2.5 rounded-xl transition-all cursor-pointer"
         >
-          Proses Data
+          {t('processData')}
         </button>
       </form>
 
       {/* 3. Summary Cards */}
       {!loading && !error && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <StatCard label="Total Brand Terdaftar" value={meta.total} icon={Tag} color="blue" />
-          <StatCard label="Brand Aktif" value={meta.total} icon={Sparkles} color="emerald" />
+          <StatCard label={t('masterBrand_kpiTotal')} value={meta.total} icon={Tag} color="blue" />
+          <StatCard label={t('masterBrand_kpiActive')} value={meta.total} icon={Sparkles} color="emerald" />
         </div>
       )}
 
@@ -225,7 +227,7 @@ export default function MasterBrandPage() {
       ) : data.length === 0 ? (
         <div className="bg-white dark:bg-neutral-900/30 border border-neutral-200/60 dark:border-neutral-850/60 p-20 rounded-2xl text-center space-y-2">
           <Tag className="w-10 h-10 text-neutral-350 dark:text-neutral-600 mx-auto" />
-          <h4 className="text-sm font-black text-neutral-700 dark:text-neutral-300">Belum ada brand terdaftar</h4>
+          <h4 className="text-sm font-black text-neutral-700 dark:text-neutral-300">{t('masterBrand_empty')}</h4>
           <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-sm mx-auto">Silakan tambahkan data brand baru untuk melengkapi kebutuhan budget pemasaran.</p>
         </div>
       ) : (
@@ -235,8 +237,8 @@ export default function MasterBrandPage() {
               <thead>
                 <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200 dark:border-neutral-850 text-neutral-450 dark:text-neutral-500 font-black uppercase tracking-wider">
                   <th className="px-6 py-3.5 w-16 text-center">ID</th>
-                  <th className="px-6 py-3.5">Nama Brand / Merek</th>
-                  <th className="px-6 py-3.5 w-32 text-center">Aksi</th>
+                  <th className="px-6 py-3.5">{t('masterBrand_colName')}</th>
+                  <th className="px-6 py-3.5 w-32 text-center">{t('masterBrand_colAction')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-855 text-neutral-750 dark:text-neutral-300">

@@ -29,6 +29,7 @@ import {
   Legend
 } from 'recharts';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 // Searchable Dropdown for Companies (PT) — copied inline per project convention
 function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)' }) {
@@ -119,6 +120,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
 const defaultSummary = { kpi: { totalBudget: 0, totalActual: 0, totalVariance: 0, burnRatePercent: 0 }, monthlyTrend: [], coaBreakdown: [] };
 
 export default function GaExpensesPage() {
+  const { lang, t } = useLanguage();
   const [search, setSearch] = useState('');
   const [years, setYears] = useState([]);
   const [fiscalYear, setFiscalYear] = useState('');
@@ -211,7 +213,7 @@ export default function GaExpensesPage() {
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <BarChart3 className="w-6 h-6 text-indigo-500" />
-            Expenses & Budgets
+            {t('gaExpenses_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Analisis perbandingan rencana anggaran vs realisasi biaya operasional GA per Chart of Accounts.</p>
         </div>
@@ -239,7 +241,7 @@ export default function GaExpensesPage() {
             <option value="">All Holding Groups</option>
             {companyMasters.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
-          <SearchableCompanySelect companies={filteredCompaniesForGroup} value={companyId} onChange={setCompanyId} placeholder="All Companies (PT)" />
+          <SearchableCompanySelect companies={filteredCompaniesForGroup} value={companyId} onChange={setCompanyId} placeholder={t('allCompanies')} />
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
             <input
@@ -262,7 +264,7 @@ export default function GaExpensesPage() {
       {loading ? (
         <div className="py-24 flex flex-col items-center justify-center gap-3">
           <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-          <span className="text-xs text-neutral-400">Memuat data anggaran...</span>
+          <span className="text-xs text-neutral-400">{t('loading')}</span>
         </div>
       ) : (
         <>
@@ -273,7 +275,7 @@ export default function GaExpensesPage() {
                 <DollarSign className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Budget Plan</p>
+                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('gaExpenses_kpiBudget')}</p>
                 <h3 className="text-md font-black text-neutral-800 dark:text-white mt-0.5 truncate">{formatIDR(totalBudget)}</h3>
               </div>
             </div>
@@ -282,7 +284,7 @@ export default function GaExpensesPage() {
                 <TrendingUp className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Actual Spent</p>
+                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('gaExpenses_kpiActual')}</p>
                 <h3 className="text-md font-black text-neutral-800 dark:text-white mt-0.5 truncate">{formatIDR(totalActual)}</h3>
               </div>
             </div>
@@ -291,7 +293,7 @@ export default function GaExpensesPage() {
                 <TrendingDown className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Budget Variance</p>
+                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('gaExpenses_kpiVariance')}</p>
                 <h3 className={`text-md font-black mt-0.5 truncate ${totalVariance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                   {formatIDR(totalVariance)}
                 </h3>
@@ -302,7 +304,7 @@ export default function GaExpensesPage() {
                 <ArrowUpRight className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Burn Rate</p>
+                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('gaExpenses_kpiBurnRate')}</p>
                 <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{burnRatePercent}%</h3>
               </div>
             </div>
@@ -312,7 +314,7 @@ export default function GaExpensesPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Trend Area Chart */}
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-5 rounded-2xl">
-              <h3 className="text-xs font-bold text-neutral-800 dark:text-slate-200 mb-4">Budget vs Actual Monthly Trend</h3>
+              <h3 className="text-xs font-bold text-neutral-800 dark:text-slate-200 mb-4">{t('gaExpenses_chartTrend')}</h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={summary.monthlyTrend} margin={{ top: 10, right: 5, left: -20, bottom: 0 }}>

@@ -33,6 +33,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 import {
   ResponsiveContainer,
   PieChart,
@@ -134,6 +135,7 @@ const statusNameMap = {
 const displayStatusName = (name) => statusNameMap[name] || name;
 
 export default function DashboardPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState(null);
@@ -305,10 +307,10 @@ export default function DashboardPage() {
       {/* ─── OVERVIEW HEADER ────────────────────────────────────────────────── */}
       <div className="pb-2">
         <h1 className="text-3xl font-extrabold text-neutral-955 dark:text-white tracking-tight flex items-center gap-3">
-          Overview Dashboard <span className="text-blue-550 dark:text-blue-400 font-medium text-lg px-2.5 py-0.5 bg-blue-500/10 rounded-full border border-blue-500/20">GA Suite</span>
+          {t('dashboard_title')} <span className="text-blue-550 dark:text-blue-400 font-medium text-lg px-2.5 py-0.5 bg-blue-500/10 rounded-full border border-blue-500/20">{t('dashboard_badge')}</span>
         </h1>
         <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
-          Integrated management overview of Assets, Insurance, Vehicles, and Vendors.
+          {t('dashboard_subtitle')}
         </p>
       </div>
 
@@ -329,7 +331,7 @@ export default function DashboardPage() {
 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-4-50 font-extrabold uppercase tracking-widest leading-none truncate">TOTAL ASSETS</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-4-50 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiAssets')}</span>
                   <Tooltip>
                     <TooltipTrigger className="text-neutral-450 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
                       <HelpCircle className="w-3 h-3" />
@@ -346,7 +348,7 @@ export default function DashboardPage() {
 
               <div className="my-1.5">
                 <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono transition-colors">
-                  {maskNum(stats?.totalAssets || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">units</span>
+                  {maskNum(stats?.totalAssets || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">{t('unit')}</span>
                 </span>
                 <span className="text-[10.5px] text-neutral-450 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
                   {maskPrice(stats?.totalAssetValue || 0)}
@@ -355,10 +357,10 @@ export default function DashboardPage() {
 
               <div className="flex items-center gap-2 pt-3 border-t border-neutral-100/70 dark:border-neutral-800/80 mt-2 flex-wrap">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-450 border-blue-100/50 dark:border-blue-900/30">
-                  Good: {maskNum(stats?.goodAssets || 0)}
+                  {t('dashboard_statGood')} {maskNum(stats?.goodAssets || 0)}
                 </span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455 border-emerald-100/50 dark:border-emerald-900/30">
-                  Damaged: {maskNum(stats?.badAssets || 0)}
+                  {t('dashboard_statDamaged')} {maskNum(stats?.badAssets || 0)}
                 </span>
               </div>
             </div>
@@ -377,7 +379,7 @@ export default function DashboardPage() {
 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">INSURANCE POLICIES</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiInsurance')}</span>
                   <Tooltip>
                     <TooltipTrigger className="text-neutral-455 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
                       <HelpCircle className="w-3 h-3" />
@@ -403,10 +405,10 @@ export default function DashboardPage() {
 
               <div className="flex items-center gap-2 pt-3 border-t border-neutral-100/70 dark:border-neutral-800/80 mt-2 flex-wrap">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455 border-emerald-100/50 dark:border-emerald-900/30">
-                  Active: {maskNum(stats?.activeInsurances || 0)}
+                  {t('dashboard_statActive')} {maskNum(stats?.activeInsurances || 0)}
                 </span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-450 border-amber-100/50 dark:border-amber-900/30">
-                  Expiring: {maskNum(stats?.expiringInsurances || 0)}
+                  {t('dashboard_statExpiring')} {maskNum(stats?.expiringInsurances || 0)}
                 </span>
               </div>
             </div>
@@ -425,7 +427,7 @@ export default function DashboardPage() {
 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">VEHICLES FLEET</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiVehicles')}</span>
                   <Tooltip>
                     <TooltipTrigger className="text-neutral-455 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                       <HelpCircle className="w-3 h-3" />
@@ -442,7 +444,7 @@ export default function DashboardPage() {
 
               <div className="my-1.5">
                 <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono transition-colors">
-                  {maskNum(stats?.totalVehicles || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">vehicles</span>
+                  {maskNum(stats?.totalVehicles || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">{t('dashboard_kpiVehiclesUnit')}</span>
                 </span>
                 <span className="text-[10.5px] text-neutral-455 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
                   {maskPrice(stats?.totalVehicleValue || 0)} <span className="text-[9px] font-normal text-neutral-450 dark:text-neutral-555 font-sans normal-case">insured</span>
@@ -451,10 +453,10 @@ export default function DashboardPage() {
 
               <div className="flex items-center gap-2 pt-3 border-t border-neutral-100/70 dark:border-neutral-800/80 mt-2 flex-wrap">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455 border-emerald-100/50 dark:border-emerald-900/30">
-                  Active: {maskNum(stats?.activeVehicles || 0)}
+                  {t('dashboard_statActive')} {maskNum(stats?.activeVehicles || 0)}
                 </span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-450 border-amber-100/50 dark:border-amber-900/30">
-                  In Service: {maskNum(stats?.inServiceVehicles || 0)}
+                  {t('dashboard_statInService')} {maskNum(stats?.inServiceVehicles || 0)}
                 </span>
               </div>
             </div>
@@ -473,7 +475,7 @@ export default function DashboardPage() {
 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">VENDORS DIRECTORY</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiVendors')}</span>
                   <Tooltip>
                     <TooltipTrigger className="text-neutral-455 hover:text-emerald-600 dark:hover:text-emerald-450 transition-colors">
                       <HelpCircle className="w-3 h-3" />
@@ -490,10 +492,10 @@ export default function DashboardPage() {
 
               <div className="my-1.5">
                 <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono transition-colors">
-                  {maskNum(stats?.totalVendors || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">partners</span>
+                  {maskNum(stats?.totalVendors || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">{t('dashboard_kpiPartners')}</span>
                 </span>
                 <span className="text-[10.5px] text-neutral-450 dark:text-neutral-550 font-semibold tracking-wide block mt-1 leading-snug">
-                  Partners Directory
+                  {t('dashboard_partnersDir')}
                 </span>
               </div>
             </div>

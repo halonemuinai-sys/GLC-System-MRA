@@ -27,6 +27,7 @@ import {
   UserMinus
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const ROLE_BADGES = {
   admin: 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30',
@@ -45,6 +46,7 @@ const MODULE_LABELS = {
 };
 
 export default function AdminPage() {
+  const { lang, t } = useLanguage();
   const [activeTab, setActiveTab] = useState('users'); // 'users', 'permissions', 'logs'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -329,7 +331,7 @@ export default function AdminPage() {
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <ShieldAlert className="w-6 h-6 text-indigo-500" />
-            Admin Panel
+            {t('admin_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Konfigurasi hak akses, kelola akun pengguna, dan pantau log aktivitas sistem.</p>
         </div>
@@ -337,9 +339,9 @@ export default function AdminPage() {
 
       {/* Tabs Menu */}
       <motion.div layout className="flex flex-wrap items-center gap-2.5">
-        {renderTabButton('users', <Users className="w-4 h-4" />, 'Manajemen User')}
-        {renderTabButton('permissions', <Key className="w-4 h-4" />, 'Hak Akses Peran')}
-        {renderTabButton('logs', <Database className="w-4 h-4" />, 'Log Audit Sistem')}
+        {renderTabButton('users', <Users className="w-4 h-4" />, t('admin_tabUsers'))}
+        {renderTabButton('permissions', <Key className="w-4 h-4" />, t('admin_tabRoles'))}
+        {renderTabButton('logs', <Database className="w-4 h-4" />, t('admin_tabAudit'))}
       </motion.div>
 
       <AnimatePresence mode="wait">
@@ -362,7 +364,7 @@ export default function AdminPage() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                 <input
                   type="text"
-                  placeholder="Cari user berdasarkan nama/email..."
+                  placeholder={t('admin_searchUser')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs focus:outline-none focus:border-indigo-500 text-neutral-800 dark:text-white"
@@ -401,7 +403,7 @@ export default function AdminPage() {
               className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20"
             >
               <Plus className="w-4 h-4" />
-              Tambah User
+              {t('admin_addUser')}
             </button>
           </div>
 

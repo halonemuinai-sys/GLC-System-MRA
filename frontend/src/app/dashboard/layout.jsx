@@ -6,6 +6,22 @@ import Cookies from 'js-cookie';
 import { Menu, Sun, Moon, Eye, EyeOff, Briefcase, Scale, ShieldCheck, Calendar } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
+import { LanguageProvider, useLanguage } from '@/lib/LanguageContext';
+
+function LangToggle() {
+  const { lang, setLang } = useLanguage();
+  return (
+    <button
+      onClick={() => setLang(lang === 'en' ? 'id' : 'en')}
+      className="flex items-center gap-0.5 px-2.5 py-1.5 rounded-xl text-xs font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer border border-neutral-200 dark:border-neutral-700"
+      title="Switch language / Ganti bahasa"
+    >
+      <span className={lang === 'en' ? 'text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-neutral-600'}>EN</span>
+      <span className="text-neutral-300 dark:text-neutral-700 px-0.5">/</span>
+      <span className={lang === 'id' ? 'text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-neutral-600'}>ID</span>
+    </button>
+  );
+}
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
@@ -89,6 +105,7 @@ export default function DashboardLayout({ children }) {
   };
 
   return (
+    <LanguageProvider>
     <div className="min-h-screen bg-background text-foreground flex overflow-hidden h-screen">
       
       {/* Dynamic Sidebar (collapsible desktop + mobile drawer) */}
@@ -138,6 +155,9 @@ export default function DashboardLayout({ children }) {
               {hidePrices ? <EyeOff className="w-5 h-5 text-red-500" /> : <Eye className="w-5 h-5 text-neutral-500" />}
             </button>
 
+            {/* Language Toggle */}
+            <LangToggle />
+
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
@@ -164,5 +184,6 @@ export default function DashboardLayout({ children }) {
       </div>
 
     </div>
+    </LanguageProvider>
   );
 }

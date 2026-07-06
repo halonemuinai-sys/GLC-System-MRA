@@ -26,6 +26,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 const SECTORS = [
@@ -87,6 +88,7 @@ function SectorBadge({ sector }) {
 }
 
 export default function MasterCompanyPage() {
+  const { lang, t } = useLanguage();
   const [activeTab, setActiveTab] = useState('companies'); // 'companies' | 'masters' | 'branches'
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
@@ -486,7 +488,7 @@ export default function MasterCompanyPage() {
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <Building2 className="w-6 h-6 text-indigo-500" />
-            Setup Company & Entitas
+            {t('masterCompany_title')}
           </h1>
           <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
             Manajemen legalitas perusahaan induk, pengelompokan grup usaha, dan pemetaan lokasi cabang fisik.
@@ -508,8 +510,8 @@ export default function MasterCompanyPage() {
           >
             <Plus className="w-4 h-4" />
             {
-              activeTab === 'companies' ? 'Tambah Perusahaan' :
-              activeTab === 'masters' ? 'Tambah Master Company' : 'Tambah Cabang Baru'
+              activeTab === 'companies' ? t('masterCompany_addCompany') :
+              activeTab === 'masters' ? t('masterCompany_addMaster') : t('masterCompany_addBranch')
             }
           </motion.button>
         </div>

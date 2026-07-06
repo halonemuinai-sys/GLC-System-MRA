@@ -35,6 +35,8 @@ import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
 import CampaignDateRangePicker from '@/components/ui/CampaignDateRangePicker';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { useLanguage } from '@/lib/LanguageContext';
+import mpt from '@/lib/translations/marketingPlan';
 // Helper: Format to IDR Currency
 const formatIDR = (val) => {
   if (val === undefined || val === null) return 'Rp 0';
@@ -55,11 +57,10 @@ const formatThousands = (value) => {
 };
 
 // Helper: Get Month Name
-const getMonthName = (monthNum) => {
-  const months = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-  ];
+const getMonthName = (monthNum, lang = 'en') => {
+  const months_en = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const months_id = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  const months = lang === 'id' ? months_id : months_en;
   return months[monthNum - 1] || '';
 };
 
@@ -87,7 +88,7 @@ function SectorTag({ sector }) {
   return <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase ${colorClass}`}>{sector}</span>;
 }
 
-function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Pilih atau cari perusahaan...' }) {
+function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Search or select company...' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -123,7 +124,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Pi
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
                 <input
                   type="text"
-                  placeholder="Ketik untuk cari PT..."
+                  placeholder="Type to search company..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
@@ -133,7 +134,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Pi
               </div>
               <div className="divide-y divide-neutral-100 dark:divide-neutral-800 max-h-52 overflow-y-auto">
                 {filtered.length === 0 ? (
-                  <div className="px-2.5 py-3 text-center text-xs text-neutral-400">Perusahaan tidak ditemukan</div>
+                  <div className="px-2.5 py-3 text-center text-xs text-neutral-400">No companies found</div>
                 ) : (
                   filtered.map(c => (
                     <button
@@ -163,6 +164,9 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Pi
 }
 
 export default function MarketingPlanPage() {
+  const { lang } = useLanguage();
+  const t = (key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key);
+
   // State for metadata & data
   const [metadata, setMetadata] = useState({ brands: [], lobs: [], branches: [], event_locations: [], coas: [], companies: [], vendors: [] });
   const [plans, setPlans] = useState([]);
@@ -251,7 +255,7 @@ export default function MarketingPlanPage() {
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      setPaymentUploadError('Ukuran file maksimal 10MB.');
+      setPaymentUploadError('File size limit is 10MB.');
       return;
     }
 
@@ -276,13 +280,13 @@ export default function MarketingPlanPage() {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Gagal mengunggah file.');
+        throw new Error(errData.error || 'Failed to upload file.');
       }
 
       const data = await res.json();
       setPaymentForm(prev => ({ ...prev, doc_url: data.url }));
     } catch (err) {
-      setPaymentUploadError(err.message || 'Gagal mengunggah file.');
+      setPaymentUploadError(err.message || 'Failed to upload file.');
     } finally {
       setPaymentUploading(false);
     }
@@ -320,7 +324,7 @@ export default function MarketingPlanPage() {
       const res = await apiClient.get('/api/marketing/plans', { params });
       setPlans(res || []);
     } catch (err) {
-      setError(err.message || 'Gagal memuat rencana pemasaran.');
+      setError(err.message || 'Failed to load marketing plans.');
     } finally {
       setLoading(false);
     }
@@ -483,7 +487,7 @@ export default function MarketingPlanPage() {
 
     // Validate inputs
     if (!wizardHeader.title || !wizardHeader.company_id || !wizardHeader.fiscal_year) {
-      setError('Judul Kampanye, Perusahaan, dan Tahun Anggaran wajib diisi.');
+      setError(t('errRequired'));
       setSubmitting(false);
       return;
     }
@@ -491,14 +495,14 @@ export default function MarketingPlanPage() {
     // Validate items
     const invalidItem = wizardItems.find(item => !item.coa_id || !item.budget_amount || Number(item.budget_amount) <= 0);
     if (invalidItem) {
-      setError('Setiap item anggaran wajib memilih CoA dan memiliki nominal budget di atas Rp 0.');
+      setError(t('errItems'));
       setSubmitting(false);
       return;
     }
 
     // Validate over-budget justification
     if (overBudgetMonths.length > 0 && !wizardHeader.over_budget_reason?.trim()) {
-      setError('Pengajuan ini melebihi limit anggaran bulanan yang dikunci. Anda wajib menyertakan alasan/justifikasi over-budget.');
+      setError(t('errOverBudget'));
       setSubmitting(false);
       return;
     }
@@ -537,9 +541,9 @@ export default function MarketingPlanPage() {
         await apiClient.post('/api/marketing/plans', payload);
       }
       setSuccessMsg(
-        draftPlanId ? `Rencana Pemasaran (ID: ${draftPlanId}) berhasil diajukan ke rantai approval.` :
-        revisingPlanId ? `Revisi Rencana Pemasaran (ID: ${revisingPlanId}) berhasil diajukan ulang.` :
-        'Rencana Pemasaran berhasil diajukan dan masuk rantai approval.'
+        draftPlanId ? t('successPlanSubmitted', draftPlanId) :
+        revisingPlanId ? t('successPlanRevised', revisingPlanId) :
+        t('successSubmitted')
       );
       setIsWizardOpen(false);
       // Reset Form
@@ -572,7 +576,7 @@ export default function MarketingPlanPage() {
       // Auto clear message
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      setError(err.message || 'Gagal mengajukan Rencana Pemasaran.');
+      setError(err.message || t('errFailSubmit'));
     } finally {
       setSubmitting(false);
     }
@@ -585,7 +589,7 @@ export default function MarketingPlanPage() {
     setPaymentError(null);
 
     if (!paymentForm.title || !paymentForm.amount || Number(paymentForm.amount) <= 0) {
-      setPaymentError('Judul tagihan dan nominal pembayaran wajib diisi.');
+      setPaymentError(t('errPayment'));
       setSubmitting(false);
       return;
     }
@@ -600,7 +604,7 @@ export default function MarketingPlanPage() {
       };
 
       await apiClient.post('/api/marketing/payments', payload);
-      setSuccessMsg('Payment Request berhasil diajukan!');
+      setSuccessMsg(t('successPayment'));
       setIsPaymentModalOpen(false);
       // Reset Form
       setPaymentForm({ title: '', amount: '', notes: '', doc_url: '' });
@@ -614,7 +618,7 @@ export default function MarketingPlanPage() {
 
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      setPaymentError(err.message || 'Gagal mengajukan pembayaran.');
+      setPaymentError(err.message || t('errFailPayment'));
     } finally {
       setSubmitting(false);
     }
@@ -627,7 +631,7 @@ export default function MarketingPlanPage() {
       setSelectedPlan(planDetail);
       setIsDetailOpen(true);
     } catch (err) {
-      alert('Gagal mengambil rincian plan: ' + err.message);
+      alert(t('errFailLoadDetail') + err.message);
     }
   };
 
@@ -686,12 +690,12 @@ export default function MarketingPlanPage() {
     try {
       setSubmitting(true);
       await apiClient.delete(`/api/marketing/plans/${planToDelete.id}`);
-      setSuccessMsg('Rencana Pemasaran berhasil dihapus.');
+      setSuccessMsg(t('successDeleted'));
       setPlanToDelete(null);
       loadPlans();
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      alert(err.message || 'Gagal menghapus Rencana Pemasaran.');
+      alert(err.message || t('errFailDelete'));
     } finally {
       setSubmitting(false);
     }
@@ -724,7 +728,7 @@ export default function MarketingPlanPage() {
 
   const handleSaveDraft = async () => {
     if (!wizardHeader.title || !wizardHeader.company_id || !wizardHeader.fiscal_year) {
-      setError('Judul Kampanye, Perusahaan, dan Tahun Anggaran wajib diisi sebelum menyimpan draft.');
+      setError(t('errDraftRequired'));
       return;
     }
     setSubmittingDraft(true);
@@ -733,16 +737,16 @@ export default function MarketingPlanPage() {
       const payload = buildWizardPayload();
       if (draftPlanId) {
         await apiClient.put(`/api/marketing/plans/${draftPlanId}`, payload);
-        setSuccessMsg('Draft berhasil diperbarui.');
+        setSuccessMsg(t('successDraftUpdated'));
       } else {
         const result = await apiClient.post('/api/marketing/plans', { ...payload, save_as_draft: true });
         setDraftPlanId(result.id);
-        setSuccessMsg(`Draft berhasil disimpan (ID: ${result.id}). Lanjutkan pengisian kapan saja.`);
+        setSuccessMsg(t('successDraftSaved', result.id));
       }
       loadPlans();
       setTimeout(() => setSuccessMsg(null), 6000);
     } catch (err) {
-      setError(err.message || 'Gagal menyimpan draft.');
+      setError(err.message || t('errFailDraft'));
     } finally {
       setSubmittingDraft(false);
     }
@@ -795,36 +799,36 @@ export default function MarketingPlanPage() {
       setIsWizardOpen(true);
       setWizardStep(1);
     } catch (err) {
-      alert('Gagal memuat rincian draft: ' + err.message);
+      alert(t('errFailLoadDraft') + err.message);
     }
   };
 
   const handleRecallPlan = async (planId) => {
-    if (!window.confirm('Tarik kembali rencana ini ke status DRAFT? Semua rantai approval akan dibatalkan.')) return;
+    if (!window.confirm(t('confirmRecall'))) return;
     setRecallingPlanId(planId);
     try {
       await apiClient.post(`/api/marketing/plans/${planId}/recall`);
-      setSuccessMsg('Rencana berhasil ditarik kembali ke status DRAFT.');
+      setSuccessMsg(t('successRecalled'));
       setIsDetailOpen(false);
       loadPlans();
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      alert(err.message || 'Gagal menarik kembali rencana.');
+      alert(err.message || t('errFailRecall'));
     } finally {
       setRecallingPlanId(null);
     }
   };
 
   const handleSubmitDraft = async (planId) => {
-    if (!window.confirm('Ajukan rencana ini ke rantai approval sekarang?')) return;
+    if (!window.confirm(t('confirmSubmitDraft'))) return;
     try {
       setSubmitting(true);
       await apiClient.post(`/api/marketing/plans/${planId}/submit`);
-      setSuccessMsg('Rencana berhasil diajukan ke rantai approval.');
+      setSuccessMsg(t('successSubmitted'));
       loadPlans();
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      alert(err.message || 'Gagal mengajukan rencana.');
+      alert(err.message || t('errFailSubmitPlan'));
     } finally {
       setSubmitting(false);
     }
@@ -845,10 +849,10 @@ export default function MarketingPlanPage() {
       await apiClient.put(`/api/marketing/plans/${selectedPlan.id}/actuals`, payload);
       const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
       setSelectedPlan(updated);
-      setActualsMsg('Data aktual berhasil disimpan.');
+      setActualsMsg(t('successActuals'));
       setTimeout(() => setActualsMsg(null), 5000);
     } catch (err) {
-      alert(err.message || 'Gagal menyimpan data aktual.');
+      alert(err.message || t('errFailActuals'));
     } finally {
       setSubmittingActuals(false);
     }
@@ -881,7 +885,7 @@ export default function MarketingPlanPage() {
               Marketing Plan & Budgeting
             </h1>
             <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
-              Perencanaan promosi campaign, alokasi anggaran per segmentasi, dan workflow approval realisasi biaya.
+              {t('subtitle')}
             </p>
           </div>
         </div>
@@ -890,17 +894,17 @@ export default function MarketingPlanPage() {
           <button
             onClick={handleRefresh}
             className="p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-indigo-500 shadow-sm transition-colors cursor-pointer"
-            title="Muat Ulang Data"
+            title={t('refreshData')}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
-          
+
           <button
             onClick={() => setIsWizardOpen(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            Buat Marketing Plan
+            {t('createPlan')}
           </button>
         </div>
       </div>
@@ -937,7 +941,7 @@ export default function MarketingPlanPage() {
               <DollarSign className="w-5.5 h-5.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Anggaran Rencana</p>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiTotalBudget')}</p>
               <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalBudget)}</h3>
             </div>
           </div>
@@ -952,7 +956,7 @@ export default function MarketingPlanPage() {
               <TrendingUp className="w-5.5 h-5.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Realisasi Terbayar</p>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiRealized')}</p>
               <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalActual)}</h3>
             </div>
           </div>
@@ -967,7 +971,7 @@ export default function MarketingPlanPage() {
               <TrendingDown className="w-5.5 h-5.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Sisa Saldo Anggaran</p>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiRemaining')}</p>
               <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">{formatIDR(kpis.variance)}</h3>
             </div>
           </div>
@@ -982,7 +986,7 @@ export default function MarketingPlanPage() {
               <Layers className="w-5.5 h-5.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Burn Rate & Campaign Aktif</p>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiBurnRate')}</p>
               <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">
                 {kpis.burnRate.toFixed(1)}% <span className="text-xs font-normal text-neutral-400">({kpis.activeCampaigns} Approved)</span>
               </h3>
@@ -995,7 +999,7 @@ export default function MarketingPlanPage() {
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-3">
           <p className="text-xs font-black text-neutral-700 dark:text-neutral-300">
-            Pengajuan & Pipeline Approval <span className="font-normal text-neutral-400">({plans.length})</span>
+            {t('pipelineTitle')} <span className="font-normal text-neutral-400">({plans.length})</span>
           </p>
           <div className="flex items-center gap-2">
             <select
@@ -1004,7 +1008,7 @@ export default function MarketingPlanPage() {
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
               {FISCAL_YEAR_OPTIONS.map(y => (
-                <option key={y} value={y}>Tahun Anggaran {y}</option>
+                <option key={y} value={y}>{t('fiscalYear')} {y}</option>
               ))}
             </select>
 
@@ -1013,7 +1017,7 @@ export default function MarketingPlanPage() {
               onChange={(e) => setCompanyId(e.target.value)}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none max-w-[200px]"
             >
-              <option value="">Semua Perusahaan</option>
+              <option value="">{t('allCompanies')}</option>
               {metadata.companies.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -1024,7 +1028,7 @@ export default function MarketingPlanPage() {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
-              <option value="">Semua Status</option>
+              <option value="">{t('allStatuses')}</option>
               <option value="DRAFT">Draft</option>
               <option value="PENDING_APPROVAL">Pending Approval</option>
               <option value="APPROVED">Approved</option>
@@ -1037,7 +1041,7 @@ export default function MarketingPlanPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
           <input
             type="text"
-            placeholder="Cari berdasarkan judul campaign, deskripsi, PT, PIC..."
+            placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs focus:outline-none focus:border-indigo-500 text-neutral-800 dark:text-white"
@@ -1048,7 +1052,7 @@ export default function MarketingPlanPage() {
       {loading ? (
         <div className="py-24 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
           <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-          <span className="text-xs text-neutral-400 font-medium">Memuat data kampanye pemasaran...</span>
+          <span className="text-xs text-neutral-400 font-medium">{t('loading')}</span>
         </div>
       ) : (
         /* Plans Table View */
@@ -1057,13 +1061,13 @@ export default function MarketingPlanPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/50 dark:bg-neutral-950/20 text-neutral-400 font-bold uppercase tracking-wider">
-                  <th className="px-5 py-4">Nama Rencana (Campaign)</th>
-                  <th className="px-5 py-4">Perusahaan</th>
-                  <th className="px-5 py-4">Periode</th>
-                  <th className="px-5 py-4 text-right">Total Anggaran</th>
+                  <th className="px-5 py-4">{t('colPlanName')}</th>
+                  <th className="px-5 py-4">{t('colCompany')}</th>
+                  <th className="px-5 py-4">{t('colPeriod')}</th>
+                  <th className="px-5 py-4 text-right">{t('colTotalBudget')}</th>
                   <th className="px-5 py-4 text-center">Status</th>
-                  <th className="px-5 py-4">Diajukan Oleh</th>
-                  <th className="px-5 py-4 text-center">Aksi</th>
+                  <th className="px-5 py-4">{t('colSubmittedBy')}</th>
+                  <th className="px-5 py-4 text-center">{t('colActions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium">
@@ -1073,16 +1077,16 @@ export default function MarketingPlanPage() {
                       {plans.length === 0 ? (
                         <div className="flex flex-col items-center gap-3">
                           <FileSpreadsheet className="w-9 h-9 text-neutral-300 dark:text-neutral-700" />
-                          <p className="text-xs text-neutral-450 font-medium">Belum ada pengajuan rencana pemasaran.</p>
+                          <p className="text-xs text-neutral-450 font-medium">{t('noPlans')}</p>
                           <button
                             onClick={() => setIsWizardOpen(true)}
                             className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 transition-all cursor-pointer"
                           >
-                            <Plus className="w-3.5 h-3.5" /> Ajukan Rencana Pertama Anda
+                            <Plus className="w-3.5 h-3.5" /> {t('submitFirstPlan')}
                           </button>
                         </div>
                       ) : (
-                        <p className="text-xs text-neutral-450 font-normal">Tidak menemukan data Rencana Pemasaran yang cocok.</p>
+                        <p className="text-xs text-neutral-450 font-normal">{t('noMatch')}</p>
                       )}
                     </td>
                   </tr>
@@ -1125,11 +1129,11 @@ export default function MarketingPlanPage() {
                         </td>
                         <td className="px-5 py-4 text-neutral-500">
                           <span className="font-bold text-neutral-800 dark:text-neutral-200 block">
-                            {plan.event_start_date ? new Date(plan.event_start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : (plan.start_date ? new Date(plan.start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : '-')} - {plan.event_end_date ? new Date(plan.event_end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : (plan.end_date ? new Date(plan.end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : '-')}
+                            {plan.event_start_date ? new Date(plan.event_start_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : (plan.start_date ? new Date(plan.start_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : '-')} - {plan.event_end_date ? new Date(plan.event_end_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : (plan.end_date ? new Date(plan.end_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : '-')}
                           </span>
                           {plan.cta_start_date && (
                             <span className="text-[9px] text-neutral-450 dark:text-neutral-500 block mt-0.5">
-                              Promosi: {new Date(plan.cta_start_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })} - {new Date(plan.cta_end_date).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}
+                              {t('promoLabel')} {new Date(plan.cta_start_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' })} - {new Date(plan.cta_end_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' })}
                             </span>
                           )}
                         </td>
@@ -1163,14 +1167,14 @@ export default function MarketingPlanPage() {
                                   onClick={() => handleEditDraft(plan.id)}
                                   className="px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-indigo-500 hover:border-indigo-500 text-[10px] font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1"
                                 >
-                                  <Pencil className="w-3 h-3" /> Lanjut Isi
+                                  <Pencil className="w-3 h-3" /> {t('btnContinue')}
                                 </button>
                                 <button
                                   onClick={() => handleSubmitDraft(plan.id)}
                                   disabled={submitting}
                                   className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
                                 >
-                                  <Send className="w-3 h-3" /> Ajukan
+                                  <Send className="w-3 h-3" /> {t('btnSubmit')}
                                 </button>
                               </>
                             )}
@@ -1181,10 +1185,10 @@ export default function MarketingPlanPage() {
                                 onClick={() => handleRecallPlan(plan.id)}
                                 disabled={recallingPlanId === plan.id}
                                 className="px-2.5 py-1.5 bg-amber-500/10 dark:bg-amber-500/5 border border-amber-300/60 dark:border-amber-700/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/15 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
-                                title="Tarik kembali ke DRAFT"
+                                title={t('btnRecallTitle')}
                               >
                                 {recallingPlanId === plan.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />}
-                                Recall
+                                {t('btnRecall')}
                               </button>
                             )}
 
@@ -1192,14 +1196,14 @@ export default function MarketingPlanPage() {
                               onClick={() => openDetail(plan.id)}
                               className="px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-indigo-500 hover:border-indigo-500 text-[10px] font-bold shadow-sm transition-all cursor-pointer"
                             >
-                              Rincian
+                              {t('btnDetails')}
                             </button>
                             <motion.button
                               whileHover={{ scale: 1.15 }}
                               whileTap={{ scale: 0.9 }}
                               onClick={() => setPlanToDelete(plan)}
                               className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-200/40 flex items-center justify-center"
-                              title="Hapus Plan"
+                              title={t('btnDeleteTitle')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </motion.button>
@@ -1237,14 +1241,14 @@ export default function MarketingPlanPage() {
               <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
                 <div>
                   <h3 className="text-md font-black text-neutral-850 dark:text-white">
-                    {revisingPlanId ? `Revisi Rencana Anggaran (ID: ${revisingPlanId})` :
-                     draftPlanId ? `Lanjutkan Draft (ID: ${draftPlanId})` :
-                     'Ajukan Rencana Anggaran Pemasaran'}
+                    {revisingPlanId ? t('wizardTitleRevise', revisingPlanId) :
+                     draftPlanId ? t('wizardTitleDraft', draftPlanId) :
+                     t('wizardTitle')}
                   </h3>
                   <p className="text-[10px] text-neutral-400 mt-0.5">
-                    {revisingPlanId ? 'Koreksi & ajukan ulang rencana yang ditolak — nomor referensi tetap sama' :
-                     draftPlanId ? 'Simpan ulang sebagai draft atau ajukan langsung ke rantai approval' :
-                     'Wizard Pengisian Rincian Anggaran Tahunan'}
+                    {revisingPlanId ? t('wizardSubtitleRevise') :
+                     draftPlanId ? t('wizardSubtitleDraft') :
+                     t('wizardSubtitle')}
                   </p>
                 </div>
                 <button
@@ -1270,8 +1274,8 @@ export default function MarketingPlanPage() {
                   />
 
                   {[
-                    { num: 1, label: 'Informasi Umum' },
-                    { num: 2, label: 'Rincian Anggaran Bulanan' },
+                    { num: 1, label: t('stepGeneralInfo') },
+                    { num: 2, label: t('stepMonthlyBudget') },
                     { num: 3, label: 'Review & Submit' }
                   ].map((s) => (
                     <div key={s.num} className="flex flex-col items-center relative">
@@ -1363,7 +1367,7 @@ export default function MarketingPlanPage() {
                   }}
                   className="px-4 py-2 border border-neutral-250 dark:border-neutral-750 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold cursor-pointer"
                 >
-                  {wizardStep === 1 ? 'Batalkan' : 'Kembali'}
+                  {wizardStep === 1 ? t('btnCancel') : t('btnBack')}
                 </button>
 
                 <div className="flex items-center gap-2">
@@ -1375,7 +1379,7 @@ export default function MarketingPlanPage() {
                       className="px-4 py-2 border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                     >
                       {submittingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                      {draftPlanId ? 'Perbarui Draft' : 'Simpan Draft'}
+                      {draftPlanId ? t('btnUpdateDraft') : t('btnSaveDraft')}
                     </button>
                   )}
 
@@ -1390,8 +1394,8 @@ export default function MarketingPlanPage() {
                   >
                     {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     {wizardStep === 3
-                      ? (revisingPlanId ? 'Ajukan Ulang (Revisi)' : draftPlanId ? 'Ajukan Plan' : 'Ajukan Plan')
-                      : 'Lanjut'}
+                      ? (revisingPlanId ? t('btnResubmit') : t('btnSubmitPlan'))
+                      : t('btnNext')}
                   </button>
                 </div>
               </div>
@@ -1430,7 +1434,7 @@ export default function MarketingPlanPage() {
                       {selectedPlan.status}
                     </span>
                   </div>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">Diajukan oleh {selectedPlan.creator?.name || 'N/A'} • {selectedPlan.company?.name || ''}</p>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">{t('submittedBy')} {selectedPlan.creator?.name || 'N/A'} • {selectedPlan.company?.name || ''}</p>
                 </div>
                 <button
                   onClick={() => { setIsDetailOpen(false); setActualsMsg(null); }}
@@ -1445,22 +1449,22 @@ export default function MarketingPlanPage() {
                 {/* Description & Period */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="md:col-span-2 space-y-1">
-                    <span className="text-[9px] font-bold text-neutral-400 uppercase">Penjelasan / Deskripsi Rencana</span>
-                    <p className="text-xs text-neutral-750 dark:text-neutral-350">{selectedPlan.description || 'Tidak ada deskripsi.'}</p>
+                    <span className="text-[9px] font-bold text-neutral-400 uppercase">{t('planDescription')}</span>
+                    <p className="text-xs text-neutral-750 dark:text-neutral-350">{selectedPlan.description || t('noDescription')}</p>
                   </div>
                   <div className="bg-neutral-50 dark:bg-neutral-950 p-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1.5">
-                    <span className="text-[9px] font-bold text-neutral-400 uppercase">Periode & Lampiran</span>
+                    <span className="text-[9px] font-bold text-neutral-400 uppercase">{t('periodAttachment')}</span>
                     <div className="space-y-1.5 text-[11px] text-neutral-800 dark:text-white font-bold">
                       <div className="flex items-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
                         <span className="truncate">
-                          Event: {selectedPlan.event_start_date ? new Date(selectedPlan.event_start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (selectedPlan.start_date ? new Date(selectedPlan.start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-')} s/d {selectedPlan.event_end_date ? new Date(selectedPlan.event_end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : (selectedPlan.end_date ? new Date(selectedPlan.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-')}
+                          {t('eventLabel')} {selectedPlan.event_start_date ? new Date(selectedPlan.event_start_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : (selectedPlan.start_date ? new Date(selectedPlan.start_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-')} {t('dateSeparator')} {selectedPlan.event_end_date ? new Date(selectedPlan.event_end_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : (selectedPlan.end_date ? new Date(selectedPlan.end_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-')}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 pt-1.5 border-t border-neutral-200 dark:border-neutral-800">
                         <Calendar className="w-3.5 h-3.5 text-emerald-550 flex-shrink-0" />
                         <span className="truncate">
-                          Promosi: {selectedPlan.cta_start_date ? new Date(selectedPlan.cta_start_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} s/d {selectedPlan.cta_end_date ? new Date(selectedPlan.cta_end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                          {t('promoDateLabel')} {selectedPlan.cta_start_date ? new Date(selectedPlan.cta_start_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} {t('dateSeparator')} {selectedPlan.cta_end_date ? new Date(selectedPlan.cta_end_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
                         </span>
                       </div>
                     </div>
@@ -1472,7 +1476,7 @@ export default function MarketingPlanPage() {
                           rel="noreferrer"
                           className="text-[10px] text-indigo-500 hover:text-indigo-650 hover:underline inline-flex items-center gap-1 font-bold"
                         >
-                          <Paperclip className="w-3.5 h-3.5" /> Lihat Proposal Acuan
+                          <Paperclip className="w-3.5 h-3.5" /> {t('viewProposal')}
                         </a>
                       </div>
                     )}
@@ -1483,22 +1487,22 @@ export default function MarketingPlanPage() {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                     <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
-                    Rincian Pos Anggaran & Realisasi
+                    {t('budgetBreakdown')}
                   </h4>
                   
                   <div className="border border-neutral-250 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
                     <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-250 dark:border-neutral-800 text-neutral-400 font-bold uppercase tracking-wider">
-                          <th className="px-4 py-3">Bulan</th>
+                          <th className="px-4 py-3">{t('colMonth')}</th>
                           <th className="px-4 py-3">CoA Account</th>
                           <th className="px-4 py-3">Brand / LOB</th>
                           <th className="px-4 py-3">Branch</th>
                           <th className="px-4 py-3">Vendor</th>
-                          <th className="px-4 py-3 text-right">Alokasi Budget</th>
-                          <th className="px-4 py-3 text-right">Realisasi (Actual)</th>
-                          <th className="px-4 py-3 text-right">Sisa Saldo</th>
-                          {selectedPlan.status === 'APPROVED' && <th className="px-4 py-3 text-center">Tindakan</th>}
+                          <th className="px-4 py-3 text-right">{t('colBudgetAlloc')}</th>
+                          <th className="px-4 py-3 text-right">{t('colRealized')}</th>
+                          <th className="px-4 py-3 text-right">{t('colRemainingBalance')}</th>
+                          {selectedPlan.status === 'APPROVED' && <th className="px-4 py-3 text-center">{t('colAction')}</th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-neutral-150 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
@@ -1510,7 +1514,7 @@ export default function MarketingPlanPage() {
                           return (
                             <React.Fragment key={item.id || idx}>
                               <tr className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/10">
-                                <td className="px-4 py-3">{getMonthName(item.period_month)}</td>
+                                <td className="px-4 py-3">{getMonthName(item.period_month, lang)}</td>
                                 <td className="px-4 py-3">
                                   <span className="font-mono text-neutral-800 dark:text-white font-bold">{item.m_coa?.code}</span>
                                   <p className="text-[10px] text-neutral-400 font-normal mt-0.5">{item.m_coa?.name}</p>
@@ -1521,7 +1525,7 @@ export default function MarketingPlanPage() {
                                 </td>
                                 <td className="px-4 py-3">
                                   <span className="font-semibold text-neutral-850 dark:text-neutral-200 block">
-                                    {item.m_branch?.name ? `Cabang ${item.m_branch.name}` : 'Global Sales'}
+                                    {item.m_branch?.name ? `${t('branchPrefix')} ${item.m_branch.name}` : 'Global Sales'}
                                   </span>
                                   {item.m_event_location?.name && (
                                     <span className="text-[9px] text-neutral-450 dark:text-neutral-500 block mt-0.5">
@@ -1557,7 +1561,7 @@ export default function MarketingPlanPage() {
                                       }}
                                       className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-750 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer"
                                     >
-                                      Realisasi Biaya
+                                      {t('btnRecordExpense')}
                                     </button>
                                   </td>
                                 )}
@@ -1567,14 +1571,14 @@ export default function MarketingPlanPage() {
                                   <td colSpan={selectedPlan.status === 'APPROVED' ? 9 : 8} className="px-6 py-2.5">
                                     <div className="border-l-2 border-indigo-500 pl-4 py-1 space-y-2">
                                       <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block">
-                                        Riwayat Realisasi / Payment Request ({item.payment_requests.length})
+                                        {t('expenseHistory')} ({item.payment_requests.length})
                                       </span>
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                                         {item.payment_requests.map((pr) => (
                                           <div key={pr.id} className="bg-white dark:bg-neutral-900/60 border border-neutral-200/80 dark:border-neutral-850 rounded-xl p-2.5 flex items-center justify-between text-[10px] shadow-sm">
                                             <div className="space-y-0.5">
                                               <p className="font-bold text-neutral-800 dark:text-white">{pr.title}</p>
-                                              <p className="text-neutral-400 font-medium text-[9px]">Oleh: {pr.creator?.name || 'N/A'}</p>
+                                              <p className="text-neutral-400 font-medium text-[9px]">{t('byLabel')} {pr.creator?.name || 'N/A'}</p>
                                             </div>
                                             <div className="flex items-center gap-3.5">
                                               <span className="font-extrabold text-neutral-900 dark:text-white">{formatIDR(pr.amount)}</span>
@@ -1590,7 +1594,7 @@ export default function MarketingPlanPage() {
                                                   target="_blank"
                                                   rel="noreferrer"
                                                   className="p-1 text-indigo-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-colors flex items-center gap-1 font-bold"
-                                                  title="Lihat Lampiran"
+                                                  title={t('viewAttachment')}
                                                 >
                                                   <Paperclip className="w-3.5 h-3.5" />
                                                 </a>
@@ -1617,37 +1621,37 @@ export default function MarketingPlanPage() {
                   <div className="space-y-2">
                     <h4 className="text-xs font-bold text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                       <Target className="w-4 h-4 text-indigo-500" />
-                      Target KPI Campaign
+                      {t('kpiTargetsTitle')}
                     </h4>
                     <div className="bg-neutral-50 dark:bg-neutral-950/30 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {selectedPlan.target_sales && (
                           <div className="space-y-0.5">
-                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target Penjualan</p>
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('salesTarget')}</p>
                             <p className="text-xs font-black text-neutral-800 dark:text-white">{formatIDR(selectedPlan.target_sales)}</p>
                           </div>
                         )}
                         {selectedPlan.target_leads && (
                           <div className="space-y-0.5">
-                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target Leads</p>
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('leadsTarget')}</p>
                             <p className="text-xs font-black text-neutral-800 dark:text-white">{Number(selectedPlan.target_leads).toLocaleString('id-ID')}</p>
                           </div>
                         )}
                         {selectedPlan.target_reach && (
                           <div className="space-y-0.5">
-                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target Reach</p>
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('reachTarget')}</p>
                             <p className="text-xs font-black text-neutral-800 dark:text-white">{Number(selectedPlan.target_reach).toLocaleString('id-ID')}</p>
                           </div>
                         )}
                         {selectedPlan.target_impressions && (
                           <div className="space-y-0.5">
-                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target Impressi</p>
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('impressionsTarget')}</p>
                             <p className="text-xs font-black text-neutral-800 dark:text-white">{Number(selectedPlan.target_impressions).toLocaleString('id-ID')}</p>
                           </div>
                         )}
                         {selectedPlan.target_roi_pct && (
                           <div className="space-y-0.5">
-                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Target ROI</p>
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('roiTarget')}</p>
                             <p className="text-xs font-black text-neutral-800 dark:text-white">{parseFloat(selectedPlan.target_roi_pct).toFixed(2)}%</p>
                           </div>
                         )}
@@ -1664,10 +1668,10 @@ export default function MarketingPlanPage() {
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                       <BarChart2 className="w-4 h-4 text-emerald-500" />
-                      Hasil Aktual Post-Campaign
+                      {t('postCampaignActuals')}
                       {selectedPlan.actuals_filled_at && (
                         <span className="text-[9px] font-normal text-neutral-400 normal-case ml-1">
-                          · Terisi {new Date(selectedPlan.actuals_filled_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          · {t('filledOn')} {new Date(selectedPlan.actuals_filled_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       )}
                     </h4>
@@ -1678,7 +1682,7 @@ export default function MarketingPlanPage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                           {selectedPlan.actual_sales !== null && (
                             <div className="space-y-0.5">
-                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual Penjualan</p>
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualSales')}</p>
                               <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{formatIDR(selectedPlan.actual_sales)}</p>
                               {selectedPlan.target_sales && (
                                 <p className="text-[9px] text-neutral-400">Target: {formatIDR(selectedPlan.target_sales)}</p>
@@ -1687,7 +1691,7 @@ export default function MarketingPlanPage() {
                           )}
                           {selectedPlan.actual_leads !== null && (
                             <div className="space-y-0.5">
-                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual Leads</p>
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualLeads')}</p>
                               <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{Number(selectedPlan.actual_leads).toLocaleString('id-ID')}</p>
                               {selectedPlan.target_leads && (
                                 <p className="text-[9px] text-neutral-400">Target: {Number(selectedPlan.target_leads).toLocaleString('id-ID')}</p>
@@ -1696,7 +1700,7 @@ export default function MarketingPlanPage() {
                           )}
                           {selectedPlan.actual_reach !== null && (
                             <div className="space-y-0.5">
-                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual Reach</p>
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualReach')}</p>
                               <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{Number(selectedPlan.actual_reach).toLocaleString('id-ID')}</p>
                               {selectedPlan.target_reach && (
                                 <p className="text-[9px] text-neutral-400">Target: {Number(selectedPlan.target_reach).toLocaleString('id-ID')}</p>
@@ -1705,7 +1709,7 @@ export default function MarketingPlanPage() {
                           )}
                           {selectedPlan.actual_impressions !== null && (
                             <div className="space-y-0.5">
-                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual Impressi</p>
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualImpressions')}</p>
                               <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{Number(selectedPlan.actual_impressions).toLocaleString('id-ID')}</p>
                               {selectedPlan.target_impressions && (
                                 <p className="text-[9px] text-neutral-400">Target: {Number(selectedPlan.target_impressions).toLocaleString('id-ID')}</p>
@@ -1714,7 +1718,7 @@ export default function MarketingPlanPage() {
                           )}
                           {selectedPlan.actual_roi_pct !== null && (
                             <div className="space-y-0.5">
-                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Aktual ROI</p>
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualROI')}</p>
                               <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">{parseFloat(selectedPlan.actual_roi_pct).toFixed(2)}%</p>
                               {selectedPlan.target_roi_pct && (
                                 <p className="text-[9px] text-neutral-400">Target: {parseFloat(selectedPlan.target_roi_pct).toFixed(2)}%</p>
@@ -1731,7 +1735,7 @@ export default function MarketingPlanPage() {
                     {/* Input form for actuals */}
                     <div className="bg-neutral-50 dark:bg-neutral-950/20 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 space-y-3">
                       <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">
-                        {selectedPlan.actuals_filled_at ? 'Perbarui Data Aktual' : 'Input Hasil Aktual'}
+                        {selectedPlan.actuals_filled_at ? t('updateActuals') : t('enterActuals')}
                       </p>
                       {actualsMsg && (
                         <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold px-3 py-2 rounded-xl flex items-center gap-2">
@@ -1740,7 +1744,7 @@ export default function MarketingPlanPage() {
                       )}
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Penjualan Aktual (Rp)</label>
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('actualSalesLabel')}</label>
                           <input
                             type="number"
                             placeholder="0"
@@ -1750,7 +1754,7 @@ export default function MarketingPlanPage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Leads Aktual</label>
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('actualLeadsLabel')}</label>
                           <input
                             type="number"
                             placeholder="0"
@@ -1760,7 +1764,7 @@ export default function MarketingPlanPage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Reach Aktual</label>
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('actualReachLabel')}</label>
                           <input
                             type="number"
                             placeholder="0"
@@ -1770,7 +1774,7 @@ export default function MarketingPlanPage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Impressi Aktual</label>
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('actualImpressionsLabel')}</label>
                           <input
                             type="number"
                             placeholder="0"
@@ -1780,7 +1784,7 @@ export default function MarketingPlanPage() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">ROI Aktual (%)</label>
+                          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('actualROILabel')}</label>
                           <input
                             type="number"
                             step="0.01"
@@ -1792,10 +1796,10 @@ export default function MarketingPlanPage() {
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Catatan Hasil / Insight</label>
+                        <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('notesInsights')}</label>
                         <textarea
                           rows={2}
-                          placeholder="Catatan singkat hasil campaign, insight untuk campaign berikutnya..."
+                          placeholder={t('notesPlaceholder')}
                           value={actualsForm.actual_notes}
                           onChange={(e) => setActualsForm(p => ({ ...p, actual_notes: e.target.value }))}
                           className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-emerald-500 resize-none"
@@ -1809,7 +1813,7 @@ export default function MarketingPlanPage() {
                           className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md shadow-emerald-600/10"
                         >
                           {submittingActuals ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BarChart2 className="w-3.5 h-3.5" />}
-                          Simpan Hasil Aktual
+                          {t('btnSaveActuals')}
                         </button>
                       </div>
                     </div>
@@ -1825,7 +1829,7 @@ export default function MarketingPlanPage() {
                   
                   <div className="bg-neutral-50/50 dark:bg-neutral-950/20 border border-neutral-200 dark:border-neutral-800/80 p-4.5 rounded-2xl space-y-4">
                     {selectedPlan.approval_history && selectedPlan.approval_history.length === 0 ? (
-                      <p className="text-xs text-neutral-400">Tidak ada riwayat approval pada dokumen ini.</p>
+                      <p className="text-xs text-neutral-400">{t('noApprovalHistory')}</p>
                     ) : (
                       <div className="relative pl-6 border-l border-neutral-200 dark:border-neutral-800 space-y-6">
                         {selectedPlan.approval_history?.map((history, hIdx) => {
@@ -1867,11 +1871,11 @@ export default function MarketingPlanPage() {
                                 <div className="text-right flex flex-col items-end gap-1 flex-shrink-0">
                                   {history.action_at ? (
                                     <span className="text-[9px] text-neutral-405 font-mono">
-                                      {new Date(history.action_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                      {new Date(history.action_at).toLocaleString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                   ) : (
                                     <span className="text-[9px] text-neutral-400 font-mono flex items-center gap-1">
-                                      <Clock className="w-3 h-3 text-amber-500" /> Menunggu Tindakan
+                                      <Clock className="w-3 h-3 text-amber-500" /> {t('awaitingAction')}
                                     </span>
                                   )}
                                   
@@ -1903,7 +1907,7 @@ export default function MarketingPlanPage() {
                       className="px-4 py-2 bg-amber-500/10 border border-amber-300/60 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/15 rounded-xl text-xs font-extrabold cursor-pointer flex items-center gap-1.5 disabled:opacity-50 transition-colors"
                     >
                       {recallingPlanId === selectedPlan.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
-                      Tarik Kembali
+                      {t('btnRecall')}
                     </button>
                   )}
                   {selectedPlan && selectedPlan.status === 'REJECTED' && (
@@ -1911,7 +1915,7 @@ export default function MarketingPlanPage() {
                       onClick={() => handleRevisePlan(selectedPlan)}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold cursor-pointer shadow-lg shadow-blue-600/10 flex items-center gap-1.5"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" /> Revisi Pengajuan
+                      <RefreshCw className="w-3.5 h-3.5" /> {t('btnRevise')}
                     </button>
                   )}
                 </div>
@@ -1919,7 +1923,7 @@ export default function MarketingPlanPage() {
                   onClick={() => { setIsDetailOpen(false); setActualsMsg(null); }}
                   className="px-4 py-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-250 dark:border-neutral-700/60 rounded-xl hover:text-neutral-850 dark:hover:text-white text-xs font-bold cursor-pointer"
                 >
-                  Tutup Rincian
+                  {t('btnClose')}
                 </button>
               </div>
             </motion.div>
@@ -1947,7 +1951,7 @@ export default function MarketingPlanPage() {
             >
               <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
                 <div>
-                  <h3 className="text-md font-black text-neutral-850 dark:text-white">Pengajuan Realisasi (Payment Request)</h3>
+                  <h3 className="text-md font-black text-neutral-850 dark:text-white">{t('paymentModalTitle')}</h3>
                   <p className="text-[10px] text-neutral-450 mt-0.5">Item: {paymentRequestItem.m_coa?.code} - {paymentRequestItem.m_coa?.name}</p>
                 </div>
                 <button
@@ -1967,17 +1971,17 @@ export default function MarketingPlanPage() {
 
                 {/* Sisa Budget Info */}
                 <div className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-250 dark:border-neutral-800/80 p-3.5 rounded-2xl flex items-center justify-between text-xs font-bold text-neutral-700 dark:text-neutral-300">
-                  <span>Sisa Saldo Tersedia:</span>
+                  <span>{t('availableBalance')}</span>
                   <span className="text-indigo-600 dark:text-indigo-400">
                     {formatIDR(Number(paymentRequestItem.budget_amount) - Number(paymentRequestItem.actual_amount))}
                   </span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-450 uppercase">Deskripsi Pembayaran (Keterangan Tagihan)</label>
+                  <label className="text-[10px] font-bold text-neutral-450 uppercase">{t('paymentDescLabel')}</label>
                   <input
                     type="text"
-                    placeholder="contoh: Pembayaran Invoice Event Ramadhan Plaza Indonesia"
+                    placeholder={t('paymentDescPlaceholder')}
                     value={paymentForm.title}
                     onChange={(e) => setPaymentForm(prev => ({ ...prev, title: e.target.value }))}
                     className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -1987,7 +1991,7 @@ export default function MarketingPlanPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Nominal Pengeluaran (IDR)</label>
+                    <label className="text-[10px] font-bold text-neutral-450 uppercase">{t('expenseAmountLabel')}</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -1999,12 +2003,12 @@ export default function MarketingPlanPage() {
                     />
                   </div>
                                <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Dokumen Pendukung / Bukti Pembayaran</label>
+                    <label className="text-[10px] font-bold text-neutral-450 uppercase">{t('supportingDocLabel')}</label>
                     <div className="flex gap-2">
                       <div className="relative flex-grow">
                         <input
                           type="text"
-                          placeholder="http://link-file-invoice.pdf atau upload file di samping"
+                          placeholder={t('docLinkPlaceholder')}
                           value={paymentForm.doc_url || ''}
                           onChange={(e) => setPaymentForm(prev => ({ ...prev, doc_url: e.target.value }))}
                           className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-850 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-medium"
@@ -2031,7 +2035,7 @@ export default function MarketingPlanPage() {
                           ) : (
                             <>
                               <Paperclip className="w-3.5 h-3.5" />
-                              <span>Upload Bukti</span>
+                              <span>{t('uploadProof')}</span>
                             </>
                           )}
                         </label>
@@ -2050,7 +2054,7 @@ export default function MarketingPlanPage() {
                   <div className="bg-amber-500/10 border border-amber-300 text-amber-700 dark:text-amber-400 text-[11px] font-bold p-3 rounded-2xl flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                     <span>
-                      WARNING: Nominal melebihi sisa anggaran! Pengajuan ini akan ditandai overbudget dan akan meningkatkan rantai approval secara otomatis ke level direksi tertinggi (+1 step approval CFO/CEO).
+                      {t('overBudgetWarning')}
                     </span>
                   </div>
                 )}
@@ -2060,16 +2064,16 @@ export default function MarketingPlanPage() {
                   <div className="bg-indigo-500/10 border border-indigo-250 text-indigo-700 dark:text-indigo-400 text-[11px] font-bold p-3 rounded-2xl flex items-start gap-2">
                     <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                     <span>
-                      VALIDASI LINTAS MODUL (LEGAL): Pengeluaran di atas Rp 50 Juta wajib melampirkan Perjanjian Kerja Sama (PKS) aktif di modul Legal. Sistem akan memverifikasi otomatis kontrak perusahaan Anda sebelum melanjutkan.
+                      {t('legalWarning')}
                     </span>
                   </div>
                 )}
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-450 uppercase">Catatan Tambahan</label>
+                  <label className="text-[10px] font-bold text-neutral-450 uppercase">{t('additionalNotes')}</label>
                   <textarea
                     rows="2"
-                    placeholder="Catatan pengerjaan vendor, termin bayar, dsb..."
+                    placeholder={t('notesVendorPlaceholder')}
                     value={paymentForm.notes}
                     onChange={(e) => setPaymentForm(prev => ({ ...prev, notes: e.target.value }))}
                     className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -2083,7 +2087,7 @@ export default function MarketingPlanPage() {
                     onClick={() => setIsPaymentModalOpen(false)}
                     className="px-4 py-2 border border-neutral-250 dark:border-neutral-700/60 rounded-xl text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white text-xs font-bold cursor-pointer"
                   >
-                    Batal
+                    {t('btnCancel')}
                   </button>
 
                   <button
@@ -2092,7 +2096,7 @@ export default function MarketingPlanPage() {
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-750 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    Ajukan Realisasi
+                    {t('btnSubmitExpense')}
                   </button>
                 </div>
               </form>
@@ -2122,9 +2126,9 @@ export default function MarketingPlanPage() {
                 <Trash2 className="w-6 h-6" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-sm font-black text-neutral-850 dark:text-white">Hapus Rencana Pemasaran?</h3>
+                <h3 className="text-sm font-black text-neutral-850 dark:text-white">{t('deleteTitle')}</h3>
                 <p className="text-xs text-neutral-450 dark:text-neutral-500 px-2 leading-relaxed">
-                  Apakah Anda yakin ingin menghapus rencana <strong>"{planToDelete.title}"</strong> beserta seluruh item anggaran di dalamnya? Tindakan ini permanen dan tidak dapat dibatalkan.
+                  {t('deleteBodyPrefix')} <strong>"{planToDelete.title}"</strong> {t('deleteBodySuffix')}
                 </p>
               </div>
               <div className="flex items-center gap-2.5 w-full pt-2">
@@ -2133,7 +2137,7 @@ export default function MarketingPlanPage() {
                   onClick={() => setPlanToDelete(null)}
                   className="flex-1 px-4 py-2.5 border border-neutral-250 dark:border-neutral-750 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
-                  Batal
+                  {t('btnCancel')}
                 </button>
                 <button
                   type="button"
@@ -2141,7 +2145,7 @@ export default function MarketingPlanPage() {
                   onClick={handleConfirmDelete}
                   className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-500/15 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Ya, Hapus'}
+                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : t('btnYesDelete')}
                 </button>
               </div>
             </motion.div>
@@ -2177,6 +2181,8 @@ function FormLabel({ label, tooltip }) {
 
 // MODULAR WIZARD STEP SUBCOMPONENTS
 function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCAL_YEAR_OPTIONS, SearchableCompanySelect, CampaignDateRangePicker }) {
+  const { lang } = useLanguage();
+  const t = (key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
 
@@ -2186,7 +2192,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
     // Limit to 10MB
     if (file.size > 10 * 1024 * 1024) {
-      setUploadError('Ukuran file maksimal 10MB.');
+      setUploadError('File size limit is 10MB.');
       return;
     }
 
@@ -2211,13 +2217,13 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Gagal mengunggah file.');
+        throw new Error(errData.error || 'Failed to upload file.');
       }
 
       const data = await res.json();
       setWizardHeader(prev => ({ ...prev, doc_url: data.url }));
     } catch (err) {
-      setUploadError(err.message || 'Gagal mengunggah file.');
+      setUploadError(err.message || 'Failed to upload file.');
     } finally {
       setUploading(false);
     }
@@ -2228,7 +2234,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2">
         {/* Title */}
         <div className="space-y-2">
-          <FormLabel label="Campaign Title / Name *" tooltip="Nama atau judul kampanye pemasaran Anda." />
+          <FormLabel label="Campaign Title / Name *" tooltip="Name or title of your marketing campaign." />
           <input
             type="text"
             placeholder="e.g. Ramadhan Promotion Campaign Bvlgari"
@@ -2241,7 +2247,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* Company Selection */}
         <div className="space-y-2">
-          <FormLabel label="Company (PT) *" tooltip="Badan hukum / PT Mogems yang menanggung anggaran kegiatan ini." />
+          <FormLabel label="Company (PT) *" tooltip={t('companyTooltip')} />
           <SearchableCompanySelect
             companies={metadata.companies}
             value={wizardHeader.company_id}
@@ -2251,7 +2257,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* Description */}
         <div className="space-y-2 md:col-span-2">
-          <FormLabel label="Campaign Description / Scope" tooltip="Penjelasan rinci mengenai kampanye, kanal iklan, sasaran audiens, dan tujuan." />
+          <FormLabel label="Campaign Description / Scope" tooltip={t('descriptionTooltip')} />
           <textarea
             rows="3"
             placeholder="Provide details about the marketing campaign, channels, targeted audience, and goals..."
@@ -2263,7 +2269,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* Fiscal Year */}
         <div className="space-y-2">
-          <FormLabel label="Fiscal Year *" tooltip="Tahun pembukuan keuangan untuk alokasi anggaran ini." />
+          <FormLabel label="Fiscal Year *" tooltip="Financial year for this budget allocation." />
           <select
             value={wizardHeader.fiscal_year}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, fiscal_year: e.target.value }))}
@@ -2277,11 +2283,11 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* Event Period Dates */}
         <div className="space-y-2">
-          <FormLabel label="Tanggal Event / Kegiatan *" tooltip="Periode fisik berlangsungnya acara atau kegiatan lapangan." />
+          <FormLabel label={t('eventDateLabel')} tooltip={t('eventDateTooltip')} />
           <CampaignDateRangePicker
             startValue={wizardHeader.event_start_date}
             endValue={wizardHeader.event_end_date}
-            placeholder="Pilih rentang tanggal Event"
+            placeholder={t('eventDatePlaceholder')}
             onChange={({ start, end }) => setWizardHeader(prev => ({
               ...prev,
               event_start_date: start,
@@ -2293,11 +2299,11 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* CTA / Promo Period Dates */}
         <div className="space-y-2">
-          <FormLabel label="Periode Promosi *" tooltip="Durasi aktifnya iklan atau materi promosi dipublikasikan kepada konsumen — biasanya dimulai sebelum event untuk drive traffic." />
+          <FormLabel label={t('promotionPeriodLabel')} tooltip={t('promotionPeriodTooltip')} />
           <CampaignDateRangePicker
             startValue={wizardHeader.cta_start_date}
             endValue={wizardHeader.cta_end_date}
-            placeholder="Pilih rentang tanggal Periode Promosi"
+            placeholder={t('promotionPeriodPlaceholder')}
             onChange={({ start, end }) => setWizardHeader(prev => ({
               ...prev,
               cta_start_date: start,
@@ -2308,7 +2314,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* Brand Selection */}
         <div className="space-y-2">
-          <FormLabel label="Brand *" tooltip="Merek produk yang diiklankan / dipromosikan." />
+          <FormLabel label="Brand *" tooltip="Product brand being advertised / promoted." />
           <select
             value={wizardHeader.brand_id}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, brand_id: e.target.value }))}
@@ -2324,7 +2330,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* LOB Selection */}
         <div className="space-y-2">
-          <FormLabel label="Line of Business (LOB) *" tooltip="Sektor bisnis / kategori produk yang menaungi kampanye ini." />
+          <FormLabel label="Line of Business (LOB) *" tooltip="Business sector / product category under which this campaign falls." />
           <select
             value={wizardHeader.lob_id}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, lob_id: e.target.value }))}
@@ -2340,14 +2346,14 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* Event Location Selection */}
         <div className="space-y-2">
-          <FormLabel label="Lokasi Kegiatan / Event *" tooltip="Lokasi fisik tempat acara pemasaran diselenggarakan." />
+          <FormLabel label={t('eventLocationLabel')} tooltip={t('eventLocationTooltip')} />
           <select
             value={wizardHeader.event_location_id || ''}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, event_location_id: e.target.value }))}
             className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
             required
           >
-            <option value="">Pilih Lokasi Kegiatan / Event</option>
+            <option value="">{t('selectEventLocation')}</option>
             {metadata.event_locations.map(b => (
               <option key={b.id} value={b.id}>
                 {b.name}
@@ -2358,17 +2364,17 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* Target Impact Selection */}
         <div className="space-y-2">
-          <FormLabel label="Cabang Sasaran / Terdampak *" tooltip="Cabang toko yang diharapkan menerima kenaikan penjualan atau kunjungan akibat aktivitas pemasaran ini." />
+          <FormLabel label={t('targetBranchLabel')} tooltip={t('targetBranchTooltip')} />
           <select
             value={wizardHeader.branch_id || 'global'}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, branch_id: e.target.value }))}
             className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
             required
           >
-            <option value="global">Global Sales (Semua Toko)</option>
+            <option value="global">{t('globalSales')}</option>
             {metadata.branches.map(b => (
               <option key={b.id} value={b.id}>
-                Cabang {b.name}
+                {t('branchOption')} {b.name}
               </option>
             ))}
           </select>
@@ -2376,12 +2382,12 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 
         {/* Proposal Document Link */}
         <div className="space-y-2 md:col-span-2">
-          <FormLabel label="Dokumen Proposal / Acuan (Opsional)" tooltip="Unggah dokumen proposal, konsep event, atau acuan persetujuan anggaran (opsional)." />
+          <FormLabel label={t('proposalDocLabel')} tooltip={t('proposalDocTooltip')} />
           <div className="flex gap-2">
             <div className="relative flex-grow">
               <input
                 type="text"
-                placeholder="https://link-proposal-kampanye.pdf atau upload file di samping"
+                placeholder={t('proposalLinkPlaceholder')}
                 value={wizardHeader.doc_url || ''}
                 onChange={(e) => setWizardHeader(prev => ({ ...prev, doc_url: e.target.value }))}
                 className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
@@ -2429,6 +2435,8 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, FISCA
 }
 
 function KpiTargetSection({ wizardHeader, setWizardHeader }) {
+  const { lang } = useLanguage();
+  const t = (key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key);
   const [open, setOpen] = React.useState(
     !!(wizardHeader.target_sales || wizardHeader.target_leads || wizardHeader.target_reach ||
        wizardHeader.target_impressions || wizardHeader.target_roi_pct || wizardHeader.target_notes)
@@ -2443,10 +2451,10 @@ function KpiTargetSection({ wizardHeader, setWizardHeader }) {
       >
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-indigo-500" />
-          <span className="text-xs font-extrabold text-neutral-700 dark:text-neutral-300">Target KPI Campaign (Opsional)</span>
+          <span className="text-xs font-extrabold text-neutral-700 dark:text-neutral-300">{t('kpiTargetsTitle')}</span>
           {(wizardHeader.target_sales || wizardHeader.target_leads || wizardHeader.target_reach ||
             wizardHeader.target_impressions || wizardHeader.target_roi_pct) && (
-            <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md">Ada Target</span>
+            <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md">{t('hasTarget')}</span>
           )}
         </div>
         <span className="text-neutral-400 text-xs">{open ? '▲' : '▼'}</span>
@@ -2454,10 +2462,10 @@ function KpiTargetSection({ wizardHeader, setWizardHeader }) {
 
       {open && (
         <div className="px-5 pb-5 pt-4 space-y-4 bg-white dark:bg-transparent">
-          <p className="text-[10px] text-neutral-400 font-medium">Tentukan sasaran kuantitatif campaign untuk dibandingkan dengan hasil aktual setelah campaign selesai.</p>
+          <p className="text-[10px] text-neutral-400 font-medium">{t('kpiDescription')}</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target Penjualan (Rp)</label>
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('salesTargetIDR')}</label>
               <input
                 type="number"
                 placeholder="0"
@@ -2467,7 +2475,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target Leads</label>
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('leadsTarget')}</label>
               <input
                 type="number"
                 placeholder="0"
@@ -2477,7 +2485,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target Jangkauan (Reach)</label>
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('reachTarget')}</label>
               <input
                 type="number"
                 placeholder="0"
@@ -2487,7 +2495,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target Impressi</label>
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('impressionsTargetLabel')}</label>
               <input
                 type="number"
                 placeholder="0"
@@ -2497,7 +2505,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Target ROI (%)</label>
+              <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('roiTarget')}</label>
               <input
                 type="number"
                 step="0.01"
@@ -2509,10 +2517,10 @@ function KpiTargetSection({ wizardHeader, setWizardHeader }) {
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">Catatan Target / Indikator Lain</label>
+            <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('targetNotesLabel')}</label>
             <textarea
               rows={2}
-              placeholder="Misal: target 500 pengunjung booth, 200 trial product, 50 member baru..."
+              placeholder={t('targetNotesPlaceholder')}
               value={wizardHeader.target_notes || ''}
               onChange={(e) => setWizardHeader(p => ({ ...p, target_notes: e.target.value }))}
               className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"
@@ -2525,6 +2533,8 @@ function KpiTargetSection({ wizardHeader, setWizardHeader }) {
 }
 
 function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, removeWizardItem, handleItemChange, metadata, getMonthName, formatThousands, Plus, X, overBudgetMonths }) {
+  const { lang } = useLanguage();
+  const t = (key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key);
   const getAvailableMonths = () => {
     const start_date = wizardHeader.event_start_date || wizardHeader.cta_start_date || wizardHeader.start_date;
     const end_date = wizardHeader.event_end_date || wizardHeader.cta_end_date || wizardHeader.end_date;
@@ -2573,15 +2583,15 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-xs font-bold text-neutral-800 dark:text-white">Monthly Allocation & Expense Accounts</h4>
-          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">Assign costs to corresponding accounts and vendors.</p>
+          <h4 className="text-xs font-bold text-neutral-800 dark:text-white">{t('monthlyAllocationTitle')}</h4>
+          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{t('monthlyAllocationSub')}</p>
         </div>
         <button
           type="button"
           onClick={addWizardItem}
           className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 text-[11px] font-extrabold border border-blue-500/20 px-3.5 py-2 rounded-xl hover:bg-blue-500/5 transition-all cursor-pointer shadow-sm"
         >
-          <Plus className="w-3.5 h-3.5" /> Add Row
+          <Plus className="w-3.5 h-3.5" /> {t('addRow')}
         </button>
       </div>
 
@@ -2595,7 +2605,7 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
                 <th className="px-1 py-2 w-[22%]">CoA Account *</th>
                 <th className="px-1 py-2 w-[16%]">Vendor Partner</th>
                 <th className="px-1 py-2 w-[8%] text-center">Qty *</th>
-                <th className="px-1 py-2 w-[13%] text-right pr-2">Harga Satuan *</th>
+                <th className="px-1 py-2 w-[13%] text-right pr-2">{t('unitPriceStar')}</th>
                 <th className="px-1 py-2 w-[13%] text-right pr-2">Sub Total</th>
                 <th className="px-1 py-2 w-[10%]">Cost Notes</th>
                 <th className="px-1 py-2 text-center w-[3%]"></th>
@@ -2617,9 +2627,9 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
                         onChange={(e) => handleItemChange(idx, 'period_month', e.target.value)}
                         className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-805 dark:text-white"
                       >
-                        <option value="">Month</option>
+                        <option value="">{t('monthWord')}</option>
                         {availableMonths.map((m) => (
-                          <option key={m} value={m}>{getMonthName(m)}</option>
+                          <option key={m} value={m}>{getMonthName(m, lang)}</option>
                         ))}
                       </select>
                     </td>
@@ -2646,7 +2656,7 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
                       <input
                         type="text"
                         list={`vendors-datalist-${idx}`}
-                        placeholder="Ketik nama vendor..."
+                        placeholder={t('vendorNamePlaceholder')}
                         value={(() => {
                           if (/^\d+$/.test(item.vendor_id)) {
                             const vObj = metadata.vendors.find(v => String(v.id) === String(item.vendor_id));
@@ -2734,7 +2744,7 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
               {/* Total Row */}
               <tr className="bg-neutral-50/70 dark:bg-neutral-955/60 border-t border-neutral-200 dark:border-neutral-800 font-bold">
                 <td colSpan="6" className="px-3 py-2.5 text-right text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-450">
-                  Total Anggaran Rencana:
+                  {t('totalPlannedBudgetRow')}
                 </td>
                 <td className="px-1 py-2.5 text-right text-xs text-blue-600 dark:text-blue-400 pr-2 font-black">
                   {formatThousands(wizardItems.reduce((acc, curr) => acc + (Number(curr.qty || 1) * Number(curr.unit_price || 0)), 0))}
@@ -2750,15 +2760,15 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
         <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl space-y-2">
           <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold">
             <AlertTriangle className="w-4 h-4" />
-            <span>Peringatan: Pengajuan Over-Budget Terdeteksi</span>
+            <span>{t('overBudgetTitle2')}</span>
           </div>
           <p className="text-[10px] text-neutral-500 dark:text-neutral-450 leading-relaxed font-semibold">
-            Total rencana pengeluaran Anda melebihi plafon anggaran bulanan yang dikunci. Pengajuan tetap dapat dikirimkan namun memerlukan persetujuan khusus (override) dan alasan justifikasi tambahan di Step 3.
+            {t('overBudgetDesc2')}
           </p>
           <div className="space-y-1">
             {overBudgetMonths.map(ob => (
               <div key={ob.month} className="text-[10px] text-neutral-650 dark:text-neutral-400 font-medium">
-                • Bulan <strong>{getMonthName(ob.month)}</strong>: Plafon Rp {ob.limit.toLocaleString('id-ID')}, Terpakai Rp {ob.committed.toLocaleString('id-ID')}, Pengajuan Baru Rp {ob.proposed.toLocaleString('id-ID')} (Lebih Rp {ob.excess.toLocaleString('id-ID')})
+                • {t('monthWord')} <strong>{getMonthName(ob.month, lang)}</strong>: {t('ceilingWord')} Rp {ob.limit.toLocaleString('id-ID')}, {t('usedWord')} Rp {ob.committed.toLocaleString('id-ID')}, {t('newRequestWord')} Rp {ob.proposed.toLocaleString('id-ID')} ({t('overByWord')} Rp {ob.excess.toLocaleString('id-ID')})
               </div>
             ))}
           </div>
@@ -2769,6 +2779,8 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
 }
 
 function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, metadata, getMonthName, formatIDR, overBudgetMonths }) {
+  const { lang } = useLanguage();
+  const t = (key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key);
   const totalEstimation = wizardItems.reduce((acc, curr) => acc + Number(curr.budget_amount || 0), 0);
   const companyName = metadata.companies.find(c => String(c.id) === String(wizardHeader.company_id))?.name || '';
   
@@ -2783,8 +2795,8 @@ function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, m
             <div>PT / Company: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{companyName}</span></div>
             <div>Brand: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.brands.find(b => String(b.id) === String(wizardHeader.brand_id))?.name || '-'}</span></div>
             <div>Line of Business: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.lobs.find(l => String(l.id) === String(wizardHeader.lob_id))?.name || '-'}</span></div>
-            <div>Lokasi Kegiatan / Event: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.event_locations.find(b => String(b.id) === String(wizardHeader.event_location_id)); return br ? br.name : '-'; })()}</span></div>
-            <div>Cabang Sasaran / Impact: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { if (!wizardHeader.branch_id || wizardHeader.branch_id === 'global') return 'Global Sales (Semua Toko)'; const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.branch_id)); return br ? `Cabang ${br.name}` : 'Global Sales'; })()}</span></div>
+            <div>{t('eventLocationReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.event_locations.find(b => String(b.id) === String(wizardHeader.event_location_id)); return br ? br.name : '-'; })()}</span></div>
+            <div>{t('targetBranchReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { if (!wizardHeader.branch_id || wizardHeader.branch_id === 'global') return t('globalSales'); const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.branch_id)); return br ? `${t('branchOption')} ${br.name}` : t('globalSales'); })()}</span></div>
           </div>
         </div>
 
@@ -2792,14 +2804,14 @@ function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, m
           <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Timeline & Scope</h4>
           <div className="space-y-2 text-xs font-bold text-neutral-600 dark:text-neutral-450">
             <div>Fiscal Year: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.fiscal_year}</span></div>
-            <div>Periode Event: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.event_start_date || '-'} s/d {wizardHeader.event_end_date || '-'}</span></div>
-            <div>Periode Promosi: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.cta_start_date || '-'} s/d {wizardHeader.cta_end_date || '-'}</span></div>
+            <div>{t('eventPeriod')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.event_start_date || '-'} {t('dateSeparator')} {wizardHeader.event_end_date || '-'}</span></div>
+            <div>{t('promotionPeriodReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.cta_start_date || '-'} {t('dateSeparator')} {wizardHeader.cta_end_date || '-'}</span></div>
             {wizardHeader.doc_url && (
               <div>
                 Proposal: 
                 <span className="block mt-0.5">
                   <a href={wizardHeader.doc_url} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 font-bold">
-                    <Paperclip className="w-3.5 h-3.5" /> Lihat Proposal
+                    <Paperclip className="w-3.5 h-3.5" /> {t('viewProposal')}
                   </a>
                 </span>
               </div>
@@ -2831,26 +2843,26 @@ function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, m
         <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-5 space-y-4">
           <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-black">
             <AlertTriangle className="w-4 h-4" />
-            <span>Pengajuan Over-Budget Terdeteksi</span>
+            <span>{t('overBudgetTitle3')}</span>
           </div>
           <p className="text-[10px] text-neutral-550 dark:text-neutral-450 leading-relaxed font-semibold">
-            Rencana pengajuan anggaran Anda melebihi kuota bulanan yang telah dikunci. Rencana ini tetap dapat diajukan tetapi wajib menyertakan alasan justifikasi untuk persetujuan penyesuaian khusus (over-budget override).
+            {t('overBudgetDesc3')}
           </p>
           <div className="space-y-1.5 border-t border-amber-500/10 pt-3">
             {overBudgetMonths.map(ob => (
               <div key={ob.month} className="text-[10px] text-neutral-650 dark:text-neutral-400">
-                • Bulan <strong>{getMonthName(ob.month)}</strong>: Limit Rp {ob.limit.toLocaleString('id-ID')}, Terpakai Rp {ob.committed.toLocaleString('id-ID')}, Pengajuan Baru Rp {ob.proposed.toLocaleString('id-ID')} (Lebih Rp {ob.excess.toLocaleString('id-ID')})
+                • {t('monthWord')} <strong>{getMonthName(ob.month, lang)}</strong>: Rp {ob.limit.toLocaleString('id-ID')}, {t('usedWord')} Rp {ob.committed.toLocaleString('id-ID')}, {t('newRequestWord')} Rp {ob.proposed.toLocaleString('id-ID')} ({t('overByWord')} Rp {ob.excess.toLocaleString('id-ID')})
               </div>
             ))}
           </div>
           <div className="space-y-2 pt-2 border-t border-amber-500/10">
             <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-              Justifikasi / Alasan Over-Budget *
+              {t('overBudgetJustificationLabel')}
             </label>
             <textarea
               rows="3"
               required
-              placeholder="Tuliskan justifikasi detail mengapa alokasi bulan ini harus melebihi plafon..."
+              placeholder={t('overBudgetJustificationPlaceholder')}
               value={wizardHeader.over_budget_reason || ''}
               onChange={(e) => setWizardHeader(prev => ({ ...prev, over_budget_reason: e.target.value }))}
               className="w-full bg-white dark:bg-neutral-900 border border-neutral-250 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all font-medium leading-relaxed resize-none"
@@ -2869,7 +2881,7 @@ function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, m
                 <th className="px-4.5 py-3">CoA Account</th>
                 <th className="px-4.5 py-3">Vendor</th>
                 <th className="px-4.5 py-3 text-center">Qty</th>
-                <th className="px-4.5 py-3 text-right">Harga Satuan (IDR)</th>
+                <th className="px-4.5 py-3 text-right">{t('unitPriceIDR')}</th>
                 <th className="px-4.5 py-3 text-right">Sub Total (IDR)</th>
               </tr>
             </thead>
@@ -2878,7 +2890,7 @@ function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, m
                 const subTotal = Number(item.qty || 1) * Number(item.unit_price || 0);
                 return (
                   <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-neutral-955/10 transition-colors">
-                    <td className="px-4.5 py-3 font-semibold text-neutral-900 dark:text-white">{getMonthName(Number(item.period_month))}</td>
+                    <td className="px-4.5 py-3 font-semibold text-neutral-900 dark:text-white">{getMonthName(Number(item.period_month), lang)}</td>
                     <td className="px-4.5 py-3">{metadata.coas.find(c => String(c.id) === String(item.coa_id))?.name || 'N/A'}</td>
                     <td className="px-4.5 py-3">{metadata.vendors.find(v => String(v.id) === String(item.vendor_id))?.vendor_name || item.vendor_id || '-'}</td>
                     <td className="px-4.5 py-3 text-center">{item.qty || '1'}</td>

@@ -6,6 +6,7 @@ import {
   Plus, QrCode, ClipboardCheck, ArrowLeft, Loader2, Trash2, X, AlertTriangle
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const CHECK_STATUS_BADGE = {
   Found: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
@@ -26,6 +27,7 @@ function ProgressBar({ progress, colorClass = 'bg-indigo-600' }) {
 }
 
 export default function StockOpnamePage() {
+  const { lang, t } = useLanguage();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -147,7 +149,7 @@ export default function StockOpnamePage() {
             <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Total {activeSession.total_assets} aset dalam sesi ini.</p>
           </div>
           <button type="button" onClick={() => { setScanMsg({ text: '', type: '' }); setScanMode(true); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit">
-            <QrCode className="w-4 h-4" /> Mulai Scan Barcode
+            <QrCode className="w-4 h-4" /> {t('stockOpname_scanMode')}
           </button>
         </div>
 
@@ -197,8 +199,8 @@ export default function StockOpnamePage() {
                     <th className="p-4">Nama Aset</th>
                     <th className="p-4">Kategori</th>
                     <th className="p-4">Perusahaan</th>
-                    <th className="p-4">Lokasi</th>
-                    <th className="p-4">Kondisi</th>
+                    <th className="p-4">{t('stockOpname_colLocation')}</th>
+                    <th className="p-4">{t('stockOpname_colCondition')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-xs">
@@ -232,7 +234,7 @@ export default function StockOpnamePage() {
                 <motion.div initial={{ opacity: 0, scale: 0.9, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 15 }} transition={{ type: 'spring', duration: 0.35 }}
                   className="w-full max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl pointer-events-auto flex flex-col items-center text-center">
                   <button onClick={() => setScanMode(false)} className="absolute top-4 right-4 p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X className="w-4 h-4" /></button>
-                  <h3 className="text-sm font-bold text-neutral-800 dark:text-white mb-3">Mode Scan Barcode</h3>
+                  <h3 className="text-sm font-bold text-neutral-800 dark:text-white mb-3">{t('stockOpname_scanMode')}</h3>
                   <QrCode className="w-12 h-12 text-indigo-400 opacity-50 mb-3" />
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed mb-4">
                     Scan barcode aset atau <strong>ketik kode aset</strong> secara manual, lalu tekan <strong>Enter</strong>.<br />
@@ -256,7 +258,7 @@ export default function StockOpnamePage() {
                       value={scanInput}
                       onChange={e => setScanInput(e.target.value)}
                       className="w-full text-center text-lg font-mono font-bold tracking-widest bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-3 text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
-                      placeholder="Scan atau ketik kode aset..."
+                      placeholder={t('stockOpname_scanPrompt')}
                       autoFocus
                     />
                   </form>
@@ -280,12 +282,12 @@ export default function StockOpnamePage() {
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <ClipboardCheck className="w-6 h-6 text-indigo-500" />
-            Stock Opname
+            {t('stockOpname_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Verifikasi fisik aset menggunakan barcode scanner.</p>
         </div>
         <button type="button" onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit">
-          <Plus className="w-4 h-4" /> Buat Sesi Baru
+          <Plus className="w-4 h-4" /> {t('stockOpname_newSession')}
         </button>
       </div>
 

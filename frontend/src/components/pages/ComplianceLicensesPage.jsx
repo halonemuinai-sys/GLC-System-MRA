@@ -24,6 +24,7 @@ import {
   Link2
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 import ComplianceDatePicker from '@/components/ui/ComplianceDatePicker';
 
 const CATEGORY_OPTIONS = ['NIB', 'BPOM', 'Halal', 'OSS', 'API', 'NPIK', 'SIUP', 'TDG', 'Sertifikat ISO', 'Izin Reklame', 'IPP', 'ISR', 'Health Certificate', 'Import License', 'Lainnya'];
@@ -233,6 +234,7 @@ function SearchingRadarAnimation() {
 }
 
 export default function ComplianceLicensesPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });

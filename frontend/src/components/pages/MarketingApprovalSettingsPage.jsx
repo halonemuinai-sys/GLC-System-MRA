@@ -17,6 +17,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const ROLE_DESCRIPTION = {
   MARKETING_MANAGER: 'Step 1 — semua pengajuan, tier nominal apa pun',
@@ -29,6 +30,7 @@ const ROLE_DESCRIPTION = {
 const ROLE_OPTIONS = ['MARKETING_MANAGER', 'VP_DIRECTOR', 'BU_DIRECTOR', 'FINANCE_CONTROLLER', 'CFO_CEO'];
 
 export default function MarketingApprovalSettingsPage() {
+  const { lang, t } = useLanguage();
   const [contacts, setContacts] = useState([]);
   const [holdings, setHoldings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -157,7 +159,7 @@ export default function MarketingApprovalSettingsPage() {
         </div>
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
-            Konfigurasi Approval & Magic Link
+            {t('marketing_approvalSettings_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
             Atur email penerima link approval untuk setiap role. Project tetap per PT, tapi approver tier VP/BU/COO bisa di-override per Holding Group.
@@ -202,16 +204,16 @@ export default function MarketingApprovalSettingsPage() {
         <>
           {/* Default Global */}
           <div>
-            <h2 className="text-xs font-black text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-2.5">Default Global (Fallback)</h2>
+            <h2 className="text-xs font-black text-neutral-700 dark:text-neutral-300 uppercase tracking-wide mb-2.5">{t('marketing_approvalSettings_sectionDefault')}</h2>
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/50 dark:bg-neutral-950/20 text-neutral-400 font-bold uppercase tracking-wider">
-                      <th className="px-5 py-4">Role Approval</th>
-                      <th className="px-5 py-4">Dipakai Untuk</th>
-                      <th className="px-5 py-4">Email Penerima</th>
-                      <th className="px-5 py-4 text-center">Aksi</th>
+                      <th className="px-5 py-4">{t('marketing_approvalSettings_colRole')}</th>
+                      <th className="px-5 py-4">{t('marketing_approvalSettings_colFor')}</th>
+                      <th className="px-5 py-4">{t('marketing_approvalSettings_colEmail')}</th>
+                      <th className="px-5 py-4 text-center">{t('marketing_approvalSettings_colAction')}</th>
                     </tr>
                   </thead>
                   <motion.tbody 
@@ -282,12 +284,12 @@ export default function MarketingApprovalSettingsPage() {
           {/* Override per Holding Group */}
           <div>
             <div className="flex items-center justify-between mb-2.5">
-              <h2 className="text-xs font-black text-neutral-700 dark:text-neutral-300 uppercase tracking-wide">Override per Holding Group</h2>
+              <h2 className="text-xs font-black text-neutral-700 dark:text-neutral-300 uppercase tracking-wide">{t('marketing_approvalSettings_sectionOverride')}</h2>
               <button
                 onClick={() => setIsAddOpen(true)}
                 className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-xl text-[11px] font-bold shadow-md shadow-blue-600/10 transition-all cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" /> Tambah Override
+                <Plus className="w-3.5 h-3.5" /> {t('marketing_approvalSettings_addOverride')}
               </button>
             </div>
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">

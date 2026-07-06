@@ -22,6 +22,7 @@ import {
   FlaskConical
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 import {
   ResponsiveContainer,
   BarChart,
@@ -70,6 +71,7 @@ function fmtDate(d) {
 }
 
 export default function ComplianceDashboardPage() {
+  const { lang, t } = useLanguage();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -101,7 +103,7 @@ export default function ComplianceDashboardPage() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-neutral-400 gap-3">
         <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-        <span className="text-sm font-medium tracking-wide">Loading Compliance Overview...</span>
+        <span className="text-sm font-medium tracking-wide">{t('compliance_loadingMsg')}</span>
       </div>
     );
   }
@@ -132,7 +134,7 @@ export default function ComplianceDashboardPage() {
       <div className="pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-neutral-955 dark:text-white tracking-tight flex items-center gap-3">
-            Compliance Overview <span className="text-blue-550 dark:text-blue-400 font-medium text-lg px-2.5 py-0.5 bg-blue-500/10 rounded-full border border-blue-500/20">Compliance Suite</span>
+            {t('compliance_dashTitle')} <span className="text-blue-550 dark:text-blue-400 font-medium text-lg px-2.5 py-0.5 bg-blue-500/10 rounded-full border border-blue-500/20">{t('compliance_dashBadge')}</span>
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
             Ringkasan lintas modul: License & Permit, Compliance Docs, SOP & Policy, HR, Tax & Finance, Product Regulatory.
@@ -145,7 +147,7 @@ export default function ComplianceDashboardPage() {
             className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none shadow-sm"
             title="Filter Perusahaan"
           >
-            <option value="">Semua Perusahaan (PT)</option>
+            <option value="">{t('allCompanies')}</option>
             {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
           <button onClick={load} className="p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-blue-500 shadow-sm transition-colors cursor-pointer" title="Muat Ulang">
@@ -197,7 +199,7 @@ export default function ComplianceDashboardPage() {
           <div className="relative overflow-hidden bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm rounded-2xl border border-blue-100/60 dark:border-blue-950/50 hover:border-blue-300 dark:hover:border-blue-700/40 p-5 shadow-sm hover:shadow-lg hover:-translate-y-1.5 transition-[transform,box-shadow,border-color] duration-300 ease-out group cursor-pointer flex flex-col justify-between min-h-[130px]">
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-md bg-blue-500 shadow-sm shadow-blue-500/40 transition-transform duration-300 ease-out origin-center group-hover:scale-y-[1.5]" />
             <div className="flex items-start justify-between">
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none">TOTAL DOKUMEN</span>
+              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none">{t('compliance_kpiTotal')}</span>
               <ShieldCheck className="w-4 h-4 text-blue-500" />
             </div>
             <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono">{kpi.total}</span>
@@ -207,7 +209,7 @@ export default function ComplianceDashboardPage() {
           <div className="relative overflow-hidden bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm rounded-2xl border border-emerald-100/60 dark:border-emerald-950/50 hover:border-emerald-300 dark:hover:border-emerald-700/40 p-5 shadow-sm hover:shadow-lg hover:-translate-y-1.5 transition-[transform,box-shadow,border-color] duration-300 ease-out group cursor-pointer flex flex-col justify-between min-h-[130px]">
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-md bg-emerald-500 shadow-sm shadow-emerald-500/40 transition-transform duration-300 ease-out origin-center group-hover:scale-y-[1.5]" />
             <div className="flex items-start justify-between">
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none">AKTIF</span>
+              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none">{t('compliance_kpiActive')}</span>
               <FileCheck className="w-4 h-4 text-emerald-500" />
             </div>
             <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono">{kpi.active} <span className="text-xs font-bold text-neutral-400 font-sans">({pct(kpi.active, kpi.total)}%)</span></span>
@@ -217,7 +219,7 @@ export default function ComplianceDashboardPage() {
           <div className="relative overflow-hidden bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm rounded-2xl border border-amber-100/60 dark:border-amber-950/50 hover:border-amber-300 dark:hover:border-amber-700/40 p-5 shadow-sm hover:shadow-lg hover:-translate-y-1.5 transition-[transform,box-shadow,border-color] duration-300 ease-out group cursor-pointer flex flex-col justify-between min-h-[130px]">
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-md bg-amber-500 shadow-sm shadow-amber-500/40 transition-transform duration-300 ease-out origin-center group-hover:scale-y-[1.5]" />
             <div className="flex items-start justify-between">
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none">MENDEKATI EXP</span>
+              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none">{t('compliance_kpiExpiring')}</span>
               <CalendarClock className="w-4 h-4 text-amber-500" />
             </div>
             <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono">{kpi.expiringSoon} <span className="text-xs font-bold text-neutral-400 font-sans">({pct(kpi.expiringSoon, kpi.total)}%)</span></span>
@@ -227,7 +229,7 @@ export default function ComplianceDashboardPage() {
           <div className="relative overflow-hidden bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm rounded-2xl border border-red-100/60 dark:border-red-950/50 hover:border-red-300 dark:hover:border-red-700/40 p-5 shadow-sm hover:shadow-lg hover:-translate-y-1.5 transition-[transform,box-shadow,border-color] duration-300 ease-out group cursor-pointer flex flex-col justify-between min-h-[130px]">
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 rounded-r-md bg-red-500 shadow-sm shadow-red-500/40 transition-transform duration-300 ease-out origin-center group-hover:scale-y-[1.5]" />
             <div className="flex items-start justify-between">
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none">KADALUARSA</span>
+              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none">{t('compliance_kpiExpired')}</span>
               <ClockAlert className="w-4 h-4 text-red-500" />
             </div>
             <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono">{kpi.expired} <span className="text-xs font-bold text-neutral-400 font-sans">({pct(kpi.expired, kpi.total)}%)</span></span>
@@ -276,7 +278,7 @@ export default function ComplianceDashboardPage() {
       {byCompany.length > 0 && (
         <motion.section variants={cardVariants} className="bg-white dark:bg-neutral-900/40 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-xl">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-neutral-850 dark:text-slate-200">Health Status Per Perusahaan</h2>
+            <h2 className="text-lg font-bold text-neutral-850 dark:text-slate-200">{t('legal_healthPerCompany')}</h2>
             <span className="text-[10px] text-neutral-400 font-semibold">Menampilkan {byCompany.length} entitas</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

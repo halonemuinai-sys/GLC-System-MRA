@@ -26,6 +26,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 // Searchable Dropdown for Companies (PT)
 function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)' }) {
@@ -226,6 +227,7 @@ function SearchingRadarAnimation() {
 }
 
 export default function GaVendorsPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
@@ -421,7 +423,7 @@ export default function GaVendorsPage() {
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <Users className="w-6 h-6 text-indigo-500" />
-            Vendor Database
+            {t('gaVendors_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Daftar rekanan, penyedia jasa pemeliharaan, sewa, dan pengadaan di GLC MRA.</p>
         </div>
@@ -430,7 +432,7 @@ export default function GaVendorsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit"
         >
           <Plus className="w-4 h-4" />
-          Add Vendor
+          {t('ga_addVendor')}
         </button>
       </div>
 
@@ -443,7 +445,7 @@ export default function GaVendorsPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
               <input
                 type="text"
-                placeholder="Search vendors by code, name, or contact person..."
+                placeholder={t('ga_searchVendors')}
                 value={tempSearch}
                 onChange={(e) => setTempSearch(e.target.value)}
                 className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 text-neutral-800 dark:text-white"
@@ -455,7 +457,7 @@ export default function GaVendorsPage() {
               companies={companies}
               value={tempCompanyId}
               onChange={(val) => setTempCompanyId(val)}
-              placeholder="All Companies (PT)"
+              placeholder={t('allCompanies')}
             />
           </div>
 
@@ -475,7 +477,7 @@ export default function GaVendorsPage() {
                   }}
                   className="w-full sm:w-auto px-4 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
                 >
-                  Reset Filter
+                  {t('resetFilter')}
                 </button>
               )}
               <button
@@ -483,7 +485,7 @@ export default function GaVendorsPage() {
                 className="w-full sm:w-auto px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
               >
                 <Activity className="w-4 h-4" />
-                Proses Data
+                {t('processData')}
               </button>
             </div>
           </div>
@@ -541,7 +543,7 @@ export default function GaVendorsPage() {
                 <Users className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Vendors</p>
+                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('gaVendors_kpiTotal')}</p>
                 <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{summary.totalVendors}</h3>
               </div>
             </div>
@@ -550,7 +552,7 @@ export default function GaVendorsPage() {
                 <Briefcase className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Active Partners</p>
+                <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('gaVendors_kpiActive')}</p>
                 <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{summary.activeCount}</h3>
               </div>
             </div>
@@ -588,7 +590,7 @@ export default function GaVendorsPage() {
             {loading ? (
               <div className="py-20 flex flex-col items-center justify-center gap-3">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-                <span className="text-xs text-neutral-400">Loading data...</span>
+                <span className="text-xs text-neutral-400">{t('loading')}</span>
               </div>
             ) : error ? (
               <div className="py-20 text-center text-red-500 text-xs">

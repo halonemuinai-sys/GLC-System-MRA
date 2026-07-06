@@ -26,21 +26,22 @@ import {
   FileText
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 // Searchable Dropdown for Companies (PT)
 function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const selectedCompany = companies.find(c => String(c.id) === String(value));
-  
-  const filtered = companies.filter(c => 
+
+  const filtered = companies.filter(c =>
     c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="relative w-full">
-      <div 
+      <div
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none"
       >
@@ -208,6 +209,7 @@ function SearchingRadarAnimation() {
 }
 
 export default function GaMaintenancesPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [assets, setAssets] = useState([]);
@@ -431,7 +433,7 @@ export default function GaMaintenancesPage() {
         <div>
           <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <Wrench className="w-6 h-6 text-indigo-500" />
-            Maintenance Tasks
+            {t('gaMaintenances_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Pemeliharaan AC, perbaikan kendaraan, servis laptop, dan renovasi kantor GLC MRA.</p>
         </div>
@@ -440,7 +442,7 @@ export default function GaMaintenancesPage() {
           className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit"
         >
           <Plus className="w-4 h-4" />
-          Request Service
+          {t('ga_requestService')}
         </button>
       </div>
 
@@ -453,7 +455,7 @@ export default function GaMaintenancesPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
               <input
                 type="text"
-                placeholder="Search by asset name, repair details, PIC..."
+                placeholder={t('ga_searchMaintenance')}
                 value={tempSearch}
                 onChange={(e) => setTempSearch(e.target.value)}
                 className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 text-neutral-800 dark:text-white"
@@ -465,7 +467,7 @@ export default function GaMaintenancesPage() {
               companies={companies}
               value={tempCompanyId}
               onChange={(val) => setTempCompanyId(val)}
-              placeholder="All Companies (PT)"
+              placeholder={t('allCompanies')}
             />
 
             {/* Status Dropdown */}
@@ -474,7 +476,7 @@ export default function GaMaintenancesPage() {
               onChange={(e) => setTempStatusFilter(e.target.value)}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
-              <option value="">All Statuses</option>
+              <option value="">{t('allStatuses')}</option>
               <option value="Pending">Pending</option>
               <option value="Proses">Proses</option>
               <option value="Selesai">Selesai</option>
@@ -499,7 +501,7 @@ export default function GaMaintenancesPage() {
                   }}
                   className="w-full sm:w-auto px-4 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
                 >
-                  Reset Filter
+                  {t('resetFilter')}
                 </button>
               )}
               <button
@@ -507,7 +509,7 @@ export default function GaMaintenancesPage() {
                 className="w-full sm:w-auto px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
               >
                 <Activity className="w-4 h-4" />
-                Proses Data
+                {t('processData')}
               </button>
             </div>
           </div>

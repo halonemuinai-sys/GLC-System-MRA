@@ -22,6 +22,7 @@ import {
   Info
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 // Helper: Format to IDR Currency
 const formatIDR = (val) => {
@@ -34,6 +35,7 @@ const formatIDR = (val) => {
 };
 
 export default function CostApprovalsPage() {
+  const { lang, t } = useLanguage();
   const [tasks, setTasks] = useState([]);
   const [historyList, setHistoryList] = useState([]); // Mocked or loaded from DB if endpoint available
   const [loading, setLoading] = useState(true);
@@ -216,10 +218,10 @@ export default function CostApprovalsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
-              Cost & Budget Approvals
+              {t('costApprovals_title')}
             </h1>
             <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
-              Otorisasi pencairan dana marketing, penandatanganan rencana anggaran, dan penanganan overbudget eskalasi.
+              {t('costApprovals_subtitle')}
             </p>
           </div>
         </div>
@@ -229,7 +231,7 @@ export default function CostApprovalsPage() {
           className="flex items-center gap-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 px-4 py-2 rounded-xl text-xs font-bold text-neutral-600 hover:text-indigo-500 shadow-sm transition-colors cursor-pointer w-fit"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          Segarkan Tugas
+          {t('costApprovals_refresh')}
         </button>
       </div>
 
@@ -243,7 +245,7 @@ export default function CostApprovalsPage() {
               <Clock className="w-5.5 h-5.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Tugas Pending</p>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('costApprovals_kpiPending')}</p>
               <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5">{kpis.pendingCount}</h3>
             </div>
           </div>
@@ -257,7 +259,7 @@ export default function CostApprovalsPage() {
               <DollarSign className="w-5.5 h-5.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Nilai Total Pending</p>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('costApprovals_kpiValue')}</p>
               <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalPendingValue)}</h3>
             </div>
           </div>
@@ -271,7 +273,7 @@ export default function CostApprovalsPage() {
               <TrendingDown className="w-5.5 h-5.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Eskalasi Overbudget</p>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('costApprovals_kpiOverbudget')}</p>
               <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5">{kpis.overbudgetCount}</h3>
             </div>
           </div>
@@ -285,7 +287,7 @@ export default function CostApprovalsPage() {
               <CheckCircle className="w-5.5 h-5.5" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Disetujui (Riwayat)</p>
+              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('costApprovals_kpiApproved')}</p>
               <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5">{kpis.approvedCount} <span className="text-xs font-normal text-neutral-400">/ {kpis.rejectedCount} ditolak</span></h3>
             </div>
           </div>

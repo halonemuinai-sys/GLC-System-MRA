@@ -22,6 +22,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const FISCAL_YEAR_OPTIONS = ['2024', '2025', '2026', '2027'];
 
@@ -55,6 +56,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
 }
 
 export default function MarketingBudgetPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [metadata, setMetadata] = useState({ brands: [], lobs: [], companies: [] });
@@ -289,7 +291,7 @@ export default function MarketingBudgetPage() {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-3">
         <Loader2 className="w-9 h-9 animate-spin text-blue-600" />
-        <p className="text-xs text-neutral-450 dark:text-neutral-500 font-bold">Memuat modul budgeting...</p>
+        <p className="text-xs text-neutral-450 dark:text-neutral-500 font-bold">{t('marketing_budget_loading')}</p>
       </div>
     );
   }
@@ -304,19 +306,19 @@ export default function MarketingBudgetPage() {
               <Wallet className="w-4 h-4" />
             </div>
             <h1 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">
-              Marketing Budget Control
+              {t('marketing_budget_title')}
             </h1>
             {activeBudget && (
               <span className={`ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider flex items-center gap-1 ${activeBudget.is_locked ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                 {activeBudget.is_locked ? (
                   <>
                     <Lock className="w-2.5 h-2.5" />
-                    LOCKED
+                    {t('marketing_budget_locked')}
                   </>
                 ) : (
                   <>
                     <Unlock className="w-2.5 h-2.5" />
-                    UNLOCKED
+                    {t('marketing_budget_unlocked')}
                   </>
                 )}
               </span>

@@ -18,6 +18,7 @@ import {
   Building
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 // ─── Stat Card Component ────────────────────────────────────────────────────────
 function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
@@ -47,6 +48,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
 }
 
 export default function MarketingBranchPage() {
+  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
@@ -161,7 +163,7 @@ export default function MarketingBranchPage() {
               <Building className="w-4 h-4" />
             </div>
             <h1 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">
-              Manajemen Cabang Sasaran / Terdampak
+              {t('marketing_branch_title')}
             </h1>
           </div>
           <p className="text-xs text-neutral-450 dark:text-neutral-500 mt-1">
@@ -204,7 +206,7 @@ export default function MarketingBranchPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-450" />
           <input
             type="text"
-            placeholder="Cari cabang toko..."
+            placeholder={t('marketing_branch_search')}
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -219,7 +221,7 @@ export default function MarketingBranchPage() {
           className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-neutral-500 hover:text-neutral-750 dark:text-neutral-450 dark:hover:text-white border border-neutral-200 dark:border-neutral-850 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-all cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          Segarkan Data
+          {t('marketing_branch_refresh')}
         </button>
       </div>
 
@@ -246,8 +248,8 @@ export default function MarketingBranchPage() {
               <thead>
                 <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
                   <th className="px-6 py-3.5 w-[15%]">ID</th>
-                  <th className="px-6 py-3.5 w-[65%]">Nama Cabang / Toko</th>
-                  <th className="px-6 py-3.5 w-[20%] text-center">Tindakan</th>
+                  <th className="px-6 py-3.5 w-[65%]">{t('marketing_branch_colName')}</th>
+                  <th className="px-6 py-3.5 w-[20%] text-center">{t('marketing_branch_colAction')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">

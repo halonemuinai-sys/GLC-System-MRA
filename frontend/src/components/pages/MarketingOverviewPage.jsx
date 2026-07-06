@@ -24,6 +24,7 @@ import {
   Search
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { useLanguage } from '@/lib/LanguageContext';
 
 const formatIDR = (val) => {
   if (!val && val !== 0) return 'Rp 0';
@@ -214,7 +215,7 @@ function GanttTooltip({ plan, position }) {
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm font-black text-neutral-900 dark:text-white leading-tight">Campaign Timeline {fiscalYear}</p>
+              <p className="text-sm font-black text-neutral-900 dark:text-white leading-tight">{t('marketing_ganttTitle')} {fiscalYear}</p>
               <p className="text-[10px] text-neutral-450 dark:text-neutral-500 font-bold mt-0.5">{filtered.length} campaign · Esc untuk tutup</p>
             </div>
           </div>
@@ -239,11 +240,11 @@ function GanttTooltip({ plan, position }) {
         {/* ── KPI STRIP ── */}
         <div className="flex-shrink-0 flex items-center gap-2.5 px-6 py-2.5 border-b border-neutral-200 dark:border-neutral-850 bg-neutral-50/70 dark:bg-neutral-900/10 overflow-x-auto">
           {[
-            { label: 'Total Campaign', value: String(kpis.total), color: '#2563eb' },
-            { label: 'Approved', value: String(kpis.approved), color: '#10b981' },
-            { label: 'Pending', value: String(kpis.pending), color: '#f59e0b' },
+            { label: t('marketing_kpiTotal'), value: String(kpis.total), color: '#2563eb' },
+            { label: t('marketing_kpiApproved'), value: String(kpis.approved), color: '#10b981' },
+            { label: t('marketing_kpiPending'), value: String(kpis.pending), color: '#f59e0b' },
             { label: 'Ditolak', value: String(kpis.rejected), color: '#ef4444' },
-            { label: 'Draft', value: String(kpis.draft), color: '#94a3b8' },
+            { label: t('marketing_kpiDraft'), value: String(kpis.draft), color: '#94a3b8' },
             { label: 'Total Anggaran', value: formatIDRCompact(kpis.totalBudget), color: '#6366f1' },
             { label: 'Realisasi', value: formatIDRCompact(kpis.totalActual), color: '#10b981' },
             { label: 'Sisa', value: formatIDRCompact(kpis.totalBudget - kpis.totalActual), color: '#64748b' },
@@ -382,7 +383,7 @@ function GanttTooltip({ plan, position }) {
             {filtered.length === 0 && (
               <div className="py-24 flex flex-col items-center gap-3 text-neutral-400 dark:text-neutral-500">
                 <Calendar className="w-12 h-12 opacity-35" />
-                <p className="text-sm font-semibold">Tidak ada campaign ditemukan untuk filter saat ini.</p>
+                <p className="text-sm font-semibold">{t('marketing_emptyFilter')}</p>
               </div>
             )}
 
@@ -557,7 +558,7 @@ function GanttChart({ plans, fiscalYear }) {
           <div className="flex items-center gap-2 min-w-0">
             <Calendar className="w-4 h-4 text-indigo-500 flex-shrink-0" />
             <h2 className="text-sm font-extrabold text-neutral-900 dark:text-white whitespace-nowrap">
-              Campaign Timeline {fiscalYear}
+              {t('marketing_ganttTitle')} {fiscalYear}
             </h2>
             <span className="text-[10px] font-bold text-neutral-400 hidden sm:inline">({sorted.length} campaign)</span>
           </div>
@@ -711,6 +712,7 @@ function GanttChart({ plans, fiscalYear }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MarketingOverviewPage() {
+  const { lang, t } = useLanguage();
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -735,16 +737,17 @@ export default function MarketingOverviewPage() {
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => {
-    let totalBudget = 0, totalActual = 0, approved = 0, pending = 0, rejected = 0;
+    let totalBudget = 0, totalActual = 0, approved = 0, pending = 0, rejected = 0, draft = 0;
     plans.forEach(p => {
       totalBudget += Number(p.total_budget || 0);
       if (p.items) p.items.forEach(it => { totalActual += Number(it.actual_amount || 0); });
       if (p.status === 'APPROVED') approved++;
       else if (p.status === 'PENDING_APPROVAL') pending++;
       else if (p.status === 'REJECTED') rejected++;
+      else draft++;
     });
     const burnRate = totalBudget > 0 ? (totalActual / totalBudget) * 100 : 0;
-    return { totalBudget, totalActual, burnRate, approved, pending, rejected, total: plans.length };
+    return { totalBudget, totalActual, burnRate, approved, pending, rejected, draft, total: plans.length };
   }, [plans]);
 
   const CARD_THEMES = {
@@ -770,11 +773,11 @@ export default function MarketingOverviewPage() {
       glow: 'bg-amber-500/10 dark:bg-amber-500/5'
     },
     slate: {
-      border: 'border-slate-500/20 dark:border-slate-500/10',
-      indicator: 'bg-slate-500',
-      iconBg: 'bg-gradient-to-br from-slate-500/15 to-slate-500/5 border-slate-500/20',
-      iconText: 'text-slate-500 dark:text-slate-400',
-      glow: 'bg-slate-500/10 dark:bg-slate-500/5'
+      border: 'border-rose-500/20 dark:border-rose-500/10',
+      indicator: 'bg-rose-500',
+      iconBg: 'bg-gradient-to-br from-rose-500/15 to-rose-500/5 border-rose-500/20',
+      iconText: 'text-rose-500 dark:text-rose-455',
+      glow: 'bg-rose-500/10 dark:bg-rose-500/5'
     }
   };
 
@@ -788,7 +791,7 @@ export default function MarketingOverviewPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
-              Overview & Analytics
+              {t('marketing_overview_title')}
             </h1>
             <p className="text-neutral-500 dark:text-neutral-450 text-xs mt-0.5">
               Visualisasi timeline campaign — ringkasan anggaran dan realisasi per periode.
@@ -823,29 +826,92 @@ export default function MarketingOverviewPage() {
       {loading ? (
         <div className="py-32 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <span className="text-xs text-neutral-455 font-bold">Memuat data overview...</span>
+          <span className="text-xs text-neutral-455 font-bold">{t('loading')}</span>
         </div>
       ) : (
         <>
+          {/* Animated trendline keyframe style */}
+          <style>{`
+            @keyframes waveMove {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .wave-animated-fast {
+              animation: waveMove 12s linear infinite;
+            }
+          `}</style>
+
           {/* KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total Anggaran', value: formatIDRCompact(kpis.totalBudget), sub: `${kpis.total} campaign`, theme: 'blue', icon: DollarSign },
-              { label: 'Realisasi Terbayar', value: formatIDRCompact(kpis.totalActual), sub: `${kpis.burnRate.toFixed(1)}% burn rate`, theme: 'emerald', icon: TrendingUp },
-              { label: 'Sisa Anggaran', value: formatIDRCompact(kpis.totalBudget - kpis.totalActual), sub: 'belum terserap', theme: 'amber', icon: TrendingDown },
-              { label: 'Status Campaign', value: `${kpis.approved} Approved`, sub: `${kpis.pending} pending · ${kpis.rejected} ditolak`, theme: 'slate', icon: Layers },
-            ].map(({ label, value, sub, theme, icon: Icon }, idx) => {
+              {
+                label: 'Total Anggaran',
+                value: formatIDRCompact(kpis.totalBudget),
+                sub: `${kpis.total} campaign`,
+                theme: 'blue',
+                stroke: '#3b82f6',
+                icon: DollarSign,
+                strokePath: 'M 0 25 L 30 18 L 60 22 L 90 12 L 120 28 L 150 10 L 180 20 L 210 5 L 240 18 L 270 8 L 300 15 L 330 25 L 360 12 L 400 25',
+                fillPath: 'M 0 40 L 0 25 L 30 18 L 60 22 L 90 12 L 120 28 L 150 10 L 180 20 L 210 5 L 240 18 L 270 8 L 300 15 L 330 25 L 360 12 L 400 25 L 400 40 Z'
+              },
+              {
+                label: 'Realisasi Terbayar',
+                value: formatIDRCompact(kpis.totalActual),
+                sub: `${kpis.burnRate.toFixed(1)}% burn rate`,
+                theme: 'emerald',
+                stroke: '#10b981',
+                icon: TrendingUp,
+                strokePath: 'M 0 35 L 40 32 L 80 25 L 120 28 L 160 18 L 200 20 L 240 12 L 280 15 L 320 8 L 360 10 L 400 35',
+                fillPath: 'M 0 40 L 0 35 L 40 32 L 80 25 L 120 28 L 160 18 L 200 20 L 240 12 L 280 15 L 320 8 L 360 10 L 400 35 L 400 40 Z'
+              },
+              {
+                label: 'Sisa Anggaran',
+                value: formatIDRCompact(kpis.totalBudget - kpis.totalActual),
+                sub: 'belum terserap',
+                theme: 'amber',
+                stroke: '#f59e0b',
+                icon: TrendingDown,
+                strokePath: 'M 0 10 L 40 12 L 80 18 L 120 15 L 160 22 L 200 20 L 240 28 L 280 25 L 320 32 L 360 30 L 400 10',
+                fillPath: 'M 0 40 L 0 10 L 40 12 L 80 18 L 120 15 L 160 22 L 200 20 L 240 28 L 280 25 L 320 32 L 360 30 L 400 10 L 400 40 Z'
+              },
+              {
+                label: 'Status Campaign',
+                value: `${kpis.approved} Approved`,
+                sub: (
+                  <>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                      {kpis.pending} pending
+                    </span>
+                    <span className="mx-0.5 text-neutral-350 dark:text-neutral-600">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-600 shrink-0" />
+                      {kpis.rejected} ditolak
+                    </span>
+                    <span className="mx-0.5 text-neutral-350 dark:text-neutral-600">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#64748b] shrink-0" />
+                      {kpis.draft} draft
+                    </span>
+                  </>
+                ),
+                theme: 'slate',
+                icon: Layers,
+                showProgress: true
+              },
+            ].map(({ label, value, sub, theme, stroke, icon: Icon, strokePath, fillPath, showProgress }, idx) => {
               const currentTheme = CARD_THEMES[theme];
+              const approvedPercentage = kpis.total > 0 ? Math.round((kpis.approved / kpis.total) * 100) : 0;
               return (
                 <motion.div
                   key={label}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.08, duration: 0.4, ease: 'easeOut' }}
-                  className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-5 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 hover:-translate-y-0.5 transition-all duration-300 group"
+                  className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-5 pb-8 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 hover:-translate-y-0.5 transition-all duration-300 group min-h-[128px]"
                 >
                   <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full blur-2xl group-hover:opacity-100 opacity-60 transition-opacity duration-350 ${currentTheme.glow}`} />
-                  <div className={`absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md transition-all duration-300 group-hover:top-3 group-hover:bottom-3 ${currentTheme.indicator}`} />
+                  <div className={`absolute left-0 top-5 bottom-5 w-1 rounded-r-md transition-all duration-300 group-hover:top-3 group-hover:bottom-3 ${currentTheme.indicator}`} />
                   <div className="flex items-center gap-3 relative z-10">
                     <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105 ${currentTheme.iconBg}`}>
                       <Icon className={`w-5.5 h-5.5 ${currentTheme.iconText}`} />
@@ -853,9 +919,65 @@ export default function MarketingOverviewPage() {
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider leading-none">{label}</p>
                       <h3 className="text-lg font-black text-neutral-900 dark:text-white truncate mt-1.5 leading-none">{value}</h3>
-                      <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-2 font-semibold truncate leading-none">{sub}</p>
+                      {typeof sub === 'string' ? (
+                        <p className="text-[10px] text-neutral-455 dark:text-neutral-500 mt-2 font-semibold truncate leading-none">{sub}</p>
+                      ) : (
+                        <div className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-2 font-bold flex items-center flex-wrap gap-1 leading-none mb-3">
+                          {sub}
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {/* Modern Graph sparkline background with Grid overlay */}
+                  {theme !== 'slate' && (
+                    <div className="absolute inset-x-0 bottom-0 h-10 overflow-hidden pointer-events-none select-none rounded-b-2xl opacity-60 dark:opacity-40">
+                      {/* Grid overlay */}
+                      <div 
+                        className="absolute inset-0 opacity-[0.06] dark:opacity-[0.04]"
+                        style={{
+                          backgroundImage: `
+                            linear-gradient(to right, ${stroke} 1px, transparent 1px),
+                            linear-gradient(to top, ${stroke} 1px, transparent 1px)
+                          `,
+                          backgroundSize: '12px 6px'
+                        }}
+                      />
+                      
+                      {/* Scrolling Graph */}
+                      <div className="flex w-[200%] h-full wave-animated-fast">
+                        <svg className="w-1/2 h-full shrink-0" viewBox="0 0 400 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                          <defs>
+                            <linearGradient id={`graph-grad-${idx}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={stroke} stopOpacity="0.22" />
+                              <stop offset="100%" stopColor={stroke} stopOpacity="0.00" />
+                            </linearGradient>
+                          </defs>
+                          <path d={fillPath} fill={`url(#graph-grad-${idx})`} />
+                          <path d={strokePath} stroke={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        <svg className="w-1/2 h-full shrink-0" viewBox="0 0 400 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+                          <path d={fillPath} fill={`url(#graph-grad-${idx})`} />
+                          <path d={strokePath} stroke={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Progress Bar for Status Campaign card */}
+                  {showProgress && (
+                    <div className="absolute bottom-4 left-5 right-5 flex items-center gap-3">
+                      <div className="flex-1 h-1.5 bg-neutral-150 dark:bg-neutral-800 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full rounded-full bg-rose-500 transition-all duration-500"
+                          style={{ width: `${approvedPercentage}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-black text-neutral-500 dark:text-neutral-450 shrink-0 leading-none">
+                        {approvedPercentage}%
+                      </span>
+                    </div>
+                  )}
                 </motion.div>
               );
             })}
