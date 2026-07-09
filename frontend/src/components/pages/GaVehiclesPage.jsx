@@ -12,54 +12,25 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
-  User,
   ShieldAlert,
-  FileText,
-  Clock,
   Car,
   Maximize2,
   Building,
-  Filter,
   Activity,
   Pencil,
   Trash2,
   ExternalLink,
-  AlertTriangle,
   Download
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
-import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip
-} from 'recharts';
-import DatePicker from '@/components/ui/DatePicker';
 
-const CHART_COLORS = [
-  '#4f46e5', // Indigo
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#ef4444', // Rose
-  '#8b5cf6', // Violet
-  '#06b6d4', // Cyan
-  '#3b82f6', // Blue
-];
-
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    return (
-      <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-2.5 rounded-xl shadow-xl text-xs">
-        <p className="font-bold text-neutral-850 dark:text-neutral-200 capitalize mb-1">{data.type}</p>
-        <p className="text-indigo-500 font-semibold font-mono">Jumlah: {data.count} kendaraan</p>
-      </div>
-    );
-  }
-  return null;
-};
+// Import subcomponents
+import GaVehiclesSummaryDashboard from './GaVehiclesSummaryDashboard';
+import GaVehiclesDetailDrawer from './GaVehiclesDetailDrawer';
+import GaVehiclesFormDrawer from './GaVehiclesFormDrawer';
+import GaVehiclesDeleteModal from './GaVehiclesDeleteModal';
+import { handleExportCSV } from './GaVehiclesExports';
 
 // Searchable Dropdown for Companies (PT)
 function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)' }) {
@@ -147,8 +118,8 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
                         setSearchQuery('');
                         setIsOpen(false);
                       }}
-                      className={`w-full text-left px-2.5 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium ${
-                        String(c.id) === String(value) ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'
+                      className={`w-full text-left px-2.5 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-650 dark:hover:text-indigo-400 transition-colors font-medium ${
+                        String(c.id) === String(value) ? 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'
                       }`}
                     >
                       {c.name}
@@ -250,7 +221,7 @@ function SearchingRadarAnimation() {
 }
 
 export default function GaVehiclesPage() {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
@@ -260,15 +231,6 @@ export default function GaVehiclesPage() {
   
   // Active filters (passed to the API)
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    const q = searchParams.get('search');
-    if (q) {
-      setSearch(q);
-      setTempSearch(q);
-      setHasProcessed(true);
-    }
-  }, [searchParams]);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -292,81 +254,6 @@ export default function GaVehiclesPage() {
   const [vehicleToDelete, setVehicleToDelete] = useState(null);
   const [exporting, setExporting] = useState(false);
 
-  const handleExportCSV = async () => {
-    setExporting(true);
-    try {
-      const res = await apiClient.get('/api/ga/vehicles', {
-        params: {
-          limit: 9999,
-          search,
-          status: statusFilter || undefined,
-          companyId: companyId || undefined
-        }
-      });
-      const rows = res.data || [];
-      const headers = [
-        'Nomor Polisi (Plate Number)',
-        'Brand / Model',
-        'Tahun Pembuatan',
-        'Warna',
-        'Nomor Rangka (Chassis Number)',
-        'Entitas Perusahaan',
-        'Departemen Pengguna',
-        'Biaya Pajak (PKB)',
-        'Jatuh Tempo Pajak',
-        'Status Operasional',
-        'Keterangan Tambahan'
-      ];
-      
-      const escapeCSV = (val) => {
-        if (val === null || val === undefined) return '';
-        const str = String(val);
-        return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-      };
-
-      const formatIDRCurrency = (val) => {
-        if (!val) return 'Rp 0';
-        return `Rp ${Number(val).toLocaleString('id-ID')}`;
-      };
-
-      const formatDate = (dateStr) => {
-        if (!dateStr) return '-';
-        return new Date(dateStr).toLocaleDateString('id-ID', { dateStyle: 'medium' });
-      };
-
-      const csvRows = [
-        headers.join(','),
-        ...rows.map(r => [
-          r.plate_number,
-          r.brand_model,
-          r.year || '-',
-          r.color || '-',
-          r.chassis_number || '-',
-          r.m_company?.name || '-',
-          r.department || '-',
-          formatIDRCurrency(r.last_km),
-          formatDate(r.tax_date),
-          r.status || 'Aktif',
-          r.information || '-'
-        ].map(escapeCSV).join(','))
-      ];
-
-      const blob = new Blob(['\ufeff' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Laporan_Vehicle_Fleet_MRA_${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      alert(err.message || 'Gagal mengekspor data');
-    } finally {
-      setExporting(false);
-    }
-  };
-
   // New Vehicle Form State
   const [formData, setFormData] = useState({
     company_id: '',
@@ -386,6 +273,15 @@ export default function GaVehiclesPage() {
     doc_url: ''
   });
 
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q) {
+      setSearch(q);
+      setTempSearch(q);
+      setHasProcessed(true);
+    }
+  }, [searchParams]);
+
   const formatIDR = (val) => {
     if (!val) return 'Rp 0';
     return new Intl.NumberFormat('id-ID', {
@@ -394,6 +290,7 @@ export default function GaVehiclesPage() {
       maximumFractionDigits: 0
     }).format(Number(val));
   };
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -657,7 +554,7 @@ export default function GaVehiclesPage() {
               {hasProcessed && (
                 <button
                   type="button"
-                  onClick={handleExportCSV}
+                  onClick={() => handleExportCSV(search, statusFilter, companyId, setExporting)}
                   disabled={exporting}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-emerald-650 hover:bg-emerald-700 active:bg-emerald-850 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-600/10 disabled:opacity-50"
                 >
@@ -726,746 +623,184 @@ export default function GaVehiclesPage() {
       ) : (
         <>
           {/* Summary & Analytics Dashboard */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Chart Card */}
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between min-h-[300px]">
-              <div>
-                <h3 className="text-xs font-bold text-neutral-800 dark:text-slate-200 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-indigo-500" />
-                  Jenis Kendaraan
-                </h3>
-                <p className="text-[10px] text-neutral-400 mt-1">Breakdown tipe armada kendaraan operasional</p>
-              </div>
-              
-              <div className="h-44 w-full my-3 flex items-center justify-center relative">
-                {summary.typeBreakdown && summary.typeBreakdown.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={summary.typeBreakdown}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={68}
-                        paddingAngle={3}
-                        dataKey="count"
-                        nameKey="type"
-                      >
-                        {summary.typeBreakdown.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="text-xs text-neutral-400 flex flex-col items-center gap-1.5">
-                    <Car className="w-8 h-8 text-neutral-300 dark:text-neutral-700 animate-pulse" />
-                    <span>Tidak ada data jenis kendaraan</span>
-                  </div>
-                )}
-              </div>
+          <GaVehiclesSummaryDashboard
+            showDashboard={hasProcessed}
+            summary={summary}
+            meta={meta}
+          />
 
-              {/* Legend / Breakdown List */}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 max-h-20 overflow-y-auto text-[10px] pr-1 mt-1 border-t border-neutral-100 dark:border-neutral-800/60 pt-2.5">
-                {summary.typeBreakdown && summary.typeBreakdown.map((entry, idx) => (
-                  <div key={entry.type} className="flex items-center gap-1.5 truncate">
-                    <span 
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
-                    />
-                    <span className="text-neutral-500 dark:text-neutral-400 capitalize truncate">{entry.type}</span>
-                    <span className="font-bold text-neutral-700 dark:text-neutral-350 ml-auto font-mono">{entry.count}</span>
-                  </div>
-                ))}
+          {/* Main Table */}
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+            {loading ? (
+              <div className="py-20 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                <span className="text-xs text-neutral-400">{t('loading')}</span>
               </div>
-            </div>
+            ) : error ? (
+              <div className="py-20 text-center text-red-500 text-xs">
+                <ShieldAlert className="w-8 h-8 mx-auto mb-2 text-red-500" />
+                {error}
+              </div>
+            ) : data.length === 0 ? (
+              <div className="py-20 text-center text-neutral-400 text-xs">
+                <Truck className="w-8 h-8 mx-auto mb-2 text-neutral-300" />
+                No vehicles found matching the criteria.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-950/20 text-neutral-400 text-[10px] font-bold uppercase tracking-wider">
+                      <th className="p-4">Plate Number</th>
+                      <th className="p-4">Brand / Model</th>
+                      <th className="p-4">Company</th>
+                      <th className="p-4">Type</th>
+                      <th className="p-4">Biaya Pajak (PKB)</th>
+                      <th className="p-4">Tax Payment Date</th>
+                      <th className="p-4">Status</th>
+                      <th className="p-4 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-xs">
+                    {data.map((vehicle, idx) => {
+                      const nearTax = isTaxNearExpiration(vehicle.tax_date);
+                      return (
+                        <motion.tr 
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.02 }}
+                          key={vehicle.id} 
+                          className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors"
+                        >
+                          <td className="p-4 font-mono font-bold text-neutral-800 dark:text-white uppercase">{vehicle.plate_number}</td>
+                          <td className="p-4 font-semibold text-neutral-800 dark:text-slate-200">
+                            {vehicle.brand_model || '-'}
+                            {vehicle.year && <span className="text-[10px] text-neutral-400 ml-1.5 font-normal">({vehicle.year})</span>}
+                          </td>
+                          <td className="p-4 text-neutral-600 dark:text-neutral-400 font-medium">{vehicle.m_company?.name || '-'}</td>
+                          <td className="p-4 text-neutral-500 capitalize">{vehicle.vehicle_type || '-'}</td>
+                          <td className="p-4 font-mono font-bold text-slate-700 dark:text-slate-300">
+                            {formatIDR(vehicle.last_km)}
+                          </td>
+                          <td className="p-4">
+                            <span className={`inline-flex items-center gap-1.5 font-medium ${nearTax ? 'text-red-500 font-bold' : 'text-neutral-500'}`}>
+                              <Calendar className="w-3.5 h-3.5" />
+                              {vehicle.tax_date ? new Date(vehicle.tax_date).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}
+                              {nearTax && <span className="text-[8px] uppercase tracking-wider bg-red-100 dark:bg-red-950/40 text-red-500 px-1 rounded">Exp</span>}
+                            </span>
+                          </td>
+                          <td className="p-4">
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              vehicle.status?.toLowerCase() === 'aktif' 
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
+                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                            }`}>
+                              {vehicle.status || 'Aktif'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {vehicle.doc_url && (
+                                <a
+                                  href={vehicle.doc_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 text-neutral-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                  title="Open Document Link"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                              )}
+                              <button
+                                onClick={() => setSelectedVehicle(vehicle)}
+                                className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                                title="View Details"
+                              >
+                                <Maximize2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleOpenEdit(vehicle)}
+                                className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Vehicle"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <motion.button
+                                type="button"
+                                onClick={() => handleDeleteVehicle(vehicle)}
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                title="Hapus Kendaraan"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </motion.button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-            {/* KPI Cards Grid */}
-            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Total Fleet Card (Spans 2 columns) */}
-              <div className="sm:col-span-2 bg-gradient-to-r from-indigo-500/10 via-violet-500/10 to-indigo-500/5 dark:from-indigo-950/20 dark:via-violet-950/25 dark:to-neutral-900 border border-indigo-500/20 dark:border-indigo-500/15 p-5 rounded-2xl flex items-center justify-between shadow-sm relative overflow-hidden">
-                <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 text-indigo-500/5 pointer-events-none">
-                  <Truck className="w-36 h-36" />
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                    <Truck className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Fleet Armada</p>
-                    <h3 className="text-2xl font-black text-neutral-800 dark:text-white tracking-tight mt-0.5">{meta.total}</h3>
-                  </div>
-                </div>
-                <div className="text-right hidden sm:block">
-                  <span className="text-[10px] bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 px-2.5 py-1 rounded-full font-bold">
-                    Database Sync
-                  </span>
-                </div>
-              </div>
-
-              {/* Active Fleet */}
-              <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4.5 rounded-2xl flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                  <Car className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Active Fleet</p>
-                  <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{summary.activeCount}</h3>
+            {/* Pagination Footer */}
+            {meta.totalPages > 1 && (
+              <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-xs text-neutral-400 select-none">
+                <span>Showing Page {meta.page} of {meta.totalPages} ({meta.total} items)</span>
+                <div className="flex gap-2">
+                  <button
+                    disabled={page === 1}
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    disabled={page === meta.totalPages}
+                    onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+                    className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-
-              {/* In Service */}
-              <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4.5 rounded-2xl flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                  <Clock className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">In Service</p>
-                  <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{summary.inServiceCount}</h3>
-                </div>
-              </div>
-
-              {/* Tax Warning */}
-              <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4.5 rounded-2xl flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
-                  <ShieldAlert className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Tax Warning</p>
-                  <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{summary.taxWarningCount}</h3>
-                </div>
-              </div>
-
-              {/* Entities */}
-              <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4.5 rounded-2xl flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-500">
-                  <Building className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Entities (PT)</p>
-                  <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{summary.uniqueCompaniesCount}</h3>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
-
-      {/* Main Table */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center gap-3">
-            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-            <span className="text-xs text-neutral-400">{t('loading')}</span>
-          </div>
-        ) : error ? (
-          <div className="py-20 text-center text-red-500 text-xs">
-            <ShieldAlert className="w-8 h-8 mx-auto mb-2 text-red-500" />
-            {error}
-          </div>
-        ) : data.length === 0 ? (
-          <div className="py-20 text-center text-neutral-400 text-xs">
-            <Truck className="w-8 h-8 mx-auto mb-2 text-neutral-300" />
-            No vehicles found matching the criteria.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-950/20 text-neutral-400 text-[10px] font-bold uppercase tracking-wider">
-                  <th className="p-4">Plate Number</th>
-                  <th className="p-4">Brand / Model</th>
-                  <th className="p-4">Company</th>
-                  <th className="p-4">Type</th>
-                  <th className="p-4">Biaya Pajak (PKB)</th>
-                  <th className="p-4">Tax Payment Date</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-xs">
-                {data.map((vehicle, idx) => {
-                  const nearTax = isTaxNearExpiration(vehicle.tax_date);
-                  return (
-                    <motion.tr 
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.02 }}
-                      key={vehicle.id} 
-                      className="hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors"
-                    >
-                      <td className="p-4 font-mono font-bold text-neutral-800 dark:text-white uppercase">{vehicle.plate_number}</td>
-                      <td className="p-4 font-semibold text-neutral-800 dark:text-slate-200">
-                        {vehicle.brand_model || '-'}
-                        {vehicle.year && <span className="text-[10px] text-neutral-400 ml-1.5 font-normal">({vehicle.year})</span>}
-                      </td>
-                      <td className="p-4 text-neutral-600 dark:text-neutral-400 font-medium">{vehicle.m_company?.name || '-'}</td>
-                      <td className="p-4 text-neutral-500 capitalize">{vehicle.vehicle_type || '-'}</td>
-                      <td className="p-4 font-mono font-bold text-slate-700 dark:text-slate-300">
-                        {formatIDR(vehicle.last_km)}
-                      </td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center gap-1.5 font-medium ${nearTax ? 'text-red-500 font-bold' : 'text-neutral-500'}`}>
-                          <Calendar className="w-3.5 h-3.5" />
-                          {vehicle.tax_date ? new Date(vehicle.tax_date).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}
-                          {nearTax && <span className="text-[8px] uppercase tracking-wider bg-red-100 dark:bg-red-950/40 text-red-500 px-1 rounded">Exp</span>}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          vehicle.status?.toLowerCase() === 'aktif' 
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
-                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                        }`}>
-                          {vehicle.status || 'Aktif'}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {vehicle.doc_url && (
-                            <a
-                              href={vehicle.doc_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 text-neutral-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
-                              title="Open Document Link"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                          )}
-                          <button
-                            onClick={() => setSelectedVehicle(vehicle)}
-                            className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
-                            title="View Details"
-                          >
-                            <Maximize2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEdit(vehicle)}
-                            className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
-                            title="Edit Vehicle"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <motion.button
-                            type="button"
-                            onClick={() => handleDeleteVehicle(vehicle)}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                            title="Hapus Kendaraan"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </motion.button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination Footer */}
-        {meta.totalPages > 1 && (
-          <div className="p-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between text-xs text-neutral-400 select-none">
-            <span>Showing Page {meta.page} of {meta.totalPages} ({meta.total} items)</span>
-            <div className="flex gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                disabled={page === meta.totalPages}
-                onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
-                className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-transparent transition-colors cursor-pointer"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </>
-  )}
+        </>
+      )}
 
       {/* Details Slide-Over Drawer */}
-      <AnimatePresence>
-        {selectedVehicle && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedVehicle(null)}
-              className="fixed inset-0 bg-black z-40"
-            />
-            <motion.div 
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-              className="fixed inset-y-0 right-0 w-full max-w-md bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-800 shadow-2xl z-50 p-6 overflow-y-auto flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">Vehicle Fleet Detail</h3>
-                  <button 
-                    onClick={() => setSelectedVehicle(null)}
-                    className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+      <GaVehiclesDetailDrawer
+        selectedVehicle={selectedVehicle}
+        setSelectedVehicle={setSelectedVehicle}
+        handleOpenEdit={handleOpenEdit}
+        handleDeleteVehicle={handleDeleteVehicle}
+        isTaxNearExpiration={isTaxNearExpiration}
+        formatIDR={formatIDR}
+      />
 
-                <div className="mt-6 space-y-6">
-                  {/* Basic Info */}
-                  <div>
-                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Plate Number</span>
-                    <h2 className="text-xl font-black text-neutral-800 dark:text-white tracking-wide uppercase font-mono">{selectedVehicle.plate_number}</h2>
-                    <span className="text-xs text-indigo-500 font-semibold block mt-1">{selectedVehicle.brand_model || 'Unknown model'}</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Vehicle Type</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium capitalize">{selectedVehicle.vehicle_type || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Manufacturing Year</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedVehicle.year || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Chassis Number</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium font-mono">{selectedVehicle.chassis_number || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Color</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium capitalize">{selectedVehicle.color || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Status</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedVehicle.status || 'Aktif'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Department</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedVehicle.department || '-'}</span>
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
-
-                  {/* Operation Info */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Tax Payment Date</span>
-                      <span className={`text-xs font-bold ${isTaxNearExpiration(selectedVehicle.tax_date) ? 'text-red-500' : 'text-neutral-800 dark:text-slate-200'}`}>
-                        {selectedVehicle.tax_date ? new Date(selectedVehicle.tax_date).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Last Service Date</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">
-                        {selectedVehicle.last_service_date ? new Date(selectedVehicle.last_service_date).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Biaya Pajak (PKB)</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-bold font-mono">
-                        {formatIDR(selectedVehicle.last_km)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Holding Company</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedVehicle.m_company?.name || '-'}</span>
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
-
-                  {/* Description & Info */}
-                  <div>
-                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Additional Info</span>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 leading-relaxed">{selectedVehicle.information || 'No info provided.'}</p>
-                  </div>
-
-                  {selectedVehicle.doc_url && (
-                    <div className="bg-blue-50/50 dark:bg-blue-950/10 p-3 rounded-xl border border-blue-100/30 dark:border-blue-900/20 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                          <FileText className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block leading-none">Document Reference</span>
-                          <span className="text-xs text-neutral-800 dark:text-slate-200 font-semibold truncate block mt-0.5">Vehicle Document</span>
-                        </div>
-                      </div>
-                      <a
-                        href={selectedVehicle.doc_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3.5 py-1.5 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-bold rounded-xl text-[10px] transition-all flex items-center gap-1 cursor-pointer shadow-sm shadow-blue-500/20 shrink-0"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        Open Link
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Driver Info */}
-                  <div className="bg-neutral-50 dark:bg-neutral-950 p-3.5 rounded-xl border border-neutral-100 dark:border-neutral-800">
-                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-2">Assigned Driver</span>
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                        <User className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-neutral-800 dark:text-slate-200">{selectedVehicle.driver_name || 'No Dedicated Driver'}</h4>
-                        <span className="text-[10px] text-neutral-400">{selectedVehicle.department || 'GA Department'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleOpenEdit(selectedVehicle);
-                    setSelectedVehicle(null);
-                  }}
-                  className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-650 dark:text-indigo-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-indigo-200/50 dark:border-indigo-900/30"
-                >
-                  Edit Vehicle
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteVehicle(selectedVehicle)}
-                  className="flex-1 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-650 dark:text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-red-200/50 dark:border-red-900/30"
-                >
-                  Hapus Kendaraan
-                </button>
-                <button
-                  onClick={() => setSelectedVehicle(null)}
-                  className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 dark:bg-neutral-850 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
-                >
-                  Close Detail
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Add Vehicle Drawer */}
-      <AnimatePresence>
-        {showAddDrawer && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowAddDrawer(false)}
-              className="fixed inset-0 bg-black z-40"
-            />
-            <motion.div 
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-              className="fixed inset-y-0 right-0 w-full max-w-md bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-800 shadow-2xl z-50 p-6 overflow-y-auto flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                  <h3 className="font-bold text-neutral-800 dark:text-white text-sm">{editingVehicle ? 'Edit Operational Vehicle' : 'Add Operational Vehicle'}</h3>
-                  <button 
-                    onClick={() => {
-                      setShowAddDrawer(false);
-                      setEditingVehicle(null);
-                    }}
-                    className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleAddVehicle} className="mt-6 space-y-4 text-xs">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Plate Number *</label>
-                      <input
-                        required
-                        type="text"
-                        placeholder="e.g. B 1234 ABC"
-                        value={formData.plate_number}
-                        onChange={(e) => setFormData({...formData, plate_number: e.target.value.toUpperCase()})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none font-mono uppercase"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Vehicle Type *</label>
-                      <select
-                        required
-                        value={formData.vehicle_type}
-                        onChange={(e) => setFormData({...formData, vehicle_type: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none"
-                      >
-                        <option value="">Select Type</option>
-                        <option value="Minibus">Minibus</option>
-                        <option value="Motor">Motor</option>
-                        <option value="Blind Van">Blind Van</option>
-                        <option value="Box">Box</option>
-                        <option value="Pickup Box">Pickup Box</option>
-                        <option value="Pick Up">Pick Up</option>
-                        <option value="Truk">Truk</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Brand & Model *</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="e.g. Toyota Avanza 1.3G"
-                      value={formData.brand_model}
-                      onChange={(e) => setFormData({...formData, brand_model: e.target.value})}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Manufacturing Year</label>
-                      <input
-                        type="number"
-                        placeholder="e.g. 2021"
-                        value={formData.year}
-                        onChange={(e) => setFormData({...formData, year: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Color</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Hitam Metalik"
-                        value={formData.color}
-                        onChange={(e) => setFormData({...formData, color: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Chassis Number</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. MHXYF..."
-                        value={formData.chassis_number}
-                        onChange={(e) => setFormData({...formData, chassis_number: e.target.value.toUpperCase()})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none font-mono uppercase"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Assigned Driver</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Ahmad Mansur"
-                        value={formData.driver_name}
-                        onChange={(e) => setFormData({...formData, driver_name: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Tax Date *</label>
-                      <DatePicker
-                        required
-                        value={formData.tax_date}
-                        onChange={(val) => setFormData({...formData, tax_date: val})}
-                        placeholder="Pilih tanggal pajak"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Department</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. GA / Sales"
-                        value={formData.department}
-                        onChange={(e) => setFormData({...formData, department: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Biaya Pajak (PKB)</label>
-                      <input
-                        type="number"
-                        placeholder="e.g. 1500000"
-                        value={formData.last_km}
-                        onChange={(e) => setFormData({...formData, last_km: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Last Service Date</label>
-                      <DatePicker
-                        value={formData.last_service_date}
-                        onChange={(val) => setFormData({...formData, last_service_date: val})}
-                        placeholder="Pilih tanggal service"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Status *</label>
-                      <select
-                        required
-                        value={formData.status}
-                        onChange={(e) => setFormData({...formData, status: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none"
-                      >
-                        <option value="Aktif">Aktif</option>
-                        <option value="Perbaikan">Perbaikan</option>
-                        <option value="Sewa">Sewa</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Company *</label>
-                      <SearchableCompanySelect
-                        companies={companies}
-                        value={formData.company_id}
-                        onChange={(val) => setFormData({...formData, company_id: val})}
-                        placeholder="Select Company *"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Additional Notes</label>
-                    <textarea
-                      rows={2}
-                      placeholder="Note about vehicle insurance, keys, or tool kit..."
-                      value={formData.information}
-                      onChange={(e) => setFormData({...formData, information: e.target.value})}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Document Link (e.g. Google Drive)</label>
-                    <div className="relative">
-                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
-                      <input
-                        type="url"
-                        placeholder="https://drive.google.com/..."
-                        value={formData.doc_url}
-                        onChange={(e) => setFormData({...formData, doc_url: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-8 pr-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAddDrawer(false);
-                        setEditingVehicle(null);
-                      }}
-                      className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white font-bold rounded-xl transition-all cursor-pointer text-center"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40"
-                    >
-                      {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : (editingVehicle ? 'Save Changes' : 'Save Vehicle')}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      {/* Add / Edit Vehicle Drawer */}
+      <GaVehiclesFormDrawer
+        showAddDrawer={showAddDrawer}
+        setShowAddDrawer={setShowAddDrawer}
+        editingVehicle={editingVehicle}
+        setEditingVehicle={setEditingVehicle}
+        companies={companies}
+        formData={formData}
+        setFormData={setFormData}
+        handleAddVehicle={handleAddVehicle}
+        submitting={submitting}
+      />
 
       {/* Custom Animated Delete Confirmation Modal */}
-      <AnimatePresence>
-        {vehicleToDelete && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setVehicleToDelete(null)}
-              className="fixed inset-0 bg-black/60 z-[999] backdrop-blur-sm"
-            />
-            <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 pointer-events-none">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 15 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 15 }}
-                transition={{ type: 'spring', duration: 0.35 }}
-                className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl pointer-events-auto flex flex-col items-center text-center"
-              >
-                <div className="relative mb-4">
-                  <motion.div
-                    className="absolute inset-0 rounded-full bg-red-500/10 dark:bg-red-500/20 blur-sm"
-                    animate={{ scale: [1, 1.25, 1] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                  />
-                  <div className="relative w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/20 text-red-500 dark:text-red-400 flex items-center justify-center">
-                    <AlertTriangle className="w-6 h-6 animate-pulse" />
-                  </div>
-                </div>
-
-                <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Konfirmasi Hapus Kendaraan</h3>
-                <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
-                  Apakah Anda yakin ingin menghapus kendaraan <strong className="text-red-500 dark:text-red-400 font-bold">"{vehicleToDelete.plate_number}"</strong>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
-                </p>
-
-                <div className="flex items-center gap-2.5 w-full mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setVehicleToDelete(null)}
-                    disabled={submitting}
-                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center disabled:opacity-50"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmDeleteVehicle}
-                    disabled={submitting}
-                    className="flex-1 py-2 bg-red-650 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50"
-                  >
-                    {submitting ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5" />
-                    )}
-                    Ya, Hapus
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+      <GaVehiclesDeleteModal
+        vehicleToDelete={vehicleToDelete}
+        setVehicleToDelete={setVehicleToDelete}
+        confirmDeleteVehicle={confirmDeleteVehicle}
+        submitting={submitting}
+      />
     </div>
   );
 }
