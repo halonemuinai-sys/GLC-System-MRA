@@ -743,6 +743,32 @@ function SidebarContent({
           );
         })}
 
+        {/* ── Documentation section ── */}
+        <div className="space-y-1">
+          <motion.div
+            animate={{
+              opacity: collapsed ? 0 : 1,
+              height: collapsed ? 0 : 'auto',
+              marginBottom: collapsed ? 0 : 8
+            }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden"
+          >
+            <p className="px-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest whitespace-nowrap">
+              DOKUMENTASI
+            </p>
+          </motion.div>
+          <NavItem
+            href="/docs"
+            icon={BookOpen}
+            name="Panduan & SOP"
+            isActive={pathname.startsWith("/docs")}
+            delay={0.38}
+            onClick={onClose}
+            collapsed={collapsed}
+          />
+        </div>
+
         {/* ── Admin section ── */}
         {isAdmin && (
           <motion.div

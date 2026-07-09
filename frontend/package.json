@@ -21,13 +21,18 @@
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.21.0",
     "next": "16.2.9",
+    "nextra": "^4.6.1",
+    "nextra-theme-docs": "^4.6.1",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-datepicker": "^8.4.0",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.80.0",
     "recharts": "^3.8.1",
-    "zod": "^4.4.3"
+    "zod": "4.3.6"
+  },
+  "overrides": {
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
