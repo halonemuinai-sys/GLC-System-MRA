@@ -1,5 +1,17 @@
+import React, { Suspense } from 'react';
 import GaMaintenancesPage from '@/components/pages/GaMaintenancesPage';
+import { Loader2 } from 'lucide-react';
 
 export default function Page() {
-  return <GaMaintenancesPage />;
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[400px] flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      }
+    >
+      <GaMaintenancesPage />
+    </Suspense>
+  );
 }

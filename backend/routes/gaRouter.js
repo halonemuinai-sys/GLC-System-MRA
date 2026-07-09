@@ -1717,23 +1717,23 @@ router.get('/notifications', allowRead, async (req, res, next) => {
 
     vehicles.forEach(v => {
       const { status, daysLeft } = computeDaysStatus(v.tax_date);
-      if (status) items.push({ id: `vehicle-${v.id}`, title: v.plate_number, subtitle: `Pajak Kendaraan — ${v.brand_model || v.vehicle_type || ''}`.trim(), date: v.tax_date, daysLeft, status, link: '/dashboard/vehicles' });
+      if (status) items.push({ id: `vehicle-${v.id}`, title: v.plate_number, subtitle: `Pajak Kendaraan — ${v.brand_model || v.vehicle_type || ''}`.trim(), date: v.tax_date, daysLeft, status, link: `/dashboard/vehicles?search=${encodeURIComponent(v.plate_number)}` });
     });
     maintenances.forEach(m => {
       const { status, daysLeft } = computeDaysStatus(m.expired_date);
-      if (status) items.push({ id: `maintenance-${m.id}`, title: m.asset_name || m.detail || 'Maintenance', subtitle: `Maintenance — ${m.service_type || 'Servis'}`, date: m.expired_date, daysLeft, status, link: '/dashboard/maintenances' });
+      if (status) items.push({ id: `maintenance-${m.id}`, title: m.asset_name || m.detail || 'Maintenance', subtitle: `Maintenance — ${m.service_type || 'Servis'}`, date: m.expired_date, daysLeft, status, link: `/dashboard/maintenances?search=${encodeURIComponent(m.asset_name || m.detail || 'Maintenance')}` });
     });
     vendors.forEach(v => {
       const { status, daysLeft } = computeDaysStatus(v.contract_end);
-      if (status) items.push({ id: `vendor-${v.id}`, title: v.vendor_name, subtitle: 'Kontrak Vendor', date: v.contract_end, daysLeft, status, link: '/dashboard/vendors' });
+      if (status) items.push({ id: `vendor-${v.id}`, title: v.vendor_name, subtitle: 'Kontrak Vendor', date: v.contract_end, daysLeft, status, link: `/dashboard/vendors?search=${encodeURIComponent(v.vendor_name)}` });
     });
     insurances.forEach(i => {
       const { status, daysLeft } = computeDaysStatus(i.end_date);
-      if (status) items.push({ id: `insurance-${i.id}`, title: i.policy_number, subtitle: `Asuransi — ${i.insurance_company || ''}`.trim(), date: i.end_date, daysLeft, status, link: '/dashboard/insurances' });
+      if (status) items.push({ id: `insurance-${i.id}`, title: i.policy_number, subtitle: `Asuransi — ${i.insurance_company || ''}`.trim(), date: i.end_date, daysLeft, status, link: `/dashboard/insurances?search=${encodeURIComponent(i.policy_number)}` });
     });
     documents.forEach(d => {
       const { status, daysLeft } = computeDaysStatus(d.valid_until);
-      if (status) items.push({ id: `document-${d.id}`, title: d.doc_title, subtitle: `Dokumen — ${d.doc_number || ''}`.trim(), date: d.valid_until, daysLeft, status, link: '/dashboard/documents' });
+      if (status) items.push({ id: `document-${d.id}`, title: d.doc_title, subtitle: `Dokumen — ${d.doc_number || ''}`.trim(), date: d.valid_until, daysLeft, status, link: `/dashboard/documents?search=${encodeURIComponent(d.doc_title)}` });
     });
 
     items.sort((a, b) => a.daysLeft - b.daysLeft);

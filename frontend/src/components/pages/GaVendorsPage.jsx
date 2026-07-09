@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, 
@@ -228,6 +229,7 @@ function SearchingRadarAnimation() {
 
 export default function GaVendorsPage() {
   const { lang, t } = useLanguage();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
@@ -236,6 +238,15 @@ export default function GaVendorsPage() {
   
   // Active filters (passed to the API)
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q) {
+      setSearch(q);
+      setTempSearch(q);
+      setHasProcessed(true);
+    }
+  }, [searchParams]);
   const [page, setPage] = useState(1);
   const [companyId, setCompanyId] = useState('');
 
@@ -294,6 +305,11 @@ export default function GaVendorsPage() {
       setData(res.data || []);
       setMeta(res.meta || { total: 0, page: 1, limit: 10, totalPages: 1 });
       setSummary(res.summary || { totalVendors: 0, activeCount: 0, avgRating: '0.0', totalContractValue: 0, uniqueCompaniesCount: 0 });
+      
+      const searchParamVal = searchParams.get('search');
+      if (searchParamVal && res.data && res.data.length === 1) {
+        setSelectedVendor(res.data[0]);
+      }
     } catch (err) {
       setError(err.message || 'Failed to fetch vendors');
     } finally {

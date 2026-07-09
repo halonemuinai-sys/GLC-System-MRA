@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, 
@@ -228,6 +229,7 @@ function SearchingRadarAnimation() {
 
 export default function GaDocumentsPage() {
   const { lang, t } = useLanguage();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
@@ -236,6 +238,15 @@ export default function GaDocumentsPage() {
   
   // Active filters (passed to the API)
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q) {
+      setSearch(q);
+      setTempSearch(q);
+      setHasProcessed(true);
+    }
+  }, [searchParams]);
   const [page, setPage] = useState(1);
   const [docSubtype, setDocSubtype] = useState('');
   const [divisionId, setDivisionId] = useState('');
@@ -376,6 +387,11 @@ export default function GaDocumentsPage() {
       setData(res.data || []);
       setMeta(res.meta || { total: 0, page: 1, limit: 10, totalPages: 1 });
       setSummary(res.summary || { totalDocuments: 0, activeCount: 0, totalValue: 0, expiringCount: 0, uniqueCompaniesCount: 0 });
+      
+      const searchParamVal = searchParams.get('search');
+      if (searchParamVal && res.data && res.data.length === 1) {
+        setSelectedDoc(res.data[0]);
+      }
     } catch (err) {
       setError(err.message || 'Failed to fetch documents');
     } finally {

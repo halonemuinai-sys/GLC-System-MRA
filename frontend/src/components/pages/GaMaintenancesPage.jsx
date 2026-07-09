@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Wrench, 
@@ -210,6 +211,7 @@ function SearchingRadarAnimation() {
 
 export default function GaMaintenancesPage() {
   const { lang, t } = useLanguage();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [assets, setAssets] = useState([]);
@@ -222,6 +224,15 @@ export default function GaMaintenancesPage() {
   
   // Active filters (passed to the API)
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q) {
+      setSearch(q);
+      setTempSearch(q);
+      setHasProcessed(true);
+    }
+  }, [searchParams]);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [companyId, setCompanyId] = useState('');
@@ -331,6 +342,11 @@ export default function GaMaintenancesPage() {
       setData(res.data || []);
       setMeta(res.meta || { total: 0, page: 1, limit: 10, totalPages: 1 });
       setSummary(res.summary || { totalCost: 0, pendingCount: 0, completedCount: 0, uniqueCompaniesCount: 0 });
+      
+      const searchParamVal = searchParams.get('search');
+      if (searchParamVal && res.data && res.data.length === 1) {
+        setSelectedMaint(res.data[0]);
+      }
     } catch (err) {
       setError(err.message || 'Failed to fetch maintenances');
     } finally {

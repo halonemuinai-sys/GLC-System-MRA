@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShieldCheck, 
@@ -217,12 +218,22 @@ export default function GaInsurancesPage() {
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [summary, setSummary] = useState({ totalCount: 0, activeCount: 0, totalPremiumIdr: 0, totalCoverageIdr: 0, expiringCount: 0, uniqueCompaniesCount: 0 });
   const [error, setError] = useState(null);
+  const searchParams = useSearchParams();
   
   // Active filters (passed to the API)
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [companyId, setCompanyId] = useState('');
+
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q) {
+      setSearch(q);
+      setTempSearch(q);
+      setHasProcessed(true);
+    }
+  }, [searchParams]);
 
   // Temporary filters (bound to UI controls)
   const [tempSearch, setTempSearch] = useState('');
@@ -357,6 +368,11 @@ export default function GaInsurancesPage() {
       setData(res.data || []);
       setMeta(res.meta || { total: 0, page: 1, limit: 10, totalPages: 1 });
       setSummary(res.summary || { totalCount: 0, activeCount: 0, totalPremiumIdr: 0, totalCoverageIdr: 0, expiringCount: 0, uniqueCompaniesCount: 0 });
+      
+      const searchParamVal = searchParams.get('search');
+      if (searchParamVal && res.data && res.data.length === 1) {
+        setSelectedInsurance(res.data[0]);
+      }
     } catch (err) {
       setError(err.message || 'Failed to fetch insurance records');
     } finally {
