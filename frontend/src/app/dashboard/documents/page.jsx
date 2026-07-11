@@ -1,17 +1,10 @@
-import React, { Suspense } from 'react';
-import GaDocumentsPage from '@/components/pages/GaDocumentsPage';
+import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
 
+const GaDocumentsPage = dynamic(() => import('@/components/pages/GaDocumentsPage'), {
+  loading: () => <div className="min-h-[400px] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
+});
+
 export default function Page() {
-  return (
-    <Suspense
-      fallback={
-        <div className="min-h-[400px] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        </div>
-      }
-    >
-      <GaDocumentsPage />
-    </Suspense>
-  );
+  return <GaDocumentsPage />;
 }

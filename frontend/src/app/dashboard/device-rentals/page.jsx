@@ -1,4 +1,9 @@
-import GaDeviceRentalsPage from '@/components/pages/GaDeviceRentalsPage';
+import dynamic from 'next/dynamic';
+import { Loader2 } from 'lucide-react';
+
+const GaDeviceRentalsPage = dynamic(() => import('@/components/pages/GaDeviceRentalsPage'), {
+  loading: () => <div className="min-h-[400px] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
+});
 
 export default function Page() {
   return <GaDeviceRentalsPage />;
