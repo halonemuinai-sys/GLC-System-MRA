@@ -304,44 +304,44 @@ async function getApprovalsOverview(req, res, next) {
     if (fiscal_year) where.fiscal_year = parseInt(fiscal_year, 10);
     if (status) where.status = status;
 
-    const plans = await prisma.marketing_plans.findMany({
-      where,
-      include: {
-        company: { select: { id: true, name: true, company_master_id: true } },
-        creator: { select: { id: true, name: true, email: true } },
-        approval_history: {
-          include: {
-            approver: { select: { id: true, name: true, email: true } },
-            magic_links: true
-          },
-          orderBy: { step_number: 'asc' }
-        }
-      },
-      orderBy: { created_at: 'desc' }
-    });
+    // Batch query: ambil semua rules dan contacts sekali, filter di JS (hindari N+1)
+    const [plans, allRules, allContacts] = await Promise.all([
+      prisma.marketing_plans.findMany({
+        where,
+        include: {
+          company: { select: { id: true, name: true, company_master_id: true } },
+          creator: { select: { id: true, name: true, email: true } },
+          approval_history: {
+            include: {
+              approver: { select: { id: true, name: true, email: true } },
+              magic_links: true
+            },
+            orderBy: { step_number: 'asc' }
+          }
+        },
+        orderBy: { created_at: 'desc' }
+      }),
+      prisma.approval_rules.findMany({
+        where: { module: 'MARKETING_PLAN' },
+        orderBy: { step_number: 'asc' }
+      }),
+      prisma.approval_role_contacts.findMany({ orderBy: { company_master_id: 'desc' } })
+    ]);
 
     const results = [];
     for (const plan of plans) {
       const totalBudget = parseFloat(plan.total_budget || 0);
 
-      const rules = await prisma.approval_rules.findMany({
-        where: {
-          module: 'MARKETING_PLAN',
-          min_amount: { lte: totalBudget },
-          OR: [
-            { max_amount: { gte: totalBudget } },
-            { max_amount: null }
-          ],
-          OR: [
-            { company_id: plan.company_id },
-            { company_id: null }
-          ]
-        },
-        orderBy: { step_number: 'asc' }
+      // Filter rules untuk plan ini di JS — fix duplicate OR key dan N+1
+      const matchedRules = allRules.filter(r => {
+        const amountOk = parseFloat(r.min_amount) <= totalBudget &&
+          (r.max_amount === null || parseFloat(r.max_amount) >= totalBudget);
+        const companyOk = r.company_id === null || r.company_id === plan.company_id;
+        return amountOk && companyOk;
       });
 
       const stepRulesMap = {};
-      for (const rule of rules) {
+      for (const rule of matchedRules) {
         if (!stepRulesMap[rule.step_number] || rule.company_id !== null) {
           stepRulesMap[rule.step_number] = rule;
         }
@@ -352,19 +352,14 @@ async function getApprovalsOverview(req, res, next) {
       let currentActiveStep = null;
 
       for (const rule of sortedRules) {
-        const historyRecord = plan.approval_history.find(h => h.step_number === rule.step_number);
+        const historyRecord = plan.approval_history.find(h => h.step_number === rule.step_number && h.status === 'PENDING')
+          || plan.approval_history.find(h => h.step_number === rule.step_number);
 
-        const contacts = await prisma.approval_role_contacts.findMany({
-          where: {
-            role: rule.approver_role,
-            OR: [
-              { company_master_id: plan.company.company_master_id },
-              { company_master_id: null }
-            ]
-          },
-          orderBy: { company_master_id: 'desc' }
-        });
-
+        // Filter contacts di JS — hindari N+1 per rule
+        const contacts = allContacts.filter(c =>
+          c.role === rule.approver_role &&
+          (c.company_master_id === null || c.company_master_id === plan.company.company_master_id)
+        );
         const recipientEmails = contacts.map(c => c.email);
 
         const magicLinks = historyRecord ? historyRecord.magic_links.map(ml => ({
@@ -373,10 +368,7 @@ async function getApprovalsOverview(req, res, next) {
           used_at: ml.used_at
         })) : [];
 
-        let stepStatus = 'WAITING';
-        if (historyRecord) {
-          stepStatus = historyRecord.status;
-        }
+        const stepStatus = historyRecord ? historyRecord.status : 'WAITING';
 
         if (stepStatus === 'PENDING' && !currentActiveStep) {
           currentActiveStep = rule.step_number;

@@ -331,6 +331,12 @@ async function submitPlan(req, res, next) {
 
     const magicLinkQueue = [];
     await prisma.$transaction(async (tx) => {
+      // Guard: invalidate any leftover PENDING histories (e.g. from aborted previous submissions)
+      await tx.approval_history.updateMany({
+        where: { marketing_plan_id: planId, status: 'PENDING' },
+        data: { status: 'REJECTED', comment: '[SISTEM] Digantikan oleh pengajuan baru.', action_at: new Date() }
+      });
+
       await tx.marketing_plans.update({
         where: { id: planId },
         data: { status: 'PENDING_APPROVAL', is_over_budget: isOverBudget, updated_at: new Date() }
@@ -400,7 +406,10 @@ async function recallPlan(req, res, next) {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.approval_history.deleteMany({ where: { marketing_plan_id: planId } });
+      await tx.approval_history.updateMany({
+        where: { marketing_plan_id: planId, status: 'PENDING' },
+        data: { status: 'REJECTED', comment: '[SISTEM] Ditarik kembali oleh pembuat rencana.', action_at: new Date() }
+      });
       await tx.marketing_plans.update({ where: { id: planId }, data: { status: 'DRAFT', updated_at: new Date() } });
     });
 
@@ -461,7 +470,8 @@ async function revisePlan(req, res, next) {
       return res.status(400).json({ error: 'Hanya rencana yang berstatus REJECTED yang bisa direvisi.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url, over_budget_reason } = req.body;
+    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url, over_budget_reason,
+      target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
@@ -494,12 +504,22 @@ async function revisePlan(req, res, next) {
           doc_url,
           is_over_budget: isOverBudget,
           over_budget_reason: isOverBudget ? over_budget_reason : null,
+          target_sales: target_sales ? parseFloat(target_sales) : null,
+          target_leads: target_leads ? parseInt(target_leads, 10) : null,
+          target_reach: target_reach ? parseInt(target_reach, 10) : null,
+          target_impressions: target_impressions ? parseInt(target_impressions, 10) : null,
+          target_roi_pct: target_roi_pct ? parseFloat(target_roi_pct) : null,
+          target_notes: target_notes || null,
           updated_at: new Date()
         }
       });
 
       await tx.marketing_plan_items.deleteMany({ where: { marketing_plan_id: planId } });
-      await tx.approval_history.deleteMany({ where: { marketing_plan_id: planId } });
+      // Soft-delete: preserve rejection reason di history lama sebagai audit trail
+      await tx.approval_history.updateMany({
+        where: { marketing_plan_id: planId, status: 'PENDING' },
+        data: { status: 'REJECTED', comment: '[SISTEM] Digantikan oleh revisi rencana.', action_at: new Date() }
+      });
 
       for (const item of items) {
         let resolvedVendorId = null;
@@ -691,27 +711,84 @@ async function getPlanDetail(req, res, next) {
             m_event_location: true,
             vendors: true,
             payment_requests: {
-              include: {
-                creator: true
-              },
+              include: { creator: true },
               orderBy: { created_at: 'desc' }
             }
           }
         },
         approval_history: {
-          include: {
-            approver: true
-          },
+          include: { approver: true },
           orderBy: { step_number: 'asc' }
-        }
+        },
+        // amendments di-include setelah migrasi — dihandle terpisah di bawah
       }
     });
 
-    if (!plan) {
-      return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!plan) return res.status(404).json({ error: 'Marketing Plan not found.' });
+
+    // Hitung committed_amount (PENDING+APPROVED payments) per item secara batch
+    const itemIds = plan.items.map(i => i.id);
+    const committedGroups = itemIds.length > 0 ? await prisma.payment_requests.groupBy({
+      by: ['marketing_plan_item_id'],
+      where: { marketing_plan_item_id: { in: itemIds }, status: { in: ['PENDING', 'APPROVED'] } },
+      _sum: { amount: true }
+    }) : [];
+    const committedMap = Object.fromEntries(committedGroups.map(g => [g.marketing_plan_item_id, Number(g._sum.amount || 0)]));
+
+    const itemsWithVariance = plan.items.map(item => ({
+      ...item,
+      committed_amount: committedMap[item.id] || 0
+    }));
+
+    // Fetch amendments secara terpisah — aman kalau tabel belum ada (migrasi belum dijalankan)
+    let amendments = [];
+    try {
+      amendments = await prisma.marketing_plan_amendments.findMany({
+        where: { marketing_plan_id: plan.id },
+        include: { creator: { select: { id: true, name: true } }, change_items: true },
+        orderBy: { created_at: 'desc' }
+      });
+    } catch (_) {
+      // tabel belum ada — abaikan saja
     }
 
-    res.json(plan);
+    res.json({ ...plan, items: itemsWithVariance, amendments });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /plans/:id/complete — tutup plan (APPROVED → COMPLETED)
+async function completePlan(req, res, next) {
+  try {
+    const planId = parseInt(req.params.id, 10);
+    const employee = await resolveEmployee(req.user.email);
+    if (!employee) return res.status(403).json({ error: 'User not registered.' });
+
+    const plan = await prisma.marketing_plans.findUnique({
+      where: { id: planId },
+      include: { items: { include: { payment_requests: true } } }
+    });
+    if (!plan) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (plan.status !== 'APPROVED') return res.status(400).json({ error: 'Hanya plan berstatus APPROVED yang bisa diselesaikan.' });
+
+    // Guard: tidak boleh ada payment yang masih PENDING atau APPROVED (belum PAID/REJECTED)
+    const pendingPayments = plan.items.flatMap(i => i.payment_requests).filter(pr => ['PENDING', 'APPROVED'].includes(pr.status));
+    if (pendingPayments.length > 0) {
+      return res.status(400).json({ error: `Masih ada ${pendingPayments.length} payment request yang belum selesai (PENDING/APPROVED). Selesaikan atau tolak terlebih dahulu.` });
+    }
+
+    // Guard: actuals harus sudah diisi
+    if (!plan.actuals_filled_at) {
+      return res.status(400).json({ error: 'Data aktual (post-campaign) harus diisi sebelum plan dapat diselesaikan.' });
+    }
+
+    const updated = await prisma.marketing_plans.update({
+      where: { id: planId },
+      data: { status: 'COMPLETED', updated_at: new Date() }
+    });
+
+    res.json({ message: 'Plan berhasil diselesaikan dan ditutup.', plan: updated });
   } catch (err) {
     next(err);
   }
@@ -757,5 +834,6 @@ module.exports = {
   revisePlan,
   getPlans,
   getPlanDetail,
+  completePlan,
   deletePlan
 };

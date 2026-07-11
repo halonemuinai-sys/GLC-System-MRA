@@ -160,13 +160,11 @@ async function executeApprovalDecision({ task, action, comment, signature, actin
       if (isPlan) {
         await tx.marketing_plans.update({ where: { id: docId }, data: { status: 'APPROVED' } });
       } else {
-        await tx.payment_requests.update({ where: { id: docId }, data: { status: 'PAID' } });
-        await tx.marketing_plan_items.update({
-          where: { id: task.payment_request.marketing_plan_item_id },
-          data: { actual_amount: { increment: amt } }
-        });
+        // Final approval = persetujuan finansial → APPROVED
+        // PAID = konfirmasi transfer sudah keluar, dilakukan manual via mark-paid endpoint
+        await tx.payment_requests.update({ where: { id: docId }, data: { status: 'APPROVED' } });
       }
-      return { message: 'Final approval complete. Document marked as APPROVED/PAID.', action };
+      return { message: 'Final approval complete. Document marked as APPROVED.', action };
     }
   });
 

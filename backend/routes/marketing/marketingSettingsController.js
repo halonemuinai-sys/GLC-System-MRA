@@ -397,43 +397,32 @@ async function checkBudgetAvailability(req, res, next) {
       return res.status(400).json({ error: 'Parameter company_id, brand_id, lob_id, dan fiscal_year wajib diisi.' });
     }
 
-    const budget = await prisma.m_marketing_budget.findUnique({
-      where: {
-        company_id_brand_id_lob_id_fiscal_year: {
-          company_id,
-          brand_id,
-          lob_id,
-          fiscal_year
-        }
-      },
-      include: {
-        monthly_limits: true
-      }
-    });
+    const [budget, allPlans] = await Promise.all([
+      prisma.m_marketing_budget.findUnique({
+        where: { company_id_brand_id_lob_id_fiscal_year: { company_id, brand_id, lob_id, fiscal_year } },
+        include: { monthly_limits: true }
+      }),
+      prisma.marketing_plans.findMany({
+        where: { company_id, fiscal_year, status: { notIn: ['REJECTED'] } },
+        include: { items: true, creator: { select: { id: true, name: true } } },
+        orderBy: { created_at: 'desc' }
+      })
+    ]);
 
-    const committedPlans = await prisma.marketing_plans.findMany({
-      where: {
-        company_id,
-        fiscal_year,
-        status: { in: ['APPROVED', 'PENDING_APPROVAL'] }
-      },
-      include: {
-        items: true
-      }
-    });
-
+    const COMMITTED_STATUSES = ['PENDING_APPROVAL', 'APPROVED', 'COMPLETED'];
     const monthlyCommitted = Array.from({ length: 12 }, () => 0);
-    for (const plan of committedPlans) {
-      for (const item of plan.items) {
-        const itemBrandId = item.brand_id || plan.brand_id;
-        const itemLobId = item.lob_id || plan.lob_id;
+    const monthlyActual = Array.from({ length: 12 }, () => 0);
 
-        if (itemBrandId === brand_id && itemLobId === lob_id) {
-          const mIdx = item.period_month - 1;
-          if (mIdx >= 0 && mIdx < 12) {
-            monthlyCommitted[mIdx] += parseFloat(item.budget_amount || 0);
-          }
-        }
+    for (const plan of allPlans) {
+      const inCommitted = COMMITTED_STATUSES.includes(plan.status);
+      for (const item of plan.items) {
+        const itemBrandId = item.brand_id;
+        const itemLobId = item.lob_id;
+        if (itemBrandId !== brand_id || itemLobId !== lob_id) continue;
+        const mIdx = item.period_month - 1;
+        if (mIdx < 0 || mIdx >= 12) continue;
+        if (inCommitted) monthlyCommitted[mIdx] += parseFloat(item.budget_amount || 0);
+        monthlyActual[mIdx] += parseFloat(item.actual_amount || 0);
       }
     }
 
@@ -442,21 +431,36 @@ async function checkBudgetAvailability(req, res, next) {
       const limitObj = budget ? budget.monthly_limits.find(ml => ml.period_month === monthNum) : null;
       const budgetLimit = limitObj ? parseFloat(limitObj.budget_limit || 0) : 0;
       const committed = monthlyCommitted[i];
-      const available = budgetLimit - committed;
+      const actual = monthlyActual[i];
 
       return {
         month: monthNum,
         limit: budgetLimit,
         committed,
-        available,
+        actual,
+        available: budgetLimit - committed,
         is_locked: budget ? budget.is_locked : false
       };
     });
 
+    // Rencana yang punya minimal 1 item matching brand/lob ini
+    const related_plans = allPlans
+      .filter(p => p.items.some(item => item.brand_id === brand_id && item.lob_id === lob_id))
+      .map(p => ({
+        id: p.id,
+        title: p.title,
+        status: p.status,
+        total_budget: parseFloat(p.total_budget || 0),
+        start_date: p.start_date,
+        end_date: p.end_date,
+        creator: p.creator
+      }));
+
     res.json({
       is_locked: budget ? budget.is_locked : false,
       total_budget: budget ? parseFloat(budget.total_budget || 0) : 0,
-      monthly: result
+      monthly: result,
+      related_plans
     });
   } catch (err) {
     next(err);

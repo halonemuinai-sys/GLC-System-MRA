@@ -176,10 +176,12 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
           {canMarkPaid && (
             <div className="border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 space-y-3">
               <button onClick={() => setShowMarkPaid(p => !p)}
-                className="flex items-center gap-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                <Banknote className="w-4 h-4" />
+                className="flex items-center gap-2 text-sm font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-600 transition-colors">
+                <div className="w-6 h-6 rounded-md bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center">
+                  <Banknote className="w-3.5 h-3.5" />
+                </div>
                 Tandai Sudah Dibayar
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMarkPaid ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ml-auto ${showMarkPaid ? 'rotate-180' : ''}`} />
               </button>
               {showMarkPaid && (
                 <div className="space-y-2">
@@ -190,7 +192,7 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
                     className="w-full text-sm bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                   />
                   <button onClick={handleMarkPaid} disabled={markingPaid}
-                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors disabled:opacity-60">
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-br from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-white text-sm font-bold rounded-lg px-4 py-2.5 shadow-md shadow-emerald-500/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer">
                     {markingPaid ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     Konfirmasi Pembayaran
                   </button>
@@ -204,13 +206,13 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
         <div className="flex items-center justify-between gap-2 p-4 border-t border-neutral-100 dark:border-neutral-800">
           {canDelete ? (
             <button onClick={handleDelete} disabled={deleting}
-              className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 font-medium transition-colors disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200/70 dark:border-red-500/20 text-sm text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 font-bold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
               {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               Hapus
             </button>
           ) : <div />}
           <button onClick={onClose}
-            className="text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 font-medium transition-colors px-4 py-2">
+            className="px-4 py-2 rounded-lg text-sm text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 font-semibold transition-all cursor-pointer">
             Tutup
           </button>
         </div>
@@ -354,12 +356,12 @@ export default function MarketingPaymentsPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleExportExcel}
-            className="flex items-center gap-1.5 text-sm font-semibold text-neutral-600 dark:text-neutral-300 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3.5 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
+            className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-500/20 rounded-xl px-3.5 py-2 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all active:scale-95 cursor-pointer">
             <FileSpreadsheet className="w-4 h-4" /> Export Excel
           </button>
           <button onClick={loadPayments}
-            className="flex items-center gap-1.5 text-sm font-semibold text-neutral-600 dark:text-neutral-300 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3.5 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            className="w-9 h-9 flex items-center justify-center bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl text-neutral-400 hover:text-indigo-500 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm transition-all cursor-pointer">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -475,9 +477,9 @@ export default function MarketingPaymentsPage() {
                       {new Date(p.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => setSelectedPayment(p)}
-                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 transition-all">
-                        <Eye className="w-3.5 h-3.5" /> Detail
+                      <button onClick={() => setSelectedPayment(p)} title="Lihat Detail"
+                        className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200/70 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-all active:scale-95 cursor-pointer">
+                        <Eye className="w-3.5 h-3.5" />
                       </button>
                     </td>
                   </motion.tr>

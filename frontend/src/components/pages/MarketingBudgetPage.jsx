@@ -73,6 +73,7 @@ export default function MarketingBudgetPage() {
   // Current Budget Data
   const [activeBudget, setActiveBudget] = useState(null);
   const [monthlyData, setMonthlyData] = useState([]);
+  const [relatedPlans, setRelatedPlans] = useState([]);
 
   // UI state
   const [showDrawer, setShowDrawer] = useState(false);
@@ -149,6 +150,7 @@ export default function MarketingBudgetPage() {
       }
 
       setMonthlyData(res.monthly || []);
+      setRelatedPlans(res.related_plans || []);
     } catch (err) {
       setError(err.message || 'Gagal memuat anggaran.');
     } finally {
@@ -267,7 +269,7 @@ export default function MarketingBudgetPage() {
   // Helpers for calculations
   const totalLimit = monthlyData.reduce((sum, m) => sum + m.limit, 0);
   const totalCommitted = monthlyData.reduce((sum, m) => sum + m.committed, 0);
-  const totalRealized = monthlyData.reduce((sum, m) => sum + m.limit * 0.1, 0); // Placeholder for actual realized
+  const totalRealized = monthlyData.reduce((sum, m) => sum + (m.actual || 0), 0);
   const totalAvailable = totalLimit - totalCommitted;
 
   const getMonthName = (num) => {
@@ -489,7 +491,7 @@ export default function MarketingBudgetPage() {
                 </tr>
               ) : (
                 monthlyData.map((item, idx) => {
-                  const usagePct = item.limit > 0 ? (item.committed / item.limit) * 100 : 0;
+                  const usagePct = item.limit > 0 ? ((item.actual || 0) / item.limit) * 100 : 0;
                   const barColor = usagePct > 100 ? 'bg-red-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-emerald-500';
 
                   return (
@@ -518,7 +520,7 @@ export default function MarketingBudgetPage() {
                         {formatRupiah(item.committed)}
                       </td>
                       <td className="px-6 py-3.5 font-mono text-neutral-500 dark:text-neutral-400">
-                        {formatRupiah(item.limit * 0.1)}
+                        {formatRupiah(item.actual || 0)}
                       </td>
                       <td className="px-6 py-3.5 text-right">
                         <div className="flex flex-col items-end gap-1">
@@ -538,6 +540,77 @@ export default function MarketingBudgetPage() {
           </table>
         </div>
       </div>
+
+      {/* ── Related Marketing Plans ── */}
+      {relatedPlans.length > 0 && (
+        <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-neutral-100 dark:border-neutral-855 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-indigo-500" />
+              <h3 className="text-xs font-bold text-neutral-850 dark:text-white">
+                Marketing Plans Terkait
+              </h3>
+              <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-extrabold">
+                {relatedPlans.length} rencana
+              </span>
+            </div>
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500">Kampanye yang menggunakan alokasi anggaran ini</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
+                  <th className="px-5 py-3.5">#</th>
+                  <th className="px-5 py-3.5">Judul Rencana</th>
+                  <th className="px-5 py-3.5">Status</th>
+                  <th className="px-5 py-3.5 text-right">Total Budget</th>
+                  <th className="px-5 py-3.5">Periode</th>
+                  <th className="px-5 py-3.5">Dibuat Oleh</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
+                {relatedPlans.map((plan) => {
+                  const statusColors = {
+                    DRAFT: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500',
+                    PENDING_APPROVAL: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+                    APPROVED: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                    REJECTED: 'bg-red-500/10 text-red-500',
+                    COMPLETED: 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                  };
+                  const statusLabels = {
+                    DRAFT: 'Draft',
+                    PENDING_APPROVAL: 'Menunggu',
+                    APPROVED: 'Disetujui',
+                    REJECTED: 'Ditolak',
+                    COMPLETED: 'Selesai'
+                  };
+                  const fmtDate = (d) => {
+                    if (!d) return '—';
+                    return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                  };
+
+                  return (
+                    <tr key={plan.id} className="hover:bg-neutral-550/5 dark:hover:bg-neutral-955/10 transition-colors">
+                      <td className="px-5 py-3.5 text-neutral-400 font-mono font-bold">#{plan.id}</td>
+                      <td className="px-5 py-3.5 font-semibold text-neutral-850 dark:text-white max-w-[240px] truncate">{plan.title}</td>
+                      <td className="px-5 py-3.5">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide ${statusColors[plan.status] || statusColors.DRAFT}`}>
+                          {statusLabels[plan.status] || plan.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right font-mono font-bold text-neutral-850 dark:text-white">{formatRupiah(plan.total_budget)}</td>
+                      <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                        {fmtDate(plan.start_date)} – {fmtDate(plan.end_date)}
+                      </td>
+                      <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400">{plan.creator?.name || '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── Slide-over Drawer (Create Budget Form) ── */}
       <AnimatePresence>

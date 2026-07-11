@@ -164,7 +164,7 @@ export default function MarketingOverviewPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:text-emerald-600 hover:border-emerald-300 shadow-sm transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-500/20 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all active:scale-95 cursor-pointer"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" /> Export
           </button>
@@ -179,7 +179,7 @@ export default function MarketingOverviewPage() {
           </select>
           <button
             onClick={loadPlans}
-            className="p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 shadow-sm transition-colors cursor-pointer"
+            className="w-9 h-9 flex items-center justify-center bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-400 hover:text-indigo-500 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm transition-all cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
           </button>

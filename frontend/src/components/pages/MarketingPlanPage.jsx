@@ -28,7 +28,8 @@ import {
   Undo2,
   Pencil,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Eye
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -177,6 +178,11 @@ export default function MarketingPlanPage() {
     variance: 0,
   }), [summary]);
 
+  const handleWizardError = useCallback((err) => {
+    setError(err);
+    setTimeout(() => setError(null), 6000);
+  }, []);
+
   // Action handlers
   const handleCreatePlan = () => {
     setDraftPlanId(null);
@@ -270,7 +276,7 @@ export default function MarketingPlanPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleRefresh}
-            className="p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-indigo-500 shadow-sm transition-colors cursor-pointer"
+            className="w-9 h-9 flex items-center justify-center bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-400 hover:text-indigo-500 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm transition-all cursor-pointer"
             title={t('refreshData')}
           >
             <RefreshCw className="w-4 h-4" />
@@ -278,7 +284,7 @@ export default function MarketingPlanPage() {
 
           <button
             onClick={handleCreatePlan}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 transition-all cursor-pointer"
+            className="flex items-center gap-2 bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/25 transition-all cursor-pointer active:scale-95"
           >
             <Plus className="w-4 h-4" />
             {t('createPlan')}
@@ -478,6 +484,11 @@ export default function MarketingPlanPage() {
                       statusText = 'Approved';
                       StatusIcon = CheckCircle;
                       rowAccent = 'border-l-transparent hover:border-l-emerald-400';
+                    } else if (plan.status === 'COMPLETED') {
+                      statusBadge = 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/5 dark:text-blue-400 border-blue-200/60 dark:border-blue-900/30';
+                      statusText = 'Completed';
+                      StatusIcon = CheckCircle;
+                      rowAccent = 'border-l-transparent hover:border-l-blue-400';
                     } else if (plan.status === 'REJECTED') {
                       statusBadge = 'bg-red-500/10 text-red-600 dark:bg-red-500/5 dark:text-red-450 border-red-200/60 dark:border-red-900/30';
                       statusText = 'Rejected';
@@ -535,51 +546,56 @@ export default function MarketingPlanPage() {
                             <span>{plan.creator?.name || 'N/A'}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-center">
-                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
                             {/* DRAFT actions */}
                             {plan.status === 'DRAFT' && (
                               <>
-                                <button
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                                   onClick={() => handleEditDraft(plan.id)}
-                                  className="px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-indigo-500 hover:border-indigo-500 text-[10px] font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1"
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200/70 dark:border-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-all cursor-pointer"
+                                  title={t('btnContinue')}
                                 >
-                                  <Pencil className="w-3 h-3" /> {t('btnContinue')}
-                                </button>
-                                <button
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                                   onClick={() => handleSubmitDraft(plan.id)}
                                   disabled={submitting}
-                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-sm shadow-emerald-500/30 hover:from-emerald-400 hover:to-emerald-600 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title={t('btnSubmit')}
                                 >
-                                  <Send className="w-3 h-3" /> {t('btnSubmit')}
-                                </button>
+                                  <Send className="w-3.5 h-3.5" />
+                                </motion.button>
                               </>
                             )}
 
                             {/* PENDING_APPROVAL recall */}
                             {plan.status === 'PENDING_APPROVAL' && (userRole === 'marketing' || userRole === 'admin') && (
-                              <button
+                              <motion.button
+                                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                                 onClick={() => handleRecallPlan(plan.id)}
                                 disabled={recallingPlanId === plan.id}
-                                className="px-2.5 py-1.5 bg-amber-500/10 dark:bg-amber-500/5 border border-amber-300/60 dark:border-amber-700/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/15 rounded-xl text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/25 transition-all cursor-pointer disabled:opacity-50"
                                 title={t('btnRecallTitle')}
                               >
-                                {recallingPlanId === plan.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Undo2 className="w-3 h-3" />}
-                                {t('btnRecall')}
-                              </button>
+                                {recallingPlanId === plan.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
+                              </motion.button>
                             )}
 
-                            <button
-                              onClick={() => openDetail(plan.id)}
-                              className="px-2.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-xl hover:text-indigo-500 hover:border-indigo-500 text-[10px] font-bold shadow-sm transition-all cursor-pointer"
-                            >
-                              {t('btnDetails')}
-                            </button>
                             <motion.button
-                              whileHover={{ scale: 1.15 }}
-                              whileTap={{ scale: 0.9 }}
+                              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                              onClick={() => openDetail(plan.id)}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200/70 dark:border-neutral-700/40 text-neutral-500 dark:text-neutral-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200/70 dark:hover:border-indigo-500/20 transition-all cursor-pointer"
+                              title={t('btnDetails')}
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                               onClick={() => setPlanToDelete(plan)}
-                              className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-red-200/40 flex items-center justify-center"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200/60 dark:hover:border-red-500/20 transition-all cursor-pointer"
                               title={t('btnDeleteTitle')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -651,10 +667,7 @@ export default function MarketingPlanPage() {
           setRevisingPlanId(null);
           setTimeout(() => setSuccessMsg(null), 5000);
         }}
-        onError={(err) => {
-          setError(err);
-          setTimeout(() => setError(null), 6000);
-        }}
+        onError={handleWizardError}
       />
 
       {/* MODAL 2: PLAN DETAIL & INLINE PAYMENT REQUEST */}

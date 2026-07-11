@@ -4,7 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Calendar, Paperclip, FileSpreadsheet, Building, Loader2,
-  AlertTriangle, Info, BarChart2, CheckCircle, Clock
+  AlertTriangle, Info, BarChart2, CheckCircle, Clock,
+  GitMerge, CheckSquare, Plus, Send, Trash2, ChevronDown, ChevronUp,
+  TrendingUp, Flag
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -78,6 +80,20 @@ export default function MarketingPlanDetailModal({
 
   // Recalling state
   const [recalling, setRecalling] = useState(false);
+
+  // Complete plan state
+  const [completing, setCompleting] = useState(false);
+
+  // Amendment state
+  const [showAmendmentPanel, setShowAmendmentPanel] = useState(false);
+  const [showAmendmentForm, setShowAmendmentForm] = useState(false);
+  const [amendmentTitle, setAmendmentTitle] = useState('');
+  const [amendmentJustification, setAmendmentJustification] = useState('');
+  const [amendmentChanges, setAmendmentChanges] = useState([]);
+  const [submittingAmendment, setSubmittingAmendment] = useState(false);
+  const [amendmentError, setAmendmentError] = useState(null);
+  const [amendmentMsg, setAmendmentMsg] = useState(null);
+  const [reviewingAmendmentId, setReviewingAmendmentId] = useState(null);
 
   // Fetch plan details
   const fetchPlanDetail = useCallback(async () => {
@@ -237,6 +253,94 @@ export default function MarketingPlanDetailModal({
     }
   };
 
+  const handleCompletePlan = async () => {
+    if (!selectedPlan) return;
+    if (!window.confirm('Yakin ingin menutup plan ini? Status akan berubah menjadi COMPLETED dan tidak bisa dibatalkan.')) return;
+    setCompleting(true);
+    try {
+      await apiClient.post(`/api/marketing/plans/${selectedPlan.id}/complete`);
+      onSuccessMsg('Plan berhasil diselesaikan dan ditutup.');
+      loadPlans();
+      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
+      setSelectedPlan(updated);
+    } catch (err) { alert(err.message || 'Gagal menyelesaikan plan.'); }
+    finally { setCompleting(false); }
+  };
+
+  const addAmendmentChange = () => {
+    setAmendmentChanges(prev => [...prev, { action: 'CHANGE_VENDOR', plan_item_id: '', new_vendor_id: '', budget_delta: '', change_reason: '', new_item: null }]);
+  };
+
+  const removeAmendmentChange = (idx) => {
+    setAmendmentChanges(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const updateAmendmentChange = (idx, field, value) => {
+    setAmendmentChanges(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+  };
+
+  const handleSubmitAmendmentDraft = async () => {
+    if (!selectedPlan || !amendmentTitle || !amendmentJustification || amendmentChanges.length === 0) {
+      setAmendmentError('Judul, justifikasi, dan minimal satu perubahan wajib diisi.');
+      return;
+    }
+    setSubmittingAmendment(true);
+    setAmendmentError(null);
+    try {
+      const changes = amendmentChanges.map(c => ({
+        action: c.action,
+        plan_item_id: c.plan_item_id ? parseInt(c.plan_item_id, 10) : null,
+        new_vendor_id: c.new_vendor_id ? parseInt(c.new_vendor_id, 10) : null,
+        budget_delta: c.budget_delta ? parseFloat(c.budget_delta) : null,
+        change_reason: c.change_reason || null,
+        new_item: c.action === 'ADD_ITEM' ? c.new_item : null
+      }));
+      await apiClient.post(`/api/marketing/plans/${selectedPlan.id}/amendments`, {
+        title: amendmentTitle, justification: amendmentJustification, changes
+      });
+      setAmendmentMsg('Amendment berhasil disimpan sebagai draft.');
+      setShowAmendmentForm(false);
+      setAmendmentTitle(''); setAmendmentJustification(''); setAmendmentChanges([]);
+      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
+      setSelectedPlan(updated);
+      setTimeout(() => setAmendmentMsg(null), 4000);
+    } catch (err) { setAmendmentError(err.message || 'Gagal menyimpan amendment.'); }
+    finally { setSubmittingAmendment(false); }
+  };
+
+  const handleSubmitAmendment = async (amendmentId) => {
+    try {
+      await apiClient.post(`/api/marketing/amendments/${amendmentId}/submit`);
+      setAmendmentMsg('Amendment diajukan untuk review.');
+      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
+      setSelectedPlan(updated);
+      setTimeout(() => setAmendmentMsg(null), 4000);
+    } catch (err) { alert(err.message || 'Gagal mengajukan amendment.'); }
+  };
+
+  const handleReviewAmendment = async (amendmentId, action) => {
+    const review_comment = action === 'REJECT' ? window.prompt('Alasan penolakan:') : null;
+    if (action === 'REJECT' && !review_comment) return;
+    setReviewingAmendmentId(amendmentId);
+    try {
+      await apiClient.post(`/api/marketing/amendments/${amendmentId}/review`, { action, review_comment });
+      setAmendmentMsg(action === 'APPROVE' ? 'Amendment disetujui dan perubahan diterapkan.' : 'Amendment ditolak.');
+      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
+      setSelectedPlan(updated); loadPlans();
+      setTimeout(() => setAmendmentMsg(null), 4000);
+    } catch (err) { alert(err.message || 'Gagal me-review amendment.'); }
+    finally { setReviewingAmendmentId(null); }
+  };
+
+  const handleDeleteAmendment = async (amendmentId) => {
+    if (!window.confirm('Hapus amendment ini?')) return;
+    try {
+      await apiClient.delete(`/api/marketing/amendments/${amendmentId}`);
+      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
+      setSelectedPlan(updated);
+    } catch (err) { alert(err.message || 'Gagal menghapus amendment.'); }
+  };
+
   return (
     <>
       {/* MODAL 2: PLAN DETAIL */}
@@ -271,6 +375,7 @@ export default function MarketingPlanDetailModal({
                         <h3 className="text-md font-black text-neutral-850 dark:text-white">{selectedPlan.title}</h3>
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
                           selectedPlan.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-600' :
+                          selectedPlan.status === 'COMPLETED' ? 'bg-blue-500/10 text-blue-600' :
                           selectedPlan.status === 'REJECTED' ? 'bg-red-500/10 text-red-650' : 'bg-amber-500/10 text-amber-600'
                         }`}>
                           {selectedPlan.status}
@@ -342,16 +447,18 @@ export default function MarketingPlanDetailModal({
                               <th className="px-4 py-3">Branch</th>
                               <th className="px-4 py-3">Vendor</th>
                               <th className="px-4 py-3 text-right">{t('colBudgetAlloc')}</th>
+                              <th className="px-4 py-3 text-right">Committed</th>
                               <th className="px-4 py-3 text-right">{t('colRealized')}</th>
                               <th className="px-4 py-3 text-right">{t('colRemainingBalance')}</th>
-                              {selectedPlan.status === 'APPROVED' && <th className="px-4 py-3 text-center">{t('colAction')}</th>}
+                              {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && <th className="px-4 py-3 text-center">{t('colAction')}</th>}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-neutral-150 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
                             {selectedPlan.items?.map((item, idx) => {
                               const budget = Number(item.budget_amount || 0);
+                              const committed = Number(item.committed_amount || 0);
                               const actual = Number(item.actual_amount || 0);
-                              const remaining = budget - actual;
+                              const remaining = budget - committed - actual;
 
                               return (
                                 <React.Fragment key={item.id || idx}>
@@ -390,27 +497,31 @@ export default function MarketingPlanDetailModal({
                                         {item.qty || 1} x {formatIDR(item.unit_price || budget)}
                                       </span>
                                     </td>
+                                    <td className="px-4 py-3 text-right">
+                                      {committed > 0 ? (
+                                        <span className="font-bold text-amber-600 dark:text-amber-400">{formatIDR(committed)}</span>
+                                      ) : <span className="text-neutral-300 dark:text-neutral-700">-</span>}
+                                    </td>
                                     <td className="px-4 py-3 text-right text-emerald-600 dark:text-emerald-455 font-bold">{formatIDR(actual)}</td>
-                                    <td className={`px-4 py-3 text-right font-bold ${remaining <= 0 ? 'text-red-500' : 'text-neutral-850 dark:text-white'}`}>
+                                    <td className={`px-4 py-3 text-right font-bold ${remaining < 0 ? 'text-red-500' : remaining < budget * 0.15 ? 'text-amber-500' : 'text-neutral-850 dark:text-white'}`}>
                                       {formatIDR(remaining)}
                                     </td>
-                                    {selectedPlan.status === 'APPROVED' && (
+                                    {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
                                       <td className="px-4 py-3 text-center">
-                                        <button
-                                          onClick={() => {
-                                            setPaymentRequestItem(item);
-                                            setIsPaymentModalOpen(true);
-                                          }}
-                                          className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-750 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer"
-                                        >
-                                          {t('btnRecordExpense')}
-                                        </button>
+                                        {selectedPlan.status === 'APPROVED' && (
+                                          <button
+                                            onClick={() => { setPaymentRequestItem(item); setIsPaymentModalOpen(true); }}
+                                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-750 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer"
+                                          >
+                                            {t('btnRecordExpense')}
+                                          </button>
+                                        )}
                                       </td>
                                     )}
                                   </tr>
                                   {item.payment_requests && item.payment_requests.length > 0 && (
                                     <tr className="bg-neutral-50/20 dark:bg-neutral-955/10">
-                                      <td colSpan={selectedPlan.status === 'APPROVED' ? 9 : 8} className="px-6 py-2.5">
+                                      <td colSpan={['APPROVED','COMPLETED'].includes(selectedPlan.status) ? 10 : 9} className="px-6 py-2.5">
                                         <div className="border-l-2 border-indigo-500 pl-4 py-1 space-y-2">
                                           <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block">
                                             {t('expenseHistory')} ({item.payment_requests.length})
@@ -456,6 +567,183 @@ export default function MarketingPlanDetailModal({
                         </table>
                       </div>
                     </div>
+
+                    {/* Amendment Section */}
+                    {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setShowAmendmentPanel(p => !p)}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-amber-300 dark:hover:border-amber-700/40 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <GitMerge className="w-4 h-4 text-amber-500" />
+                            <span className="text-xs font-black text-neutral-800 dark:text-white uppercase tracking-wider">Amendments / Perubahan Plan</span>
+                            {selectedPlan.amendments?.length > 0 && (
+                              <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-black rounded-full">{selectedPlan.amendments.length}</span>
+                            )}
+                          </div>
+                          {showAmendmentPanel ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
+                        </button>
+
+                        {showAmendmentPanel && (
+                          <div className="space-y-3 px-1">
+                            {amendmentMsg && (
+                              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold px-3 py-2 rounded-xl flex items-center gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5" /> {amendmentMsg}
+                              </div>
+                            )}
+
+                            {/* Existing amendments list */}
+                            {selectedPlan.amendments?.length > 0 ? (
+                              <div className="space-y-2">
+                                {selectedPlan.amendments.map(am => {
+                                  const statusColor = am.status === 'APPROVED' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200/70 dark:border-emerald-500/20'
+                                    : am.status === 'REJECTED' ? 'text-red-600 bg-red-50 dark:bg-red-500/10 border-red-200/70 dark:border-red-500/20'
+                                    : am.status === 'PENDING_REVIEW' ? 'text-amber-600 bg-amber-50 dark:bg-amber-500/10 border-amber-200/70 dark:border-amber-500/20'
+                                    : 'text-neutral-500 bg-neutral-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800';
+                                  return (
+                                    <div key={am.id} className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-3.5 space-y-2">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                          <p className="text-xs font-bold text-neutral-800 dark:text-white">{am.title}</p>
+                                          <p className="text-[10px] text-neutral-400 mt-0.5">{am.creator?.name} · {new Date(am.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                        </div>
+                                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${statusColor}`}>{am.status.replace('_', ' ')}</span>
+                                      </div>
+                                      <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{am.justification}</p>
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        {am.status === 'DRAFT' && (
+                                          <>
+                                            <button onClick={() => handleSubmitAmendment(am.id)}
+                                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-[10px] font-bold shadow-sm shadow-emerald-500/25 transition-all cursor-pointer active:scale-95">
+                                              <Send className="w-3 h-3" /> Ajukan Review
+                                            </button>
+                                            <button onClick={() => handleDeleteAmendment(am.id)}
+                                              className="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200/60 transition-all cursor-pointer">
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </>
+                                        )}
+                                        {am.status === 'PENDING_REVIEW' && ['admin', 'manager', 'finance'].includes(userRole) && (
+                                          <>
+                                            <button onClick={() => handleReviewAmendment(am.id, 'APPROVE')} disabled={reviewingAmendmentId === am.id}
+                                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-[10px] font-bold shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50">
+                                              {reviewingAmendmentId === am.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} Setujui
+                                            </button>
+                                            <button onClick={() => handleReviewAmendment(am.id, 'REJECT')} disabled={reviewingAmendmentId === am.id}
+                                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200/70 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-bold transition-all cursor-pointer active:scale-95 disabled:opacity-50">
+                                              <X className="w-3 h-3" /> Tolak
+                                            </button>
+                                          </>
+                                        )}
+                                        {am.review_comment && (
+                                          <p className="w-full text-[10px] text-neutral-400 italic mt-1">"{am.review_comment}"</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : !showAmendmentForm && (
+                              <p className="text-[11px] text-neutral-400 text-center py-4">Belum ada amendment untuk plan ini.</p>
+                            )}
+
+                            {/* New amendment form */}
+                            {showAmendmentForm ? (
+                              <div className="border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 space-y-3 bg-amber-50/30 dark:bg-amber-500/5">
+                                <h5 className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                                  <GitMerge className="w-3.5 h-3.5" /> Buat Amendment Baru
+                                </h5>
+                                {amendmentError && (
+                                  <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-bold px-3 py-2 rounded-lg flex items-center gap-1.5">
+                                    <AlertTriangle className="w-3 h-3" /> {amendmentError}
+                                  </div>
+                                )}
+                                <div className="space-y-1.5">
+                                  <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Judul Amendment</label>
+                                  <input type="text" value={amendmentTitle} onChange={e => setAmendmentTitle(e.target.value)} placeholder="cth: Ganti vendor banner, tambah biaya digital ads"
+                                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-amber-400 font-semibold" />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Justifikasi / Alasan</label>
+                                  <textarea rows={2} value={amendmentJustification} onChange={e => setAmendmentJustification(e.target.value)} placeholder="Jelaskan mengapa perubahan ini diperlukan..."
+                                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-amber-400 resize-none font-medium" />
+                                </div>
+
+                                {/* Changes list */}
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Daftar Perubahan</label>
+                                    <button onClick={addAmendmentChange} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold transition-all cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-500/20">
+                                      <Plus className="w-3 h-3" /> Tambah Perubahan
+                                    </button>
+                                  </div>
+                                  {amendmentChanges.map((change, idx) => (
+                                    <div key={idx} className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-3 space-y-2 bg-white dark:bg-neutral-900">
+                                      <div className="flex items-center gap-2">
+                                        <select value={change.action} onChange={e => updateAmendmentChange(idx, 'action', e.target.value)}
+                                          className="flex-1 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-bold text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-amber-400">
+                                          <option value="CHANGE_VENDOR">Ganti Vendor</option>
+                                          <option value="CHANGE_BUDGET">Ubah Budget</option>
+                                          <option value="ADD_ITEM">Tambah Item Baru</option>
+                                          <option value="REMOVE_ITEM">Hapus Item</option>
+                                        </select>
+                                        <button onClick={() => removeAmendmentChange(idx)} className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all cursor-pointer">
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                      {change.action !== 'ADD_ITEM' && (
+                                        <select value={change.plan_item_id} onChange={e => updateAmendmentChange(idx, 'plan_item_id', e.target.value)}
+                                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-amber-400">
+                                          <option value="">— Pilih Item —</option>
+                                          {selectedPlan.items?.map(item => (
+                                            <option key={item.id} value={item.id}>{item.m_coa?.code} · {item.m_brand?.name || 'Global'} · {getMonthName(item.period_month, lang)} · {formatIDR(item.budget_amount)}</option>
+                                          ))}
+                                        </select>
+                                      )}
+                                      {change.action === 'CHANGE_VENDOR' && (
+                                        <input type="number" value={change.new_vendor_id} onChange={e => updateAmendmentChange(idx, 'new_vendor_id', e.target.value)}
+                                          placeholder="ID Vendor Baru"
+                                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium focus:outline-none focus:border-amber-400" />
+                                      )}
+                                      {change.action === 'CHANGE_BUDGET' && (
+                                        <input type="number" value={change.budget_delta} onChange={e => updateAmendmentChange(idx, 'budget_delta', e.target.value)}
+                                          placeholder="Delta budget (positif = tambah, negatif = kurang)"
+                                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium focus:outline-none focus:border-amber-400" />
+                                      )}
+                                      <input type="text" value={change.change_reason} onChange={e => updateAmendmentChange(idx, 'change_reason', e.target.value)}
+                                        placeholder="Alasan spesifik perubahan ini (opsional)"
+                                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium focus:outline-none focus:border-amber-400" />
+                                    </div>
+                                  ))}
+                                  {amendmentChanges.length === 0 && (
+                                    <p className="text-[10px] text-neutral-400 text-center py-2">Klik "Tambah Perubahan" untuk menambahkan item perubahan.</p>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2 pt-1">
+                                  <button onClick={() => { setShowAmendmentForm(false); setAmendmentError(null); setAmendmentChanges([]); }}
+                                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer">
+                                    Batal
+                                  </button>
+                                  <button onClick={handleSubmitAmendmentDraft} disabled={submittingAmendment}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold shadow-sm shadow-amber-500/25 transition-all cursor-pointer active:scale-95 disabled:opacity-50">
+                                    {submittingAmendment ? <Loader2 className="w-3 h-3 animate-spin" /> : <Flag className="w-3 h-3" />} Simpan Draft
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              selectedPlan.status === 'APPROVED' && (
+                                <button onClick={() => { setShowAmendmentForm(true); setAmendmentError(null); }}
+                                  className="w-full flex items-center justify-center gap-1.5 py-2.5 border border-dashed border-amber-300 dark:border-amber-700/50 rounded-xl text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all cursor-pointer">
+                                  <Plus className="w-3.5 h-3.5" /> Request Amendment
+                                </button>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Post-Campaign Actuals */}
                     {selectedPlan.status === 'APPROVED' && (
@@ -628,6 +916,19 @@ export default function MarketingPlanDetailModal({
                           className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/15 flex items-center gap-1.5 cursor-pointer transition-all"
                         >
                           Edit Draft
+                        </button>
+                      )}
+
+                      {selectedPlan.status === 'APPROVED' && (userRole === 'admin' || userRole === 'marketing') && selectedPlan.actuals_filled_at && (
+                        <button
+                          type="button"
+                          disabled={completing}
+                          onClick={handleCompletePlan}
+                          className="px-4 py-2 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all active:scale-95"
+                          title="Tutup plan setelah semua payment selesai"
+                        >
+                          {completing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckSquare className="w-3.5 h-3.5" />}
+                          Selesaikan Plan
                         </button>
                       )}
                     </div>

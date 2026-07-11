@@ -6,6 +6,7 @@ const planController = require('./marketing/marketingPlanController');
 const paymentController = require('./marketing/marketingPaymentController');
 const approvalController = require('./marketing/marketingApprovalController');
 const settingsController = require('./marketing/marketingSettingsController');
+const amendmentController = require('./marketing/marketingAmendmentController');
 
 const router = express.Router();
 
@@ -26,9 +27,18 @@ router.post('/plans/:id/submit', verifyToken, checkRole(['admin', 'marketing']),
 router.post('/plans/:id/recall', verifyToken, checkRole(['admin', 'marketing']), planController.recallPlan);
 router.put('/plans/:id/actuals', verifyToken, checkRole(['admin', 'marketing']), planController.updatePlanActuals);
 router.put('/plans/:id/revise', verifyToken, checkRole(['admin', 'marketing']), planController.revisePlan);
+router.post('/plans/:id/complete', verifyToken, checkRole(['admin', 'marketing']), planController.completePlan);
 router.get('/plans', verifyToken, planController.getPlans);
 router.get('/plans/:id', verifyToken, planController.getPlanDetail);
 router.delete('/plans/:id', verifyToken, planController.deletePlan);
+
+// Plan Amendments
+router.post('/plans/:id/amendments', verifyToken, checkRole(['admin', 'marketing']), amendmentController.createAmendment);
+router.get('/plans/:id/amendments', verifyToken, amendmentController.listAmendments);
+router.get('/amendments/:id', verifyToken, amendmentController.getAmendmentDetail);
+router.post('/amendments/:id/submit', verifyToken, checkRole(['admin', 'marketing']), amendmentController.submitAmendment);
+router.post('/amendments/:id/review', verifyToken, checkRole(['admin', 'manager', 'finance']), amendmentController.reviewAmendment);
+router.delete('/amendments/:id', verifyToken, amendmentController.deleteAmendment);
 
 // Payments (Payment Requests)
 router.get('/payments', verifyToken, paymentController.getPayments);

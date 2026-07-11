@@ -774,9 +774,10 @@ model helpdesk_user {
   companyId Int
   company   helpdesk_company   @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   
-  marketing_plans   marketing_plans[]
-  payment_requests  payment_requests[]
-  approval_history  approval_history[]
+  marketing_plans              marketing_plans[]
+  payment_requests             payment_requests[]
+  approval_history             approval_history[]
+  marketing_plan_amendments    marketing_plan_amendments[]
 
   @@map("User")
   @@schema("helpdesk")
@@ -816,7 +817,7 @@ model marketing_plans {
   cta_start_date    DateTime?               @db.Date
   cta_end_date      DateTime?               @db.Date
   total_budget      Decimal                 @default(0) @db.Decimal(18, 2)
-  status            String                  @default("DRAFT") @db.VarChar(20) // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED
+  status            String                  @default("DRAFT") @db.VarChar(20) // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, COMPLETED
   creator_id        String                  @db.VarChar(50)
   created_at        DateTime                @default(now()) @db.Timestamp(6)
   updated_at        DateTime                @default(now()) @db.Timestamp(6)
@@ -843,6 +844,7 @@ model marketing_plans {
 
   items             marketing_plan_items[]
   approval_history  approval_history[]
+  amendments        marketing_plan_amendments[]
 
   @@schema("marketing_budget")
 }
@@ -918,6 +920,7 @@ model payment_requests {
   status                 String                 @default("PENDING") @db.VarChar(20) // PENDING, APPROVED, REJECTED, PAID
   notes                  String?
   doc_url                String?
+  paid_at                DateTime?              @db.Timestamp(6)
   creator_id             String                 @db.VarChar(50)
   created_at             DateTime               @default(now()) @db.Timestamp(6)
   updated_at             DateTime               @default(now()) @db.Timestamp(6)
@@ -925,6 +928,41 @@ model payment_requests {
   marketing_plan_item    marketing_plan_items   @relation(fields: [marketing_plan_item_id], references: [id], onDelete: NoAction)
   creator                helpdesk_user          @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   approval_history       approval_history[]
+
+  @@schema("marketing_budget")
+}
+
+model marketing_plan_amendments {
+  id                Int      @id @default(autoincrement())
+  marketing_plan_id Int
+  title             String   @db.VarChar(200)
+  justification     String
+  status            String   @default("DRAFT") @db.VarChar(20) // DRAFT, PENDING_REVIEW, APPROVED, REJECTED
+  creator_id        String   @db.VarChar(50)
+  reviewed_by       String?  @db.VarChar(50)
+  reviewed_at       DateTime? @db.Timestamp(6)
+  review_comment    String?
+  created_at        DateTime @default(now()) @db.Timestamp(6)
+  updated_at        DateTime @default(now()) @db.Timestamp(6)
+
+  marketing_plan marketing_plans @relation(fields: [marketing_plan_id], references: [id], onDelete: Cascade)
+  creator        helpdesk_user   @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  change_items   marketing_plan_amendment_items[]
+
+  @@schema("marketing_budget")
+}
+
+model marketing_plan_amendment_items {
+  id            Int      @id @default(autoincrement())
+  amendment_id  Int
+  action        String   @db.VarChar(20) // CHANGE_VENDOR | CHANGE_BUDGET | ADD_ITEM | REMOVE_ITEM
+  plan_item_id  Int?     // references marketing_plan_items.id — no Prisma relation to avoid circular
+  new_vendor_id Int?     // for CHANGE_VENDOR
+  budget_delta  Decimal? @db.Decimal(18, 2) // for CHANGE_BUDGET: positive=increase, negative=decrease
+  new_item_json String?  // JSON for ADD_ITEM: full new item spec
+  change_reason String?
+
+  amendment marketing_plan_amendments @relation(fields: [amendment_id], references: [id], onDelete: Cascade)
 
   @@schema("marketing_budget")
 }
