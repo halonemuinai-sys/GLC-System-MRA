@@ -15,6 +15,7 @@ const router = express.Router();
 // Role checking definitions
 const allowRead = verifyToken; // Semuanya yang terotentikasi bisa membaca untuk kemudahan dashboard terintegrasi
 const allowWrite = [verifyToken, checkRole(['admin', 'ga'])];
+const allowVendorWrite = [verifyToken, checkRole(['admin', 'ga', 'legal', 'compliance', 'marketing'])];
 
 // Dashboard Stats & Notifications
 router.get('/dashboard-stats', allowRead, dashboardController.getDashboardStats);
@@ -45,9 +46,10 @@ router.delete('/vehicles/:id', allowWrite, vehicleController.deleteVehicle);
 // Vendors CRUD
 router.get('/vendors', allowRead, vendorController.getVendors);
 router.get('/vendors/:id', allowRead, vendorController.getVendorDetail);
-router.post('/vendors', allowWrite, vendorController.createVendor);
-router.put('/vendors/:id', allowWrite, vendorController.updateVendor);
-router.delete('/vendors/:id', allowWrite, vendorController.deleteVendor);
+router.post('/vendors', allowVendorWrite, vendorController.createVendor);
+router.put('/vendors/:id', allowVendorWrite, vendorController.updateVendor);
+router.delete('/vendors/:id', allowVendorWrite, vendorController.deleteVendor);
+
 
 // Maintenances CRUD
 router.get('/maintenances', allowRead, maintenanceController.getMaintenances);
