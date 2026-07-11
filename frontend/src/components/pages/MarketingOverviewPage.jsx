@@ -11,8 +11,13 @@ import {
   Layers,
   RefreshCw,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  FileSpreadsheet
 } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  Legend, ResponsiveContainer
+} from 'recharts';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
 import MarketingGanttChart from './MarketingGanttChart';
@@ -31,6 +36,52 @@ export default function MarketingOverviewPage() {
   const [fiscalYear, setFiscalYear] = useState(String(CURRENT_YEAR));
 
   const FISCAL_YEAR_OPTIONS = useMemo(() => Array.from({ length: 4 }, (_, i) => String(CURRENT_YEAR - 1 + i)), []);
+
+  const handleExportExcel = async () => {
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Marketing Plans');
+      ws.columns = [
+        { header: 'No', key: 'no', width: 5 },
+        { header: 'Judul Campaign', key: 'title', width: 35 },
+        { header: 'Perusahaan', key: 'company', width: 25 },
+        { header: 'Status', key: 'status', width: 16 },
+        { header: 'Total Budget (Rp)', key: 'budget', width: 22 },
+        { header: 'Realisasi (Rp)', key: 'actual', width: 20 },
+        { header: 'Sisa (Rp)', key: 'sisa', width: 20 },
+        { header: 'Burn Rate (%)', key: 'burn', width: 14 },
+        { header: 'Fiscal Year', key: 'fy', width: 12 },
+      ];
+      ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+
+      plans.forEach((p, i) => {
+        const actual = (p.items || []).reduce((s, it) => s + Number(it.actual_amount || 0), 0);
+        const budget = Number(p.total_budget || 0);
+        ws.addRow({
+          no: i + 1,
+          title: p.title,
+          company: p.company?.name || '-',
+          status: p.status,
+          budget,
+          actual,
+          sisa: budget - actual,
+          burn: budget > 0 ? Number(((actual / budget) * 100).toFixed(1)) : 0,
+          fy: p.fiscal_year,
+        });
+      });
+      ['budget', 'actual', 'sisa'].forEach(k => { ws.getColumn(k).numFmt = '#,##0'; });
+      ws.getColumn('burn').numFmt = '0.0"%"';
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url;
+      a.download = `marketing-plans-${fiscalYear}.xlsx`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) { alert('Gagal export: ' + err.message); }
+  };
 
   const loadPlans = useCallback(async () => {
     setLoading(true);
@@ -111,6 +162,12 @@ export default function MarketingOverviewPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:text-emerald-600 hover:border-emerald-300 shadow-sm transition-colors cursor-pointer"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" /> Export
+          </button>
           <select
             value={fiscalYear}
             onChange={e => setFiscalYear(e.target.value)}
@@ -294,6 +351,52 @@ export default function MarketingOverviewPage() {
               );
             })}
           </div>
+
+          {/* Budget vs Actual Chart */}
+          {plans.length > 0 && (
+            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mb-0.5">Perbandingan</p>
+                  <h3 className="text-base font-black text-neutral-900 dark:text-white">Budget vs Realisasi per Campaign</h3>
+                </div>
+                <div className="flex items-center gap-3 text-xs font-semibold text-neutral-500">
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-500" />Budget</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500" />Realisasi</span>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart
+                  data={plans.slice(0, 10).map(p => ({
+                    name: p.title?.length > 20 ? p.title.slice(0, 20) + '…' : (p.title || '-'),
+                    Budget: Number(p.total_budget || 0),
+                    Realisasi: (p.items || []).reduce((s, it) => s + Number(it.actual_amount || 0), 0),
+                  }))}
+                  margin={{ top: 4, right: 8, left: 8, bottom: 40 }}
+                  barCategoryGap="30%"
+                  barGap={3}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.06} vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 600 }} angle={-30} textAnchor="end" interval={0} />
+                  <YAxis tickFormatter={v => formatIDRCompact(v)} tick={{ fontSize: 10 }} width={72} />
+                  <RechartsTooltip
+                    formatter={(v, name) => [formatIDR(v), name]}
+                    contentStyle={{
+                      background: 'var(--color-neutral-900, #0f172a)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '12px', fontSize: '12px'
+                    }}
+                  />
+                  <Legend wrapperStyle={{ display: 'none' }} />
+                  <Bar dataKey="Budget" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="Realisasi" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+              {plans.length > 10 && (
+                <p className="text-center text-[11px] text-neutral-400 mt-2">Menampilkan 10 dari {plans.length} campaign</p>
+              )}
+            </div>
+          )}
 
           {/* Gantt Chart */}
           <MarketingGanttChart plans={plans} fiscalYear={fiscalYear} />

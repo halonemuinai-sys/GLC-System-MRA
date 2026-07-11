@@ -43,7 +43,8 @@ import {
   Settings,
   Tag,
   MapPin,
-  LineChart
+  LineChart,
+  CreditCard
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
@@ -471,6 +472,7 @@ function SidebarContent({
             { name: 'Overview & Analytics', path: '/dashboard/marketing/overview', icon: LineChart, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: hasAccess(['marketing', 'auditor']) },
             { name: 'Overview Approval', path: '/dashboard/marketing/approval-overview', icon: ClipboardCheck, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
+            { name: 'Payment Requests', path: '/dashboard/marketing/payments', icon: CreditCard, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Budget Control', path: '/dashboard/marketing/budgeting', icon: Wallet, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Lokasi Event', path: '/dashboard/marketing/event-locations', icon: MapPin, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Cabang Sasaran', path: '/dashboard/marketing/branches', icon: Building, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
