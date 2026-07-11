@@ -591,38 +591,67 @@ async function revisePlan(req, res, next) {
   }
 }
 
-// GET /plans
+// GET /plans — server-side pagination + search + summary
 async function getPlans(req, res, next) {
   try {
-    const { company_id, fiscal_year, status } = req.query;
-    
+    const { company_id, fiscal_year, status, search, page = 1, limit = 15 } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
+
     const filters = {};
     if (company_id) filters.company_id = parseInt(company_id, 10);
     if (fiscal_year) filters.fiscal_year = parseInt(fiscal_year, 10);
     if (status) filters.status = status;
+    if (search) {
+      filters.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { company: { name: { contains: search, mode: 'insensitive' } } },
+        { creator: { name: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
 
-    const plans = await prisma.marketing_plans.findMany({
-      where: filters,
-      include: {
-        company: true,
-        creator: true,
-        approval_history: {
-          where: { status: 'PENDING' },
-          orderBy: { step_number: 'asc' },
-          take: 1
-        }
-      },
-      orderBy: { created_at: 'desc' }
+    const [plans, total, summaryRaw, allRules] = await Promise.all([
+      prisma.marketing_plans.findMany({
+        where: filters,
+        include: {
+          company: { select: { id: true, name: true } },
+          creator: { select: { id: true, name: true } },
+          approval_history: {
+            where: { status: 'PENDING' },
+            orderBy: { step_number: 'asc' },
+            take: 1
+          }
+        },
+        orderBy: { created_at: 'desc' },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum
+      }),
+      prisma.marketing_plans.count({ where: filters }),
+      // Summary selalu dihitung dari SEMUA filter (tanpa pagination) untuk KPI cards
+      prisma.marketing_plans.groupBy({
+        by: ['status'],
+        where: { ...(company_id ? { company_id: parseInt(company_id, 10) } : {}), ...(fiscal_year ? { fiscal_year: parseInt(fiscal_year, 10) } : {}) },
+        _sum: { total_budget: true },
+        _count: { _all: true }
+      }),
+      prisma.approval_rules.findMany({ where: { module: 'MARKETING_PLAN' } })
+    ]);
+
+    const summary = { totalBudget: 0, approved: 0, pending: 0, draft: 0, rejected: 0, total: 0 };
+    summaryRaw.forEach(g => {
+      summary.total += g._count._all;
+      summary.totalBudget += Number(g._sum.total_budget || 0);
+      if (g.status === 'APPROVED') summary.approved = g._count._all;
+      else if (g.status === 'PENDING_APPROVAL') summary.pending = g._count._all;
+      else if (g.status === 'DRAFT') summary.draft = g._count._all;
+      else if (g.status === 'REJECTED') summary.rejected = g._count._all;
     });
-
-    const allRules = await prisma.approval_rules.findMany({ where: { module: 'MARKETING_PLAN' } });
 
     const plansWithPipeline = plans.map(plan => {
       const { approval_history, ...rest } = plan;
       const pendingStep = approval_history[0];
-      if (!pendingStep) {
-        return { ...rest, pipeline: null };
-      }
+      if (!pendingStep) return { ...rest, pipeline: null };
       const amt = parseFloat(plan.total_budget);
       const bracketRules = allRules.filter(r =>
         amt >= parseFloat(r.min_amount) && (r.max_amount === null || amt <= parseFloat(r.max_amount))
@@ -638,7 +667,7 @@ async function getPlans(req, res, next) {
       };
     });
 
-    res.json(plansWithPipeline);
+    res.json({ data: plansWithPipeline, total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum), summary });
   } catch (err) {
     next(err);
   }
