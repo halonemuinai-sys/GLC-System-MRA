@@ -504,7 +504,7 @@ function SidebarContent({
           name: 'Data Master',
           icon: Database,
           children: [
-            { name: 'Perusahaan', path: '/dashboard/master/companies', icon: Building2, allowed: hasAccess(['ga', 'legal', 'compliance', 'auditor']) },
+            { name: 'Perusahaan', path: '/dashboard/master/companies', icon: Building2, allowed: hasAccess(['ga', 'legal', 'compliance', 'marketing', 'auditor']) },
             { name: 'Brand / Merek', path: '/dashboard/master/brands', icon: Tag, allowed: true },
             { name: 'Line of Business', path: '/dashboard/master/lobs', icon: ClipboardList, allowed: true }
           ]
