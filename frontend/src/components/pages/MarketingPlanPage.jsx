@@ -76,6 +76,7 @@ export default function MarketingPlanPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [recallingPlanId, setRecallingPlanId] = useState(null);
 
   // Filter States
   const [fiscalYear, setFiscalYear] = useState(String(new Date().getFullYear()));
@@ -209,7 +210,7 @@ export default function MarketingPlanPage() {
   const handleRecallPlan = async (planId) => {
     if (!window.confirm(t('confirmRecall'))) return;
     try {
-      setSubmitting(true);
+      setRecallingPlanId(planId);
       await apiClient.post(`/api/marketing/plans/${planId}/recall`);
       setSuccessMsg(t('successRecalled'));
       loadPlans();
@@ -217,7 +218,7 @@ export default function MarketingPlanPage() {
     } catch (err) {
       alert(err.message || t('errFailRecall'));
     } finally {
-      setSubmitting(false);
+      setRecallingPlanId(null);
     }
   };
 
