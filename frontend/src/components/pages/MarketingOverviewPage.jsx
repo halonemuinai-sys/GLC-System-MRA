@@ -87,8 +87,8 @@ export default function MarketingOverviewPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await apiClient.get('/api/marketing/plans', { params: { fiscal_year: fiscalYear } });
-      setPlans(res || []);
+      const res = await apiClient.get('/api/marketing/plans', { params: { fiscal_year: fiscalYear, limit: 1000 } });
+      setPlans(res?.data || []);
     } catch (err) {
       setError(err.message || 'Gagal memuat data.');
     } finally {

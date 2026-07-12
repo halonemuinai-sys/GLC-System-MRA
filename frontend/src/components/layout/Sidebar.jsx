@@ -49,6 +49,88 @@ import {
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
 
+// ─── Per-section accent color map ───────────────────────────────────────────────
+const ACCENT = {
+  amber: {
+    text:     'text-amber-600 dark:text-amber-400',
+    iconBg:   'bg-amber-100 dark:bg-amber-500/20',
+    navBg:    'bg-amber-50 dark:bg-amber-500/10',
+    bar:      'bg-amber-500',
+    subBg:    'bg-amber-50/50 dark:bg-amber-500/[0.06]',
+    badge:    'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400',
+    chevron:  'text-amber-400 dark:text-amber-500',
+    flyout:   'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10',
+    label:    'from-amber-500 to-orange-500',
+    dot:      'bg-gradient-to-br from-amber-400 to-orange-500',
+    border:   'border-amber-100 dark:border-amber-800/60'
+  },
+  emerald: {
+    text:     'text-emerald-600 dark:text-emerald-400',
+    iconBg:   'bg-emerald-100 dark:bg-emerald-500/20',
+    navBg:    'bg-emerald-50 dark:bg-emerald-500/10',
+    bar:      'bg-emerald-500',
+    subBg:    'bg-emerald-50/50 dark:bg-emerald-500/[0.06]',
+    badge:    'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+    chevron:  'text-emerald-400 dark:text-emerald-500',
+    flyout:   'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10',
+    label:    'from-emerald-500 to-teal-500',
+    dot:      'bg-gradient-to-br from-emerald-400 to-teal-500',
+    border:   'border-emerald-100 dark:border-emerald-800/60'
+  },
+  blue: {
+    text:     'text-blue-600 dark:text-blue-400',
+    iconBg:   'bg-blue-100 dark:bg-blue-500/20',
+    navBg:    'bg-blue-50 dark:bg-blue-500/10',
+    bar:      'bg-blue-500',
+    subBg:    'bg-blue-50/50 dark:bg-blue-500/[0.06]',
+    badge:    'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
+    chevron:  'text-blue-400 dark:text-blue-500',
+    flyout:   'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10',
+    label:    'from-blue-500 to-cyan-500',
+    dot:      'bg-gradient-to-br from-blue-400 to-cyan-500',
+    border:   'border-blue-100 dark:border-blue-800/60'
+  },
+  violet: {
+    text:     'text-violet-600 dark:text-violet-400',
+    iconBg:   'bg-violet-100 dark:bg-violet-500/20',
+    navBg:    'bg-violet-50 dark:bg-violet-500/10',
+    bar:      'bg-violet-500',
+    subBg:    'bg-violet-50/50 dark:bg-violet-500/[0.06]',
+    badge:    'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400',
+    chevron:  'text-violet-400 dark:text-violet-500',
+    flyout:   'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10',
+    label:    'from-violet-500 to-purple-500',
+    dot:      'bg-gradient-to-br from-violet-400 to-purple-500',
+    border:   'border-violet-100 dark:border-violet-800/60'
+  },
+  rose: {
+    text:     'text-rose-600 dark:text-rose-400',
+    iconBg:   'bg-rose-100 dark:bg-rose-500/20',
+    navBg:    'bg-rose-50 dark:bg-rose-500/10',
+    bar:      'bg-rose-500',
+    subBg:    'bg-rose-50/50 dark:bg-rose-500/[0.06]',
+    badge:    'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400',
+    chevron:  'text-rose-400 dark:text-rose-500',
+    flyout:   'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10',
+    label:    'from-rose-500 to-pink-500',
+    dot:      'bg-gradient-to-br from-rose-400 to-pink-500',
+    border:   'border-rose-100 dark:border-rose-800/60'
+  },
+  indigo: {
+    text:     'text-indigo-600 dark:text-indigo-400',
+    iconBg:   'bg-indigo-100 dark:bg-indigo-500/20',
+    navBg:    'bg-indigo-50 dark:bg-indigo-500/10',
+    bar:      'bg-indigo-600 dark:bg-indigo-500',
+    subBg:    'bg-indigo-50/50 dark:bg-indigo-500/[0.06]',
+    badge:    'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400',
+    chevron:  'text-indigo-400 dark:text-indigo-500',
+    flyout:   'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10',
+    label:    'from-indigo-500 to-blue-500',
+    dot:      'bg-gradient-to-br from-indigo-400 to-blue-500',
+    border:   'border-indigo-100 dark:border-indigo-800/60'
+  }
+};
+
 // ─── Leaf Nav Item ──────────────────────────────────────────────────────────────
 function NavItem({
   href,
@@ -62,10 +144,11 @@ function NavItem({
   isChild = false,
   badge = 0
 }) {
-  const activeText = accent === 'rose' ? 'text-rose-600 dark:text-rose-400' : 'text-indigo-600 dark:text-indigo-400';
-  const activeIcon = accent === 'rose' ? 'bg-rose-100 dark:bg-rose-500/20' : 'bg-indigo-100 dark:bg-indigo-500/20';
-  const activeColor = accent === 'rose' ? 'text-rose-500 dark:text-rose-400' : 'text-indigo-600 dark:text-indigo-400';
-  const activeBar = accent === 'rose' ? 'bg-rose-500' : 'bg-indigo-600 dark:bg-indigo-500';
+  const c = ACCENT[accent] || ACCENT.indigo;
+  const activeText  = c.text;
+  const activeIcon  = c.iconBg;
+  const activeColor = c.text;
+  const activeBar   = c.bar;
 
   return (
     <motion.div
@@ -91,10 +174,7 @@ function NavItem({
           {isActive && (
             <motion.div
               layoutId="active-nav-bg"
-              className={cn(
-                "absolute inset-0 rounded-xl -z-10",
-                accent === 'rose' ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-indigo-50 dark:bg-indigo-500/10'
-              )}
+              className={cn("absolute inset-0 rounded-xl -z-10", c.navBg)}
               transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             />
           )}
@@ -189,8 +269,10 @@ function SubMenu({
   collapsed,
   onChildClick,
   delay = 0,
-  pathname
+  pathname,
+  accent = 'indigo'
 }) {
+  const c = ACCENT[accent] || ACCENT.indigo;
   // In collapsed mode, show a flyout popover on hover
   const [hovered, setHovered] = useState(false);
 
@@ -219,14 +301,14 @@ function SubMenu({
         className={cn(
           "w-full group relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer select-none",
           hasActiveChild
-            ? "text-indigo-600 dark:text-indigo-400"
+            ? c.text
             : "text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100/85 dark:hover:bg-neutral-800/60"
         )}
       >
         {/* Subtle active background when child is active */}
         {hasActiveChild && (
           <motion.div
-            className="absolute inset-0 rounded-xl bg-indigo-50/50 dark:bg-indigo-500/[0.06] -z-10"
+            className={cn("absolute inset-0 rounded-xl -z-10", c.subBg)}
             layoutId={`submenu-bg-${name}`}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
           />
@@ -238,15 +320,13 @@ function SubMenu({
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
           className={cn(
             "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
-            hasActiveChild
-              ? "bg-indigo-100 dark:bg-indigo-500/20"
-              : "group-hover:bg-neutral-200/70 dark:group-hover:bg-neutral-700/60"
+            hasActiveChild ? c.iconBg : "group-hover:bg-neutral-200/70 dark:group-hover:bg-neutral-700/60"
           )}
         >
           <Icon className={cn(
             "w-4 h-4 transition-colors",
             hasActiveChild
-              ? "text-indigo-600 dark:text-indigo-400"
+              ? c.text
               : "text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
           )} />
         </motion.div>
@@ -267,9 +347,7 @@ function SubMenu({
           {/* Item count badge */}
           <span className={cn(
             "text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors mr-2.5 flex-shrink-0",
-            hasActiveChild
-              ? "bg-indigo-100 dark:bg-indigo-500/20 text-indigo-500 dark:text-indigo-400"
-              : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500"
+            hasActiveChild ? c.badge : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500"
           )}>
             {childCount}
           </span>
@@ -282,9 +360,7 @@ function SubMenu({
           >
             <ChevronDown className={cn(
               "w-3.5 h-3.5 transition-colors",
-              hasActiveChild
-                ? "text-indigo-400 dark:text-indigo-500"
-                : "text-neutral-300 dark:text-neutral-600"
+              hasActiveChild ? c.chevron : "text-neutral-300 dark:text-neutral-600"
             )} />
           </motion.div>
         </motion.div>
@@ -302,7 +378,7 @@ function SubMenu({
               className="overflow-hidden"
             >
               {/* Vertical connector line */}
-              <div className="relative ml-3 pl-3 border-l-2 border-neutral-100 dark:border-neutral-800/80 space-y-0.5 py-1">
+              <div className={cn("relative ml-3 pl-3 border-l-2 space-y-0.5 py-1", c.border)}>
                 {visibleChildren.map((child, idx) => (
                   <NavItem
                     key={child.path}
@@ -310,6 +386,7 @@ function SubMenu({
                     icon={child.icon}
                     name={child.name}
                     isActive={pathname === child.path}
+                    accent={accent}
                     delay={idx * 0.03}
                     onClick={onChildClick}
                     collapsed={false}
@@ -351,14 +428,12 @@ function SubMenu({
                       onClick={onChildClick}
                       className={cn(
                         "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all",
-                        isActive
-                          ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10"
-                          : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100/85 dark:hover:bg-neutral-800/60"
+                        isActive ? c.flyout : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100/85 dark:hover:bg-neutral-800/60"
                       )}
                     >
                       <child.icon className={cn(
                         "w-3.5 h-3.5 flex-shrink-0",
-                        isActive ? "text-indigo-500 dark:text-indigo-400" : "text-neutral-400 dark:text-neutral-500"
+                        isActive ? c.text : "text-neutral-400 dark:text-neutral-500"
                       )} />
                       <span className="whitespace-nowrap flex-1">{child.name}</span>
                       {child.badge > 0 && (
@@ -423,6 +498,7 @@ function SidebarContent({
   const MENU_SECTIONS = useMemo(() => [
     {
       label: 'GENERAL AFFAIRS',
+      accent: 'amber',
       submenus: [
         {
           name: 'Performance',
@@ -463,6 +539,7 @@ function SidebarContent({
     },
     {
       label: 'MARKETING BUDGET',
+      accent: 'emerald',
       submenus: [
         {
           name: 'Marketing Budget',
@@ -483,6 +560,7 @@ function SidebarContent({
     },
     {
       label: 'COMPLIANCE',
+      accent: 'blue',
       submenus: [
         {
           name: 'Regulasi & Audit',
@@ -500,6 +578,7 @@ function SidebarContent({
     },
     {
       label: 'MASTER DATA',
+      accent: 'violet',
       submenus: [
         {
           name: 'Data Master',
@@ -515,6 +594,7 @@ function SidebarContent({
     },
     {
       label: 'LEGAL',
+      accent: 'rose',
       submenus: [
         {
           name: 'Legal & Litigasi',
@@ -691,9 +771,12 @@ function SidebarContent({
           );
           if (!hasVisible) return null;
 
+          const sectionAccent = section.accent || 'indigo';
+          const sc = ACCENT[sectionAccent] || ACCENT.indigo;
+
           return (
             <div key={section.label} className="space-y-1">
-              {/* Section label */}
+              {/* Section label — gradient text */}
               <motion.div
                 animate={{
                   opacity: collapsed ? 0 : 1,
@@ -703,9 +786,16 @@ function SidebarContent({
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
-                <p className="px-3 text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest whitespace-nowrap">
-                  {section.label}
-                </p>
+                <div className="flex items-center gap-2 px-3">
+                  <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", sc.dot)} />
+                  <p className={cn(
+                    "text-[9px] font-extrabold uppercase tracking-widest whitespace-nowrap",
+                    "bg-gradient-to-r bg-clip-text text-transparent",
+                    sc.label
+                  )}>
+                    {section.label}
+                  </p>
+                </div>
               </motion.div>
 
               {/* Section Divider when collapsed */}
@@ -719,7 +809,7 @@ function SidebarContent({
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
-                {sectionIdx > 0 && <div className="h-px bg-neutral-100 dark:bg-white/[0.05] mx-2" />}
+                {sectionIdx > 0 && <div className={cn("h-px mx-2 bg-gradient-to-r opacity-40", sc.label)} />}
               </motion.div>
 
               {/* Submenus */}
@@ -738,6 +828,7 @@ function SidebarContent({
                     onChildClick={onClose}
                     delay={(sectionIdx * 3 + subIdx) * 0.04}
                     pathname={pathname}
+                    accent={sectionAccent}
                   />
                 );
               })}

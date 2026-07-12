@@ -359,7 +359,7 @@ export default function MarketingPlanDetailModal({
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-5xl z-55 overflow-hidden flex flex-col max-h-[90vh]"
+              className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-6xl z-55 overflow-hidden flex flex-col max-h-[90vh]"
             >
               {loading ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-3">
@@ -393,180 +393,230 @@ export default function MarketingPlanDetailModal({
 
                   {/* Detail Body */}
                   <div className="flex-grow overflow-y-auto p-6 space-y-6">
-                    {/* Description & Period */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="md:col-span-2 space-y-1">
-                        <span className="text-[9px] font-bold text-neutral-400 uppercase">{t('planDescription')}</span>
-                        <p className="text-xs text-neutral-750 dark:text-neutral-350">{selectedPlan.description || t('noDescription')}</p>
-                      </div>
-                      <div className="bg-neutral-50 dark:bg-neutral-950 p-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1.5">
-                        <span className="text-[9px] font-bold text-neutral-400 uppercase">{t('periodAttachment')}</span>
-                        <div className="space-y-1.5 text-[11px] text-neutral-800 dark:text-white font-bold">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
-                            <span className="truncate">
-                              {t('eventLabel')} {selectedPlan.event_start_date ? new Date(selectedPlan.event_start_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : (selectedPlan.start_date ? new Date(selectedPlan.start_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-')} {t('dateSeparator')} {selectedPlan.event_end_date ? new Date(selectedPlan.event_end_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : (selectedPlan.end_date ? new Date(selectedPlan.end_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-')}
-                            </span>
+                    {/* Description & Period — card-style */}
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                      {/* Description Card */}
+                      <div className="md:col-span-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/40">
+                          <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                           </div>
-                          <div className="flex items-center gap-1.5 pt-1.5 border-t border-neutral-200 dark:border-neutral-800">
-                            <Calendar className="w-3.5 h-3.5 text-emerald-550 flex-shrink-0" />
-                            <span className="truncate">
-                              {t('promoDateLabel')} {selectedPlan.cta_start_date ? new Date(selectedPlan.cta_start_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} {t('dateSeparator')} {selectedPlan.cta_end_date ? new Date(selectedPlan.cta_end_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                            </span>
-                          </div>
+                          <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest">{t('planDescription')}</span>
                         </div>
-                        {selectedPlan.doc_url && (
-                          <div className="pt-1.5 border-t border-neutral-200 dark:border-neutral-800 mt-1.5">
-                            <a
-                              href={selectedPlan.doc_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[10px] text-indigo-500 hover:text-indigo-650 hover:underline inline-flex items-center gap-1 font-bold"
-                            >
-                              <Paperclip className="w-3.5 h-3.5" /> {t('viewProposal')}
-                            </a>
+                        <div className="px-4 py-4">
+                          <p className="text-xs text-neutral-600 dark:text-neutral-350 leading-relaxed">{selectedPlan.description || t('noDescription')}</p>
+                        </div>
+                      </div>
+
+                      {/* Period & Attachment Card */}
+                      <div className="md:col-span-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/40">
+                          <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                            <Calendar className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                           </div>
-                        )}
+                          <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest">{t('periodAttachment')}</span>
+                        </div>
+                        <div className="px-4 py-3 space-y-3">
+                          <div className="flex items-start gap-2.5">
+                            <Calendar className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" />
+                            <div className="space-y-0.5">
+                              <p className="text-[10px] text-neutral-400 font-semibold">{t('eventLabel')}</p>
+                              <p className="text-xs font-semibold text-neutral-800 dark:text-white">
+                                {selectedPlan.event_start_date
+                                  ? new Date(selectedPlan.event_start_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' })
+                                  : (selectedPlan.start_date ? new Date(selectedPlan.start_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-')}
+                                {' '}{t('dateSeparator')}{' '}
+                                {selectedPlan.event_end_date
+                                  ? new Date(selectedPlan.event_end_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' })
+                                  : (selectedPlan.end_date ? new Date(selectedPlan.end_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' }) : '-')}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2.5 border-t border-neutral-100 dark:border-neutral-800 pt-3">
+                            <Calendar className="w-4 h-4 text-neutral-400 mt-0.5 flex-shrink-0" />
+                            <div className="space-y-0.5">
+                              <p className="text-[10px] text-neutral-400 font-semibold">{t('promoDateLabel')}</p>
+                              <p className="text-xs font-semibold text-neutral-800 dark:text-white">
+                                {selectedPlan.cta_start_date
+                                  ? new Date(selectedPlan.cta_start_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' })
+                                  : '-'}
+                                {' '}{t('dateSeparator')}{' '}
+                                {selectedPlan.cta_end_date
+                                  ? new Date(selectedPlan.cta_end_date).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' })
+                                  : '-'}
+                              </p>
+                            </div>
+                          </div>
+                          {selectedPlan.doc_url && (
+                            <div className="border-t border-neutral-100 dark:border-neutral-800 pt-2.5">
+                              <a href={selectedPlan.doc_url} target="_blank" rel="noreferrer"
+                                className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1 font-bold">
+                                <Paperclip className="w-3.5 h-3.5" /> {t('viewProposal')}
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     {/* Items Budget Table */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-bold text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                        <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
-                        {t('budgetBreakdown')}
-                      </h4>
-                      
-                      <div className="border border-neutral-250 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-                        <table className="w-full text-left text-xs">
-                          <thead>
-                            <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-250 dark:border-neutral-800 text-neutral-400 font-bold uppercase tracking-wider">
-                              <th className="px-4 py-3">{t('colMonth')}</th>
-                              <th className="px-4 py-3">CoA Account</th>
-                              <th className="px-4 py-3">Brand / LOB</th>
-                              <th className="px-4 py-3">Branch</th>
-                              <th className="px-4 py-3">Vendor</th>
-                              <th className="px-4 py-3 text-right">{t('colBudgetAlloc')}</th>
-                              <th className="px-4 py-3 text-right">Committed</th>
-                              <th className="px-4 py-3 text-right">{t('colRealized')}</th>
-                              <th className="px-4 py-3 text-right">{t('colRemainingBalance')}</th>
-                              {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && <th className="px-4 py-3 text-center">{t('colAction')}</th>}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-neutral-150 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
-                            {selectedPlan.items?.map((item, idx) => {
-                              const budget = Number(item.budget_amount || 0);
-                              const committed = Number(item.committed_amount || 0);
-                              const actual = Number(item.actual_amount || 0);
-                              const remaining = budget - committed - actual;
+                    {(() => {
+                      const showAction = ['APPROVED', 'COMPLETED'].includes(selectedPlan.status);
+                      const totalBudget = selectedPlan.items?.reduce((s, i) => s + Number(i.budget_amount || 0), 0) || 0;
+                      const totalCommitted = selectedPlan.items?.reduce((s, i) => s + Number(i.committed_amount || 0), 0) || 0;
+                      const totalActual = selectedPlan.items?.reduce((s, i) => s + Number(i.actual_amount || 0), 0) || 0;
+                      const totalRemaining = totalBudget - totalCommitted - totalActual;
+                      const colSpanFull = showAction ? 10 : 9;
 
-                              return (
-                                <React.Fragment key={item.id || idx}>
-                                  <tr className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/10">
-                                    <td className="px-4 py-3">{getMonthName(item.period_month, lang)}</td>
-                                    <td className="px-4 py-3">
-                                      <span className="font-mono text-neutral-800 dark:text-white font-bold">{item.m_coa?.code}</span>
-                                      <p className="text-[10px] text-neutral-400 font-normal mt-0.5">{item.m_coa?.name}</p>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <span className="text-neutral-900 dark:text-neutral-200">{item.m_brand?.name || '-'}</span>
-                                      {item.m_line_business && <p className="text-[10px] text-neutral-450 font-normal mt-0.5">{item.m_line_business?.name}</p>}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <span className="font-semibold text-neutral-850 dark:text-neutral-200 block">
-                                        {item.m_branch?.name ? `${t('branchPrefix')} ${item.m_branch.name}` : 'Global Sales'}
-                                      </span>
-                                      {item.m_event_location?.name && (
-                                        <span className="text-[9px] text-neutral-455 dark:text-neutral-500 block mt-0.5">
-                                          Event: {item.m_event_location.name}
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      {item.vendors ? (
-                                        <span className="inline-flex items-center gap-1 text-neutral-700 dark:text-neutral-300">
-                                          <Building className="w-3 h-3 text-neutral-400" /> {item.vendors.vendor_name}
-                                        </span>
-                                      ) : (
-                                        <span className="text-neutral-400">-</span>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                      <span className="font-bold text-neutral-850 dark:text-white block">{formatIDR(budget)}</span>
-                                      <span className="text-[9px] text-neutral-400 dark:text-neutral-500 font-normal block mt-0.5">
-                                        {item.qty || 1} x {formatIDR(item.unit_price || budget)}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                      {committed > 0 ? (
-                                        <span className="font-bold text-amber-600 dark:text-amber-400">{formatIDR(committed)}</span>
-                                      ) : <span className="text-neutral-300 dark:text-neutral-700">-</span>}
-                                    </td>
-                                    <td className="px-4 py-3 text-right text-emerald-600 dark:text-emerald-455 font-bold">{formatIDR(actual)}</td>
-                                    <td className={`px-4 py-3 text-right font-bold ${remaining < 0 ? 'text-red-500' : remaining < budget * 0.15 ? 'text-amber-500' : 'text-neutral-850 dark:text-white'}`}>
-                                      {formatIDR(remaining)}
-                                    </td>
-                                    {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
-                                      <td className="px-4 py-3 text-center">
-                                        {selectedPlan.status === 'APPROVED' && (
-                                          <button
-                                            onClick={() => { setPaymentRequestItem(item); setIsPaymentModalOpen(true); }}
-                                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-750 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer"
-                                          >
-                                            {t('btnRecordExpense')}
-                                          </button>
-                                        )}
-                                      </td>
-                                    )}
+                      return (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-black text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                            {t('budgetBreakdown')}
+                          </h4>
+
+                          <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-xs">
+                                <thead>
+                                  <tr className="bg-emerald-800 dark:bg-emerald-900 text-white text-[10px] font-black uppercase tracking-wider">
+                                    <th className="px-3 py-2.5">{t('colMonth')}</th>
+                                    <th className="px-3 py-2.5">CoA Account</th>
+                                    <th className="px-3 py-2.5">Brand / LOB</th>
+                                    <th className="px-3 py-2.5">Branch</th>
+                                    <th className="px-3 py-2.5">Vendor</th>
+                                    <th className="px-3 py-2.5 text-right">{t('colBudgetAlloc')}</th>
+                                    <th className="px-3 py-2.5 text-right">Committed</th>
+                                    <th className="px-3 py-2.5 text-right">{t('colRealized')}</th>
+                                    <th className="px-3 py-2.5 text-right">{t('colRemainingBalance')}</th>
+                                    {showAction && <th className="px-3 py-2.5 text-center">{t('colAction')}</th>}
                                   </tr>
-                                  {item.payment_requests && item.payment_requests.length > 0 && (
-                                    <tr className="bg-neutral-50/20 dark:bg-neutral-955/10">
-                                      <td colSpan={['APPROVED','COMPLETED'].includes(selectedPlan.status) ? 10 : 9} className="px-6 py-2.5">
-                                        <div className="border-l-2 border-indigo-500 pl-4 py-1 space-y-2">
-                                          <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest block">
-                                            {t('expenseHistory')} ({item.payment_requests.length})
-                                          </span>
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
-                                            {item.payment_requests.map((pr) => (
-                                              <div key={pr.id} className="bg-white dark:bg-neutral-900/60 border border-neutral-200/80 dark:border-neutral-850 rounded-xl p-2.5 flex items-center justify-between text-[10px] shadow-sm">
-                                                <div className="space-y-0.5">
-                                                  <p className="font-bold text-neutral-800 dark:text-white">{pr.title}</p>
-                                                  <p className="text-neutral-400 font-medium text-[9px]">{t('byLabel')} {pr.creator?.name || 'N/A'}</p>
-                                                </div>
-                                                <div className="flex items-center gap-3.5">
-                                                  <span className="font-extrabold text-neutral-900 dark:text-white">{formatIDR(pr.amount)}</span>
-                                                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${
-                                                    pr.status === 'APPROVED' || pr.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-600' :
-                                                    pr.status === 'REJECTED' ? 'bg-red-500/10 text-red-650' : 'bg-amber-500/10 text-amber-600'
-                                                  }`}>
-                                                    {pr.status}
-                                                  </span>
-                                                  {pr.doc_url && (
-                                                    <a
-                                                      href={pr.doc_url}
-                                                      target="_blank"
-                                                      rel="noreferrer"
-                                                      className="p-1 text-indigo-500 hover:text-indigo-650 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-lg transition-colors flex items-center gap-1 font-bold"
-                                                      title={t('viewAttachment')}
-                                                    >
-                                                      <Paperclip className="w-3.5 h-3.5" />
-                                                    </a>
-                                                  )}
+                                </thead>
+                                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium text-neutral-700 dark:text-neutral-300">
+                                  {selectedPlan.items?.map((item, idx) => {
+                                    const budget = Number(item.budget_amount || 0);
+                                    const committed = Number(item.committed_amount || 0);
+                                    const actual = Number(item.actual_amount || 0);
+                                    const remaining = budget - committed - actual;
+
+                                    return (
+                                      <React.Fragment key={item.id || idx}>
+                                        <tr className="hover:bg-emerald-50/30 dark:hover:bg-emerald-900/5">
+                                          <td className="px-3 py-3 font-semibold whitespace-nowrap">{getMonthName(item.period_month, lang)}</td>
+                                          <td className="px-3 py-3">
+                                            <span className="font-black text-neutral-800 dark:text-white whitespace-nowrap">{item.m_coa?.code}</span>
+                                            <p className="text-[10px] text-neutral-400 font-normal mt-0.5">{item.m_coa?.name}</p>
+                                          </td>
+                                          <td className="px-3 py-3">
+                                            <span className="font-semibold text-neutral-800 dark:text-neutral-200">{item.m_brand?.name || '-'}</span>
+                                            {item.m_line_business && <p className="text-[10px] text-neutral-400 font-normal mt-0.5">{item.m_line_business?.name}</p>}
+                                          </td>
+                                          <td className="px-3 py-3">
+                                            <span className="font-semibold text-neutral-800 dark:text-neutral-200 block">
+                                              {item.m_branch?.name ? `${t('branchPrefix')} ${item.m_branch.name}` : 'Global Sales'}
+                                            </span>
+                                            {item.m_event_location?.name && (
+                                              <span className="text-[10px] text-neutral-400 block mt-0.5">
+                                                Event: {item.m_event_location.name}
+                                              </span>
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-3">
+                                            {item.vendors ? (
+                                              <span className="inline-flex items-center gap-1 text-neutral-700 dark:text-neutral-300">
+                                                <Building className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                                                {item.vendors.vendor_name}
+                                              </span>
+                                            ) : (
+                                              <span className="text-neutral-350 dark:text-neutral-600">-</span>
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-3 text-right">
+                                            <span className="font-bold text-neutral-850 dark:text-white block whitespace-nowrap">{formatIDR(budget)}</span>
+                                            <span className="text-[10px] text-neutral-400 font-normal block mt-0.5 whitespace-nowrap">
+                                              {item.qty || 1} × {formatIDR(item.unit_price || budget)}
+                                            </span>
+                                          </td>
+                                          <td className="px-3 py-3 text-right whitespace-nowrap">
+                                            {committed > 0
+                                              ? <span className="font-bold text-amber-600 dark:text-amber-400">{formatIDR(committed)}</span>
+                                              : <span className="text-neutral-300 dark:text-neutral-600">-</span>}
+                                          </td>
+                                          <td className="px-3 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatIDR(actual)}</td>
+                                          <td className={`px-3 py-3 text-right font-bold whitespace-nowrap ${remaining < 0 ? 'text-red-500' : remaining < budget * 0.15 ? 'text-amber-500' : 'text-neutral-800 dark:text-white'}`}>
+                                            {formatIDR(remaining)}
+                                          </td>
+                                          {showAction && (
+                                            <td className="px-3 py-3 text-center">
+                                              {selectedPlan.status === 'APPROVED' && (
+                                                <button
+                                                  onClick={() => { setPaymentRequestItem(item); setIsPaymentModalOpen(true); }}
+                                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+                                                >
+                                                  <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                                                  Realisasi Biaya
+                                                </button>
+                                              )}
+                                            </td>
+                                          )}
+                                        </tr>
+                                        {item.payment_requests && item.payment_requests.length > 0 && (
+                                          <tr className="bg-neutral-50/40 dark:bg-neutral-950/20">
+                                            <td colSpan={colSpanFull} className="px-6 py-2.5">
+                                              <div className="border-l-2 border-emerald-500 pl-4 py-1 space-y-2">
+                                                <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest block">
+                                                  {t('expenseHistory')} ({item.payment_requests.length})
+                                                </span>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                                                  {item.payment_requests.map((pr) => (
+                                                    <div key={pr.id} className="bg-white dark:bg-neutral-900/60 border border-neutral-200/80 dark:border-neutral-850 rounded-xl p-2.5 flex items-center justify-between text-[10px] shadow-sm">
+                                                      <div className="space-y-0.5">
+                                                        <p className="font-bold text-neutral-800 dark:text-white">{pr.title}</p>
+                                                        <p className="text-neutral-400 font-medium text-[9px]">{t('byLabel')} {pr.creator?.name || 'N/A'}</p>
+                                                      </div>
+                                                      <div className="flex items-center gap-3.5">
+                                                        <span className="font-extrabold text-neutral-900 dark:text-white">{formatIDR(pr.amount)}</span>
+                                                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                                                          pr.status === 'APPROVED' || pr.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-600' :
+                                                          pr.status === 'REJECTED' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
+                                                        }`}>
+                                                          {pr.status}
+                                                        </span>
+                                                        {pr.doc_url && (
+                                                          <a href={pr.doc_url} target="_blank" rel="noreferrer"
+                                                            className="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors flex items-center gap-1 font-bold"
+                                                            title={t('viewAttachment')}>
+                                                            <Paperclip className="w-3.5 h-3.5" />
+                                                          </a>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  ))}
                                                 </div>
                                               </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </tbody>
+                                <tfoot>
+                                  <tr className="border-t-2 border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950/50">
+                                    <td colSpan={5} className="px-3 py-3 font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider text-xs">Total</td>
+                                    <td className="px-3 py-3 text-right font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{formatIDR(totalBudget)}</td>
+                                    <td className="px-3 py-3 text-right font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{totalCommitted > 0 ? formatIDR(totalCommitted) : '-'}</td>
+                                    <td className="px-3 py-3 text-right font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{formatIDR(totalActual)}</td>
+                                    <td className="px-3 py-3 text-right font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{formatIDR(totalRemaining)}</td>
+                                    {showAction && <td />}
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Amendment Section */}
                     {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
@@ -781,12 +831,12 @@ export default function MarketingPlanDetailModal({
                               <p className="text-xs font-black text-neutral-850 dark:text-white">{selectedPlan.actual_impressions != null ? selectedPlan.actual_impressions.toLocaleString('id-ID') : '-'}</p>
                             </div>
                             <div className="space-y-0.5 col-span-2 md:col-span-1">
-                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualRoi')}</p>
+                              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualROI')}</p>
                               <p className="text-xs font-black text-emerald-600 dark:text-emerald-450">{selectedPlan.actual_roi_pct != null ? `${selectedPlan.actual_roi_pct.toFixed(2)}%` : '-'}</p>
                             </div>
                             {selectedPlan.actual_notes && (
                               <div className="col-span-2 md:col-span-5 border-t border-neutral-100 dark:border-neutral-800/80 pt-3 mt-1.5">
-                                <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualNotes')}</p>
+                                <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('notesInsights')}</p>
                                 <p className="text-xs text-neutral-700 dark:text-neutral-300 font-medium leading-relaxed mt-1">{selectedPlan.actual_notes}</p>
                               </div>
                             )}
@@ -845,7 +895,7 @@ export default function MarketingPlanDetailModal({
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('actualRoiLabel')}</label>
+                              <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('actualROILabel')}</label>
                               <input
                                 type="number"
                                 step="0.01"
@@ -858,10 +908,10 @@ export default function MarketingPlanDetailModal({
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('actualNotesLabel')}</label>
+                            <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('notesInsights')}</label>
                             <textarea
                               rows={2}
-                              placeholder={t('actualNotesPlaceholder')}
+                              placeholder={t('notesPlaceholder')}
                               value={actualsForm.actual_notes}
                               onChange={(e) => setActualsForm(p => ({ ...p, actual_notes: e.target.value }))}
                               className="w-full bg-white dark:bg-neutral-900 border border-neutral-250 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 resize-none font-medium leading-relaxed"

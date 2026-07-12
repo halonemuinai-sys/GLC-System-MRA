@@ -29,7 +29,10 @@ import {
   Pencil,
   ChevronLeft,
   ChevronRight,
-  Eye
+  Eye,
+  ChevronDown,
+  Building2,
+  SlidersHorizontal
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -67,6 +70,120 @@ const getMonthName = (monthNum, lang = 'en') => {
 // Rentang tahun anggaran yang bisa dipilih (tahun berjalan -1 s/d +2), supaya tidak
 const CURRENT_YEAR = new Date().getFullYear();
 const FISCAL_YEAR_OPTIONS = Array.from({ length: 4 }, (_, i) => String(CURRENT_YEAR - 1 + i));
+
+// ── Custom Filter Dropdown ────────────────────────────────────────────────────
+function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap, searchable = false }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const ref = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setQuery(''); } };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
+    if (open && searchable && inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+    if (!open) setQuery('');
+  }, [open, searchable]);
+
+  const selected = options.find(o => o.value === value);
+  const isActive = value !== '';
+
+  const filtered = searchable && query
+    ? options.filter(o => o.label.toLowerCase().includes(query.toLowerCase()))
+    : options;
+
+  return (
+    <div ref={ref} className="relative">
+      <motion.button
+        type="button"
+        onClick={() => setOpen(prev => !prev)}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer select-none ${
+          isActive
+            ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300'
+            : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-850'
+        }`}
+      >
+        {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0 opacity-70" />}
+        <span className="whitespace-nowrap max-w-[140px] truncate">
+          {selected ? selected.label : label}
+        </span>
+        {isActive && (
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
+        )}
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.18 }}>
+          <ChevronDown className="w-3 h-3 opacity-50 flex-shrink-0" />
+        </motion.div>
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute top-full mt-2 left-0 z-50 min-w-[220px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl shadow-black/8 dark:shadow-black/30 overflow-hidden"
+          >
+            {searchable && (
+              <div className="p-2 border-b border-neutral-100 dark:border-neutral-800">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-400" />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Cari perusahaan..."
+                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-7 pr-3 py-1.5 text-xs text-neutral-800 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-indigo-400 transition-colors"
+                  />
+                  {query && (
+                    <button type="button" onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="py-1.5 max-h-56 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="px-4 py-3 text-xs text-neutral-400 text-center">Tidak ditemukan</p>
+            ) : filtered.map((opt) => {
+              const isSelected = value === opt.value;
+              const color = colorMap?.[opt.value];
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { onChange(opt.value); setOpen(false); setQuery(''); }}
+                  className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-all cursor-pointer text-left ${
+                    isSelected
+                      ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
+                      : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/70'
+                  }`}
+                >
+                  {color && (
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${color}`} />
+                  )}
+                  <span className="flex-1">{opt.label}</span>
+                  {isSelected && <Check className="w-3 h-3 text-indigo-500 flex-shrink-0" />}
+                </button>
+              );
+            })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function MarketingPlanPage() {
   const { lang } = useLanguage();
@@ -378,57 +495,99 @@ export default function MarketingPlanPage() {
         </div>
       </div>
 
-      {/* Navigation Tabs & Filter Bar */}
-      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-3">
-          <p className="text-xs font-black text-neutral-700 dark:text-neutral-300">
-            {t('pipelineTitle')} <span className="font-normal text-neutral-400">({totalPlans} total)</span>
-          </p>
+      {/* Filter Bar */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm">
+        {/* Top row: title + filter pills */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-neutral-800/80">
           <div className="flex items-center gap-2">
-            <select
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-500" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-neutral-800 dark:text-white leading-tight">{t('pipelineTitle')}</p>
+              <p className="text-[10px] text-neutral-400 leading-tight mt-0.5">
+                {totalPlans > 0 ? `${totalPlans} rencana ditemukan` : 'Belum ada rencana'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterDropdown
+              label="Tahun"
               value={fiscalYear}
-              onChange={(e) => setFiscalYear(e.target.value)}
-              className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
-            >
-              {FISCAL_YEAR_OPTIONS.map(y => (
-                <option key={y} value={y}>{t('fiscalYear')} {y}</option>
-              ))}
-            </select>
-
-            <select
+              icon={Calendar}
+              options={FISCAL_YEAR_OPTIONS.map(y => ({ value: y, label: y }))}
+              onChange={setFiscalYear}
+            />
+            <FilterDropdown
+              label={t('allCompanies')}
               value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
-              className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none max-w-[200px]"
-            >
-              <option value="">{t('allCompanies')}</option>
-              {metadata.companies.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-
-            <select
+              icon={Building2}
+              searchable
+              options={[
+                { value: '', label: t('allCompanies') },
+                ...metadata.companies.map(c => ({ value: String(c.id), label: c.name }))
+              ]}
+              onChange={setCompanyId}
+            />
+            <FilterDropdown
+              label={t('allStatuses')}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
-            >
-              <option value="">{t('allStatuses')}</option>
-              <option value="DRAFT">Draft</option>
-              <option value="PENDING_APPROVAL">Pending Approval</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
+              icon={Layers}
+              options={[
+                { value: '', label: t('allStatuses') },
+                { value: 'DRAFT', label: 'Draft' },
+                { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
+                { value: 'APPROVED', label: 'Approved' },
+                { value: 'REJECTED', label: 'Rejected' },
+                { value: 'COMPLETED', label: 'Completed' },
+              ]}
+              colorMap={{
+                DRAFT: 'bg-neutral-400',
+                PENDING_APPROVAL: 'bg-amber-400',
+                APPROVED: 'bg-emerald-400',
+                REJECTED: 'bg-red-400',
+                COMPLETED: 'bg-blue-400',
+              }}
+              onChange={setStatusFilter}
+            />
+            {(companyId || statusFilter) && (
+              <motion.button
+                type="button"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={() => { setCompanyId(''); setStatusFilter(''); }}
+                className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-[11px] font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 transition-all cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+                Reset
+              </motion.button>
+            )}
           </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-          <input
-            type="text"
-            placeholder={t('searchPlaceholder')}
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs focus:outline-none focus:border-indigo-500 text-neutral-800 dark:text-white"
-          />
+        {/* Search */}
+        <div className="px-4 py-3">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+            <input
+              type="text"
+              placeholder={t('searchPlaceholder')}
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-neutral-800 dark:text-white transition-all placeholder:text-neutral-400"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => { setSearchQuery(''); loadPlans(1, ''); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
