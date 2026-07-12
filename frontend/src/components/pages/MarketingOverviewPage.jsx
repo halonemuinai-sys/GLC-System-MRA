@@ -12,11 +12,12 @@ import {
   RefreshCw,
   Loader2,
   AlertTriangle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  MoreVertical
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  Legend, ResponsiveContainer
+  ResponsiveContainer, LabelList
 } from 'recharts';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -26,6 +27,90 @@ import {
   formatIDRCompact,
   CURRENT_YEAR
 } from './MarketingGanttUtils';
+
+// ── Custom Tooltip: Budget vs Realisasi ───────────────────────────────────────
+function CustomBudgetTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const budget     = payload.find(p => p.dataKey === 'Budget')?.value    || 0;
+  const realisasi  = payload.find(p => p.dataKey === 'Realisasi')?.value || 0;
+  const pct        = budget > 0 ? Math.round((realisasi / budget) * 100) : 0;
+  const overBudget = pct > 100;
+  const pctColor   = overBudget ? 'text-red-500' : pct >= 80 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400';
+  const barColor   = overBudget ? 'bg-red-500'   : pct >= 80 ? 'bg-amber-400'   : 'bg-emerald-500';
+
+  return (
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl shadow-xl shadow-black/10 dark:shadow-black/30 p-4 min-w-[220px]">
+      <p className="text-xs font-black text-neutral-800 dark:text-white mb-3 leading-tight line-clamp-2">
+        {payload[0]?.payload?.fullName || '—'}
+      </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-6">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#CBD5E1' }} />
+            <span className="text-[11px] text-neutral-500 dark:text-neutral-400">Budget</span>
+          </div>
+          <span className="text-[11px] font-bold text-neutral-800 dark:text-white tabular-nums">{formatIDR(budget)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-6">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#22C55E' }} />
+            <span className="text-[11px] text-neutral-500 dark:text-neutral-400">Realisasi</span>
+          </div>
+          <span className="text-[11px] font-bold text-neutral-800 dark:text-white tabular-nums">{formatIDR(realisasi)}</span>
+        </div>
+      </div>
+      <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[10px] text-neutral-400 font-semibold uppercase tracking-wider">Utilisasi</span>
+          <span className={`text-[12px] font-black ${pctColor}`}>{pct}%</span>
+        </div>
+        <div className="h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full ${barColor}`}
+            style={{ width: `${Math.min(pct, 100)}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Custom X-Axis Tick: wraps campaign names across 2 lines ──────────────────
+function CustomXAxisTick({ x, y, payload }) {
+  const raw = payload.value || '';
+  let lines;
+  if (raw.includes('/')) {
+    const parts = raw.split('/').map(s => s.trim());
+    lines = [parts[0], parts.slice(1).join(' / ')];
+  } else if (raw.length > 13) {
+    const cut = raw.lastIndexOf(' ', 13);
+    lines = cut > 0 ? [raw.slice(0, cut), raw.slice(cut + 1)] : [raw.slice(0, 13), raw.slice(13)];
+  } else {
+    lines = [raw];
+  }
+  // Truncate each line at 16 chars
+  lines = lines.map(l => l.length > 16 ? l.slice(0, 15) + '…' : l);
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      {lines.map((line, i) => (
+        <text
+          key={i}
+          x={0}
+          y={0}
+          dy={12 + i * 13}
+          textAnchor="middle"
+          fill="currentColor"
+          fillOpacity={0.5}
+          fontSize={9}
+          fontWeight={700}
+        >
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MarketingOverviewPage() {
@@ -354,46 +439,111 @@ export default function MarketingOverviewPage() {
 
           {/* Budget vs Actual Chart */}
           {plans.length > 0 && (
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-5">
+            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+              {/* Header */}
+              <div className="px-6 pt-5 pb-4 border-b border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mb-0.5">Perbandingan</p>
-                  <h3 className="text-base font-black text-neutral-900 dark:text-white">Budget vs Realisasi per Campaign</h3>
+                  <h3 className="text-sm font-black text-neutral-900 dark:text-white">Budget vs Realisasi per Campaign</h3>
                 </div>
-                <div className="flex items-center gap-3 text-xs font-semibold text-neutral-500">
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-blue-500" />Budget</span>
-                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-emerald-500" />Realisasi</span>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#CBD5E1' }} />
+                      <span className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">Budget</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#22C55E' }} />
+                      <span className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">Realisasi</span>
+                    </div>
+                  </div>
+                  <button className="p-1 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart
-                  data={plans.slice(0, 10).map(p => ({
-                    name: p.title?.length > 20 ? p.title.slice(0, 20) + '…' : (p.title || '-'),
-                    Budget: Number(p.total_budget || 0),
-                    Realisasi: (p.items || []).reduce((s, it) => s + Number(it.actual_amount || 0), 0),
-                  }))}
-                  margin={{ top: 4, right: 8, left: 8, bottom: 40 }}
-                  barCategoryGap="30%"
-                  barGap={3}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" strokeOpacity={0.06} vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 600 }} angle={-30} textAnchor="end" interval={0} />
-                  <YAxis tickFormatter={v => formatIDRCompact(v)} tick={{ fontSize: 10 }} width={72} />
-                  <RechartsTooltip
-                    formatter={(v, name) => [formatIDR(v), name]}
-                    contentStyle={{
-                      background: 'var(--color-neutral-900, #0f172a)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: '12px', fontSize: '12px'
-                    }}
-                  />
-                  <Legend wrapperStyle={{ display: 'none' }} />
-                  <Bar dataKey="Budget" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                  <Bar dataKey="Realisasi" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
+
+              {/* Chart */}
+              <div className="px-4 pt-2 pb-3">
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart
+                    data={plans.slice(0, 10).map(p => ({
+                      name: p.title || '-',
+                      fullName: p.title || '-',
+                      Budget: Number(p.total_budget || 0),
+                      Realisasi: (p.items || []).reduce((s, it) => s + Number(it.actual_amount || 0), 0),
+                    }))}
+                    margin={{ top: 28, right: 16, left: 4, bottom: 44 }}
+                    barCategoryGap="40%"
+                    barGap={3}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="currentColor"
+                      strokeOpacity={0.06}
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="name"
+                      tick={<CustomXAxisTick />}
+                      interval={0}
+                      axisLine={false}
+                      tickLine={false}
+                      height={50}
+                    />
+                    <YAxis
+                      tickFormatter={v => formatIDRCompact(v)}
+                      tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.45 }}
+                      width={62}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <RechartsTooltip
+                      content={<CustomBudgetTooltip />}
+                      cursor={{ fill: 'currentColor', fillOpacity: 0.03, radius: [4, 4, 0, 0] }}
+                    />
+                    <Bar
+                      dataKey="Budget"
+                      fill="#CBD5E1"
+                      radius={[4, 4, 2, 2]}
+                      maxBarSize={32}
+                      isAnimationActive
+                      animationBegin={0}
+                      animationDuration={900}
+                      animationEasing="ease-out"
+                    >
+                      <LabelList
+                        dataKey="Budget"
+                        position="top"
+                        formatter={v => formatIDRCompact(v)}
+                        style={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
+                      />
+                    </Bar>
+                    <Bar
+                      dataKey="Realisasi"
+                      fill="#22C55E"
+                      radius={[4, 4, 2, 2]}
+                      maxBarSize={32}
+                      isAnimationActive
+                      animationBegin={180}
+                      animationDuration={900}
+                      animationEasing="ease-out"
+                    >
+                      <LabelList
+                        dataKey="Realisasi"
+                        position="top"
+                        formatter={v => v > 0 ? formatIDRCompact(v) : '—'}
+                        style={{ fontSize: 9, fontWeight: 700, fill: '#16a34a' }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
               {plans.length > 10 && (
-                <p className="text-center text-[11px] text-neutral-400 mt-2">Menampilkan 10 dari {plans.length} campaign</p>
+                <p className="text-center text-[11px] text-neutral-400 pb-4">
+                  Menampilkan 10 dari {plans.length} campaign
+                </p>
               )}
             </div>
           )}

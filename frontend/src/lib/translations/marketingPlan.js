@@ -179,6 +179,14 @@ const mpt = {
     overBudgetJustificationPlaceholder: 'Provide a detailed justification for why this month\'s allocation must exceed the ceiling...',
     unitPriceIDR: 'Unit Price (IDR)',
 
+    // WizardStep1 missing placeholders & selects
+    descriptionPlaceholder: 'Describe the campaign scope, advertising channels, target audience, and objectives...',
+    selectBrand: 'Select Brand / Principal',
+    selectLob: 'Select Line of Business',
+    selectLocationOption: 'Select Event / Activity Location',
+    eventPeriodLabel: 'Event Date *',
+    eventPeriodTooltip: 'Physical period of the event or field activity.',
+
     // Tooltips (WizardStep1)
     campaignTitleTooltip: 'Name or title of your marketing campaign.',
     companyTooltip: "Legal entity / PT Mogems responsible for this activity's budget.",
@@ -191,9 +199,11 @@ const mpt = {
     errRequired: 'Campaign Title, Company, and Fiscal Year are required.',
     errItems: 'Each budget item must have a CoA selected and a budget amount greater than Rp 0.',
     errOverBudget: 'This submission exceeds the locked monthly budget limit. An over-budget justification is required.',
+    errJustification: 'An over-budget justification is required for submissions exceeding the monthly ceiling.',
     errDraftRequired: 'Campaign Title, Company, and Fiscal Year are required before saving a draft.',
     errPayment: 'Invoice title and payment amount are required.',
     successSubmitted: 'Marketing Plan submitted and entered the approval workflow.',
+    successRevised: 'Marketing Plan revision submitted successfully.',
     successDraftUpdated: 'Draft updated successfully.',
     successDraftSaved: (id) => `Draft saved (ID: ${id}). You can continue filling it in at any time.`,
     successPayment: 'Payment Request submitted successfully!',
@@ -401,6 +411,14 @@ const mpt = {
     overBudgetJustificationPlaceholder: 'Tuliskan justifikasi detail mengapa alokasi bulan ini harus melebihi plafon...',
     unitPriceIDR: 'Harga Satuan (IDR)',
 
+    // WizardStep1 missing placeholders & selects
+    descriptionPlaceholder: 'Jelaskan scope campaign, kanal iklan, sasaran audiens, dan tujuan kegiatan...',
+    selectBrand: 'Pilih Brand / Principal',
+    selectLob: 'Pilih Lini Bisnis',
+    selectLocationOption: 'Pilih Lokasi Kegiatan / Event',
+    eventPeriodLabel: 'Tanggal Event / Kegiatan *',
+    eventPeriodTooltip: 'Periode fisik berlangsungnya acara atau kegiatan lapangan.',
+
     // Tooltips (WizardStep1)
     campaignTitleTooltip: 'Nama atau judul kampanye pemasaran Anda.',
     companyTooltip: 'Badan hukum / PT Mogems yang menanggung anggaran kegiatan ini.',
@@ -413,9 +431,11 @@ const mpt = {
     errRequired: 'Judul Kampanye, Perusahaan, dan Tahun Anggaran wajib diisi.',
     errItems: 'Setiap item anggaran wajib memilih CoA dan memiliki nominal budget di atas Rp 0.',
     errOverBudget: 'Pengajuan ini melebihi limit anggaran bulanan yang dikunci. Anda wajib menyertakan alasan/justifikasi over-budget.',
+    errJustification: 'Justifikasi over-budget wajib diisi untuk pengajuan yang melebihi plafon bulanan.',
     errDraftRequired: 'Judul Kampanye, Perusahaan, dan Tahun Anggaran wajib diisi sebelum menyimpan draft.',
     errPayment: 'Judul tagihan dan nominal pembayaran wajib diisi.',
     successSubmitted: 'Rencana Pemasaran berhasil diajukan dan masuk rantai approval.',
+    successRevised: 'Revisi Rencana Pemasaran berhasil diajukan.',
     successDraftUpdated: 'Draft berhasil diperbarui.',
     successDraftSaved: (id) => `Draft berhasil disimpan (ID: ${id}). Lanjutkan pengisian kapan saja.`,
     successPayment: 'Payment Request berhasil diajukan!',
