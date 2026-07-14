@@ -58,7 +58,7 @@ async function getDeviceRentals(req, res, next) {
         unit_code: asset.unit_code,
         start_rent: asset.start_rent,
         end_rent: asset.end_rent,
-        status: asset.status === 'ACTIVE' ? 'Active' : 'Inactive',
+        status: asset.status === 'DISPOSED' ? 'Inactive' : 'Active',
         m_company: company,
         vendors: asset.vendor_name ? { vendor_name: asset.vendor_name } : null,
         assigned_user: asset.assigned_user_id ? {
