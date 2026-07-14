@@ -513,7 +513,6 @@ function SidebarContent({
           children: [
             { name: 'Assets', path: '/dashboard/assets', icon: Box, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'Vehicles', path: '/dashboard/vehicles', icon: Truck, allowed: hasAccess(['ga', 'auditor']) },
-            { name: 'Device Rental', path: '/dashboard/device-rentals', icon: Laptop, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'IT Rentals', path: '/dashboard/it-rentals', icon: Monitor, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'Maintenance', path: '/dashboard/maintenances', icon: Wrench, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'Stock Opname', path: '/dashboard/stock-opname', icon: ClipboardCheck, allowed: hasAccess(['ga', 'auditor']) },
