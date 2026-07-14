@@ -563,13 +563,6 @@ export default function GaItRentalsPage() {
               )}
             </button>
           )}
-          <button
-            onClick={() => setShowAddDrawer(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit"
-          >
-            <Plus className="w-4 h-4" />
-            {t('ga_addRental')}
-          </button>
         </div>
       </div>
 
