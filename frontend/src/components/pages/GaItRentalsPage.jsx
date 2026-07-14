@@ -266,12 +266,14 @@ export default function GaItRentalsPage() {
   const [statusFilter, setStatusFilter] = useState('Active');
   const [companyId, setCompanyId] = useState('');
   const [deviceTypeFilter, setDeviceTypeFilter] = useState('');
+  const [vendorFilter, setVendorFilter] = useState('');
 
   // Temporary filters (bound to UI controls)
   const [tempSearch, setTempSearch] = useState('');
   const [tempStatusFilter, setTempStatusFilter] = useState('Active');
   const [tempCompanyId, setTempCompanyId] = useState('');
   const [tempDeviceTypeFilter, setTempDeviceTypeFilter] = useState('');
+  const [tempVendorFilter, setTempVendorFilter] = useState('');
 
   // Process control
   const [hasProcessed, setHasProcessed] = useState(false);
@@ -355,6 +357,7 @@ export default function GaItRentalsPage() {
     setStatusFilter(tempStatusFilter);
     setCompanyId(tempCompanyId);
     setDeviceTypeFilter(tempDeviceTypeFilter);
+    setVendorFilter(tempVendorFilter);
     setHasProcessed(true);
     await fetchData();
   };
@@ -488,7 +491,11 @@ export default function GaItRentalsPage() {
       }
     }
 
-    return matchesSearch && matchesStatus && matchesCompany && matchesDeviceType;
+    // Apply Vendor Filter
+    const matchesVendor = !vendorFilter || 
+      (rental.vendors?.vendor_name && rental.vendors.vendor_name.toLowerCase() === vendorFilter.toLowerCase());
+
+    return matchesSearch && matchesStatus && matchesCompany && matchesDeviceType && matchesVendor;
   });
 
   // Dynamic Device Type Breakdown for Chart
@@ -606,6 +613,18 @@ export default function GaItRentalsPage() {
               <option value="Printer">Printer</option>
             </select>
 
+            {/* Vendor Dropdown */}
+            <select
+              value={tempVendorFilter}
+              onChange={(e) => setTempVendorFilter(e.target.value)}
+              className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
+            >
+              <option value="">All Vendors</option>
+              {vendors.map(v => (
+                <option key={v.id} value={v.vendor_name}>{v.vendor_name}</option>
+              ))}
+            </select>
+
             {/* Status Dropdown */}
             <select
               value={tempStatusFilter}
@@ -629,10 +648,12 @@ export default function GaItRentalsPage() {
                     setTempStatusFilter('Active');
                     setTempCompanyId('');
                     setTempDeviceTypeFilter('');
+                    setTempVendorFilter('');
                     setSearch('');
                     setStatusFilter('Active');
                     setCompanyId('');
                     setDeviceTypeFilter('');
+                    setVendorFilter('');
                     setHasProcessed(false);
                     setData([]);
                   }}
