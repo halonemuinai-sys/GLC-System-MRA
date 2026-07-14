@@ -19,34 +19,21 @@ async function getHelpdeskUsers(req, res, next) {
 async function assignItRentalUser(req, res, next) {
   try {
     const { employeeId } = req.body;
-    const rentalId = parseInt(req.params.id);
+    const rentalId = req.params.id; // UUID string from helpdesk.Asset.id
 
     if (!employeeId) {
       return res.status(400).json({ error: 'Employee ID is required.' });
     }
 
-    const rental = await prisma.device_rentals.findUnique({
-      where: { id: rentalId }
-    });
-
-    if (!rental) {
-      return res.status(404).json({ error: 'IT rental record not found.' });
-    }
-
-    if (!rental.unit_code) {
-      return res.status(400).json({ error: 'Rental record does not have a unit code.' });
-    }
-
-    const codeLower = rental.unit_code.toLowerCase().trim();
     const hdAssets = await prisma.$queryRawUnsafe(`
       SELECT id, "assetTag", "deviceRef", brand, model
       FROM helpdesk."Asset"
-      WHERE LOWER(TRIM("assetTag")) = $1 OR LOWER(TRIM("deviceRef")) = $1
+      WHERE id = $1
       LIMIT 1
-    `, codeLower);
+    `, rentalId);
 
     if (!hdAssets || hdAssets.length === 0) {
-      return res.status(404).json({ error: 'Corresponding asset not found in Helpdesk system.' });
+      return res.status(404).json({ error: 'Asset not found in Helpdesk system.' });
     }
 
     const asset = hdAssets[0];

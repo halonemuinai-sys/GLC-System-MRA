@@ -1,30 +1,37 @@
 const prisma = require('../../api/db');
 
 // GET List Device Rentals
+// GET List Device Rentals
 async function getDeviceRentals(req, res, next) {
   try {
-    const list = await prisma.device_rentals.findMany({
-      orderBy: { id: 'desc' },
-      include: {
-        m_company: true,
-        m_location: true,
-        m_user: true,
-        vendors: true
-      }
-    });
+    // 1. Fetch all assets from helpdesk where ownershipType = 'RENTAL'
+    const helpdeskList = await prisma.$queryRawUnsafe(`
+      SELECT 
+        a.id, 
+        a."assetTag" AS unit_code, 
+        CONCAT(a.brand, ' ', a.model) AS item_name,
+        a.brand,
+        a.model,
+        a."rentalCost" AS price,
+        a."rentalStart" AS start_rent,
+        a."rentalEnd" AS end_rent,
+        a.vendor AS vendor_name,
+        a.status,
+        a."companyId" AS company_id,
+        u.id AS "assigned_user_id",
+        u.name AS "assigned_user_name",
+        u.department AS "assigned_user_dept",
+        u.email AS "assigned_user_email"
+      FROM helpdesk."Asset" a
+      LEFT JOIN helpdesk."User" u ON a."userId" = u.id
+      WHERE a."ownershipType" = 'RENTAL'
+      ORDER BY a."createdAt" DESC
+    `);
 
-    let helpdeskAssets = [];
-    try {
-      helpdeskAssets = await prisma.$queryRawUnsafe(`
-        SELECT a.id, a."assetTag", a."deviceRef", u.id AS "userId", u.name AS "userName", u.department AS "userDept", u.email AS "userEmail"
-        FROM helpdesk."Asset" a
-        LEFT JOIN helpdesk."User" u ON a."userId" = u.id
-        WHERE a."ownershipType" = 'RENTAL'
-      `);
-    } catch (dbErr) {
-      console.error('Error fetching Helpdesk assets:', dbErr.message);
-    }
+    // 2. Fetch all companies to map the company_id to the company object
+    const companies = await prisma.m_company.findMany();
 
+    // 3. Fetch pending approval requests from helpdesk
     let pendingApprovals = [];
     try {
       pendingApprovals = await prisma.$queryRawUnsafe(`
@@ -37,37 +44,60 @@ async function getDeviceRentals(req, res, next) {
       console.error('Error fetching Helpdesk pending approvals:', dbErr.message);
     }
 
-    const enrichedList = list.map(rental => {
-      const plainRental = { ...rental };
-      if (!rental.unit_code) return plainRental;
+    // 4. Map and enrich the helpdeskList to conform to the expected format
+    const enrichedList = helpdeskList.map(asset => {
+      const company = companies.find(c => c.id === asset.company_id) || null;
+      
+      const mapped = {
+        id: asset.id, // UUID String
+        company_id: asset.company_id,
+        device_type: 'Laptop',
+        order_id: asset.unit_code,
+        item_name: asset.item_name,
+        price: asset.price || 0,
+        unit_code: asset.unit_code,
+        start_rent: asset.start_rent,
+        end_rent: asset.end_rent,
+        status: asset.status === 'ACTIVE' ? 'Active' : 'Inactive',
+        m_company: company,
+        vendors: asset.vendor_name ? { vendor_name: asset.vendor_name } : null,
+        assigned_user: asset.assigned_user_id ? {
+          id: asset.assigned_user_id,
+          name: asset.assigned_user_name,
+          department: asset.assigned_user_dept,
+          email: asset.assigned_user_email
+        } : null
+      };
 
-      const codeLower = rental.unit_code.toLowerCase().trim();
-
-      const matchingAsset = helpdeskAssets.find(ha => {
-        const tag = (ha.assetTag || '').toLowerCase().trim();
-        const ref = (ha.deviceRef || '').toLowerCase().trim();
-        return codeLower === tag || codeLower === ref;
-      });
-
-      if (matchingAsset) {
-        plainRental.assigned_user = matchingAsset.userId ? {
-          id: matchingAsset.userId,
-          name: matchingAsset.userName,
-          department: matchingAsset.userDept,
-          email: matchingAsset.userEmail
-        } : null;
-
-        const matchingApproval = pendingApprovals.find(pa => pa.entityId === matchingAsset.id);
-        if (matchingApproval) {
-          plainRental.pending_approval = {
-            id: matchingApproval.id,
-            target_user_id: matchingApproval.targetUserId,
-            target_user_name: matchingApproval.targetUserName
-          };
-        }
+      // Determine device_type from item_name/model
+      const nameLower = (asset.item_name || '').toLowerCase();
+      if (nameLower.includes('laptop') || nameLower.includes('notebook')) {
+        mapped.device_type = 'Laptop';
+      } else if (nameLower.includes('printer') || nameLower.includes('ciss')) {
+        mapped.device_type = 'Printer';
+      } else if (nameLower.includes('server')) {
+        mapped.device_type = 'Server';
+      } else if (nameLower.includes('desktop') || nameLower.includes('pc') || nameLower.includes('computer')) {
+        mapped.device_type = 'PC Desktop';
+      } else if (nameLower.includes('ipad') || nameLower.includes('tablet') || nameLower.includes('tab')) {
+        mapped.device_type = 'Tablet';
+      } else if (nameLower.includes('smartphone') || nameLower.includes('phone') || nameLower.includes('iphone')) {
+        mapped.device_type = 'Smartphone';
+      } else {
+        mapped.device_type = 'Laptop'; // Fallback default
       }
 
-      return plainRental;
+      // Match pending approval
+      const matchingApproval = pendingApprovals.find(pa => pa.entityId === asset.id);
+      if (matchingApproval) {
+        mapped.pending_approval = {
+          id: matchingApproval.id,
+          target_user_id: matchingApproval.targetUserId,
+          target_user_name: matchingApproval.targetUserName
+        };
+      }
+
+      return mapped;
     });
 
     res.json(enrichedList);
