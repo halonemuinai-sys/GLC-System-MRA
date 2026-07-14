@@ -454,7 +454,7 @@ export default function GaItRentalsPage() {
   };
 
   // Filter rentals on client-side (IT Devices only: filter in laptops, PCs, desktops)
-  const itTypes = ['laptop', 'pc', 'desktop', 'computer', 'server', 'ipad', 'tablet', 'imac', 'tab', 'smartphone', 'phone', 'iphone', 'android'];
+  const itTypes = ['laptop', 'pc', 'desktop', 'computer', 'server', 'ipad', 'tablet', 'imac', 'tab', 'smartphone', 'phone', 'iphone', 'android', 'printer'];
   const filteredRentals = data.filter(rental => {
     const isItType = itTypes.some(t => rental.device_type?.toLowerCase().includes(t));
     if (!isItType) return false; // Skip general rentals here
@@ -605,10 +605,12 @@ export default function GaItRentalsPage() {
             >
               <option value="">All IT Devices</option>
               <option value="Laptop">Laptop</option>
+              <option value="PC Desktop">PC Desktop</option>
               <option value="Smartphone">Smartphone</option>
               <option value="Tab">Tab / Tablet</option>
               <option value="iMac">iMac</option>
               <option value="Server">Server</option>
+              <option value="Printer">Printer</option>
             </select>
 
             {/* Status Dropdown */}
@@ -1214,12 +1216,14 @@ export default function GaItRentalsPage() {
                         required
                         value={formData.device_type}
                         onChange={(e) => setFormData({...formData, device_type: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-505 focus:outline-none"
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
                       >
                         <option value="Laptop">Laptop</option>
                         <option value="PC Desktop">PC Desktop</option>
                         <option value="Server">Server</option>
                         <option value="iPad / Tablet">iPad / Tablet</option>
+                        <option value="Smartphone">Smartphone</option>
+                        <option value="Printer">Printer</option>
                       </select>
                     </div>
                   </div>
