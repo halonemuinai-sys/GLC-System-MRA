@@ -19,10 +19,14 @@ npm install --prefer-offline
 npx prisma generate
 
 echo "=== [4/5] Merestart Backend & Frontend via PM2 ==="
-# Restart frontend
-pm2 restart glc-frontend || pm2 start node_modules/next/dist/bin/next --name "glc-frontend" -- start -p 3001
-# Restart backend
-pm2 restart glc-backend || pm2 start api/index.js --name "glc-backend"
+# Hentikan dan hapus konfigurasi PM2 lama agar parameter baru (CWD) terupdate
+pm2 delete glc-frontend || true
+pm2 delete glc-backend || true
+
+# Start frontend dengan CWD yang benar
+pm2 start node_modules/next/dist/bin/next --name "glc-frontend" --cwd "$APP_DIR/frontend" -- start -p 3001
+# Start backend dengan CWD yang benar
+pm2 start api/index.js --name "glc-backend" --cwd "$APP_DIR/backend"
 
 pm2 save
 
