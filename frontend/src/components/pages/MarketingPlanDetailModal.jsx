@@ -179,7 +179,7 @@ export default function MarketingPlanDetailModal({
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005';
+      const apiBase = process.env.NEXT_PUBLIC_API_URL !== undefined ? process.env.NEXT_PUBLIC_API_URL : 'http://localhost:5005';
       const res = await fetch(`${apiBase}/api/marketing/upload`, {
         method: 'POST',
         headers,
