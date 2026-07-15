@@ -49,7 +49,7 @@ npm install
 
 # Membuat file environment default untuk Next.js
 if [ ! -f ".env" ]; then
-  echo "NEXT_PUBLIC_API_URL=\"/api\"" > .env
+  echo "NEXT_PUBLIC_API_URL=\"\"" > .env
 fi
 
 npm run build
