@@ -12,8 +12,8 @@ module.exports = {
     },
     {
       name: 'glc-frontend',
-      script: 'node_modules/next/dist/bin/next',
-      args: 'start -p 3001',
+      script: 'npm',
+      args: 'run start',
       cwd: '/var/www/glc-system/GLC-System-MRA/frontend',
       watch: false,
       env: {
