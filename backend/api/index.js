@@ -7,7 +7,12 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: '*', // Menyesuaikan untuk kebutuhan CORS di lokal
+  origin: (origin, callback) => {
+    // Izinkan semua origin secara dinamis dengan mengembalikan origin asal request
+    // Ini mendukung credentials: true agar cookie & auth token tidak ke-block browser
+    callback(null, true);
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
