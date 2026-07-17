@@ -29,6 +29,22 @@ import {
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
 
+// Helper function to format Vendor Name dynamically (e.g. PT CENTRIN ONLINE PRIMA -> PT Centrin Online Prima)
+const formatVendorName = (str) => {
+  if (!str) return '';
+  return str
+    .split(/\s+/)
+    .map(word => {
+      const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '');
+      const lowerClean = cleanWord.toLowerCase();
+      if (lowerClean === 'pt' || lowerClean === 'cv' || lowerClean === 'ud') {
+        return word.toUpperCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+};
+
 // Searchable Dropdown for Companies (PT)
 function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)' }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -936,6 +952,7 @@ export default function GaVendorsPage() {
                       placeholder="e.g. PT Maju Jaya Sentosa"
                       value={formData.vendor_name}
                       onChange={(e) => setFormData({...formData, vendor_name: e.target.value})}
+                      onBlur={(e) => setFormData({...formData, vendor_name: formatVendorName(e.target.value)})}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
                     />
                   </div>

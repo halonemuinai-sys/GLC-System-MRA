@@ -1,5 +1,21 @@
 const prisma = require('../../api/db');
 
+// Helper function to format Vendor Name dynamically (e.g. PT CENTRIN ONLINE PRIMA -> PT Centrin Online Prima)
+function formatVendorName(str) {
+  if (!str) return '';
+  return str
+    .split(/\s+/)
+    .map(word => {
+      const cleanWord = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '');
+      const lowerClean = cleanWord.toLowerCase();
+      if (lowerClean === 'pt' || lowerClean === 'cv' || lowerClean === 'ud') {
+        return word.toUpperCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
 // GET List Vendors
 async function getVendors(req, res, next) {
   try {
@@ -110,7 +126,7 @@ async function createVendor(req, res, next) {
     const newVendor = await prisma.vendors.create({
       data: {
         vendor_code: data.vendor_code || null,
-        vendor_name: data.vendor_name,
+        vendor_name: formatVendorName(data.vendor_name),
         vendor_category_id: data.vendor_category_id ? parseInt(data.vendor_category_id) : null,
         expense_category_id: data.expense_category_id ? parseInt(data.expense_category_id) : null,
         detail: data.detail || null,
@@ -147,7 +163,7 @@ async function updateVendor(req, res, next) {
       where: { id: parseInt(req.params.id) },
       data: {
         vendor_code: data.vendor_code !== undefined ? data.vendor_code : undefined,
-        vendor_name: data.vendor_name !== undefined ? data.vendor_name : undefined,
+        vendor_name: data.vendor_name !== undefined ? formatVendorName(data.vendor_name) : undefined,
         vendor_category_id: data.vendor_category_id !== undefined ? (data.vendor_category_id ? parseInt(data.vendor_category_id) : null) : undefined,
         expense_category_id: data.expense_category_id !== undefined ? (data.expense_category_id ? parseInt(data.expense_category_id) : null) : undefined,
         detail: data.detail !== undefined ? data.detail : undefined,
