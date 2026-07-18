@@ -1035,6 +1035,20 @@ export default function MarketingPlanDetailModal({
                   </div>
                 )}
 
+                {(() => {
+                  const eventEnd = selectedPlan?.event_end_date;
+                  if (!eventEnd) return null;
+                  const isEventPast = new Date() > new Date(eventEnd);
+                  if (!isEventPast) return null;
+                  const endLabel = new Date(eventEnd).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                  return (
+                    <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs font-semibold p-3 rounded-xl flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                      <span>Periode event telah berakhir pada <strong>{endLabel}</strong>. Pengajuan ini akan tercatat sebagai realisasi pasca-event.</span>
+                    </div>
+                  );
+                })()}
+
                 <div className="bg-neutral-50 dark:bg-neutral-955 p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-850 space-y-1 text-xs">
                   <div className="text-neutral-450 font-bold uppercase text-[9px] tracking-wider">{t('availableBalance')}</div>
                   <div className="text-lg font-black text-indigo-600 dark:text-indigo-400">
