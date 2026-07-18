@@ -532,6 +532,7 @@ function SidebarContent({
           icon: Wallet,
           children: [
             { name: 'Expenses', path: '/dashboard/expenses', icon: BarChart3, allowed: hasAccess(['ga', 'auditor']) },
+            { name: 'Monitoring Anggaran', path: '/dashboard/ga/budget-monitoring', icon: CreditCard, allowed: hasAccess(['ga', 'admin', 'auditor']) },
           ]
         }
       ]

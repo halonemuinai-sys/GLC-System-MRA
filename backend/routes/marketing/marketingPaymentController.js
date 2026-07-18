@@ -133,7 +133,7 @@ async function getPayments(req, res, next) {
     if (status) where.status = status;
 
     // Non-admin hanya lihat payment milik sendiri atau dari plan yang mereka buat
-    if (userRole !== 'ADMIN' && userRole !== 'AUDITOR') {
+    if (userRole !== 'ADMIN' && userRole !== 'AUDITOR' && userRole !== 'GA') {
       if (employee) where.creator_id = employee.id;
     }
 

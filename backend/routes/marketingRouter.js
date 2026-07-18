@@ -46,7 +46,7 @@ router.get('/payments/:id', verifyToken, paymentController.getPaymentDetail);
 router.post('/payments', verifyToken, checkRole(['admin', 'marketing']), paymentController.createPaymentRequest);
 router.put('/payments/:id', verifyToken, checkRole(['admin', 'marketing']), paymentController.updatePayment);
 router.delete('/payments/:id', verifyToken, checkRole(['admin', 'marketing']), paymentController.deletePayment);
-router.post('/payments/:id/mark-paid', verifyToken, checkRole(['admin']), paymentController.markPaymentPaid);
+router.post('/payments/:id/mark-paid', verifyToken, checkRole(['admin', 'ga']), paymentController.markPaymentPaid);
 
 // Approvals & Tasks
 router.get('/tasks', verifyToken, approvalController.getPendingTasks);
