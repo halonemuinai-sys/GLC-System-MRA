@@ -1036,7 +1036,7 @@ export default function MarketingPlanDetailModal({
                 )}
 
                 <div className="bg-neutral-50 dark:bg-neutral-955 p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-850 space-y-1 text-xs">
-                  <div className="text-neutral-450 font-bold uppercase text-[9px] tracking-wider">Remaining Budget for this Item</div>
+                  <div className="text-neutral-450 font-bold uppercase text-[9px] tracking-wider">{t('availableBalance')}</div>
                   <div className="text-lg font-black text-indigo-600 dark:text-indigo-400">
                     {formatIDR(Number(paymentRequestItem.budget_amount) - Number(paymentRequestItem.actual_amount))}
                   </div>
