@@ -343,10 +343,13 @@ async function deleteEventLocation(req, res, next) {
     const id = parseInt(req.params.id, 10);
 
     const linked = await prisma.marketing_plan_items.findFirst({
-      where: { event_location_id: id }
+      where: {
+        event_location_id: id,
+        marketing_plan: { status: { in: ['PENDING_APPROVAL', 'APPROVED', 'COMPLETED'] } }
+      }
     });
     if (linked) {
-      return res.status(400).json({ error: 'Lokasi event tidak bisa dihapus karena sedang digunakan dalam rencana anggaran.' });
+      return res.status(400).json({ error: 'Lokasi event tidak bisa dihapus karena masih digunakan dalam rencana anggaran yang aktif.' });
     }
 
     await prisma.m_event_location.delete({
