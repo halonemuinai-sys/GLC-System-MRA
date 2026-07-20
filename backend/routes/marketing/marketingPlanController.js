@@ -815,8 +815,29 @@ async function deletePlan(req, res, next) {
       return res.status(403).json({ error: 'Forbidden. Only the creator or admin can delete this plan.' });
     }
 
-    await prisma.marketing_plans.delete({
-      where: { id: planId }
+    // Hapus payment_requests (dan approval_history terkait) sebelum delete plan
+    // karena FK payment_requests -> marketing_plan_items tidak cascade otomatis
+    await prisma.$transaction(async (tx) => {
+      const items = await tx.marketing_plan_items.findMany({
+        where: { marketing_plan_id: planId },
+        select: { id: true }
+      });
+      const itemIds = items.map(i => i.id);
+
+      if (itemIds.length > 0) {
+        const payments = await tx.payment_requests.findMany({
+          where: { marketing_plan_item_id: { in: itemIds } },
+          select: { id: true }
+        });
+        const paymentIds = payments.map(p => p.id);
+
+        if (paymentIds.length > 0) {
+          await tx.approval_history.deleteMany({ where: { payment_request_id: { in: paymentIds } } });
+          await tx.payment_requests.deleteMany({ where: { id: { in: paymentIds } } });
+        }
+      }
+
+      await tx.marketing_plans.delete({ where: { id: planId } });
     });
 
     res.json({ message: 'Marketing Plan deleted successfully.' });
