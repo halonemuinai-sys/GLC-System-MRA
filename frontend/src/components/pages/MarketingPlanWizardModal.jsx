@@ -324,22 +324,46 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
           />
         </div>
 
-        {/* Target Branch */}
+        {/* Target Branch — Multi-select Checklist */}
         <div className="space-y-2">
           <FormLabel label={t('targetBranchLabel')} tooltip={t('targetBranchTooltip')} />
-          <select
-            value={wizardHeader.branch_id || 'global'}
-            onChange={(e) => setWizardHeader(prev => ({ ...prev, branch_id: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
-            required
-          >
-            <option value="global">{t('globalSales')}</option>
+          <div className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-3 space-y-1.5 max-h-44 overflow-y-auto">
+            {/* Select All / Global */}
+            <label className="flex items-center gap-2.5 cursor-pointer py-1 px-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
+              <input
+                type="checkbox"
+                checked={wizardHeader.branch_ids.length === 0}
+                onChange={() => setWizardHeader(prev => ({ ...prev, branch_ids: [] }))}
+                className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
+              />
+              <span className={`text-xs font-semibold ${wizardHeader.branch_ids.length === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{t('globalSales')}</span>
+            </label>
             {metadata.branches.map(b => (
-              <option key={b.id} value={b.id}>
-                {t('branchOption')} {b.name}
-              </option>
+              <label key={b.id} className="flex items-center gap-2.5 cursor-pointer py-1 px-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={wizardHeader.branch_ids.includes(String(b.id))}
+                  onChange={(e) => {
+                    setWizardHeader(prev => {
+                      const ids = [...prev.branch_ids];
+                      if (e.target.checked) {
+                        ids.push(String(b.id));
+                      } else {
+                        const idx = ids.indexOf(String(b.id));
+                        if (idx > -1) ids.splice(idx, 1);
+                      }
+                      return { ...prev, branch_ids: ids };
+                    });
+                  }}
+                  className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
+                />
+                <span className={`text-xs font-medium ${wizardHeader.branch_ids.includes(String(b.id)) ? 'text-neutral-900 dark:text-white' : 'text-neutral-600 dark:text-neutral-400'}`}>{b.name}</span>
+              </label>
             ))}
-          </select>
+          </div>
+          {wizardHeader.branch_ids.length > 0 && (
+            <p className="text-[10px] text-blue-500 font-semibold">{wizardHeader.branch_ids.length} branch(es) selected</p>
+          )}
         </div>
 
         {/* Proposal Document Link */}
@@ -655,7 +679,7 @@ function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, m
             <div>Brand: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.brands.find(b => String(b.id) === String(wizardHeader.brand_id))?.name || '-'}</span></div>
             <div>Line of Business: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.lobs.find(l => String(l.id) === String(wizardHeader.lob_id))?.name || '-'}</span></div>
             <div>{t('eventLocationReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.event_locations.find(b => String(b.id) === String(wizardHeader.event_location_id)); return br ? br.name : '-'; })()}</span></div>
-            <div>{t('targetBranchReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { if (!wizardHeader.branch_id || wizardHeader.branch_id === 'global') return t('globalSales'); const br = metadata.branches.find(b => String(b.id) === String(wizardHeader.branch_id)); return br ? `${t('branchOption')} ${br.name}` : t('globalSales'); })()}</span></div>
+            <div>{t('targetBranchReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { if (wizardHeader.branch_ids.length === 0) return t('globalSales'); return wizardHeader.branch_ids.map(bid => { const br = metadata.branches.find(b => String(b.id) === bid); return br ? br.name : bid; }).join(', '); })()}</span></div>
           </div>
         </div>
 
@@ -799,7 +823,7 @@ export default function MarketingPlanWizardModal({
     cta_end_date: '',
     brand_id: '',
     lob_id: '',
-    branch_id: '',
+    branch_ids: [],
     event_location_id: '',
     doc_url: '',
     over_budget_reason: '',
@@ -845,7 +869,7 @@ export default function MarketingPlanWizardModal({
           cta_end_date: '',
           brand_id: '',
           lob_id: '',
-          branch_id: '',
+          branch_ids: [],
           event_location_id: '',
           doc_url: '',
           over_budget_reason: '',
@@ -888,7 +912,10 @@ export default function MarketingPlanWizardModal({
           cta_end_date: formatDate(plan.cta_end_date),
           brand_id: firstItem.brand_id ? String(firstItem.brand_id) : '',
           lob_id: firstItem.lob_id ? String(firstItem.lob_id) : '',
-          branch_id: firstItem.branch_id ? String(firstItem.branch_id) : 'global',
+          branch_ids: (() => {
+            const uniqueIds = [...new Set(plan.items.filter(it => it.branch_id).map(it => String(it.branch_id)))];
+            return uniqueIds;
+          })(),
           event_location_id: firstItem.event_location_id ? String(firstItem.event_location_id) : '',
           doc_url: plan.doc_url || '',
           over_budget_reason: plan.over_budget_reason || '',
@@ -1014,7 +1041,7 @@ export default function MarketingPlanWizardModal({
     ...wizardHeader,
     start_date: wizardHeader.event_start_date || null,
     end_date: wizardHeader.event_end_date || null,
-    branch_id: wizardHeader.branch_id && wizardHeader.branch_id !== 'global' ? Number(wizardHeader.branch_id) : null,
+    branch_ids: wizardHeader.branch_ids || [],
     event_location_id: wizardHeader.event_location_id ? Number(wizardHeader.event_location_id) : null,
     target_sales: wizardHeader.target_sales ? Number(String(wizardHeader.target_sales).replace(/\D/g, '')) : null,
     target_leads: wizardHeader.target_leads ? parseInt(wizardHeader.target_leads, 10) : null,
@@ -1027,7 +1054,7 @@ export default function MarketingPlanWizardModal({
       coa_id: Number(item.coa_id),
       brand_id: wizardHeader.brand_id ? Number(wizardHeader.brand_id) : null,
       lob_id: wizardHeader.lob_id ? Number(wizardHeader.lob_id) : null,
-      branch_id: wizardHeader.branch_id && wizardHeader.branch_id !== 'global' ? Number(wizardHeader.branch_id) : null,
+      branch_id: wizardHeader.branch_ids.length > 0 ? Number(wizardHeader.branch_ids[0]) : null,
       event_location_id: wizardHeader.event_location_id ? Number(wizardHeader.event_location_id) : null,
       vendor_id: item.vendor_id || null,
       period_month: Number(item.period_month),
