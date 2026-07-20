@@ -324,45 +324,63 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
           />
         </div>
 
-        {/* Target Branch — Multi-select Checklist */}
-        <div className="space-y-2">
+        {/* Target Branch — Dropdown with Checklist */}
+        <div className="space-y-2 relative">
           <FormLabel label={t('targetBranchLabel')} tooltip={t('targetBranchTooltip')} />
-          <div className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-3 space-y-1.5 max-h-44 overflow-y-auto">
-            {/* Select All / Global */}
-            <label className="flex items-center gap-2.5 cursor-pointer py-1 px-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
-              <input
-                type="checkbox"
-                checked={wizardHeader.branch_ids.length === 0}
-                onChange={() => setWizardHeader(prev => ({ ...prev, branch_ids: [] }))}
-                className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
-              />
-              <span className={`text-xs font-semibold ${wizardHeader.branch_ids.length === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{t('globalSales')}</span>
-            </label>
-            {metadata.branches.map(b => (
-              <label key={b.id} className="flex items-center gap-2.5 cursor-pointer py-1 px-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={wizardHeader.branch_ids.includes(String(b.id))}
-                  onChange={(e) => {
-                    setWizardHeader(prev => {
-                      const ids = [...prev.branch_ids];
-                      if (e.target.checked) {
-                        ids.push(String(b.id));
-                      } else {
-                        const idx = ids.indexOf(String(b.id));
-                        if (idx > -1) ids.splice(idx, 1);
-                      }
-                      return { ...prev, branch_ids: ids };
-                    });
-                  }}
-                  className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
-                />
-                <span className={`text-xs font-medium ${wizardHeader.branch_ids.includes(String(b.id)) ? 'text-neutral-900 dark:text-white' : 'text-neutral-600 dark:text-neutral-400'}`}>{b.name}</span>
-              </label>
-            ))}
-          </div>
-          {wizardHeader.branch_ids.length > 0 && (
-            <p className="text-[10px] text-blue-500 font-semibold">{wizardHeader.branch_ids.length} branch(es) selected</p>
+          {/* Dropdown Trigger */}
+          <button
+            type="button"
+            onClick={() => setWizardHeader(prev => ({ ...prev, _branchDropdownOpen: !prev._branchDropdownOpen }))}
+            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-left font-medium flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+          >
+            <span className={wizardHeader.branch_ids.length === 0 ? 'text-neutral-850 dark:text-white' : 'text-blue-600 dark:text-blue-400'}>
+              {wizardHeader.branch_ids.length === 0
+                ? t('globalSales')
+                : `${wizardHeader.branch_ids.length} branch selected`}
+            </span>
+            <svg className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${wizardHeader._branchDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+          </button>
+
+          {/* Dropdown Panel */}
+          {wizardHeader._branchDropdownOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setWizardHeader(prev => ({ ...prev, _branchDropdownOpen: false }))} />
+              <div className="absolute z-40 w-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl p-2.5 space-y-1 max-h-52 overflow-y-auto">
+                {/* Global / All Branches */}
+                <label className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={wizardHeader.branch_ids.length === 0}
+                    onChange={() => setWizardHeader(prev => ({ ...prev, branch_ids: [] }))}
+                    className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
+                  />
+                  <span className={`text-xs font-semibold ${wizardHeader.branch_ids.length === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{t('globalSales')}</span>
+                </label>
+                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+                {metadata.branches.map(b => (
+                  <label key={b.id} className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={wizardHeader.branch_ids.includes(String(b.id))}
+                      onChange={(e) => {
+                        setWizardHeader(prev => {
+                          const ids = [...prev.branch_ids];
+                          if (e.target.checked) {
+                            ids.push(String(b.id));
+                          } else {
+                            const idx = ids.indexOf(String(b.id));
+                            if (idx > -1) ids.splice(idx, 1);
+                          }
+                          return { ...prev, branch_ids: ids };
+                        });
+                      }}
+                      className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
+                    />
+                    <span className={`text-xs font-medium ${wizardHeader.branch_ids.includes(String(b.id)) ? 'text-neutral-900 dark:text-white' : 'text-neutral-600 dark:text-neutral-400'}`}>{b.name}</span>
+                  </label>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
