@@ -93,40 +93,52 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('salesTargetIDR')}</label>
               <input
-                type="number"
+                type="text"
                 placeholder="0"
-                value={wizardHeader.target_sales || ''}
-                onChange={(e) => setWizardHeader(p => ({ ...p, target_sales: e.target.value }))}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                value={formatThousands(wizardHeader.target_sales)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setWizardHeader(p => ({ ...p, target_sales: val }));
+                }}
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('leadsTarget')}</label>
               <input
-                type="number"
+                type="text"
                 placeholder="0"
-                value={wizardHeader.target_leads || ''}
-                onChange={(e) => setWizardHeader(p => ({ ...p, target_leads: e.target.value }))}
+                value={formatThousands(wizardHeader.target_leads)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setWizardHeader(p => ({ ...p, target_leads: val }));
+                }}
                 className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('reachTarget')}</label>
               <input
-                type="number"
+                type="text"
                 placeholder="0"
-                value={wizardHeader.target_reach || ''}
-                onChange={(e) => setWizardHeader(p => ({ ...p, target_reach: e.target.value }))}
+                value={formatThousands(wizardHeader.target_reach)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setWizardHeader(p => ({ ...p, target_reach: val }));
+                }}
                 className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('impressionsTargetLabel')}</label>
               <input
-                type="number"
+                type="text"
                 placeholder="0"
-                value={wizardHeader.target_impressions || ''}
-                onChange={(e) => setWizardHeader(p => ({ ...p, target_impressions: e.target.value }))}
+                value={formatThousands(wizardHeader.target_impressions)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setWizardHeader(p => ({ ...p, target_impressions: val }));
+                }}
                 className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
               />
             </div>
