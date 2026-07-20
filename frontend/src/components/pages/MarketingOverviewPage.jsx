@@ -183,6 +183,16 @@ export default function MarketingOverviewPage() {
 
   useEffect(() => { loadPlans(); }, [loadPlans]);
 
+  // ── Chart Data Memoization ──────────────────────────────────────────────────
+  const chartData = useMemo(() => {
+    return plans.slice(0, 10).map(p => ({
+      name: p.title || '-',
+      fullName: p.title || '-',
+      Budget: Number(p.total_budget || 0),
+      Realisasi: (p.items || []).reduce((s, it) => s + Number(it.actual_amount || 0), 0),
+    }));
+  }, [plans]);
+
   // ── KPIs ──────────────────────────────────────────────────────────────────
   const kpis = useMemo(() => {
     let totalBudget = 0, totalActual = 0, approved = 0, pending = 0, rejected = 0, draft = 0;
@@ -464,15 +474,10 @@ export default function MarketingOverviewPage() {
               </div>
 
               {/* Chart */}
-              <div className="px-4 pt-2 pb-3">
-                <ResponsiveContainer width="100%" height={320}>
+              <div className="px-4 pt-2 pb-3 min-h-[320px]">
+                <ResponsiveContainer width="100%" height={320} debounce={50}>
                   <BarChart
-                    data={plans.slice(0, 10).map(p => ({
-                      name: p.title || '-',
-                      fullName: p.title || '-',
-                      Budget: Number(p.total_budget || 0),
-                      Realisasi: (p.items || []).reduce((s, it) => s + Number(it.actual_amount || 0), 0),
-                    }))}
+                    data={chartData}
                     margin={{ top: 28, right: 16, left: 4, bottom: 44 }}
                     barCategoryGap="40%"
                     barGap={3}
@@ -507,10 +512,7 @@ export default function MarketingOverviewPage() {
                       fill="#CBD5E1"
                       radius={[4, 4, 2, 2]}
                       maxBarSize={32}
-                      isAnimationActive
-                      animationBegin={0}
-                      animationDuration={900}
-                      animationEasing="ease-out"
+                      isAnimationActive={false}
                     >
                       <LabelList
                         dataKey="Budget"
@@ -524,10 +526,7 @@ export default function MarketingOverviewPage() {
                       fill="#22C55E"
                       radius={[4, 4, 2, 2]}
                       maxBarSize={32}
-                      isAnimationActive
-                      animationBegin={180}
-                      animationDuration={900}
-                      animationEasing="ease-out"
+                      isAnimationActive={false}
                     >
                       <LabelList
                         dataKey="Realisasi"
