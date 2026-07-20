@@ -310,7 +310,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
           <CampaignDateRangePicker
             startValue={wizardHeader.event_start_date}
             endValue={wizardHeader.event_end_date}
-            onChange={(s, e) => setWizardHeader(prev => ({ ...prev, event_start_date: s, event_end_date: e }))}
+            onChange={({ start, end }) => setWizardHeader(prev => ({ ...prev, event_start_date: start, event_end_date: end }))}
           />
         </div>
 
@@ -320,7 +320,7 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
           <CampaignDateRangePicker
             startValue={wizardHeader.cta_start_date}
             endValue={wizardHeader.cta_end_date}
-            onChange={(s, e) => setWizardHeader(prev => ({ ...prev, cta_start_date: s, cta_end_date: e }))}
+            onChange={({ start, end }) => setWizardHeader(prev => ({ ...prev, cta_start_date: start, cta_end_date: end }))}
           />
         </div>
 
