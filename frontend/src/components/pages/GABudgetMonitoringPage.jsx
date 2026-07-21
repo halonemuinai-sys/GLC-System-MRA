@@ -281,7 +281,20 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
   const grandTotal = subtotal + ppnAmount;
 
   const handlePrint = () => {
+    const originalTitle = document.title;
+    document.title = `${poNumber.replace(/[\/\s]/g, '_')}`;
     window.print();
+    setTimeout(() => { document.title = originalTitle; }, 500);
+  };
+
+  const handleDownloadPdf = () => {
+    setPreviewMode(true);
+    setTimeout(() => {
+      const originalTitle = document.title;
+      document.title = `${poNumber.replace(/[\/\s]/g, '_')}`;
+      window.print();
+      setTimeout(() => { document.title = originalTitle; }, 500);
+    }, 150);
   };
 
   const handleSavePo = () => {
@@ -291,6 +304,30 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto">
+      {/* Print-only CSS style */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+          #po-print-area, #po-print-area * {
+            visibility: visible !important;
+          }
+          #po-print-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 24px !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: white !important;
+            color: black !important;
+          }
+        }
+      `}</style>
+
       <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
         className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col my-6 max-h-[92vh]">
         
@@ -307,6 +344,12 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
           </div>
           
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-500/20 rounded-xl text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" /> Download PDF
+            </button>
             <button
               onClick={() => setPreviewMode(!previewMode)}
               className="px-3 py-1.5 bg-neutral-200/60 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded-xl text-xs font-bold hover:bg-neutral-300/60 transition-colors flex items-center gap-1.5 cursor-pointer"
@@ -426,7 +469,7 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
             </div>
           ) : (
             /* PRINT / PREVIEW DOCUMENT LAYOUT */
-            <div className="bg-white text-neutral-900 p-8 rounded-2xl border border-neutral-200 shadow-sm space-y-6 font-sans">
+            <div id="po-print-area" className="bg-white text-neutral-900 p-8 rounded-2xl border border-neutral-200 shadow-sm space-y-6 font-sans">
               {/* Document Header */}
               <div className="flex justify-between items-start border-b pb-4">
                 <div>
@@ -524,6 +567,12 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
           </button>
           
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              className="px-4 py-2 font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" /> Download PDF
+            </button>
             {previewMode && (
               <button
                 onClick={handlePrint}
