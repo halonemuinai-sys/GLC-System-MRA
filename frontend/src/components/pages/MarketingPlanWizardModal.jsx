@@ -449,7 +449,12 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
   );
 }
 
-function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, removeWizardItem, handleItemChange, metadata, overBudgetMonths, t, lang }) {
+function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, removeWizardItem, handleItemChange, metadata, overBudgetMonths, budgetAvailability, t, lang }) {
+  const budgetMonthlyMap = React.useMemo(() => {
+    if (!budgetAvailability?.monthly) return {};
+    return budgetAvailability.monthly.reduce((acc, m) => { acc[m.month] = m; return acc; }, {});
+  }, [budgetAvailability]);
+
   const getAvailableMonths = () => {
     const start_date = wizardHeader.event_start_date || wizardHeader.cta_start_date || wizardHeader.start_date;
     const end_date = wizardHeader.event_end_date || wizardHeader.cta_end_date || wizardHeader.end_date;
@@ -547,6 +552,16 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
                           <option key={m} value={m}>{getMonthName(m, lang)}</option>
                         ))}
                       </select>
+                      {(() => {
+                        const m = parseInt(item.period_month, 10);
+                        if (!m || !budgetMonthlyMap[m]) return null;
+                        const mb = budgetMonthlyMap[m];
+                        if (!mb.limit) return null;
+                        const pct = mb.available / mb.limit;
+                        const color = pct > 0.3 ? 'text-green-600 dark:text-green-400' : pct > 0.1 ? 'text-amber-500 dark:text-amber-400' : 'text-red-500 dark:text-red-400';
+                        const label = mb.available <= 0 ? 'Habis' : `Sisa ${(mb.available / 1000000).toFixed(1)}jt`;
+                        return <div className={`text-[9px] font-bold mt-0.5 truncate ${color}`}>{label}</div>;
+                      })()}
                     </td>
 
                     {/* CoA select */}
@@ -694,8 +709,21 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
   );
 }
 
-function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, metadata, overBudgetMonths, t, lang }) {
+function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, metadata, overBudgetMonths, budgetAvailability, t, lang }) {
   const totalEstimation = wizardItems.reduce((acc, curr) => acc + Number(curr.budget_amount || 0), 0);
+
+  const thresholdAlert = React.useMemo(() => {
+    if (!budgetAvailability?.monthly) return null;
+    const totalProposed = wizardItems.reduce((s, it) => s + Number(it.qty || 1) * Number(it.unit_price || 0), 0);
+    const totalLimit = budgetAvailability.monthly.reduce((s, m) => s + Number(m.limit || 0), 0);
+    const totalCommitted = budgetAvailability.monthly.reduce((s, m) => s + Number(m.committed || 0), 0);
+    if (totalLimit <= 0) return null;
+    const usedAfter = totalCommitted + totalProposed;
+    const pct = Math.round((usedAfter / totalLimit) * 100);
+    if (pct >= 100) return { level: 'critical', pct };
+    if (pct >= 80) return { level: 'warning', pct };
+    return null;
+  }, [budgetAvailability, wizardItems]);
   const companyName = metadata.companies.find(c => String(c.id) === String(wizardHeader.company_id))?.name || '';
   
   return (
@@ -749,6 +777,22 @@ function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, m
           {formatIDR(totalEstimation)}
         </span>
       </div>
+
+      {thresholdAlert && (
+        <div className={`p-4 rounded-2xl border flex items-start gap-3 ${thresholdAlert.level === 'critical' ? 'bg-red-500/10 border-red-500/25' : 'bg-amber-500/10 border-amber-500/25'}`}>
+          <AlertTriangle className={`w-5 h-5 mt-0.5 shrink-0 ${thresholdAlert.level === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
+          <div className="space-y-1">
+            <p className={`text-xs font-black ${thresholdAlert.level === 'critical' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              {thresholdAlert.level === 'critical' ? `Anggaran Melampaui 100% (${thresholdAlert.pct}%)` : `Peringatan: Anggaran Mendekati Batas (${thresholdAlert.pct}%)`}
+            </p>
+            <p className="text-[10px] text-neutral-500 dark:text-neutral-450 leading-relaxed font-semibold">
+              {thresholdAlert.level === 'critical'
+                ? 'Total anggaran yang direncanakan melebihi plafon yang tersedia. Pengajuan tetap bisa dilanjutkan, namun memerlukan justifikasi dari approver.'
+                : 'Total anggaran mendekati batas plafon. Pastikan anggaran ini telah disetujui sebelum melanjutkan pengajuan.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {overBudgetMonths && overBudgetMonths.length > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-5 space-y-4">
@@ -1277,6 +1321,7 @@ export default function MarketingPlanWizardModal({
                       handleItemChange={handleItemChange}
                       metadata={metadata}
                       overBudgetMonths={overBudgetMonths}
+                      budgetAvailability={budgetAvailability}
                       t={t}
                       lang={lang}
                     />
@@ -1289,6 +1334,7 @@ export default function MarketingPlanWizardModal({
                       wizardItems={wizardItems}
                       metadata={metadata}
                       overBudgetMonths={overBudgetMonths}
+                      budgetAvailability={budgetAvailability}
                       t={t}
                       lang={lang}
                     />

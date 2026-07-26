@@ -7,7 +7,8 @@ import {
   CheckCircle, Clock, Banknote, Eye, ChevronDown,
   Building, FileSpreadsheet, AlertCircle, Check, XCircle, X,
   FileText, Printer, Download, ExternalLink, Calendar, User,
-  DollarSign, ShoppingCart, Tag, ShieldCheck, FileCheck
+  DollarSign, ShoppingCart, Tag, ShieldCheck, FileCheck,
+  TrendingUp, BarChart2, Lock
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -594,6 +595,174 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
   );
 }
 
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+
+function MonthlyUtilizationSection({ fiscalYear }) {
+  const [metadata, setMetadata] = useState(null);
+  const [companyId, setCompanyId] = useState('');
+  const [brandId, setBrandId] = useState('');
+  const [lobId, setLobId] = useState('');
+  const [budget, setBudget] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    apiClient.get('/api/marketing/metadata').then(res => {
+      setMetadata(res);
+      if (res?.companies?.length === 1) setCompanyId(String(res.companies[0].id));
+    }).catch(() => {});
+  }, []);
+
+  const fetchBudget = useCallback(async () => {
+    if (!companyId || !brandId || !lobId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiClient.get('/api/marketing/budgets/check', {
+        params: { company_id: companyId, brand_id: brandId, lob_id: lobId, fiscal_year: fiscalYear }
+      });
+      setBudget(res || null);
+    } catch (err) {
+      setError(err.message || 'Gagal memuat data utilisasi.');
+    } finally {
+      setLoading(false);
+    }
+  }, [companyId, brandId, lobId, fiscalYear]);
+
+  useEffect(() => { fetchBudget(); }, [fetchBudget]);
+
+  const monthly = budget?.monthly || [];
+
+  return (
+    <div className="space-y-5">
+      {/* Filters */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1 min-w-[160px]">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Perusahaan</label>
+            <select value={companyId} onChange={e => setCompanyId(e.target.value)}
+              className="text-xs font-semibold bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+              <option value="">Pilih Perusahaan</option>
+              {(metadata?.companies || []).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1 min-w-[140px]">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Brand</label>
+            <select value={brandId} onChange={e => setBrandId(e.target.value)}
+              className="text-xs font-semibold bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+              <option value="">Pilih Brand</option>
+              {(metadata?.brands || []).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1 min-w-[140px]">
+            <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">Line of Business</label>
+            <select value={lobId} onChange={e => setLobId(e.target.value)}
+              className="text-xs font-semibold bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500/30">
+              <option value="">Pilih LoB</option>
+              {(metadata?.lobs || []).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+          <button onClick={fetchBudget} disabled={!companyId || !brandId || !lobId || loading}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-all disabled:opacity-40 flex items-center gap-1.5 cursor-pointer">
+            {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Tampilkan
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl text-sm font-semibold">
+          <AlertTriangle className="w-4 h-4 shrink-0" />{error}
+        </div>
+      )}
+
+      {!companyId || !brandId || !lobId ? (
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 text-center">
+          <BarChart2 className="w-10 h-10 mx-auto mb-3 text-neutral-300 dark:text-neutral-600" />
+          <p className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">Pilih Perusahaan, Brand, dan LoB</p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">untuk menampilkan utilisasi anggaran bulanan</p>
+        </div>
+      ) : loading ? (
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-12 flex items-center justify-center gap-2 text-neutral-400">
+          <Loader2 className="w-5 h-5 animate-spin" /><span className="text-sm">Memuat...</span>
+        </div>
+      ) : budget ? (
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+          {/* Budget header */}
+          <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-black text-neutral-900 dark:text-white">Utilisasi Anggaran Bulanan — FY {fiscalYear}</h3>
+              <p className="text-xs text-neutral-400 mt-0.5">Total Plafon: <span className="font-bold text-neutral-700 dark:text-neutral-300">{formatIDR(budget.total_budget)}</span></p>
+            </div>
+            {budget.is_locked && (
+              <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-full">
+                <Lock className="w-3 h-3" /> Budget Terkunci
+              </span>
+            )}
+          </div>
+
+          {monthly.length === 0 ? (
+            <div className="p-10 text-center text-neutral-400 text-sm">Data bulanan tidak tersedia.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-neutral-50 dark:bg-neutral-800/60 border-b border-neutral-100 dark:border-neutral-800">
+                    <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider">Bulan</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black text-neutral-400 uppercase tracking-wider whitespace-nowrap">Plafon / Limit</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black text-neutral-400 uppercase tracking-wider whitespace-nowrap">Committed</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black text-neutral-400 uppercase tracking-wider whitespace-nowrap">Realisasi</th>
+                    <th className="px-4 py-3 text-right text-[10px] font-black text-neutral-400 uppercase tracking-wider whitespace-nowrap">Sisa</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-black text-neutral-400 uppercase tracking-wider w-44">Utilisasi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80">
+                  {monthly.map(m => {
+                    const utilisasiPct = m.limit > 0 ? Math.min(100, Math.round((m.committed / m.limit) * 100)) : 0;
+                    const isOver = m.committed > m.limit;
+                    const barColor = isOver ? 'bg-red-500' : utilisasiPct >= 80 ? 'bg-amber-500' : 'bg-emerald-500';
+                    const textColor = isOver ? 'text-red-600 dark:text-red-400' : utilisasiPct >= 80 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+                    return (
+                      <tr key={m.month} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors">
+                        <td className="px-4 py-3 font-bold text-neutral-800 dark:text-neutral-200">
+                          <div className="flex items-center gap-2">
+                            {MONTH_NAMES[m.month - 1]}
+                            {m.is_locked && <Lock className="w-3 h-3 text-neutral-400" />}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-neutral-700 dark:text-neutral-300 tabular-nums">
+                          {formatIDR(m.limit)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-neutral-700 dark:text-neutral-300 tabular-nums">
+                          {formatIDR(m.committed)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-neutral-600 dark:text-neutral-400 tabular-nums">
+                          {formatIDR(m.actual)}
+                        </td>
+                        <td className={`px-4 py-3 text-right font-black tabular-nums ${m.available <= 0 ? 'text-red-600 dark:text-red-400' : 'text-neutral-800 dark:text-neutral-200'}`}>
+                          {formatIDR(m.available)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${utilisasiPct}%` }} />
+                            </div>
+                            <span className={`text-[10px] font-black w-8 text-right ${textColor}`}>{utilisasiPct}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const TABS = [
   { key: 'APPROVED', label: 'Menunggu Bayar', color: 'text-emerald-600 dark:text-emerald-400', badge: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
@@ -614,6 +783,7 @@ export default function GABudgetMonitoringPage() {
   const [fiscalYear, setFiscalYear] = useState(String(new Date().getFullYear()));
   const [search, setSearch] = useState('');
   
+  const [mainView, setMainView] = useState('payments');
   const [markTarget, setMarkTarget] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
   const [poTarget, setPoTarget] = useState(null);
@@ -698,16 +868,32 @@ export default function GABudgetMonitoringPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center bg-neutral-100 dark:bg-neutral-800 rounded-xl p-1 gap-1">
+            <button onClick={() => setMainView('payments')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${mainView === 'payments' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'}`}>
+              <Banknote className="w-3.5 h-3.5" /> Tagihan
+            </button>
+            <button onClick={() => setMainView('utilization')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${mainView === 'utilization' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'}`}>
+              <TrendingUp className="w-3.5 h-3.5" /> Utilisasi
+            </button>
+          </div>
           <select value={fiscalYear} onChange={e => setFiscalYear(e.target.value)}
             className="text-sm font-semibold bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2 text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer">
             {FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={loadPayments} disabled={loading}
-            className="p-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all disabled:opacity-50 cursor-pointer">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+          {mainView === 'payments' && (
+            <button onClick={loadPayments} disabled={loading}
+              className="p-2.5 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all disabled:opacity-50 cursor-pointer">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       </div>
+
+      {mainView === 'utilization' && <MonthlyUtilizationSection fiscalYear={fiscalYear} />}
+
+      {mainView === 'payments' && <>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -905,6 +1091,8 @@ export default function GABudgetMonitoringPage() {
           />
         )}
       </AnimatePresence>
+
+      </>}
     </div>
   );
 }
