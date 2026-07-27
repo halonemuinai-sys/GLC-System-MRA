@@ -921,6 +921,8 @@ model payment_requests {
   notes                  String?
   doc_url                String?
   paid_at                DateTime?              @db.Timestamp(6)
+  po_number              String?                @db.VarChar(100) // PO number dari GA
+  po_issued_at           DateTime?              @db.Timestamp(6)
   creator_id             String                 @db.VarChar(50)
   created_at             DateTime               @default(now()) @db.Timestamp(6)
   updated_at             DateTime               @default(now()) @db.Timestamp(6)

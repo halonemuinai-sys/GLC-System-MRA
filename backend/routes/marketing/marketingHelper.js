@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const prisma = require('../../api/db');
-const { sendApprovalMagicLinkEmail } = require('../../api/mailer');
+const { sendApprovalMagicLinkEmail, sendPaymentStatusEmail } = require('../../api/mailer');
 
 const MAGIC_LINK_EXPIRY_DAYS = 7;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
@@ -118,7 +118,7 @@ async function executeApprovalDecision({ task, action, comment, signature, actin
       } else {
         await tx.payment_requests.update({ where: { id: docId }, data: { status: 'REJECTED' } });
       }
-      return { message: 'Document successfully rejected and returned to draft.', action };
+      return { message: 'Document successfully rejected and returned to draft.', action, finalStatus: 'REJECTED', isPlan };
     }
 
     const nextStep = task.step_number + 1;
@@ -160,15 +160,43 @@ async function executeApprovalDecision({ task, action, comment, signature, actin
       if (isPlan) {
         await tx.marketing_plans.update({ where: { id: docId }, data: { status: 'APPROVED' } });
       } else {
-        // Final approval = persetujuan finansial → APPROVED
-        // PAID = konfirmasi transfer sudah keluar, dilakukan manual via mark-paid endpoint
         await tx.payment_requests.update({ where: { id: docId }, data: { status: 'APPROVED' } });
       }
-      return { message: 'Final approval complete. Document marked as APPROVED.', action };
+      return { message: 'Final approval complete. Document marked as APPROVED.', action, finalStatus: 'APPROVED', isPlan };
     }
   });
 
   return { result, magicLinkQueue };
+}
+
+// Kirim email notifikasi ke requester saat payment final APPROVED / REJECTED
+async function dispatchPaymentStatusEmail(result, task) {
+  if (!result || result.isPlan !== false) return; // hanya untuk payment_request
+  const finalStatus = result.finalStatus;
+  if (!['APPROVED', 'REJECTED'].includes(finalStatus)) return;
+
+  try {
+    const payment = await prisma.payment_requests.findUnique({
+      where: { id: task.payment_request_id },
+      include: {
+        creator: { select: { name: true, email: true } },
+        marketing_plan_item: { include: { marketing_plan: { select: { title: true } } } }
+      }
+    });
+    if (!payment || !payment.creator?.email) return;
+
+    await sendPaymentStatusEmail({
+      to: payment.creator.email,
+      requesterName: payment.creator.name,
+      docTitle: payment.title,
+      amount: payment.amount,
+      status: finalStatus,
+      comment: task.comment || null,
+      planTitle: payment.marketing_plan_item?.marketing_plan?.title || null
+    });
+  } catch (e) {
+    console.error('Payment status email failed:', e.message);
+  }
 }
 
 module.exports = {
@@ -176,6 +204,7 @@ module.exports = {
   resolveApproverContact,
   queueMagicLink,
   dispatchMagicLinkEmails,
+  dispatchPaymentStatusEmail,
   getDocContextForTask,
   getCompanyMasterIdForTask,
   executeApprovalDecision,

@@ -3,7 +3,8 @@ const {
   resolveEmployee,
   executeApprovalDecision,
   getDocContextForTask,
-  dispatchMagicLinkEmails
+  dispatchMagicLinkEmails,
+  dispatchPaymentStatusEmail
 } = require('./marketingHelper');
 
 // GET /tasks
@@ -136,6 +137,7 @@ async function processApproval(req, res, next) {
       const docContext = await getDocContextForTask(task);
       await dispatchMagicLinkEmails(magicLinkQueue, docContext);
     }
+    await dispatchPaymentStatusEmail(result, task);
 
     res.json(result);
   } catch (err) {
@@ -287,6 +289,7 @@ async function processMagicLink(req, res, next) {
       const docContext = await getDocContextForTask(task);
       await dispatchMagicLinkEmails(magicLinkQueue, docContext);
     }
+    await dispatchPaymentStatusEmail(result, task);
 
     res.json(result);
   } catch (err) {

@@ -255,11 +255,34 @@ async function markPaymentPaid(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// POST /payments/:id/set-po — simpan nomor PO ke payment (admin/ga)
+async function setPoNumber(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { po_number } = req.body;
+    if (!po_number || !po_number.trim()) {
+      return res.status(400).json({ error: 'Nomor PO wajib diisi.' });
+    }
+    const payment = await prisma.payment_requests.findUnique({ where: { id } });
+    if (!payment) return res.status(404).json({ error: 'Payment request not found.' });
+    if (!['APPROVED', 'PAID'].includes(payment.status)) {
+      return res.status(400).json({ error: 'PO hanya bisa diterbitkan untuk payment berstatus APPROVED atau PAID.' });
+    }
+    const updated = await prisma.payment_requests.update({
+      where: { id },
+      data: { po_number: po_number.trim(), po_issued_at: new Date(), updated_at: new Date() },
+      include: PAYMENT_INCLUDE
+    });
+    res.json(updated);
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   createPaymentRequest,
   getPayments,
   getPaymentDetail,
   updatePayment,
   deletePayment,
-  markPaymentPaid
+  markPaymentPaid,
+  setPoNumber
 };

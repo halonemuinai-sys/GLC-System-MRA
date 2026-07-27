@@ -1,5 +1,6 @@
 const prisma = require('../../api/db');
-const { resolveEmployee } = require('./marketingHelper');
+const { resolveEmployee, FRONTEND_URL } = require('./marketingHelper');
+const { sendAmendmentNotifEmail } = require('../../api/mailer');
 
 const AMENDMENT_INCLUDE = {
   creator: { select: { id: true, name: true, email: true } },
@@ -127,8 +128,28 @@ async function submitAmendment(req, res, next) {
     const updated = await prisma.marketing_plan_amendments.update({
       where: { id },
       data: { status: 'PENDING_REVIEW', updated_at: new Date() },
-      include: AMENDMENT_INCLUDE
+      include: { ...AMENDMENT_INCLUDE, marketing_plan: { select: { title: true } } }
     });
+
+    // Kirim email ke admin/manager/finance untuk review
+    try {
+      const reviewerContacts = await prisma.approval_role_contacts.findMany({
+        where: { role: { in: ['admin', 'MANAGER', 'FINANCE'] } }
+      });
+      for (const contact of reviewerContacts) {
+        await sendAmendmentNotifEmail({
+          to: contact.email,
+          recipientLabel: contact.role,
+          docTitle: updated.title,
+          planTitle: updated.marketing_plan?.title || '',
+          justification: updated.justification,
+          frontendUrl: FRONTEND_URL
+        });
+      }
+    } catch (e) {
+      console.error('Amendment submit notif email failed:', e.message);
+    }
+
     res.json(updated);
   } catch (err) { next(err); }
 }
@@ -165,8 +186,18 @@ async function reviewAmendment(req, res, next) {
       const updated = await prisma.marketing_plan_amendments.update({
         where: { id },
         data: { status: 'REJECTED', reviewed_by: employee.id, reviewed_at: new Date(), review_comment, updated_at: new Date() },
-        include: AMENDMENT_INCLUDE
+        include: { ...AMENDMENT_INCLUDE, marketing_plan: { select: { title: true } } }
       });
+      try {
+        const creator = await prisma.helpdesk_user.findUnique({ where: { id: amendment.creator_id }, select: { email: true, name: true } });
+        if (creator?.email) {
+          await sendAmendmentNotifEmail({
+            to: creator.email, recipientLabel: creator.name || 'Tim Marketing',
+            docTitle: updated.title, planTitle: updated.marketing_plan?.title || '',
+            action: 'REJECTED', reviewComment: review_comment, frontendUrl: FRONTEND_URL
+          });
+        }
+      } catch (e) { console.error('Amendment reject notif email failed:', e.message); }
       return res.json({ message: 'Amendment ditolak.', amendment: updated });
     }
 
@@ -236,9 +267,20 @@ async function reviewAmendment(req, res, next) {
       return tx.marketing_plan_amendments.update({
         where: { id },
         data: { status: 'APPROVED', reviewed_by: employee.id, reviewed_at: new Date(), review_comment: review_comment || null, updated_at: new Date() },
-        include: AMENDMENT_INCLUDE
+        include: { ...AMENDMENT_INCLUDE, marketing_plan: { select: { title: true } } }
       });
     });
+
+    try {
+      const creator = await prisma.helpdesk_user.findUnique({ where: { id: amendment.creator_id }, select: { email: true, name: true } });
+      if (creator?.email) {
+        await sendAmendmentNotifEmail({
+          to: creator.email, recipientLabel: creator.name || 'Tim Marketing',
+          docTitle: result.title, planTitle: result.marketing_plan?.title || '',
+          action: 'APPROVED', reviewComment: review_comment, frontendUrl: FRONTEND_URL
+        });
+      }
+    } catch (e) { console.error('Amendment approve notif email failed:', e.message); }
 
     res.json({ message: 'Amendment disetujui dan perubahan telah diterapkan ke plan.', amendment: result });
   } catch (err) { next(err); }

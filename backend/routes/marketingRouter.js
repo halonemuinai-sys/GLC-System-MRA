@@ -47,6 +47,7 @@ router.post('/payments', verifyToken, checkRole(['admin', 'marketing']), payment
 router.put('/payments/:id', verifyToken, checkRole(['admin', 'marketing']), paymentController.updatePayment);
 router.delete('/payments/:id', verifyToken, checkRole(['admin', 'marketing']), paymentController.deletePayment);
 router.post('/payments/:id/mark-paid', verifyToken, checkRole(['admin', 'ga']), paymentController.markPaymentPaid);
+router.post('/payments/:id/set-po', verifyToken, checkRole(['admin', 'ga']), paymentController.setPoNumber);
 
 // Approvals & Tasks
 router.get('/tasks', verifyToken, approvalController.getPendingTasks);
@@ -78,13 +79,19 @@ router.post('/event-locations', verifyToken, settingsController.createEventLocat
 router.put('/event-locations/:id', verifyToken, settingsController.updateEventLocation);
 router.delete('/event-locations/:id', verifyToken, settingsController.deleteEventLocation);
 
-// Budgets Control
+// Budgets Control (read = semua; write/lock = admin + finance)
 router.get('/budgets', verifyToken, settingsController.getBudgets);
 router.get('/budgets/check', verifyToken, settingsController.checkBudgetAvailability);
 router.get('/budgets/:id', verifyToken, settingsController.getBudgetDetail);
-router.post('/budgets', verifyToken, settingsController.createBudget);
-router.put('/budgets/:id', verifyToken, settingsController.updateBudget);
-router.put('/budgets/:id/lock', verifyToken, settingsController.lockBudget);
-router.put('/budgets/:id/unlock', verifyToken, settingsController.unlockBudget);
+router.post('/budgets', verifyToken, checkRole(['admin', 'finance']), settingsController.createBudget);
+router.put('/budgets/:id', verifyToken, checkRole(['admin', 'finance']), settingsController.updateBudget);
+router.put('/budgets/:id/lock', verifyToken, checkRole(['admin', 'finance']), settingsController.lockBudget);
+router.put('/budgets/:id/unlock', verifyToken, checkRole(['admin', 'finance']), settingsController.unlockBudget);
+
+// Approval Rules CRUD (admin only)
+router.get('/approval-rules', verifyToken, checkRole(['admin']), settingsController.getApprovalRules);
+router.post('/approval-rules', verifyToken, checkRole(['admin']), settingsController.createApprovalRule);
+router.put('/approval-rules/:id', verifyToken, checkRole(['admin']), settingsController.updateApprovalRule);
+router.delete('/approval-rules/:id', verifyToken, checkRole(['admin']), settingsController.deleteApprovalRule);
 
 module.exports = router;

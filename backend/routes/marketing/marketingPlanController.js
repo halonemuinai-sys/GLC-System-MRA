@@ -406,10 +406,26 @@ async function recallPlan(req, res, next) {
     }
 
     await prisma.$transaction(async (tx) => {
+      // Ambil ID approval_history yang akan di-reject untuk invalidasi magic links-nya
+      const pendingHistories = await tx.approval_history.findMany({
+        where: { marketing_plan_id: planId, status: 'PENDING' },
+        select: { id: true }
+      });
+      const historyIds = pendingHistories.map(h => h.id);
+
       await tx.approval_history.updateMany({
         where: { marketing_plan_id: planId, status: 'PENDING' },
         data: { status: 'REJECTED', comment: '[SISTEM] Ditarik kembali oleh pembuat rencana.', action_at: new Date() }
       });
+
+      // Invalidasi semua magic links yang belum dipakai untuk step yang di-recall
+      if (historyIds.length > 0) {
+        await tx.approval_magic_links.updateMany({
+          where: { approval_history_id: { in: historyIds }, used_at: null },
+          data: { used_at: new Date() }
+        });
+      }
+
       await tx.marketing_plans.update({ where: { id: planId }, data: { status: 'DRAFT', updated_at: new Date() } });
     });
 
@@ -799,7 +815,7 @@ async function deletePlan(req, res, next) {
   try {
     const planId = parseInt(req.params.id, 10);
     const employee = await resolveEmployee(req.user.email);
-    
+
     const plan = await prisma.marketing_plans.findUnique({
       where: { id: planId }
     });
@@ -813,6 +829,15 @@ async function deletePlan(req, res, next) {
 
     if (!isAdmin && !isCreator) {
       return res.status(403).json({ error: 'Forbidden. Only the creator or admin can delete this plan.' });
+    }
+
+    // Jangan izinkan hapus plan yang sedang aktif
+    if (['APPROVED', 'COMPLETED'].includes(plan.status)) {
+      return res.status(400).json({ error: `Rencana berstatus ${plan.status} tidak dapat dihapus. Hanya DRAFT dan REJECTED yang bisa dihapus.` });
+    }
+    // PENDING_APPROVAL hanya admin yang boleh hapus
+    if (plan.status === 'PENDING_APPROVAL' && !isAdmin) {
+      return res.status(400).json({ error: 'Rencana yang sedang dalam proses approval hanya dapat dihapus oleh admin.' });
     }
 
     // Hapus payment_requests (dan approval_history terkait) sebelum delete plan

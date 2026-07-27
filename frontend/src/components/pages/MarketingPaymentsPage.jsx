@@ -76,7 +76,7 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
 
   const plan = payment.marketing_plan_item?.marketing_plan;
   const canDelete = ['PENDING', 'OVERBUDGET_WARN'].includes(payment.status);
-  const canMarkPaid = payment.status === 'APPROVED' && (userRole === 'admin');
+  const canMarkPaid = payment.status === 'APPROVED' && ['admin', 'ga'].includes(userRole);
 
   const handleMarkPaid = async () => {
     setMarkingPaid(true);

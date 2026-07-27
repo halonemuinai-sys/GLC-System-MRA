@@ -14,7 +14,9 @@ import {
   Shield,
   Building2,
   Plus,
-  Trash2
+  Trash2,
+  ListFilter,
+  ArrowUpDown
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -29,8 +31,12 @@ const ROLE_DESCRIPTION = {
 
 const ROLE_OPTIONS = ['MARKETING_MANAGER', 'VP_DIRECTOR', 'BU_DIRECTOR', 'FINANCE_CONTROLLER', 'CFO_CEO'];
 
+const MODULE_LABELS = { MARKETING_PLAN: 'Marketing Plan', PAYMENT_REQUEST: 'Payment Request' };
+
 export default function MarketingApprovalSettingsPage() {
   const { lang, t } = useLanguage();
+  const [activeTab, setActiveTab] = useState('contacts');
+
   const [contacts, setContacts] = useState([]);
   const [holdings, setHoldings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +49,16 @@ export default function MarketingApprovalSettingsPage() {
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newOverride, setNewOverride] = useState({ role: ROLE_OPTIONS[0], company_master_id: '', email: '' });
+
+  // Approval Rules state
+  const [rules, setRules] = useState([]);
+  const [rulesLoading, setRulesLoading] = useState(false);
+  const [rulesError, setRulesError] = useState(null);
+  const [editingRuleId, setEditingRuleId] = useState(null);
+  const [editingRule, setEditingRule] = useState({});
+  const [addingRule, setAddingRule] = useState(false);
+  const [newRule, setNewRule] = useState({ module: 'MARKETING_PLAN', min_amount: '', max_amount: '', step_number: '1', approver_role: '' });
+  const [ruleSaving, setRuleSaving] = useState(false);
 
   const loadContacts = useCallback(async () => {
     setLoading(true);
@@ -58,9 +74,51 @@ export default function MarketingApprovalSettingsPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadContacts();
-  }, [loadContacts]);
+  const loadRules = useCallback(async () => {
+    setRulesLoading(true);
+    setRulesError(null);
+    try {
+      const res = await apiClient.get('/api/marketing/approval-rules');
+      setRules(res || []);
+    } catch (err) {
+      setRulesError(err.message || 'Gagal memuat aturan approval.');
+    } finally {
+      setRulesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadContacts(); }, [loadContacts]);
+  useEffect(() => { if (activeTab === 'rules') loadRules(); }, [activeTab, loadRules]);
+
+  const handleSaveRule = async () => {
+    setRuleSaving(true);
+    setRulesError(null);
+    try {
+      if (editingRuleId) {
+        await apiClient.put(`/api/marketing/approval-rules/${editingRuleId}`, editingRule);
+      } else {
+        await apiClient.post('/api/marketing/approval-rules', newRule);
+      }
+      setEditingRuleId(null);
+      setAddingRule(false);
+      setNewRule({ module: 'MARKETING_PLAN', min_amount: '', max_amount: '', step_number: '1', approver_role: '' });
+      loadRules();
+    } catch (err) {
+      setRulesError(err.message || 'Gagal menyimpan aturan.');
+    } finally {
+      setRuleSaving(false);
+    }
+  };
+
+  const handleDeleteRule = async (id) => {
+    if (!confirm('Hapus aturan approval ini? Ini bisa memengaruhi alur persetujuan yang sedang berjalan.')) return;
+    try {
+      await apiClient.delete(`/api/marketing/approval-rules/${id}`);
+      loadRules();
+    } catch (err) {
+      setRulesError(err.message || 'Gagal menghapus aturan.');
+    }
+  };
 
   const globalDefaults = useMemo(() => contacts.filter(c => !c.company_master_id), [contacts]);
   const holdingOverrides = useMemo(() => contacts.filter(c => c.company_master_id), [contacts]);
@@ -167,13 +225,25 @@ export default function MarketingApprovalSettingsPage() {
         </div>
       </div>
 
-      <div className="bg-amber-500/10 border border-amber-300/60 text-amber-700 dark:text-amber-400 text-xs font-semibold px-4 py-3 rounded-2xl flex items-start gap-2">
+      {/* Tab Toggle */}
+      <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-2xl p-1 w-fit">
+        <button onClick={() => setActiveTab('contacts')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'contacts' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'}`}>
+          <Mail className="w-3.5 h-3.5" /> Email Approver
+        </button>
+        <button onClick={() => setActiveTab('rules')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'rules' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'}`}>
+          <ListFilter className="w-3.5 h-3.5" /> Aturan Approval (DOA)
+        </button>
+      </div>
+
+      {activeTab === 'contacts' && <div className="bg-amber-500/10 border border-amber-300/60 text-amber-700 dark:text-amber-400 text-xs font-semibold px-4 py-3 rounded-2xl flex items-start gap-2">
         <Shield className="w-4 h-4 mt-0.5 flex-shrink-0" />
         <span>
           Email di bawah ini menerima link approval (klik untuk setujui/tolak tanpa login). Pastikan hanya mengarahkan
           ke email pihak yang benar-benar berwenang — siapa pun yang memegang link dapat memproses approval tersebut.
         </span>
-      </div>
+      </div>}
 
       {successMsg && (
         <motion.div
@@ -195,12 +265,12 @@ export default function MarketingApprovalSettingsPage() {
         </motion.div>
       )}
 
-      {loading ? (
+      {activeTab === 'contacts' && loading ? (
         <div className="py-24 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
           <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           <span className="text-xs text-neutral-400 font-medium">Memuat konfigurasi...</span>
         </div>
-      ) : (
+      ) : activeTab === 'contacts' ? (
         <>
           {/* Default Global */}
           <div>
@@ -467,6 +537,118 @@ export default function MarketingApprovalSettingsPage() {
           </div>
         )}
       </AnimatePresence>
+      ) : (
+        /* ── Tab: Aturan Approval (DOA) ──────────────────────────────── */
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">Konfigurasi DOA (Delegation of Authority) — jumlah step, amount bracket, dan role approver per modul.</p>
+            </div>
+            <button onClick={() => { setAddingRule(true); setEditingRuleId(null); }}
+              className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all cursor-pointer">
+              <Plus className="w-3.5 h-3.5" /> Tambah Rule
+            </button>
+          </div>
+
+          {rulesError && <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold px-4 py-3 rounded-2xl flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{rulesError}</div>}
+
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+            {rulesLoading ? (
+              <div className="py-16 flex items-center justify-center gap-2 text-neutral-400"><Loader2 className="w-5 h-5 animate-spin" /><span className="text-xs">Memuat...</span></div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-neutral-50 dark:bg-neutral-800/60 border-b border-neutral-100 dark:border-neutral-800 text-neutral-400 font-black uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left">Modul</th>
+                      <th className="px-4 py-3 text-right">Min Amount</th>
+                      <th className="px-4 py-3 text-right">Max Amount</th>
+                      <th className="px-4 py-3 text-center">Step</th>
+                      <th className="px-4 py-3 text-left">Role Approver</th>
+                      <th className="px-4 py-3 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/80">
+                    {addingRule && (
+                      <tr className="bg-blue-50/40 dark:bg-blue-500/5">
+                        <td className="px-3 py-2">
+                          <select value={newRule.module} onChange={e => setNewRule(r => ({ ...r, module: e.target.value }))}
+                            className="w-full text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            <option value="MARKETING_PLAN">Marketing Plan</option>
+                            <option value="PAYMENT_REQUEST">Payment Request</option>
+                          </select>
+                        </td>
+                        <td className="px-3 py-2"><input type="number" placeholder="0" value={newRule.min_amount} onChange={e => setNewRule(r => ({ ...r, min_amount: e.target.value }))} className="w-full text-xs text-right bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                        <td className="px-3 py-2"><input type="number" placeholder="∞" value={newRule.max_amount} onChange={e => setNewRule(r => ({ ...r, max_amount: e.target.value }))} className="w-full text-xs text-right bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                        <td className="px-3 py-2 text-center"><input type="number" min="1" max="10" value={newRule.step_number} onChange={e => setNewRule(r => ({ ...r, step_number: e.target.value }))} className="w-16 text-xs text-center bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 mx-auto block" /></td>
+                        <td className="px-3 py-2"><input type="text" placeholder="Contoh: MANAGER" value={newRule.approver_role} onChange={e => setNewRule(r => ({ ...r, approver_role: e.target.value }))} className="w-full text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button onClick={handleSaveRule} disabled={ruleSaving} className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"><Check className="w-3 h-3" /></button>
+                            <button onClick={() => setAddingRule(false)} className="p-1.5 rounded-lg bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer"><X className="w-3 h-3" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    {rules.length === 0 && !addingRule ? (
+                      <tr><td colSpan="6" className="px-4 py-10 text-center text-neutral-400">Belum ada aturan approval. Klik "Tambah Rule" untuk memulai.</td></tr>
+                    ) : rules.map(rule => (
+                      <tr key={rule.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors">
+                        {editingRuleId === rule.id ? (
+                          <>
+                            <td className="px-3 py-2">
+                              <select value={editingRule.module} onChange={e => setEditingRule(r => ({ ...r, module: e.target.value }))}
+                                className="w-full text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                <option value="MARKETING_PLAN">Marketing Plan</option>
+                                <option value="PAYMENT_REQUEST">Payment Request</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-2"><input type="number" value={editingRule.min_amount || ''} onChange={e => setEditingRule(r => ({ ...r, min_amount: e.target.value }))} className="w-full text-xs text-right bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                            <td className="px-3 py-2"><input type="number" placeholder="∞" value={editingRule.max_amount || ''} onChange={e => setEditingRule(r => ({ ...r, max_amount: e.target.value }))} className="w-full text-xs text-right bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                            <td className="px-3 py-2 text-center"><input type="number" min="1" max="10" value={editingRule.step_number || 1} onChange={e => setEditingRule(r => ({ ...r, step_number: e.target.value }))} className="w-16 text-xs text-center bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 mx-auto block" /></td>
+                            <td className="px-3 py-2"><input type="text" value={editingRule.approver_role || ''} onChange={e => setEditingRule(r => ({ ...r, approver_role: e.target.value }))} className="w-full text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button onClick={handleSaveRule} disabled={ruleSaving} className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"><Check className="w-3 h-3" /></button>
+                                <button onClick={() => setEditingRuleId(null)} className="p-1.5 rounded-lg bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 cursor-pointer"><X className="w-3 h-3" /></button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 font-semibold text-neutral-800 dark:text-neutral-200">{MODULE_LABELS[rule.module] || rule.module}</td>
+                            <td className="px-4 py-3 text-right tabular-nums text-neutral-600 dark:text-neutral-400">Rp {Number(rule.min_amount || 0).toLocaleString('id-ID')}</td>
+                            <td className="px-4 py-3 text-right tabular-nums text-neutral-600 dark:text-neutral-400">{rule.max_amount ? `Rp ${Number(rule.max_amount).toLocaleString('id-ID')}` : '—'}</td>
+                            <td className="px-4 py-3 text-center font-black text-blue-600 dark:text-blue-400">{rule.step_number}</td>
+                            <td className="px-4 py-3"><span className="font-mono text-[11px] bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-lg text-neutral-700 dark:text-neutral-300">{rule.approver_role}</span></td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button onClick={() => { setEditingRuleId(rule.id); setEditingRule({ module: rule.module, min_amount: rule.min_amount, max_amount: rule.max_amount, step_number: rule.step_number, approver_role: rule.approver_role }); setAddingRule(false); }}
+                                  className="p-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer">
+                                  <Edit3 className="w-3 h-3" />
+                                </button>
+                                <button onClick={() => handleDeleteRule(rule.id)}
+                                  className="p-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-red-50 dark:hover:bg-red-500/10 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors cursor-pointer">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-blue-500/10 border border-blue-300/60 text-blue-700 dark:text-blue-400 text-xs font-semibold px-4 py-3 rounded-2xl flex items-start gap-2">
+            <ArrowUpDown className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>Aturan dicocokkan berdasarkan <strong>module + amount bracket + step_number</strong>. Sistem akan mencari rule dengan step berikutnya setelah setiap approval. Jika tidak ada rule untuk step berikutnya, dokumen otomatis berstatus APPROVED. Untuk payment OVERBUDGET_WARN, satu step eskalasi ke role <code className="bg-blue-100 dark:bg-blue-900/30 px-1 rounded">CFO_CEO</code> ditambahkan secara otomatis di luar chain normal.</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

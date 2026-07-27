@@ -298,9 +298,22 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
     }, 150);
   };
 
-  const handleSavePo = () => {
-    onPoGenerated(`Purchase Order ${poNumber} berhasil diterbitkan!`);
-    onClose();
+  const [savingPo, setSavingPo] = useState(false);
+
+  const handleSavePo = async () => {
+    setSavingPo(true);
+    try {
+      await apiClient.post(`/api/marketing/payments/${payment.id}/set-po`, { po_number: poNumber });
+      onPoGenerated(`Purchase Order ${poNumber} berhasil diterbitkan dan disimpan!`);
+      onClose();
+    } catch (err) {
+      // Fallback: tetap tampilkan sukses walaupun save gagal (PO sudah dicetak)
+      console.error('Gagal simpan PO:', err.message);
+      onPoGenerated(`Purchase Order ${poNumber} diterbitkan (sinkronisasi database gagal: ${err.message})`);
+      onClose();
+    } finally {
+      setSavingPo(false);
+    }
   };
 
   return (
@@ -584,9 +597,10 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
             )}
             <button
               onClick={handleSavePo}
-              className="px-5 py-2 font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              disabled={savingPo}
+              className="px-5 py-2 font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              <FileCheck className="w-3.5 h-3.5" /> Terbitkan & Simpan PO
+              {savingPo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileCheck className="w-3.5 h-3.5" />} Terbitkan & Simpan PO
             </button>
           </div>
         </div>

@@ -642,6 +642,75 @@ async function unlockBudget(req, res, next) {
   }
 }
 
+// ── Approval Rules CRUD ───────────────────────────────────────────────────────
+
+// GET /approval-rules
+async function getApprovalRules(req, res, next) {
+  try {
+    const rules = await prisma.approval_rules.findMany({
+      orderBy: [{ module: 'asc' }, { min_amount: 'asc' }, { step_number: 'asc' }]
+    });
+    res.json(rules);
+  } catch (err) { next(err); }
+}
+
+// POST /approval-rules
+async function createApprovalRule(req, res, next) {
+  try {
+    const { module, min_amount, max_amount, step_number, approver_role, company_id } = req.body;
+    if (!module || !step_number || !approver_role) {
+      return res.status(400).json({ error: 'module, step_number, dan approver_role wajib diisi.' });
+    }
+    if (!['MARKETING_PLAN', 'PAYMENT_REQUEST'].includes(module)) {
+      return res.status(400).json({ error: 'module harus MARKETING_PLAN atau PAYMENT_REQUEST.' });
+    }
+    const rule = await prisma.approval_rules.create({
+      data: {
+        module,
+        min_amount: min_amount !== undefined && min_amount !== '' ? parseFloat(min_amount) : 0,
+        max_amount: max_amount !== undefined && max_amount !== '' ? parseFloat(max_amount) : null,
+        step_number: parseInt(step_number, 10),
+        approver_role: approver_role.trim().toUpperCase(),
+        company_id: company_id ? parseInt(company_id, 10) : null
+      }
+    });
+    res.status(201).json(rule);
+  } catch (err) { next(err); }
+}
+
+// PUT /approval-rules/:id
+async function updateApprovalRule(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { module, min_amount, max_amount, step_number, approver_role, company_id } = req.body;
+    const rule = await prisma.approval_rules.findUnique({ where: { id } });
+    if (!rule) return res.status(404).json({ error: 'Approval rule tidak ditemukan.' });
+    const updated = await prisma.approval_rules.update({
+      where: { id },
+      data: {
+        module: module || rule.module,
+        min_amount: min_amount !== undefined && min_amount !== '' ? parseFloat(min_amount) : rule.min_amount,
+        max_amount: max_amount !== undefined ? (max_amount !== '' ? parseFloat(max_amount) : null) : rule.max_amount,
+        step_number: step_number ? parseInt(step_number, 10) : rule.step_number,
+        approver_role: approver_role ? approver_role.trim().toUpperCase() : rule.approver_role,
+        company_id: company_id !== undefined ? (company_id ? parseInt(company_id, 10) : null) : rule.company_id
+      }
+    });
+    res.json(updated);
+  } catch (err) { next(err); }
+}
+
+// DELETE /approval-rules/:id
+async function deleteApprovalRule(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const rule = await prisma.approval_rules.findUnique({ where: { id } });
+    if (!rule) return res.status(404).json({ error: 'Approval rule tidak ditemukan.' });
+    await prisma.approval_rules.delete({ where: { id } });
+    res.json({ message: 'Approval rule berhasil dihapus.' });
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   getMetadata,
   getApprovalContacts,
@@ -664,5 +733,9 @@ module.exports = {
   createBudget,
   updateBudget,
   lockBudget,
-  unlockBudget
+  unlockBudget,
+  getApprovalRules,
+  createApprovalRule,
+  updateApprovalRule,
+  deleteApprovalRule
 };
