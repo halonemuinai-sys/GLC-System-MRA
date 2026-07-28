@@ -37,6 +37,7 @@ app.use('/api/master', require('../routes/masterRouter'));
 // KECUALI 2 endpoint /magic/:token yang sengaja publik untuk approval via email (magic link)
 app.use('/api/marketing', require('../routes/marketingRouter'));
 app.use('/api/admin', [verifyToken, checkRole(['admin'])], require('../routes/adminRouter'));
+app.use('/api/helpdesk', require('../routes/helpdeskRouter'));
 
 // Global error handler
 app.use((err, req, res, next) => {

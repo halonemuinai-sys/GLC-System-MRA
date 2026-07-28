@@ -772,6 +772,8 @@ model helpdesk_user {
   name      String
   role      String
   companyId Int
+  tickets_requested helpdesk_ticket[] @relation("ticket_requester")
+  tickets_assigned  helpdesk_ticket[] @relation("ticket_assignee")
   company   helpdesk_company   @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   
   marketing_plans              marketing_plans[]
@@ -801,6 +803,36 @@ model helpdesk_company_master {
   companies helpdesk_company[]
 
   @@map("CompanyMaster")
+  @@schema("helpdesk")
+}
+
+model helpdesk_ticket {
+  id                 String    @id @default(uuid()) @db.Uuid
+  title              String    @db.VarChar(200)
+  description        String
+  category           String    @db.VarChar(50)
+  ticketType         String    @default("insiden") @db.VarChar(30)
+  subType            String?   @db.VarChar(100)
+  formData           Json?
+  status             String    @default("OPEN") @db.VarChar(20)
+  priority           String    @default("MEDIUM") @db.VarChar(10)
+  companyId          Int
+  requesterId        String    @db.VarChar(50)
+  assignedToId       String?   @db.VarChar(50)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime  @default(now()) @db.Timestamptz(6)
+  slaResponseLimit   DateTime  @db.Timestamptz(6)
+  slaResolutionLimit DateTime  @db.Timestamptz(6)
+  respondedAt        DateTime? @db.Timestamptz(6)
+  resolvedAt         DateTime? @db.Timestamptz(6)
+  isSlaBreached      Boolean   @default(false)
+  lastPausedAt       DateTime? @db.Timestamptz(6)
+  totalPausedMs      Int?
+
+  requester helpdesk_user  @relation("ticket_requester", fields: [requesterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignee  helpdesk_user? @relation("ticket_assignee",  fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("Ticket")
   @@schema("helpdesk")
 }
 

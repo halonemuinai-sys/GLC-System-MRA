@@ -44,7 +44,8 @@ import {
   Tag,
   MapPin,
   LineChart,
-  CreditCard
+  CreditCard,
+  Headphones
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
@@ -572,6 +573,19 @@ function SidebarContent({
             { name: 'HR & Employment', path: '/dashboard/compliance/hr', icon: UserCheck, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']), badge: complianceBadges.hr_compliance },
             { name: 'Tax & Finance', path: '/dashboard/compliance/tax', icon: Landmark, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']), badge: complianceBadges.tax_finance },
             { name: 'Product Regulatory', path: '/dashboard/compliance/product', icon: FlaskConical, allowed: hasAccess(['compliance', 'legal_compliance', 'auditor']), badge: complianceBadges.product_regulatory },
+          ]
+        }
+      ]
+    },
+    {
+      label: 'IT HELPDESK',
+      accent: 'indigo',
+      submenus: [
+        {
+          name: 'Self-Service Portal',
+          icon: Headphones,
+          children: [
+            { name: 'Buat Tiket / Laporan', path: '/dashboard/helpdesk', icon: Headphones, allowed: true },
           ]
         }
       ]
