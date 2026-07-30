@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
-import Link from 'next/link';
 
 // ── Definisi kategori lengkap ──────────────────────────────────────────────────
 
@@ -606,9 +605,11 @@ export default function HelpdeskSelfServicePage() {
 
             {/* Selected category recap */}
             <div className="flex items-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
+              {(() => { const SelIcon = selectedCat.icon; return (
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${selectedCat.bg}`}>
-                <selectedCat.icon className={`w-4.5 h-4.5 ${selectedCat.color}`} />
+                <SelIcon className={`w-4 h-4 ${selectedCat.color}`} />
               </div>
+              ); })()}
               <div className="flex-1">
                 <p className="text-xs font-black text-neutral-800 dark:text-neutral-200">{selectedCat.label}</p>
                 <p className="text-[10px] text-neutral-400">{ticketType === 'insiden' ? 'Insiden' : 'Service Request'}</p>
