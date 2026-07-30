@@ -314,4 +314,69 @@ router.get('/audit-logs', async (req, res, next) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// BI API KEY MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
+const crypto = require('crypto');
+const { hashKey } = require('./bi/biAuthMiddleware');
+
+// GET /api/admin/bi-keys — list semua API keys (tanpa menampilkan key plaintext)
+router.get('/bi-keys', async (req, res, next) => {
+  try {
+    const keys = await prisma.m_api_keys.findMany({
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true, label: true, scopes: true, rate_limit_hour: true,
+        created_by: true, created_at: true, last_used_at: true, revoked_at: true
+      }
+    });
+    res.json(keys);
+  } catch (err) { next(err); }
+});
+
+// POST /api/admin/bi-keys — generate API key baru
+router.post('/bi-keys', async (req, res, next) => {
+  try {
+    const { label, scopes = ['ga'], rate_limit_hour = 1000 } = req.body;
+    if (!label) return res.status(400).json({ error: 'Label wajib diisi.' });
+
+    // Generate key: glc_bi_ + 32 hex chars
+    const rawKey  = 'glc_bi_' + crypto.randomBytes(16).toString('hex');
+    const keyHash = hashKey(rawKey);
+
+    const record = await prisma.m_api_keys.create({
+      data: {
+        label,
+        key_hash: keyHash,
+        scopes: Array.isArray(scopes) ? scopes : [scopes],
+        rate_limit_hour: parseInt(rate_limit_hour) || 1000,
+        created_by: req.user?.full_name || req.user?.email || 'admin',
+      }
+    });
+
+    // Plaintext key hanya ditampilkan SEKALI di sini — tidak disimpan di DB
+    res.status(201).json({
+      message: 'API key berhasil dibuat. Simpan key ini — tidak akan ditampilkan lagi.',
+      api_key: rawKey,
+      id: record.id,
+      label: record.label,
+      scopes: record.scopes,
+      created_at: record.created_at,
+    });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/admin/bi-keys/:id — revoke API key
+router.delete('/bi-keys/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const key = await prisma.m_api_keys.findUnique({ where: { id } });
+    if (!key) return res.status(404).json({ error: 'API key tidak ditemukan.' });
+    if (key.revoked_at) return res.status(400).json({ error: 'API key sudah dinonaktifkan.' });
+
+    await prisma.m_api_keys.update({ where: { id }, data: { revoked_at: new Date() } });
+    res.json({ message: `API key "${key.label}" berhasil dinonaktifkan.` });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

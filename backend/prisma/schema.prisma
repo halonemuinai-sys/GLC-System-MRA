@@ -622,6 +622,20 @@ model m_user {
   @@schema("glc_mra")
 }
 
+model m_api_keys {
+  id               Int       @id @default(autoincrement())
+  label            String    @db.VarChar(100)
+  key_hash         String    @unique @db.VarChar(64)
+  scopes           String[]
+  rate_limit_hour  Int       @default(1000)
+  created_by       String?   @db.VarChar(120)
+  created_at       DateTime  @default(now()) @db.Timestamp(6)
+  last_used_at     DateTime? @db.Timestamp(6)
+  revoked_at       DateTime? @db.Timestamp(6)
+
+  @@schema("glc_mra")
+}
+
 model m_vendor_category {
   id      Int       @id @default(autoincrement())
   name    String    @unique @db.VarChar(50)

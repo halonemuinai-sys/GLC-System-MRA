@@ -14,7 +14,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key']
 }));
 app.use(express.json());
 
@@ -38,6 +38,8 @@ app.use('/api/master', require('../routes/masterRouter'));
 app.use('/api/marketing', require('../routes/marketingRouter'));
 app.use('/api/admin', [verifyToken, checkRole(['admin'])], require('../routes/adminRouter'));
 app.use('/api/helpdesk', require('../routes/helpdeskRouter'));
+// BI external API — autentikasi via X-API-Key header (tidak pakai JWT user)
+app.use('/api/bi', require('../routes/bi/biRouter'));
 
 // Global error handler
 app.use((err, req, res, next) => {
