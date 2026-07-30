@@ -450,8 +450,6 @@ export default function MarketingApprovalSettingsPage() {
               </div>
             </div>
           </div>
-        </>
-      )}
 
       {/* Add Override Modal */}
       <AnimatePresence>
@@ -537,6 +535,7 @@ export default function MarketingApprovalSettingsPage() {
           </div>
         )}
       </AnimatePresence>
+        </>
       ) : (
         /* ── Tab: Aturan Approval (DOA) ──────────────────────────────── */
         <div className="space-y-4">
