@@ -2,7 +2,8 @@
  * Script: Buat tabel m_api_keys secara manual via raw SQL
  * Ini menghindari prisma db push yang bisa konflik dengan schema lain.
  */
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const prisma = require('../api/db');
 
 async function main() {
