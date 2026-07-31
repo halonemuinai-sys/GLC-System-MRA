@@ -22,6 +22,7 @@ const ENDPOINTS = [
   { path: '/api/bi/ga/overview',    label: 'GA Overview KPIs' },
   { path: '/api/bi/ga/expenses',    label: 'Expenses (Budget vs Actual)' },
   { path: '/api/bi/ga/assets',      label: 'Asset Breakdown' },
+  { path: '/api/bi/ga/assets/list', label: 'GA Raw Assets List' },
   { path: '/api/bi/ga/vendors',     label: 'Vendor Status' },
   { path: '/api/bi/ga/maintenance', label: 'Maintenance Cost Trend' },
   { path: '/api/bi/ga/insurance',   label: 'Insurance Premiums' },

@@ -19,6 +19,7 @@ router.use(verifyApiKey);
 router.get('/ga/overview',    ga.getOverview);
 router.get('/ga/expenses',    ga.getExpenses);
 router.get('/ga/assets',      ga.getAssets);
+router.get('/ga/assets/list', ga.getAssetList);
 router.get('/ga/vendors',     ga.getVendors);
 router.get('/ga/maintenance', ga.getMaintenance);
 router.get('/ga/insurance',   ga.getInsurance);

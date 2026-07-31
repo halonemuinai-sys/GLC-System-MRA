@@ -578,4 +578,92 @@ async function getScorecard(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getOverview, getExpenses, getAssets, getVendors, getMaintenance, getInsurance, getScorecard };
+// ── GET /api/bi/ga/assets/list ─────────────────────────────────────────────────
+// Get raw assets list data with month, year, or all filters for BI
+async function getAssetList(req, res, next) {
+  try {
+    const { month, year, fiscal_year, company_id, company_master_id } = req.query;
+    
+    const where = {};
+    
+    // Apply company filters
+    if (company_id) {
+      where.company_id = parseInt(company_id);
+    } else if (company_master_id) {
+      where.m_company = { company_master_id: parseInt(company_master_id) };
+    }
+    
+    // Apply year filters
+    const targetYear = parseInt(year || fiscal_year);
+    const targetMonth = parseInt(month); // 1-12
+    
+    if (targetYear && targetMonth) {
+      const startDate = new Date(targetYear, targetMonth - 1, 1);
+      const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+      where.acquisition_date = { gte: startDate, lte: endDate };
+    } else if (targetYear) {
+      const startDate = new Date(targetYear, 0, 1);
+      const endDate = new Date(targetYear, 11, 31, 23, 59, 59, 999);
+      where.acquisition_date = { gte: startDate, lte: endDate };
+    }
+
+    let assetsList = await prisma.assets.findMany({
+      where,
+      include: {
+        m_company: { select: { name: true, code: true } },
+        m_asset_category: { select: { name: true } },
+        m_asset_type: { select: { name: true } },
+        m_condition: { select: { name: true } },
+        m_status: { select: { name: true } },
+        m_location: { select: { name: true } }
+      },
+      orderBy: [
+        { acquisition_date: 'desc' },
+        { id: 'desc' }
+      ]
+    });
+
+    // Map to clean format
+    assetsList = assetsList.map(a => ({
+      id: a.id,
+      asset_code: a.asset_code,
+      asset_name: a.asset_name,
+      details: a.details,
+      room: a.room,
+      acquisition_date: a.acquisition_date,
+      acquisition_cost: a.acquisition_cost ? parseFloat(a.acquisition_cost) : 0,
+      useful_life_months: a.useful_life_months,
+      information: a.information,
+      reference_link: a.reference_link,
+      company_name: a.m_company?.name || '-',
+      company_code: a.m_company?.code || '-',
+      category_name: a.m_asset_category?.name || '-',
+      type_name: a.m_asset_type?.name || '-',
+      condition_name: a.m_condition?.name || 'Good',
+      status_name: a.m_status?.name || 'Active',
+      location_name: a.m_location?.name || '-'
+    }));
+
+    // Filter by month only (if targetMonth is specified without targetYear)
+    if (targetMonth && !targetYear) {
+      assetsList = assetsList.filter(a => {
+        if (!a.acquisition_date) return false;
+        const d = new Date(a.acquisition_date);
+        return (d.getMonth() + 1) === targetMonth;
+      });
+    }
+
+    res.json({
+      filters: {
+        month: targetMonth || null,
+        year: targetYear || null,
+        company_id: company_id ? parseInt(company_id) : null,
+        company_master_id: company_master_id ? parseInt(company_master_id) : null
+      },
+      total: assetsList.length,
+      data: assetsList
+    });
+  } catch (err) { next(err); }
+}
+
+module.exports = { getOverview, getExpenses, getAssets, getVendors, getMaintenance, getInsurance, getScorecard, getAssetList };
