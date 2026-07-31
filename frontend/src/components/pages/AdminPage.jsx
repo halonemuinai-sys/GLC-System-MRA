@@ -24,7 +24,12 @@ import {
   FileSpreadsheet,
   Activity,
   UserCheck,
-  UserMinus
+  UserMinus,
+  Zap,
+  Copy,
+  Clipboard,
+  Globe,
+  Shield
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -89,6 +94,16 @@ export default function AdminPage() {
   const [logTableFilter, setLogTableFilter] = useState('');
   const [selectedLog, setSelectedLog] = useState(null);
 
+  // API Keys State
+  const [apiKeys, setApiKeys] = useState([]);
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [newKeyLabel, setNewKeyLabel] = useState('');
+  const [newKeyScopes, setNewKeyScopes] = useState(['ga']);
+  const [newKeyRateLimit, setNewKeyRateLimit] = useState(1000);
+  const [generatingKey, setGeneratingKey] = useState(false);
+  const [generatedKey, setGeneratedKey] = useState(null); // plaintext key shown once
+  const [revokingKeyId, setRevokingKeyId] = useState(null);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // FETCH DATA FUNCTIONS
   // ─────────────────────────────────────────────────────────────────────────────
@@ -149,6 +164,52 @@ export default function AdminPage() {
     }
   };
 
+  const fetchApiKeys = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await apiClient.get('/api/admin/bi-keys');
+      setApiKeys(res || []);
+    } catch (err) {
+      setError(err.message || 'Gagal memuat daftar API keys.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateKey = async () => {
+    if (!newKeyLabel.trim()) return;
+    try {
+      setGeneratingKey(true);
+      const res = await apiClient.post('/api/admin/bi-keys', {
+        label: newKeyLabel.trim(),
+        scopes: newKeyScopes,
+        rate_limit_hour: parseInt(newKeyRateLimit) || 1000
+      });
+      setGeneratedKey(res.api_key);
+      setNewKeyLabel('');
+      setNewKeyScopes(['ga']);
+      setNewKeyRateLimit(1000);
+      fetchApiKeys();
+    } catch (err) {
+      setError(err.message || 'Gagal membuat API key.');
+    } finally {
+      setGeneratingKey(false);
+    }
+  };
+
+  const handleRevokeKey = async (id) => {
+    try {
+      setRevokingKeyId(id);
+      await apiClient.delete(`/api/admin/bi-keys/${id}`);
+      fetchApiKeys();
+    } catch (err) {
+      setError(err.message || 'Gagal menonaktifkan API key.');
+    } finally {
+      setRevokingKeyId(null);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
@@ -156,6 +217,8 @@ export default function AdminPage() {
       fetchPermissions();
     } else if (activeTab === 'logs') {
       fetchLogs();
+    } else if (activeTab === 'apikeys') {
+      fetchApiKeys();
     }
   }, [activeTab, searchQuery, roleFilter, statusFilter, logPage, logActionFilter, logTableFilter]);
 
@@ -342,6 +405,7 @@ export default function AdminPage() {
         {renderTabButton('users', <Users className="w-4 h-4" />, t('admin_tabUsers'))}
         {renderTabButton('permissions', <Key className="w-4 h-4" />, t('admin_tabRoles'))}
         {renderTabButton('logs', <Database className="w-4 h-4" />, t('admin_tabAudit'))}
+        {renderTabButton('apikeys', <Globe className="w-4 h-4" />, 'API Keys')}
       </motion.div>
 
       <AnimatePresence mode="wait">
@@ -799,6 +863,116 @@ export default function AdminPage() {
           </div>
           </motion.div>
         )}
+
+      {activeTab === 'apikeys' && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="space-y-4"
+        >
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'Total Keys', value: apiKeys.length, icon: <Globe className="w-4 h-4" />, color: 'indigo' },
+              { label: 'Aktif', value: apiKeys.filter(k => !k.revoked_at).length, icon: <Zap className="w-4 h-4" />, color: 'emerald' },
+              { label: 'Dinonaktifkan', value: apiKeys.filter(k => k.revoked_at).length, icon: <Lock className="w-4 h-4" />, color: 'red' },
+              { label: 'Terakhir Dipakai', value: (() => { const last = apiKeys.filter(k => k.last_used_at).sort((a, b) => new Date(b.last_used_at) - new Date(a.last_used_at))[0]; if (!last) return 'Belum pernah'; const d = Math.round((Date.now() - new Date(last.last_used_at)) / 60000); return d < 60 ? `${d} mnt lalu` : d < 1440 ? `${Math.round(d / 60)} jam lalu` : `${Math.round(d / 1440)} hari lalu`; })(), icon: <Activity className="w-4 h-4" />, color: 'amber' },
+            ].map((card, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-${card.color}-500`}>{card.icon}</span>
+                  <span className="text-[10px] font-bold text-neutral-400 uppercase">{card.label}</span>
+                </div>
+                <div className="text-xl font-black text-neutral-900 dark:text-white">{card.value}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Header + Generate Button */}
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">
+              API keys digunakan oleh external client (Power BI, Looker Studio, custom dashboard) untuk mengakses data BI.
+            </div>
+            <button
+              onClick={() => { setShowKeyModal(true); setGeneratedKey(null); }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" /> Generate Key
+            </button>
+          </div>
+
+          {/* Keys Table */}
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-neutral-50 dark:bg-neutral-950/40 border-b border-neutral-100 dark:border-neutral-800">
+                    <th className="px-4 py-3 text-left font-bold text-neutral-500 uppercase text-[10px]">Label</th>
+                    <th className="px-4 py-3 text-left font-bold text-neutral-500 uppercase text-[10px]">Scopes</th>
+                    <th className="px-4 py-3 text-center font-bold text-neutral-500 uppercase text-[10px]">Rate Limit</th>
+                    <th className="px-4 py-3 text-left font-bold text-neutral-500 uppercase text-[10px]">Dibuat Oleh</th>
+                    <th className="px-4 py-3 text-left font-bold text-neutral-500 uppercase text-[10px]">Dibuat</th>
+                    <th className="px-4 py-3 text-left font-bold text-neutral-500 uppercase text-[10px]">Terakhir Dipakai</th>
+                    <th className="px-4 py-3 text-center font-bold text-neutral-500 uppercase text-[10px]">Status</th>
+                    <th className="px-4 py-3 text-center font-bold text-neutral-500 uppercase text-[10px]">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan={8} className="text-center py-12"><Loader2 className="w-5 h-5 animate-spin text-neutral-400 mx-auto" /></td></tr>
+                  ) : apiKeys.length === 0 ? (
+                    <tr><td colSpan={8} className="text-center py-12 text-neutral-400">Belum ada API key. Klik "Generate Key" untuk membuat.</td></tr>
+                  ) : apiKeys.map((key, idx) => (
+                    <motion.tr key={key.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.03 }}
+                      className={`border-b border-neutral-100 dark:border-neutral-800/60 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors ${key.revoked_at ? 'opacity-50' : ''}`}>
+                      <td className="px-4 py-3 font-bold text-neutral-800 dark:text-neutral-200">{key.label}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {key.scopes?.map((s, si) => (
+                            <span key={si} className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold rounded-full">{s}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-center font-mono text-neutral-600 dark:text-neutral-400">{key.rate_limit_hour?.toLocaleString('id-ID')}/jam</td>
+                      <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{key.created_by || '-'}</td>
+                      <td className="px-4 py-3 text-neutral-500">{key.created_at ? new Date(key.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
+                      <td className="px-4 py-3 text-neutral-500">{key.last_used_at ? new Date(key.last_used_at).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : <span className="text-neutral-300 dark:text-neutral-600 italic">Belum pernah</span>}</td>
+                      <td className="px-4 py-3 text-center">
+                        {key.revoked_at ? (
+                          <span className="px-2.5 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-[10px] font-bold rounded-full border border-red-200 dark:border-red-900/40">Nonaktif</span>
+                        ) : (
+                          <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold rounded-full border border-emerald-200 dark:border-emerald-900/40">Aktif</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {!key.revoked_at && (
+                          <button
+                            onClick={() => handleRevokeKey(key.id)}
+                            disabled={revokingKeyId === key.id}
+                            className="px-3 py-1.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-[10px] font-bold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
+                          >
+                            {revokingKeyId === key.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Lock className="w-3 h-3" />}
+                            Revoke
+                          </button>
+                        )}
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Info Box */}
+          <div className="bg-indigo-500/10 border border-indigo-300/60 text-indigo-700 dark:text-indigo-400 text-xs font-semibold px-4 py-3 rounded-2xl flex items-start gap-2">
+            <Shield className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>API key di-hash menggunakan SHA-256 sebelum disimpan. Plaintext key hanya ditampilkan <strong>sekali</strong> saat pertama kali digenerate. Jika hilang, buat key baru dan revoke yang lama.</span>
+          </div>
+        </motion.div>
+      )}
       </AnimatePresence>
 
       {/* ─────────────────────────────────────────────────────────────────────────────
@@ -1112,6 +1286,91 @@ export default function AdminPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Generate API Key Modal */}
+      {showKeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => { if (!generatedKey) setShowKeyModal(false); }} />
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-md z-55 overflow-hidden">
+            
+            {!generatedKey ? (
+              <>
+                <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
+                  <h3 className="text-md font-black text-neutral-850 dark:text-white flex items-center gap-2"><Zap className="w-4 h-4 text-indigo-500" /> Generate API Key</h3>
+                  <button onClick={() => setShowKeyModal(false)} className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Label / Nama</label>
+                    <input type="text" value={newKeyLabel} onChange={(e) => setNewKeyLabel(e.target.value)}
+                      placeholder="e.g. Power BI Dashboard" className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Scopes (akses modul)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {['ga', 'marketing', 'legal', 'compliance', 'helpdesk'].map(scope => (
+                        <label key={scope} className="flex items-center gap-1.5 cursor-pointer">
+                          <input type="checkbox" checked={newKeyScopes.includes(scope)}
+                            onChange={(e) => setNewKeyScopes(prev => e.target.checked ? [...prev, scope] : prev.filter(s => s !== scope))}
+                            className="w-3.5 h-3.5 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500" />
+                          <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300 capitalize">{scope}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Rate Limit (per jam)</label>
+                    <input type="number" value={newKeyRateLimit} onChange={(e) => setNewKeyRateLimit(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
+                  </div>
+                </div>
+                <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end gap-2">
+                  <button onClick={() => setShowKeyModal(false)} className="px-4 py-2 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 text-xs font-bold rounded-xl cursor-pointer">Batal</button>
+                  <button onClick={handleGenerateKey} disabled={!newKeyLabel.trim() || generatingKey}
+                    className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5">
+                    {generatingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                    Generate
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="px-6 py-4.5 border-b border-emerald-100 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-950/20">
+                  <h3 className="text-md font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> API Key Berhasil Dibuat!</h3>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3 flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-xs text-amber-700 dark:text-amber-400 font-semibold">Salin dan simpan API key ini sekarang. Key ini <strong>tidak akan ditampilkan lagi</strong> setelah modal ditutup.</span>
+                  </div>
+                  <div className="bg-neutral-900 dark:bg-black rounded-xl p-4 font-mono text-xs text-emerald-400 break-all select-all relative group">
+                    {generatedKey}
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(generatedKey); }}
+                      className="absolute top-2 right-2 p-1.5 bg-neutral-800 hover:bg-neutral-700 rounded-lg text-neutral-400 hover:text-white transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                      title="Copy to clipboard"
+                    >
+                      <Clipboard className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-neutral-400 space-y-0.5">
+                    <div>Header: <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">X-API-Key: {generatedKey?.substring(0, 15)}...</code></div>
+                    <div>Endpoint: <code className="bg-neutral-100 dark:bg-neutral-800 px-1 rounded">GET /api/bi/ga/overview</code></div>
+                  </div>
+                </div>
+                <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
+                  <button onClick={() => { setShowKeyModal(false); setGeneratedKey(null); }}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors cursor-pointer inline-flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5" /> Sudah Disalin, Tutup
+                  </button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
