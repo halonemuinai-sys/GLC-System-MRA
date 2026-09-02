@@ -372,6 +372,11 @@ async function bulkImportAssets(req, res, next) {
         const statKey = item.status_name ? normalize(item.status_name) : null;
         const statId = statKey && statusMap[statKey] ? statusMap[statKey] : defaultStatusId;
 
+        let acqDate = null;
+        if (item.acquisition_date && !isNaN(Date.parse(item.acquisition_date))) {
+          acqDate = new Date(item.acquisition_date);
+        }
+
         const cleanCode = item.asset_code && String(item.asset_code).trim() !== '' ? String(item.asset_code).trim() : null;
 
         const assetData = {
