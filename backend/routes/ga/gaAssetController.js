@@ -268,72 +268,7 @@ async function bulkImportAssets(req, res, next) {
           if (matched) {
             companyMap[compKey] = matched.id;
           } else {
-            errors.push(`Baris ${rowNum}: Perusahaan "${item.company_name}" tidak ditemukan.`);
-          }
-        }
-      }
-
-      if (item.asset_category_name) {
-        const catKey = normalize(item.asset_category_name);
-        if (!categoryMap[catKey]) {
-          const matched = categories.find(c => normalize(c.name).includes(catKey) || catKey.includes(normalize(c.name)));
-          if (matched) {
-            categoryMap[catKey] = matched.id;
-          } else {
-            errors.push(`Baris ${rowNum}: Kategori "${item.asset_category_name}" tidak ditemukan.`);
-          }
-        }
-      }
-
-      if (item.location_name) {
-        const locKey = normalize(item.location_name);
-        if (!branchMap[locKey]) {
-          const matched = branches.find(b => 
-            normalize(b.name).includes(locKey) || 
-            (b.location && normalize(b.location).includes(locKey)) ||
-            locKey.includes(normalize(b.name))
-          );
-          if (matched) {
-            branchMap[locKey] = matched.id;
-          } else {
-            errors.push(`Baris ${rowNum}: Lokasi "${item.location_name}" tidak ditemukan.`);
-          }
-        }
-      }
-
-      if (item.pic_name) {
-        const picKey = normalize(item.pic_name);
-        if (!userMap[picKey]) {
-          const matched = users.find(u => normalize(u.full_name).includes(picKey) || picKey.includes(normalize(u.full_name)));
-          if (matched) {
-            userMap[picKey] = matched.id;
-          } else {
-            // Optional: PIC can be logged or if strict:
-            errors.push(`Baris ${rowNum}: PIC "${item.pic_name}" tidak ditemukan di data user.`);
-          }
-        }
-      }
-
-      if (item.condition_name) {
-        const condKey = normalize(item.condition_name);
-        if (!conditionMap[condKey]) {
-          const matched = conditions.find(c => normalize(c.name).includes(condKey) || condKey.includes(normalize(c.name)));
-          if (matched) {
-            conditionMap[condKey] = matched.id;
-          } else {
-            errors.push(`Baris ${rowNum}: Kondisi "${item.condition_name}" tidak ditemukan.`);
-          }
-        }
-      }
-
-      if (item.status_name) {
-        const statKey = normalize(item.status_name);
-        if (!statusMap[statKey]) {
-          const matched = statuses.find(s => normalize(s.name).includes(statKey) || statKey.includes(normalize(s.name)));
-          if (matched) {
-            statusMap[statKey] = matched.id;
-          } else {
-            errors.push(`Baris ${rowNum}: Status "${item.status_name}" tidak ditemukan.`);
+            errors.push(`Baris ${rowNum}: Perusahaan "${item.company_name}" tidak ditemukan di master perusahaan.`);
           }
         }
       }
@@ -350,26 +285,111 @@ async function bulkImportAssets(req, res, next) {
         const cleanCompKey = compKey.replace(/^pt\.?\s*/i, '').trim();
         const compId = companyMap[compKey] || companyMap[cleanCompKey];
 
-        const catKey = item.asset_category_name ? normalize(item.asset_category_name) : null;
-        const catId = catKey ? categoryMap[catKey] : null;
+        // 1. Category (Link or Auto-create)
+        let catId = null;
+        if (item.asset_category_name && item.asset_category_name.trim()) {
+          const catKey = normalize(item.asset_category_name);
+          if (categoryMap[catKey]) {
+            catId = categoryMap[catKey];
+          } else {
+            try {
+              const newCat = await tx.m_asset_category.create({
+                data: { name: item.asset_category_name.trim() }
+              });
+              categoryMap[catKey] = newCat.id;
+              catId = newCat.id;
+            } catch (catErr) {
+              const existingCat = await tx.m_asset_category.findFirst({
+                where: { name: { equals: item.asset_category_name.trim(), mode: 'insensitive' } }
+              });
+              catId = existingCat ? existingCat.id : null;
+            }
+          }
+        }
         
+        // 2. Type (Link or Auto-create)
         let typeId = null;
-        if (item.asset_type_name) {
+        if (item.asset_type_name && item.asset_type_name.trim()) {
           const typeKey = normalize(item.asset_type_name);
-          typeId = catId ? (typeMap[`${catId}_${typeKey}`] || typeNameMap[typeKey] || null) : (typeNameMap[typeKey] || null);
+          const typeLookupKey = catId ? `${catId}_${typeKey}` : typeKey;
+          if (typeMap[typeLookupKey] || typeNameMap[typeKey]) {
+            typeId = typeMap[typeLookupKey] || typeNameMap[typeKey];
+          } else {
+            try {
+              const newType = await tx.m_asset_type.create({
+                data: {
+                  category_id: catId,
+                  name: item.asset_type_name.trim()
+                }
+              });
+              typeMap[typeLookupKey] = newType.id;
+              typeNameMap[typeKey] = newType.id;
+              typeId = newType.id;
+            } catch (typeErr) {
+              typeId = null;
+            }
+          }
         }
 
-        const locKey = item.location_name ? normalize(item.location_name) : null;
-        const locId = locKey ? branchMap[locKey] : null;
+        // 3. Location / Branch (Link or Auto-create)
+        let locId = null;
+        if (item.location_name && item.location_name.trim()) {
+          const locKey = normalize(item.location_name);
+          if (branchMap[locKey]) {
+            locId = branchMap[locKey];
+          } else {
+            try {
+              const newBranch = await tx.m_company_branch.create({
+                data: {
+                  name: item.location_name.trim(),
+                  location: item.location_name.trim(),
+                  sector: 'Office',
+                  is_active: true
+                }
+              });
+              branchMap[locKey] = newBranch.id;
+              locId = newBranch.id;
+            } catch (branchErr) {
+              locId = null;
+            }
+          }
+        }
 
-        const picKey = item.pic_name ? normalize(item.pic_name) : null;
-        const picId = picKey ? userMap[picKey] : null;
+        // 4. PIC / User (Link or Auto-create user record)
+        let picId = null;
+        if (item.pic_name && item.pic_name.trim()) {
+          const picKey = normalize(item.pic_name);
+          if (userMap[picKey]) {
+            picId = userMap[picKey];
+          } else {
+            const matchedUser = users.find(u => normalize(u.full_name).includes(picKey) || picKey.includes(normalize(u.full_name)));
+            if (matchedUser) {
+              userMap[picKey] = matchedUser.id;
+              picId = matchedUser.id;
+            } else {
+              try {
+                const newUser = await tx.m_user.create({
+                  data: {
+                    full_name: item.pic_name.trim(),
+                    role: 'staff',
+                    is_active: true
+                  }
+                });
+                userMap[picKey] = newUser.id;
+                picId = newUser.id;
+              } catch (userErr) {
+                picId = null;
+              }
+            }
+          }
+        }
 
+        // 5. Condition & Status (Link or Fallback to Default)
         const condKey = item.condition_name ? normalize(item.condition_name) : null;
-        const condId = condKey ? conditionMap[condKey] : defaultConditionId;
+        const condId = condKey && conditionMap[condKey] ? conditionMap[condKey] : defaultConditionId;
 
         const statKey = item.status_name ? normalize(item.status_name) : null;
-        const statId = statKey ? statusMap[statKey] : defaultStatusId;
+        const statId = statKey && statusMap[statKey] ? statusMap[statKey] : defaultStatusId;
 
         let acqDate = null;
         if (item.acquisition_date && !isNaN(Date.parse(item.acquisition_date))) {
@@ -401,6 +421,7 @@ async function bulkImportAssets(req, res, next) {
       }
       return inserted;
     });
+
 
     res.status(201).json({ message: `Berhasil mengimpor ${createdAssets.length} aset.`, data: createdAssets });
   } catch (err) {
