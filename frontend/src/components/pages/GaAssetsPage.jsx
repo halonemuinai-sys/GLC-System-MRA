@@ -167,6 +167,7 @@ export default function GaAssetsPage() {
   const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [importingFile, setImportingFile] = useState(false);
   const [importErrors, setImportErrors] = useState([]);
+  const [importWarnings, setImportWarnings] = useState([]);
   const [importPreview, setImportPreview] = useState([]);
 
   // Active filters (passed to the API)
@@ -879,6 +880,8 @@ export default function GaAssetsPage() {
         setImportPreview={setImportPreview}
         importErrors={importErrors}
         setImportErrors={setImportErrors}
+        importWarnings={importWarnings}
+        setImportWarnings={setImportWarnings}
         importingFile={importingFile}
         setImportingFile={setImportingFile}
       />
