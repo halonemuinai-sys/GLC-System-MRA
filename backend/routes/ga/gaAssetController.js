@@ -372,36 +372,54 @@ async function bulkImportAssets(req, res, next) {
         const statKey = item.status_name ? normalize(item.status_name) : null;
         const statId = statKey && statusMap[statKey] ? statusMap[statKey] : defaultStatusId;
 
-        let acqDate = null;
-        if (item.acquisition_date && !isNaN(Date.parse(item.acquisition_date))) {
-          acqDate = new Date(item.acquisition_date);
+        const cleanCode = item.asset_code && String(item.asset_code).trim() !== '' ? String(item.asset_code).trim() : null;
+
+        const assetData = {
+          company_id: compId,
+          asset_code: cleanCode,
+          asset_category_id: catId,
+          asset_type_id: typeId,
+          asset_name: item.asset_name,
+          details: item.details || null,
+          location_id: locId,
+          room: item.room || null,
+          pic_id: picId,
+          acquisition_date: acqDate,
+          acquisition_cost: item.acquisition_cost ? parseFloat(item.acquisition_cost) : 0,
+          useful_life_months: item.useful_life_months ? parseInt(item.useful_life_months) : null,
+          condition_id: condId,
+          status_id: statId,
+          information: item.information || null,
+          reference_link: item.reference_link || null
+        };
+
+        let savedAsset;
+        if (cleanCode) {
+          const existing = await tx.assets.findUnique({
+            where: { asset_code: cleanCode }
+          });
+
+          if (existing) {
+            savedAsset = await tx.assets.update({
+              where: { id: existing.id },
+              data: assetData
+            });
+          } else {
+            savedAsset = await tx.assets.create({
+              data: assetData
+            });
+          }
+        } else {
+          savedAsset = await tx.assets.create({
+            data: assetData
+          });
         }
 
-        const newAsset = await tx.assets.create({
-          data: {
-            company_id: compId,
-            asset_code: item.asset_code || null,
-            asset_category_id: catId,
-            asset_type_id: typeId,
-            asset_name: item.asset_name,
-            details: item.details || null,
-            location_id: locId,
-            room: item.room || null,
-            pic_id: picId,
-            acquisition_date: acqDate,
-            acquisition_cost: item.acquisition_cost ? parseFloat(item.acquisition_cost) : 0,
-            useful_life_months: item.useful_life_months ? parseInt(item.useful_life_months) : null,
-            condition_id: condId,
-            status_id: statId,
-            information: item.information || null,
-            reference_link: item.reference_link || null
-          }
-        });
-
-        inserted.push(newAsset);
+        inserted.push(savedAsset);
       }
       return inserted;
     });
+
 
 
     res.status(201).json({ message: `Berhasil mengimpor ${createdAssets.length} aset.`, data: createdAssets });
