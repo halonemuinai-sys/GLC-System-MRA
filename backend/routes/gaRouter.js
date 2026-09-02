@@ -15,6 +15,7 @@ const router = express.Router();
 // Role checking definitions
 const allowRead = verifyToken; // Semuanya yang terotentikasi bisa membaca untuk kemudahan dashboard terintegrasi
 const allowWrite = [verifyToken, checkRole(['admin', 'ga'])];
+const allowAdminOnly = [verifyToken, checkRole(['admin', 'superadmin'])];
 const allowVendorWrite = [verifyToken, checkRole(['admin', 'ga', 'legal', 'compliance', 'marketing'])];
 
 // Dashboard Stats & Notifications
@@ -26,7 +27,7 @@ router.get('/assets', allowRead, assetController.getAssets);
 router.get('/assets/:id', allowRead, assetController.getAssetDetail);
 router.post('/assets', allowWrite, assetController.createAsset);
 router.post('/assets/bulk-import', allowWrite, assetController.bulkImportAssets);
-router.post('/assets/purge', allowWrite, assetController.purgeAssets);
+router.post('/assets/purge', allowAdminOnly, assetController.purgeAssets);
 router.put('/assets/:id', allowWrite, assetController.updateAsset);
 router.delete('/assets/:id', allowWrite, assetController.deleteAsset);
 
