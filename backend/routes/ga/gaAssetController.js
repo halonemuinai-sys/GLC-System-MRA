@@ -278,6 +278,21 @@ async function bulkImportAssets(req, res, next) {
       return res.status(400).json({ errors });
     }
 
+    // Pre-fetch existing asset codes in one batch query to avoid per-row database round trips
+    const payloadCodes = assets
+      .map(a => a.asset_code && String(a.asset_code).trim())
+      .filter(Boolean);
+
+    const existingAssets = payloadCodes.length > 0
+      ? await prisma.assets.findMany({
+          where: { asset_code: { in: payloadCodes } },
+          select: { id: true, asset_code: true }
+        })
+      : [];
+
+    const existingAssetMap = new Map();
+    existingAssets.forEach(ea => existingAssetMap.set(ea.asset_code, ea.id));
+
     const createdAssets = await prisma.$transaction(async (tx) => {
       const inserted = [];
       for (const item of assets) {
@@ -364,7 +379,6 @@ async function bulkImportAssets(req, res, next) {
           }
         }
 
-
         // 5. Condition & Status (Link or Fallback to Default)
         const condKey = item.condition_name ? normalize(item.condition_name) : null;
         const condId = condKey && conditionMap[condKey] ? conditionMap[condKey] : defaultConditionId;
@@ -399,31 +413,29 @@ async function bulkImportAssets(req, res, next) {
         };
 
         let savedAsset;
-        if (cleanCode) {
-          const existing = await tx.assets.findUnique({
-            where: { asset_code: cleanCode }
+        if (cleanCode && existingAssetMap.has(cleanCode)) {
+          const existingId = existingAssetMap.get(cleanCode);
+          savedAsset = await tx.assets.update({
+            where: { id: existingId },
+            data: assetData
           });
-
-          if (existing) {
-            savedAsset = await tx.assets.update({
-              where: { id: existing.id },
-              data: assetData
-            });
-          } else {
-            savedAsset = await tx.assets.create({
-              data: assetData
-            });
-          }
         } else {
           savedAsset = await tx.assets.create({
             data: assetData
           });
+          if (cleanCode) {
+            existingAssetMap.set(cleanCode, savedAsset.id);
+          }
         }
 
         inserted.push(savedAsset);
       }
       return inserted;
+    }, {
+      maxWait: 20000,
+      timeout: 60000
     });
+
 
 
 
