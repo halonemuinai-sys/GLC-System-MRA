@@ -1,4 +1,5 @@
 const prisma = require('../../api/db');
+const bcrypt = require('bcryptjs');
 
 // GET List Assets with pagination, search, & filter
 async function getAssets(req, res, next) {
@@ -366,6 +367,148 @@ async function deleteAsset(req, res, next) {
   }
 }
 
+// POST Purge Assets (Bulk Delete / Reset with Security Safeguards)
+async function purgeAssets(req, res, next) {
+  try {
+    const { confirmationText, password, companyId } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Sesi tidak valid atau tidak terotentikasi.' });
+    }
+
+    // 1. Validasi Frasa Konfirmasi Eksplisit
+    const expectedPhrase = 'HAPUS SEMUA ASET';
+    if (!confirmationText || confirmationText.trim().toUpperCase() !== expectedPhrase) {
+      return res.status(400).json({ 
+        error: `Frasa konfirmasi tidak sesuai. Harap ketik "${expectedPhrase}" persis sama.` 
+      });
+    }
+
+    // 2. Validasi Password Re-Authentication
+    if (!password) {
+      return res.status(400).json({ error: 'Password verifikasi akun wajib diisi.' });
+    }
+
+    const currentUser = await prisma.m_user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!currentUser || !currentUser.password) {
+      return res.status(401).json({ error: 'Akun pengguna tidak ditemukan atau belum memiliki password terdaftar.' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, currentUser.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: 'Password verifikasi salah. Harap masukkan password login akun Anda yang benar.' });
+    }
+
+    // 3. Tentukan Scope Filter
+    const where = {};
+    let scopeDescription = 'SEMUA PERUSAHAAN (GLOBAL)';
+    if (companyId && companyId !== 'ALL' && companyId !== '') {
+      const parsedCompId = parseInt(companyId);
+      where.company_id = parsedCompId;
+      const compInfo = await prisma.m_company.findUnique({
+        where: { id: parsedCompId },
+        select: { name: true }
+      });
+      scopeDescription = compInfo ? `PERUSAHAAN: ${compInfo.name} (ID: ${parsedCompId})` : `PERUSAHAAN ID: ${parsedCompId}`;
+    }
+
+    // 4. Eksekusi Transaksional Aman (Database Transaction)
+    const result = await prisma.$transaction(async (tx) => {
+      // Cari semua ID aset yang masuk scope
+      const targetAssets = await tx.assets.findMany({
+        where,
+        select: { id: true, asset_name: true }
+      });
+
+      const assetIds = targetAssets.map(a => a.id);
+      if (assetIds.length === 0) {
+        return { count: 0, message: 'Tidak ada data aset yang ditemukan pada scope ini.' };
+      }
+
+      // a. Hapus child stock opname checks yang berelasi dengan aset-aset ini
+      await tx.inventory_checks.deleteMany({
+        where: {
+          asset_id: { in: assetIds }
+        }
+      });
+
+      // b. Lepaskan referensi asset_id di tabel maintenances (set null agar riwayat perawatan/biaya tetap aman)
+      await tx.maintenances.updateMany({
+        where: {
+          asset_id: { in: assetIds }
+        },
+        data: {
+          asset_id: null
+        }
+      });
+
+      // c. Hapus relasi approval_requests jika ada
+      try {
+        await tx.approval_requests.deleteMany({
+          where: {
+            asset_id: { in: assetIds }
+          }
+        });
+      } catch (err) {
+        // Abaikan jika tidak ada model atau kolom
+      }
+
+      // d. Hapus data aset
+      const deleteSummary = await tx.assets.deleteMany({
+        where: {
+          id: { in: assetIds }
+        }
+      });
+
+      // e. Jika pembersihan global (semua aset), restart sequence ID ke 1
+      if (!companyId || companyId === 'ALL' || companyId === '') {
+        try {
+          await tx.$executeRawUnsafe('ALTER SEQUENCE IF EXISTS glc_mra.assets_id_seq RESTART WITH 1;');
+        } catch (seqErr) {
+          console.warn('Notice: Reset sequence ignored or not supported in this connection:', seqErr.message);
+        }
+      }
+
+      // f. Catat ke tabel audit_log
+      try {
+        await tx.audit_log.create({
+          data: {
+            table_name: 'assets',
+            action: 'PURGE_ALL',
+            record_id: null,
+            user_id: userId,
+            old_data: {
+              deletedCount: deleteSummary.count,
+              scope: scopeDescription,
+              performed_by: currentUser.full_name,
+              performed_at: new Date().toISOString()
+            },
+            new_data: {
+              status: 'PURGED_SUCCESSFULLY'
+            }
+          }
+        });
+      } catch (auditErr) {
+        console.warn('Notice: Audit log insert failed:', auditErr.message);
+      }
+
+      return { count: deleteSummary.count };
+    });
+
+    res.json({
+      success: true,
+      message: `Berhasil membersihkan ${result.count} data aset pada scope ${scopeDescription}.`,
+      deletedCount: result.count
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET Asset Categories
 async function getAssetCategories(req, res, next) {
   try {
@@ -429,6 +572,7 @@ module.exports = {
   bulkImportAssets,
   updateAsset,
   deleteAsset,
+  purgeAssets,
   getAssetCategories,
   getAssetTypes,
   getAssetConditions,

@@ -32,6 +32,7 @@ import GaAssetsDetailDrawer from './GaAssetsDetailDrawer';
 import GaAssetsFormDrawer from './GaAssetsFormDrawer';
 import GaAssetsDeleteModal from './GaAssetsDeleteModal';
 import GaAssetsImportModal from './GaAssetsImportModal';
+import GaAssetsPurgeModal from './GaAssetsPurgeModal';
 import { handleExportPDF, handleExportExcel } from './GaAssetsExports';
 
 // Searchable Dropdown for Companies (PT)
@@ -158,6 +159,7 @@ export default function GaAssetsPage() {
 
   // Excel Import States
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showPurgeModal, setShowPurgeModal] = useState(false);
   const [importingFile, setImportingFile] = useState(false);
   const [importErrors, setImportErrors] = useState([]);
   const [importPreview, setImportPreview] = useState([]);
@@ -540,6 +542,14 @@ export default function GaAssetsPage() {
             <Upload className="w-4 h-4" />
             {t('importExcel')}
           </button>
+          <button
+            onClick={() => setShowPurgeModal(true)}
+            className="flex items-center gap-2 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm w-fit"
+            title="Pembersihan & Reset Data Aset (Admin Only)"
+          >
+            <Trash2 className="w-4 h-4 text-rose-500" />
+            Pembersihan Data
+          </button>
         </div>
       </div>
 
@@ -854,6 +864,20 @@ export default function GaAssetsPage() {
         setImportErrors={setImportErrors}
         importingFile={importingFile}
         setImportingFile={setImportingFile}
+      />
+
+      {/* Purge / Reset All Data Modal */}
+      <GaAssetsPurgeModal
+        isOpen={showPurgeModal}
+        onClose={() => setShowPurgeModal(false)}
+        companies={companies}
+        currentCompanyId={companyId}
+        totalAssetsCount={meta?.total || data.length || 0}
+        totalAcquisitionCost={summary?.totalAcquisitionCost || 0}
+        onSuccessPurge={(res) => {
+          fetchData();
+        }}
+        formatIDR={formatIDR}
       />
     </div>
   );

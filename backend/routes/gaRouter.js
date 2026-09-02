@@ -26,6 +26,7 @@ router.get('/assets', allowRead, assetController.getAssets);
 router.get('/assets/:id', allowRead, assetController.getAssetDetail);
 router.post('/assets', allowWrite, assetController.createAsset);
 router.post('/assets/bulk-import', allowWrite, assetController.bulkImportAssets);
+router.post('/assets/purge', allowWrite, assetController.purgeAssets);
 router.put('/assets/:id', allowWrite, assetController.updateAsset);
 router.delete('/assets/:id', allowWrite, assetController.deleteAsset);
 
