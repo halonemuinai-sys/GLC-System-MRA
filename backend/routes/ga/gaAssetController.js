@@ -190,80 +190,151 @@ async function bulkImportAssets(req, res, next) {
   try {
     const { assets } = req.body;
     if (!Array.isArray(assets) || assets.length === 0) {
-      return res.status(400).json({ error: 'Assets array is required and cannot be empty.' });
+      return res.status(400).json({ error: 'Data aset tidak boleh kosong.' });
     }
 
     const [companies, categories, types, branches, users, conditions, statuses] = await Promise.all([
       prisma.m_company.findMany({ select: { id: true, name: true } }),
       prisma.m_asset_category.findMany({ select: { id: true, name: true } }),
       prisma.m_asset_type.findMany({ select: { id: true, category_id: true, name: true } }),
-      prisma.m_company_branch.findMany({ select: { id: true, name: true } }),
+      prisma.m_company_branch.findMany({ select: { id: true, name: true, location: true } }),
       prisma.m_user.findMany({ select: { id: true, full_name: true } }),
       prisma.m_condition.findMany({ select: { id: true, name: true } }),
       prisma.m_status.findMany({ select: { id: true, name: true } })
     ]);
 
-    const companyMap = {}; companies.forEach(x => companyMap[x.name.trim().toLowerCase()] = x.id);
-    const categoryMap = {}; categories.forEach(x => categoryMap[x.name.trim().toLowerCase()] = x.id);
-    const typeMap = {}; types.forEach(x => typeMap[`${x.category_id}_${x.name.trim().toLowerCase()}`] = x.id);
-    const typeNameMap = {}; types.forEach(x => typeNameMap[x.name.trim().toLowerCase()] = x.id);
-    const branchMap = {}; branches.forEach(x => branchMap[x.name.trim().toLowerCase()] = x.id);
-    const userMap = {}; users.forEach(x => userMap[x.full_name.trim().toLowerCase()] = x.id);
-    const conditionMap = {}; conditions.forEach(x => conditionMap[x.name.trim().toLowerCase()] = x.id);
-    const statusMap = {}; statuses.forEach(x => statusMap[x.name.trim().toLowerCase()] = x.id);
+    const normalize = (str) => (str || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+
+    const companyMap = {}; 
+    companies.forEach(x => {
+      const norm = normalize(x.name);
+      companyMap[norm] = x.id;
+      const clean = norm.replace(/^pt\.?\s*/i, '').trim();
+      if (clean) companyMap[clean] = x.id;
+    });
+
+    const categoryMap = {}; 
+    categories.forEach(x => categoryMap[normalize(x.name)] = x.id);
+
+    const typeMap = {}; 
+    types.forEach(x => typeMap[`${x.category_id}_${normalize(x.name)}`] = x.id);
+
+    const typeNameMap = {}; 
+    types.forEach(x => typeNameMap[normalize(x.name)] = x.id);
+
+    const branchMap = {}; 
+    branches.forEach(x => {
+      if (x.name) branchMap[normalize(x.name)] = x.id;
+      if (x.location) branchMap[normalize(x.location)] = x.id;
+      if (x.name && x.location) branchMap[normalize(`${x.name} - ${x.location}`)] = x.id;
+    });
+
+    const userMap = {}; 
+    users.forEach(x => userMap[normalize(x.full_name)] = x.id);
+
+    const conditionMap = {}; 
+    conditions.forEach(x => conditionMap[normalize(x.name)] = x.id);
+
+    const statusMap = {}; 
+    statuses.forEach(x => statusMap[normalize(x.name)] = x.id);
+
+    // Default fallback IDs if needed
+    const defaultConditionId = conditions.find(c => normalize(c.name).includes('baik'))?.id || conditions[0]?.id || 1;
+    const defaultStatusId = statuses.find(s => normalize(s.name).includes('aktif'))?.id || statuses[0]?.id || 1;
 
     const errors = [];
 
     for (let i = 0; i < assets.length; i++) {
       const item = assets[i];
-      const rowNum = i + 1;
+      const rowNum = item.rowNum || (i + 1);
 
       if (!item.asset_name) {
         errors.push(`Baris ${rowNum}: Nama Aset wajib diisi.`);
         continue;
       }
+
       if (!item.company_name) {
         errors.push(`Baris ${rowNum}: Perusahaan (PT) wajib diisi.`);
         continue;
       } else {
-        const compKey = item.company_name.trim().toLowerCase();
-        if (!companyMap[compKey]) {
-          errors.push(`Baris ${rowNum}: Perusahaan "${item.company_name}" tidak ditemukan.`);
+        const compKey = normalize(item.company_name);
+        const cleanKey = compKey.replace(/^pt\.?\s*/i, '').trim();
+        if (!companyMap[compKey] && !companyMap[cleanKey]) {
+          const matched = companies.find(c => {
+            const cNorm = normalize(c.name);
+            const cClean = cNorm.replace(/^pt\.?\s*/i, '').trim();
+            return cNorm.includes(cleanKey) || cleanKey.includes(cClean);
+          });
+          if (matched) {
+            companyMap[compKey] = matched.id;
+          } else {
+            errors.push(`Baris ${rowNum}: Perusahaan "${item.company_name}" tidak ditemukan.`);
+          }
         }
       }
 
       if (item.asset_category_name) {
-        const catKey = item.asset_category_name.trim().toLowerCase();
+        const catKey = normalize(item.asset_category_name);
         if (!categoryMap[catKey]) {
-          errors.push(`Baris ${rowNum}: Kategori "${item.asset_category_name}" tidak ditemukan.`);
+          const matched = categories.find(c => normalize(c.name).includes(catKey) || catKey.includes(normalize(c.name)));
+          if (matched) {
+            categoryMap[catKey] = matched.id;
+          } else {
+            errors.push(`Baris ${rowNum}: Kategori "${item.asset_category_name}" tidak ditemukan.`);
+          }
         }
       }
 
       if (item.location_name) {
-        const locKey = item.location_name.trim().toLowerCase();
+        const locKey = normalize(item.location_name);
         if (!branchMap[locKey]) {
-          errors.push(`Baris ${rowNum}: Lokasi "${item.location_name}" tidak ditemukan.`);
+          const matched = branches.find(b => 
+            normalize(b.name).includes(locKey) || 
+            (b.location && normalize(b.location).includes(locKey)) ||
+            locKey.includes(normalize(b.name))
+          );
+          if (matched) {
+            branchMap[locKey] = matched.id;
+          } else {
+            errors.push(`Baris ${rowNum}: Lokasi "${item.location_name}" tidak ditemukan.`);
+          }
         }
       }
 
       if (item.pic_name) {
-        const picKey = item.pic_name.trim().toLowerCase();
+        const picKey = normalize(item.pic_name);
         if (!userMap[picKey]) {
-          errors.push(`Baris ${rowNum}: PIC "${item.pic_name}" tidak ditemukan.`);
+          const matched = users.find(u => normalize(u.full_name).includes(picKey) || picKey.includes(normalize(u.full_name)));
+          if (matched) {
+            userMap[picKey] = matched.id;
+          } else {
+            // Optional: PIC can be logged or if strict:
+            errors.push(`Baris ${rowNum}: PIC "${item.pic_name}" tidak ditemukan di data user.`);
+          }
         }
       }
 
       if (item.condition_name) {
-        const condKey = item.condition_name.trim().toLowerCase();
+        const condKey = normalize(item.condition_name);
         if (!conditionMap[condKey]) {
-          errors.push(`Baris ${rowNum}: Kondisi "${item.condition_name}" tidak ditemukan.`);
+          const matched = conditions.find(c => normalize(c.name).includes(condKey) || condKey.includes(normalize(c.name)));
+          if (matched) {
+            conditionMap[condKey] = matched.id;
+          } else {
+            errors.push(`Baris ${rowNum}: Kondisi "${item.condition_name}" tidak ditemukan.`);
+          }
         }
       }
 
       if (item.status_name) {
-        const statusKey = item.status_name.trim().toLowerCase();
-        if (!statusMap[statusKey]) {
-          errors.push(`Baris ${rowNum}: Status "${item.status_name}" tidak ditemukan.`);
+        const statKey = normalize(item.status_name);
+        if (!statusMap[statKey]) {
+          const matched = statuses.find(s => normalize(s.name).includes(statKey) || statKey.includes(normalize(s.name)));
+          if (matched) {
+            statusMap[statKey] = matched.id;
+          } else {
+            errors.push(`Baris ${rowNum}: Status "${item.status_name}" tidak ditemukan.`);
+          }
         }
       }
     }
@@ -275,19 +346,35 @@ async function bulkImportAssets(req, res, next) {
     const createdAssets = await prisma.$transaction(async (tx) => {
       const inserted = [];
       for (const item of assets) {
-        const compId = companyMap[item.company_name.trim().toLowerCase()];
-        const catId = item.asset_category_name ? categoryMap[item.asset_category_name.trim().toLowerCase()] : null;
+        const compKey = normalize(item.company_name);
+        const cleanCompKey = compKey.replace(/^pt\.?\s*/i, '').trim();
+        const compId = companyMap[compKey] || companyMap[cleanCompKey];
+
+        const catKey = item.asset_category_name ? normalize(item.asset_category_name) : null;
+        const catId = catKey ? categoryMap[catKey] : null;
         
         let typeId = null;
         if (item.asset_type_name) {
-          const typeKey = item.asset_type_name.trim().toLowerCase();
+          const typeKey = normalize(item.asset_type_name);
           typeId = catId ? (typeMap[`${catId}_${typeKey}`] || typeNameMap[typeKey] || null) : (typeNameMap[typeKey] || null);
         }
 
-        const locId = item.location_name ? branchMap[item.location_name.trim().toLowerCase()] : null;
-        const picId = item.pic_name ? userMap[item.pic_name.trim().toLowerCase()] : null;
-        const condId = item.condition_name ? conditionMap[item.condition_name.trim().toLowerCase()] : null;
-        const statId = item.status_name ? statusMap[item.status_name.trim().toLowerCase()] : null;
+        const locKey = item.location_name ? normalize(item.location_name) : null;
+        const locId = locKey ? branchMap[locKey] : null;
+
+        const picKey = item.pic_name ? normalize(item.pic_name) : null;
+        const picId = picKey ? userMap[picKey] : null;
+
+        const condKey = item.condition_name ? normalize(item.condition_name) : null;
+        const condId = condKey ? conditionMap[condKey] : defaultConditionId;
+
+        const statKey = item.status_name ? normalize(item.status_name) : null;
+        const statId = statKey ? statusMap[statKey] : defaultStatusId;
+
+        let acqDate = null;
+        if (item.acquisition_date && !isNaN(Date.parse(item.acquisition_date))) {
+          acqDate = new Date(item.acquisition_date);
+        }
 
         const newAsset = await tx.assets.create({
           data: {
@@ -300,7 +387,7 @@ async function bulkImportAssets(req, res, next) {
             location_id: locId,
             room: item.room || null,
             pic_id: picId,
-            acquisition_date: item.acquisition_date ? new Date(item.acquisition_date) : null,
+            acquisition_date: acqDate,
             acquisition_cost: item.acquisition_cost ? parseFloat(item.acquisition_cost) : 0,
             useful_life_months: item.useful_life_months ? parseInt(item.useful_life_months) : null,
             condition_id: condId,
@@ -320,6 +407,7 @@ async function bulkImportAssets(req, res, next) {
     next(err);
   }
 }
+
 
 // PUT Update Asset
 async function updateAsset(req, res, next) {

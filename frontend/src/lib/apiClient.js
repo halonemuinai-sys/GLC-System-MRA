@@ -44,13 +44,23 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     let errorMessage = 'An error occurred while fetching data';
+    let errorData = null;
     try {
-      const errorData = await response.json();
-      errorMessage = errorData.error || errorMessage;
+      errorData = await response.json();
+      if (errorData.errors && Array.isArray(errorData.errors)) {
+        errorMessage = errorData.errors.join('\n');
+      } else {
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      }
     } catch (e) {
       // Fallback if response is not JSON
     }
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    if (errorData && errorData.errors) {
+      error.errors = errorData.errors;
+    }
+    throw error;
   }
 
   // Return parsed JSON, handle empty responses

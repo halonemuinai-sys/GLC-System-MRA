@@ -147,10 +147,9 @@ function SearchingRadarAnimation() {
 
 export default function GaAssetsPage() {
   const { lang, t } = useLanguage();
-  const userRole = React.useMemo(() => (
-    typeof window !== 'undefined' ? (Cookies.get('glc_user_role') || '').toLowerCase() : ''
-  ), []);
-  const isAdmin = userRole === 'admin' || userRole === 'superadmin';
+  const [mounted, setMounted] = useState(false);
+  const [userRole, setUserRole] = useState('');
+  const isAdmin = mounted && (userRole === 'admin' || userRole === 'superadmin');
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
@@ -276,6 +275,10 @@ export default function GaAssetsPage() {
   };
 
   useEffect(() => {
+    setMounted(true);
+    const role = Cookies.get('glc_user_role') || '';
+    setUserRole(role.toLowerCase());
+
     fetchDropdowns();
     setLoading(false);
 
@@ -313,17 +316,23 @@ export default function GaAssetsPage() {
 
     try {
       setSubmitting(true);
-      await apiClient.post('/api/ga/assets/bulk-import', {
+      const res = await apiClient.post('/api/ga/assets/bulk-import', {
         assets: importPreview
       });
-      alert(`Berhasil mengimpor ${importPreview.length} aset.`);
+      alert(res.message || `Berhasil mengimpor ${importPreview.length} aset.`);
       setShowImportModal(false);
       setImportPreview([]);
       setImportErrors([]);
       setPage(1);
       fetchData();
     } catch (err) {
-      alert(err.message || 'Gagal mengimpor data.');
+      if (err.errors && Array.isArray(err.errors)) {
+        setImportErrors(err.errors);
+      } else if (err.message && err.message.includes('\n')) {
+        setImportErrors(err.message.split('\n'));
+      } else {
+        alert(err.message || 'Gagal mengimpor data.');
+      }
     } finally {
       setSubmitting(false);
     }
