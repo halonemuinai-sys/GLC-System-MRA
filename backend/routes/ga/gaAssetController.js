@@ -355,34 +355,15 @@ async function bulkImportAssets(req, res, next) {
           }
         }
 
-        // 4. PIC / User (Link or Auto-create user record)
+        // 4. PIC / User (Optional)
         let picId = null;
         if (item.pic_name && item.pic_name.trim()) {
           const picKey = normalize(item.pic_name);
           if (userMap[picKey]) {
             picId = userMap[picKey];
-          } else {
-            const matchedUser = users.find(u => normalize(u.full_name).includes(picKey) || picKey.includes(normalize(u.full_name)));
-            if (matchedUser) {
-              userMap[picKey] = matchedUser.id;
-              picId = matchedUser.id;
-            } else {
-              try {
-                const newUser = await tx.m_user.create({
-                  data: {
-                    full_name: item.pic_name.trim(),
-                    role: 'staff',
-                    is_active: true
-                  }
-                });
-                userMap[picKey] = newUser.id;
-                picId = newUser.id;
-              } catch (userErr) {
-                picId = null;
-              }
-            }
           }
         }
+
 
         // 5. Condition & Status (Link or Fallback to Default)
         const condKey = item.condition_name ? normalize(item.condition_name) : null;
