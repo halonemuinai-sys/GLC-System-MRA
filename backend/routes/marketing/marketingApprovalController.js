@@ -4,7 +4,8 @@ const {
   executeApprovalDecision,
   getDocContextForTask,
   dispatchMagicLinkEmails,
-  dispatchPaymentStatusEmail
+  dispatchPaymentStatusEmail,
+  applyCompanyScope
 } = require('./marketingHelper');
 
 // GET /tasks
@@ -44,6 +45,9 @@ async function getPendingTasks(req, res, next) {
     const tasks = [];
     for (const t of pendingTasks) {
       const isPlan = !!t.marketing_plan_id;
+      const taskCompanyId = isPlan ? t.marketing_plan.company_id : t.payment_request.marketing_plan_item.marketing_plan.company_id;
+      if (!req.companyScope.all && !req.companyScope.companyIds.includes(taskCompanyId)) continue;
+
       const amt = isPlan ? parseFloat(t.marketing_plan.total_budget) : parseFloat(t.payment_request.amount);
       const mod = isPlan ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
 
@@ -303,7 +307,15 @@ async function getApprovalsOverview(req, res, next) {
     const { company_id, fiscal_year, status } = req.query;
 
     const where = {};
-    if (company_id) where.company_id = parseInt(company_id, 10);
+    if (company_id) {
+      const cid = parseInt(company_id, 10);
+      if (!req.companyScope.all && !req.companyScope.companyIds.includes(cid)) {
+        return res.status(400).json({ error: 'Company outside your access scope.' });
+      }
+      where.company_id = cid;
+    } else {
+      applyCompanyScope(where, req.companyScope);
+    }
     if (fiscal_year) where.fiscal_year = parseInt(fiscal_year, 10);
     if (status) where.status = status;
 

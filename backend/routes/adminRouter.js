@@ -201,6 +201,44 @@ router.put('/users/:id/reset-password', async (req, res, next) => {
   }
 });
 
+// GET /api/admin/users/:id/company-access — List PT/company assigned to a user
+router.get('/users/:id/company-access', async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const access = await prisma.m_user_company_access.findMany({
+      where: { user_id: userId },
+      include: { company: { select: { id: true, name: true, company_master_id: true } } },
+      orderBy: { company: { name: 'asc' } }
+    });
+    res.json(access.map(a => a.company));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/users/:id/company-access — Replace a user's PT/company access
+router.put('/users/:id/company-access', async (req, res, next) => {
+  try {
+    const userId = parseInt(req.params.id);
+    const { company_ids } = req.body; // Expects array of m_company.id
+
+    if (!Array.isArray(company_ids)) {
+      return res.status(400).json({ error: 'Format data tidak valid. company_ids wajib berupa Array.' });
+    }
+
+    await prisma.$transaction([
+      prisma.m_user_company_access.deleteMany({ where: { user_id: userId } }),
+      prisma.m_user_company_access.createMany({
+        data: company_ids.map(id => ({ user_id: userId, company_id: parseInt(id, 10) }))
+      })
+    ]);
+
+    res.json({ message: 'Akses PT berhasil diperbarui.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ROLE PERMISSIONS ENDPOINTS
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
+const prisma = require('./db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'glc-mra-secret-key-2026-auth-token';
+const COMPANY_SCOPE_BYPASS_ROLES = ['admin', 'auditor'];
 
 /**
  * Middleware untuk memverifikasi JWT token dari header Authorization
@@ -49,8 +51,37 @@ const checkRole = (allowedRoles) => {
   };
 };
 
+/**
+ * Middleware untuk melekatkan scope PT/unit bisnis yang boleh diakses user (req.companyScope).
+ * admin/auditor bypass (all: true). Role lain dibatasi ke company_id yang di-assign lewat
+ * m_user_company_access - default fail-closed (companyIds kosong) kalau belum di-assign.
+ */
+const attachCompanyScope = async (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized. Session not found.' });
+  }
+
+  const userRole = req.user.role ? req.user.role.toLowerCase() : '';
+  if (COMPANY_SCOPE_BYPASS_ROLES.includes(userRole)) {
+    req.companyScope = { all: true };
+    return next();
+  }
+
+  try {
+    const rows = await prisma.m_user_company_access.findMany({
+      where: { user_id: req.user.id },
+      select: { company_id: true }
+    });
+    req.companyScope = { all: false, companyIds: rows.map(r => r.company_id) };
+    next();
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to resolve company access scope.' });
+  }
+};
+
 module.exports = {
   verifyToken,
   checkRole,
+  attachCompanyScope,
   JWT_SECRET
 };

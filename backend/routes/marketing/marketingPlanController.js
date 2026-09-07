@@ -1,6 +1,6 @@
 const prisma = require('../../api/db');
 const { sendMail } = require('../../api/mailer');
-const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails } = require('./marketingHelper');
+const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope } = require('./marketingHelper');
 
 /**
  * Helper function to check if the proposed marketing plan items exceed the locked monthly budget.
@@ -74,6 +74,9 @@ async function createPlan(req, res, next) {
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
+    }
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(parseInt(company_id, 10))) {
+      return res.status(403).json({ error: 'Company outside your access scope.' });
     }
 
     let totalBudget = 0;
@@ -232,12 +235,19 @@ async function updatePlan(req, res, next) {
     const existingPlan = await prisma.marketing_plans.findUnique({ where: { id: planId } });
     if (!existingPlan) return res.status(404).json({ error: 'Marketing Plan not found.' });
     if (existingPlan.status !== 'DRAFT') return res.status(400).json({ error: 'Hanya rencana berstatus DRAFT yang dapat diperbarui melalui endpoint ini.' });
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(existingPlan.company_id)) {
+      return res.status(404).json({ error: 'Marketing Plan not found.' });
+    }
 
     const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url, over_budget_reason,
       target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
+    }
+
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(parseInt(company_id, 10))) {
+      return res.status(403).json({ error: 'Company outside your access scope.' });
     }
 
     let totalBudget = 0;
@@ -485,6 +495,9 @@ async function revisePlan(req, res, next) {
     if (existingPlan.status !== 'REJECTED') {
       return res.status(400).json({ error: 'Hanya rencana yang berstatus REJECTED yang bisa direvisi.' });
     }
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(existingPlan.company_id)) {
+      return res.status(404).json({ error: 'Marketing Plan not found.' });
+    }
 
     const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url, over_budget_reason,
       target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes } = req.body;
@@ -496,6 +509,10 @@ async function revisePlan(req, res, next) {
     let totalBudget = 0;
     for (const item of items) {
       totalBudget += parseFloat(item.budget_amount || 0);
+    }
+
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(parseInt(company_id, 10))) {
+      return res.status(403).json({ error: 'Company outside your access scope.' });
     }
 
     const isOverBudget = await checkBudgetLimits(company_id, fiscal_year, items);
@@ -635,7 +652,15 @@ async function getPlans(req, res, next) {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
 
     const filters = {};
-    if (company_id) filters.company_id = parseInt(company_id, 10);
+    if (company_id) {
+      const cid = parseInt(company_id, 10);
+      if (!req.companyScope.all && !req.companyScope.companyIds.includes(cid)) {
+        return res.status(400).json({ error: 'Company outside your access scope.' });
+      }
+      filters.company_id = cid;
+    } else {
+      applyCompanyScope(filters, req.companyScope);
+    }
     if (fiscal_year) filters.fiscal_year = parseInt(fiscal_year, 10);
     if (status) filters.status = status;
     if (search) {
@@ -667,7 +692,7 @@ async function getPlans(req, res, next) {
       // Summary selalu dihitung dari SEMUA filter (tanpa pagination) untuk KPI cards
       prisma.marketing_plans.groupBy({
         by: ['status'],
-        where: { ...(company_id ? { company_id: parseInt(company_id, 10) } : {}), ...(fiscal_year ? { fiscal_year: parseInt(fiscal_year, 10) } : {}) },
+        where: { ...(filters.company_id ? { company_id: filters.company_id } : {}), ...(fiscal_year ? { fiscal_year: parseInt(fiscal_year, 10) } : {}) },
         _sum: { total_budget: true },
         _count: { _all: true }
       }),
@@ -741,6 +766,9 @@ async function getPlanDetail(req, res, next) {
     });
 
     if (!plan) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(plan.company_id)) {
+      return res.status(404).json({ error: 'Marketing Plan not found.' });
+    }
 
     // Hitung committed_amount (PENDING+APPROVED payments) per item secara batch
     const itemIds = plan.items.map(i => i.id);

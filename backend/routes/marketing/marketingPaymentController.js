@@ -1,5 +1,5 @@
 const prisma = require('../../api/db');
-const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails } = require('./marketingHelper');
+const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope } = require('./marketingHelper');
 
 const PAYMENT_INCLUDE = {
   marketing_plan_item: {
@@ -137,12 +137,20 @@ async function getPayments(req, res, next) {
       if (employee) where.creator_id = employee.id;
     }
 
-    if (plan_id || company_id || fiscal_year) {
+    if (plan_id || company_id || fiscal_year || !req.companyScope.all) {
       where.marketing_plan_item = {
         marketing_plan: {}
       };
       if (plan_id) where.marketing_plan_item.marketing_plan_id = parseInt(plan_id, 10);
-      if (company_id) where.marketing_plan_item.marketing_plan.company_id = parseInt(company_id, 10);
+      if (company_id) {
+        const cid = parseInt(company_id, 10);
+        if (!req.companyScope.all && !req.companyScope.companyIds.includes(cid)) {
+          return res.status(400).json({ error: 'Company outside your access scope.' });
+        }
+        where.marketing_plan_item.marketing_plan.company_id = cid;
+      } else {
+        applyCompanyScope(where.marketing_plan_item.marketing_plan, req.companyScope);
+      }
       if (fiscal_year) where.marketing_plan_item.marketing_plan.fiscal_year = parseInt(fiscal_year, 10);
     }
 
@@ -175,6 +183,10 @@ async function getPaymentDetail(req, res, next) {
       }
     });
     if (!payment) return res.status(404).json({ error: 'Payment request not found.' });
+    const paymentCompanyId = payment.marketing_plan_item.marketing_plan.company_id;
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(paymentCompanyId)) {
+      return res.status(404).json({ error: 'Payment request not found.' });
+    }
     res.json(payment);
   } catch (err) { next(err); }
 }

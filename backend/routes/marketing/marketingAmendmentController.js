@@ -99,12 +99,15 @@ async function getAmendmentDetail(req, res, next) {
       include: {
         ...AMENDMENT_INCLUDE,
         marketing_plan: {
-          select: { id: true, title: true, status: true, total_budget: true,
+          select: { id: true, title: true, status: true, total_budget: true, company_id: true,
             items: { include: { m_coa: true, vendors: true, m_brand: true } } }
         }
       }
     });
     if (!amendment) return res.status(404).json({ error: 'Amendment not found.' });
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(amendment.marketing_plan.company_id)) {
+      return res.status(404).json({ error: 'Amendment not found.' });
+    }
     res.json(amendment);
   } catch (err) { next(err); }
 }

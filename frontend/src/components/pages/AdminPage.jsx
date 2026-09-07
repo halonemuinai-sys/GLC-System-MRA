@@ -40,8 +40,13 @@ const ROLE_BADGES = {
   legal: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/30',
   compliance: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30',
   legal_compliance: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-900/30',
-  auditor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30'
+  auditor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30',
+  marketing: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/30',
+  finance: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-900/30',
+  manager: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30'
 };
+
+const COMPANY_SCOPE_BYPASS_ROLES = ['admin', 'auditor'];
 
 const MODULE_LABELS = {
   ga: 'General Affairs (Aset & Kendaraan)',
@@ -73,6 +78,12 @@ export default function AdminPage() {
     role: 'ga',
     password: ''
   });
+
+  // Company/PT Access State
+  const [companies, setCompanies] = useState([]);
+  const [companyMasters, setCompanyMasters] = useState([]);
+  const [selectedCompanyIds, setSelectedCompanyIds] = useState([]);
+  const [loadingCompanyAccess, setLoadingCompanyAccess] = useState(false);
 
   // Password Reset State
   const [userToResetPassword, setUserToResetPassword] = useState(null);
@@ -124,6 +135,31 @@ export default function AdminPage() {
       setError(err.message || 'Gagal memuat daftar pengguna.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCompanies = async () => {
+    try {
+      const [companiesRes, mastersRes] = await Promise.all([
+        apiClient.get('/api/master/companies/all'),
+        apiClient.get('/api/master/companies/master')
+      ]);
+      setCompanies(companiesRes || []);
+      setCompanyMasters(mastersRes || []);
+    } catch (err) {
+      // Non-blocking — form tetap bisa dipakai tanpa daftar PT kalau gagal fetch
+    }
+  };
+
+  const fetchUserCompanyAccess = async (userId) => {
+    try {
+      setLoadingCompanyAccess(true);
+      const res = await apiClient.get(`/api/admin/users/${userId}/company-access`);
+      setSelectedCompanyIds((res || []).map(c => c.id));
+    } catch (err) {
+      setSelectedCompanyIds([]);
+    } finally {
+      setLoadingCompanyAccess(false);
     }
   };
 
@@ -222,6 +258,10 @@ export default function AdminPage() {
     }
   }, [activeTab, searchQuery, roleFilter, statusFilter, logPage, logActionFilter, logTableFilter]);
 
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // USER SUBMIT & HANDLERS
   // ─────────────────────────────────────────────────────────────────────────────
@@ -237,6 +277,7 @@ export default function AdminPage() {
       role: 'ga',
       password: ''
     });
+    setSelectedCompanyIds([]);
     setShowUserDrawer(true);
   };
 
@@ -251,6 +292,10 @@ export default function AdminPage() {
       role: user.role || 'ga',
       password: '' // Don't pre-fill password for edit
     });
+    setSelectedCompanyIds([]);
+    if (!COMPANY_SCOPE_BYPASS_ROLES.includes((user.role || '').toLowerCase())) {
+      fetchUserCompanyAccess(user.id);
+    }
     setShowUserDrawer(true);
   };
 
@@ -259,10 +304,17 @@ export default function AdminPage() {
     setEditingUser(null);
   };
 
+  const handleToggleCompanyId = (companyId) => {
+    setSelectedCompanyIds(prev =>
+      prev.includes(companyId) ? prev.filter(id => id !== companyId) : [...prev, companyId]
+    );
+  };
+
   const handleUserSubmit = async (e) => {
     e.preventDefault();
     try {
       setSubmittingUser(true);
+      let userId = editingUser?.id;
       if (editingUser) {
         // Edit User
         const payload = { ...userFormData };
@@ -270,8 +322,15 @@ export default function AdminPage() {
         await apiClient.put(`/api/admin/users/${editingUser.id}`, payload);
       } else {
         // Create User
-        await apiClient.post('/api/admin/users', userFormData);
+        const created = await apiClient.post('/api/admin/users', userFormData);
+        userId = created.id;
       }
+
+      // Simpan akses PT — dilewati untuk role admin/auditor karena mereka bypass scope
+      if (!COMPANY_SCOPE_BYPASS_ROLES.includes(userFormData.role.toLowerCase())) {
+        await apiClient.put(`/api/admin/users/${userId}/company-access`, { company_ids: selectedCompanyIds });
+      }
+
       setShowUserDrawer(false);
       fetchUsers();
     } catch (err) {
@@ -1072,6 +1131,9 @@ export default function AdminPage() {
                         <option value="legal">Legal Staff</option>
                         <option value="compliance">Compliance Staff</option>
                         <option value="legal_compliance">Legal & Compliance</option>
+                        <option value="marketing">Marketing Staff</option>
+                        <option value="finance">Finance</option>
+                        <option value="manager">Manager</option>
                         <option value="auditor">Auditor</option>
                         <option value="admin">Admin</option>
                       </select>
@@ -1099,6 +1161,47 @@ export default function AdminPage() {
                         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Akses PT / Unit Bisnis</label>
+                    {COMPANY_SCOPE_BYPASS_ROLES.includes(userFormData.role.toLowerCase()) ? (
+                      <p className="text-[11px] text-neutral-400 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5">
+                        Role ini otomatis punya akses ke semua PT (tidak perlu di-assign).
+                      </p>
+                    ) : loadingCompanyAccess ? (
+                      <div className="flex items-center justify-center py-4 text-neutral-400">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl divide-y divide-neutral-100 dark:divide-neutral-800 max-h-56 overflow-y-auto">
+                        {companyMasters.map(master => {
+                          const masterCompanies = companies.filter(c => c.company_master_id === master.id);
+                          if (masterCompanies.length === 0) return null;
+                          return (
+                            <div key={master.id} className="p-2.5">
+                              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 px-1">{master.name}</p>
+                              <div className="space-y-1">
+                                {masterCompanies.map(c => (
+                                  <label key={c.id} className="flex items-center gap-2 px-1 py-1 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedCompanyIds.includes(c.id)}
+                                      onChange={() => handleToggleCompanyId(c.id)}
+                                      className="rounded border-neutral-300 dark:border-neutral-700 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-neutral-700 dark:text-neutral-300">{c.name}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {!COMPANY_SCOPE_BYPASS_ROLES.includes(userFormData.role.toLowerCase()) && selectedCompanyIds.length === 0 && !loadingCompanyAccess && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1.5">Belum ada PT di-assign — user ini tidak akan melihat data apa pun sampai di-assign.</p>
+                    )}
                   </div>
 
                   <div className="flex gap-3 pt-4 border-t border-neutral-100 dark:border-neutral-800">

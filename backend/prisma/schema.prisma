@@ -528,6 +528,7 @@ model m_company {
   marketing_plans   marketing_plans[]
   marketing_budgets m_marketing_budget[]
   m_company_master  m_company_master? @relation(fields: [company_master_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  user_access       m_user_company_access[]
 
   @@schema("glc_mra")
 }
@@ -618,7 +619,20 @@ model m_user {
   assets         assets[]
   audit_log      audit_log[]
   device_rentals device_rentals[]
+  company_access m_user_company_access[]
 
+  @@schema("glc_mra")
+}
+
+model m_user_company_access {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  company_id Int
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  user       m_user    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  company    m_company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, company_id])
   @@schema("glc_mra")
 }
 

@@ -5,6 +5,15 @@ const { sendApprovalMagicLinkEmail, sendPaymentStatusEmail } = require('../../ap
 const MAGIC_LINK_EXPIRY_DAYS = 7;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 
+// Terapkan req.companyScope ke sebuah Prisma where-object secara in-place, lalu return where itu.
+// No-op kalau scope.all (admin/auditor). Kalau companyIds kosong, filter dipaksa ke set kosong
+// supaya Prisma natural return 0 baris (fail-closed) tanpa butuh early-return khusus di controller.
+function applyCompanyScope(where, scope, field = 'company_id') {
+  if (!scope || scope.all) return where;
+  where[field] = { in: scope.companyIds.length ? scope.companyIds : [-1] };
+  return where;
+}
+
 // Helper: Resolve NIK from JWT req.user.email
 async function resolveEmployee(email) {
   if (!email) return null;
@@ -200,6 +209,7 @@ async function dispatchPaymentStatusEmail(result, task) {
 }
 
 module.exports = {
+  applyCompanyScope,
   resolveEmployee,
   resolveApproverContact,
   queueMagicLink,

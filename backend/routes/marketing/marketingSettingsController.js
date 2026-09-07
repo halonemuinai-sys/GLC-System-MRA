@@ -31,7 +31,10 @@ async function getMetadata(req, res, next) {
     });
 
     const companies = await prisma.m_company.findMany({
-      where: { is_active: true },
+      where: {
+        is_active: true,
+        ...(req.companyScope && !req.companyScope.all ? { id: { in: req.companyScope.companyIds.length ? req.companyScope.companyIds : [-1] } } : {})
+      },
       orderBy: { name: 'asc' },
       include: { m_company_master: { select: { id: true, name: true, sector: true } } }
     });
