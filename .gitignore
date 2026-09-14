@@ -34,3 +34,10 @@ yarn-error.log*
 .gemini/
 .claude/
 .claudes/
+
+# Database dumps and local backups (strictly never commit)
+*.sql
+*.dump
+*.tar.gz
+backups/
+Database_Backups/
