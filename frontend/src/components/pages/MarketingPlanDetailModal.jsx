@@ -6,7 +6,7 @@ import {
   X, Calendar, Paperclip, FileSpreadsheet, Building, Loader2,
   AlertTriangle, Info, BarChart2, CheckCircle, Clock,
   GitMerge, CheckSquare, Plus, Send, Trash2, ChevronDown, ChevronUp,
-  TrendingUp, Flag
+  TrendingUp, Flag, Copy
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -55,6 +55,23 @@ export default function MarketingPlanDetailModal({
 
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
+
+  const handleDuplicatePlan = async () => {
+    if (!selectedPlan) return;
+    if (!window.confirm('Duplikat plan ini sebagai Draft baru?')) return;
+    setDuplicating(true);
+    try {
+      await apiClient.post(`/api/marketing/plans/${selectedPlan.id}/duplicate`);
+      if (onSuccessMsg) onSuccessMsg('Plan berhasil diduplikat sebagai Draft baru.');
+      loadPlans();
+      onClose();
+    } catch (err) {
+      alert(err.message || 'Gagal menduplikat plan.');
+    } finally {
+      setDuplicating(false);
+    }
+  };
 
   // Post-campaign actuals form state
   const [actualsForm, setActualsForm] = useState({
@@ -968,6 +985,17 @@ export default function MarketingPlanDetailModal({
                           Edit Draft
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        disabled={duplicating}
+                        onClick={handleDuplicatePlan}
+                        className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                        title="Duplikat plan ini sebagai draft baru"
+                      >
+                        {duplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
+                        Duplikat Plan
+                      </button>
 
                       {selectedPlan.status === 'APPROVED' && (userRole === 'admin' || userRole === 'marketing') && selectedPlan.actuals_filled_at && (
                         <button

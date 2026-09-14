@@ -32,7 +32,9 @@ import {
   Eye,
   ChevronDown,
   Building2,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Zap,
+  Copy
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -40,6 +42,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
 import MarketingPlanWizardModal from './MarketingPlanWizardModal';
 import MarketingPlanDetailModal from './MarketingPlanDetailModal';
+import MarketingPlanQuickModal from './MarketingPlanQuickModal';
 // Helper: Format to IDR Currency
 const formatIDR = (val) => {
   if (val === undefined || val === null) return 'Rp 0';
@@ -216,6 +219,7 @@ export default function MarketingPlanPage() {
 
   // Modals
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isQuickModalOpen, setIsQuickModalOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [planToDelete, setPlanToDelete] = useState(null);
@@ -370,6 +374,21 @@ export default function MarketingPlanPage() {
     }
   };
 
+  const handleDuplicatePlan = async (planId) => {
+    if (!window.confirm('Duplikat plan ini sebagai Draft baru?')) return;
+    try {
+      setSubmitting(true);
+      await apiClient.post(`/api/marketing/plans/${planId}/duplicate`);
+      setSuccessMsg('Marketing Plan berhasil diduplikat sebagai Draft baru!');
+      loadPlans();
+      setTimeout(() => setSuccessMsg(null), 5000);
+    } catch (err) {
+      alert(err.message || 'Gagal menduplikat plan.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   // Search sudah server-side, tidak perlu filter client
 
   return (
@@ -397,6 +416,15 @@ export default function MarketingPlanPage() {
             title={t('refreshData')}
           >
             <RefreshCw className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setIsQuickModalOpen(true)}
+            className="flex items-center gap-2 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-4 py-2 rounded-xl text-xs font-extrabold shadow-md shadow-amber-500/25 transition-all cursor-pointer active:scale-95"
+            title="Express Mode: Pendaftaran Campaign Ringkas"
+          >
+            <Zap className="w-4 h-4 fill-white" />
+            Quick Campaign
           </button>
 
           <button
@@ -745,6 +773,16 @@ export default function MarketingPlanPage() {
 
                             <motion.button
                               whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                              onClick={() => handleDuplicatePlan(plan.id)}
+                              disabled={submitting}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/25 transition-all cursor-pointer disabled:opacity-50"
+                              title="Duplikat Plan Ini"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </motion.button>
+
+                            <motion.button
+                              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                               onClick={() => openDetail(plan.id)}
                               className="w-7 h-7 flex items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200/70 dark:border-neutral-700/40 text-neutral-500 dark:text-neutral-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200/70 dark:hover:border-indigo-500/20 transition-all cursor-pointer"
                               title={t('btnDetails')}
@@ -895,6 +933,19 @@ export default function MarketingPlanPage() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* QUICK MARKETING PLAN MODAL */}
+      <MarketingPlanQuickModal
+        isOpen={isQuickModalOpen}
+        onClose={() => setIsQuickModalOpen(false)}
+        metadata={metadata}
+        onSuccess={() => {
+          setSuccessMsg('Quick Campaign berhasil dibuat!');
+          loadPlans();
+          setTimeout(() => setSuccessMsg(null), 5000);
+        }}
+        onError={(err) => setError(err)}
+      />
     </div>
   );
 }

@@ -30,6 +30,7 @@ router.put('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(['adm
 router.post('/plans/:id/complete', verifyToken, checkRole(['admin', 'marketing']), planController.completePlan);
 router.get('/plans', verifyToken, attachCompanyScope, planController.getPlans);
 router.get('/plans/:id', verifyToken, attachCompanyScope, planController.getPlanDetail);
+router.post('/plans/:id/duplicate', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.duplicatePlan);
 router.delete('/plans/:id', verifyToken, planController.deletePlan);
 
 // Plan Amendments

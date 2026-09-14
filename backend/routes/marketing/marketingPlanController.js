@@ -893,7 +893,82 @@ async function deletePlan(req, res, next) {
       await tx.marketing_plans.delete({ where: { id: planId } });
     });
 
-    res.json({ message: 'Marketing Plan deleted successfully.' });
+// POST /plans/:id/duplicate
+async function duplicatePlan(req, res, next) {
+  try {
+    const employee = await resolveEmployee(req.user.email);
+    if (!employee) {
+      return res.status(403).json({ error: 'User email not registered in employee database.' });
+    }
+
+    const { id } = req.params;
+    const existing = await prisma.marketing_plans.findUnique({
+      where: { id: parseInt(id, 10) },
+      include: { items: true }
+    });
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Marketing Plan not found.' });
+    }
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(existing.company_id)) {
+      return res.status(403).json({ error: 'Company outside your access scope.' });
+    }
+
+    const duplicated = await prisma.$transaction(async (tx) => {
+      const newPlan = await tx.marketing_plans.create({
+        data: {
+          title: `Copy of ${existing.title}`,
+          description: existing.description,
+          company_id: existing.company_id,
+          fiscal_year: existing.fiscal_year,
+          start_date: existing.start_date,
+          end_date: existing.end_date,
+          event_start_date: existing.event_start_date,
+          event_end_date: existing.event_end_date,
+          cta_start_date: existing.cta_start_date,
+          cta_end_date: existing.cta_end_date,
+          total_budget: existing.total_budget,
+          status: 'DRAFT',
+          creator_id: employee.id,
+          doc_url: existing.doc_url,
+          target_sales: existing.target_sales,
+          target_leads: existing.target_leads,
+          target_reach: existing.target_reach,
+          target_impressions: existing.target_impressions,
+          target_roi_pct: existing.target_roi_pct,
+          target_notes: existing.target_notes
+        }
+      });
+
+      if (existing.items && existing.items.length > 0) {
+        for (const item of existing.items) {
+          await tx.marketing_plan_items.create({
+            data: {
+              marketing_plan_id: newPlan.id,
+              coa_id: item.coa_id,
+              brand_id: item.brand_id,
+              lob_id: item.lob_id,
+              branch_id: item.branch_id,
+              event_location_id: item.event_location_id,
+              vendor_id: item.vendor_id,
+              period_month: item.period_month,
+              budget_amount: item.budget_amount,
+              actual_amount: 0,
+              description: item.description,
+              qty: item.qty,
+              unit_price: item.unit_price
+            }
+          });
+        }
+      }
+
+      return newPlan;
+    });
+
+    res.status(201).json({
+      message: 'Marketing Plan successfully duplicated as DRAFT.',
+      data: duplicated
+    });
   } catch (err) {
     next(err);
   }
@@ -909,5 +984,6 @@ module.exports = {
   getPlans,
   getPlanDetail,
   completePlan,
-  deletePlan
+  deletePlan,
+  duplicatePlan
 };
