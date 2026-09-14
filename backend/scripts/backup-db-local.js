@@ -34,15 +34,63 @@ async function runNativePgBackup(client, backupPath) {
     for (const table of tables) {
       const fullTable = `"${schema}"."${table}"`;
       try {
+        // 1. Fetch column metadata for DDL CREATE TABLE
+        const columnsRes = await client.query(
+          `SELECT column_name, data_type, udt_name, character_maximum_length, is_nullable, column_default
+           FROM information_schema.columns 
+           WHERE table_schema = $1 AND table_name = $2 
+           ORDER BY ordinal_position`,
+          [schema, table]
+        );
+
+        if (columnsRes.rows.length === 0) continue;
+
+        // 2. Fetch primary keys
+        const pkRes = await client.query(
+          `SELECT c.column_name
+           FROM information_schema.table_constraints tc
+           JOIN information_schema.key_column_usage c ON c.constraint_name = tc.constraint_name AND c.table_schema = tc.table_schema
+           WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = $1 AND tc.table_name = $2`,
+          [schema, table]
+        );
+        const pkColumns = pkRes.rows.map(r => `"${r.column_name}"`);
+
+        // Build CREATE TABLE DDL
+        const colDefs = columnsRes.rows.map(col => {
+          let typeStr = col.data_type;
+          if (col.character_maximum_length) {
+            typeStr = `varchar(${col.character_maximum_length})`;
+          } else if (col.data_type === 'USER-DEFINED') {
+            typeStr = col.udt_name;
+          }
+
+          let defStr = `  "${col.column_name}" ${typeStr}`;
+          if (col.column_default) {
+            if (col.column_default.startsWith('nextval')) {
+              defStr = col.data_type === 'bigint' ? `  "${col.column_name}" bigserial` : `  "${col.column_name}" serial`;
+            } else {
+              defStr += ` DEFAULT ${col.column_default}`;
+            }
+          }
+          if (col.is_nullable === 'NO' && !defStr.includes('serial')) {
+            defStr += ' NOT NULL';
+          }
+          return defStr;
+        });
+
+        if (pkColumns.length > 0) {
+          colDefs.push(`  PRIMARY KEY (${pkColumns.join(', ')})`);
+        }
+
+        stream.write(`-- Table Structure: ${fullTable}\n`);
+        stream.write(`CREATE TABLE IF NOT EXISTS ${fullTable} (\n${colDefs.join(',\n')}\n);\n\n`);
+
+        // 3. Fetch data rows and write INSERT INTO statements
         const rowsRes = await client.query(`SELECT * FROM ${fullTable}`);
         const rows = rowsRes.rows;
 
         if (rows.length === 0) continue;
 
-        const columnsRes = await client.query(
-          `SELECT column_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2 ORDER BY ordinal_position`,
-          [schema, table]
-        );
         const colNames = columnsRes.rows.map(c => `"${c.column_name}"`).join(', ');
 
         stream.write(`-- Data for ${fullTable} (${rows.length} rows)\n`);
