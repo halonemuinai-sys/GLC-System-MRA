@@ -298,12 +298,32 @@ async function deleteBranch(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
 
-    const linked = await prisma.marketing_plan_items.findFirst({
-      where: { branch_id: id }
-    });
-    if (linked) {
-      return res.status(400).json({ error: 'Lokasi/cabang tidak bisa dihapus karena sedang digunakan dalam rencana anggaran.' });
+    const branch = await prisma.m_branch.findUnique({ where: { id } });
+    if (!branch) {
+      return res.status(404).json({ error: 'Cabang tidak ditemukan.' });
     }
+
+    // Cek apakah sedang digunakan dalam rencana anggaran yang aktif/disetujui
+    const activeLinked = await prisma.marketing_plan_items.findFirst({
+      where: {
+        branch_id: id,
+        marketing_plan: { status: { in: ['APPROVED', 'COMPLETED', 'PENDING_APPROVAL'] } }
+      },
+      include: { marketing_plan: true }
+    });
+
+    if (activeLinked) {
+      const plan = activeLinked.marketing_plan;
+      return res.status(400).json({
+        error: `Cabang "${branch.name}" tidak dapat dihapus karena masih digunakan dalam rencana anggaran aktif "${plan?.title}" (Tahun ${plan?.fiscal_year}, Status: ${plan?.status}).`
+      });
+    }
+
+    // Lepaskan referensi cabang pada item rencana yang berstatus draft/non-aktif
+    await prisma.marketing_plan_items.updateMany({
+      where: { branch_id: id },
+      data: { branch_id: null }
+    });
 
     await prisma.m_branch.delete({
       where: { id }
@@ -338,7 +358,7 @@ async function createEventLocation(req, res, next) {
       where: { name: name.trim() }
     });
     if (existing) {
-      return res.status(400).json({ error: 'Nama lokasi event sudah terdaftar.' });
+      return res.status(400).json({ error: 'Lokasi event dengan nama ini sudah ada.' });
     }
 
     const location = await prisma.m_event_location.create({
@@ -362,11 +382,11 @@ async function updateEventLocation(req, res, next) {
     const existing = await prisma.m_event_location.findFirst({
       where: {
         name: name.trim(),
-        id: { not: id }
+        NOT: { id }
       }
     });
     if (existing) {
-      return res.status(400).json({ error: 'Nama lokasi event sudah terdaftar.' });
+      return res.status(400).json({ error: 'Lokasi event dengan nama ini sudah digunakan.' });
     }
 
     const location = await prisma.m_event_location.update({
@@ -384,15 +404,30 @@ async function deleteEventLocation(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
 
-    const linked = await prisma.marketing_plan_items.findFirst({
+    const location = await prisma.m_event_location.findUnique({ where: { id } });
+    if (!location) {
+      return res.status(404).json({ error: 'Lokasi event tidak ditemukan.' });
+    }
+
+    const activeLinked = await prisma.marketing_plan_items.findFirst({
       where: {
         event_location_id: id,
         marketing_plan: { status: { in: ['PENDING_APPROVAL', 'APPROVED', 'COMPLETED'] } }
-      }
+      },
+      include: { marketing_plan: true }
     });
-    if (linked) {
-      return res.status(400).json({ error: 'Lokasi event tidak bisa dihapus karena masih digunakan dalam rencana anggaran yang aktif.' });
+    if (activeLinked) {
+      const plan = activeLinked.marketing_plan;
+      return res.status(400).json({
+        error: `Lokasi event "${location.name}" tidak bisa dihapus karena masih digunakan dalam rencana anggaran aktif "${plan?.title}" (Tahun ${plan?.fiscal_year}).`
+      });
     }
+
+    // Lepaskan referensi event location pada item draft
+    await prisma.marketing_plan_items.updateMany({
+      where: { event_location_id: id },
+      data: { event_location_id: null }
+    });
 
     await prisma.m_event_location.delete({
       where: { id }

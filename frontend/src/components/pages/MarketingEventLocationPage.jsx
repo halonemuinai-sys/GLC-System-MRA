@@ -63,6 +63,7 @@ export default function MarketingEventLocationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({ name: '' });
@@ -142,11 +143,12 @@ export default function MarketingEventLocationPage() {
 
     try {
       setSubmitting(true);
+      setDeleteError(null);
       await apiClient.delete(`/api/marketing/event-locations/${deleteTarget.id}`);
       setDeleteTarget(null);
       fetchData();
     } catch (err) {
-      alert(err.message || 'Gagal menghapus lokasi event.');
+      setDeleteError(err.message || 'Gagal menghapus lokasi event.');
     } finally {
       setSubmitting(false);
     }
@@ -265,7 +267,10 @@ export default function MarketingEventLocationPage() {
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => setDeleteTarget(item)}
+                        onClick={() => {
+                          setDeleteTarget(item);
+                          setDeleteError(null);
+                        }}
                         className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                         title="Hapus Lokasi"
                       >
@@ -418,6 +423,13 @@ export default function MarketingEventLocationPage() {
                   Apakah Anda yakin ingin menghapus lokasi event <span className="font-bold text-neutral-700 dark:text-white">"{deleteTarget.name}"</span>? Tindakan ini tidak dapat dibatalkan.
                 </p>
               </div>
+
+              {deleteError && (
+                <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl text-red-600 dark:text-red-400 text-xs font-medium flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{deleteError}</span>
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setDeleteTarget(null)}
