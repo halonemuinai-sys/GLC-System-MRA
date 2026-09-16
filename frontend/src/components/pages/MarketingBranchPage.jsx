@@ -3,7 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MapPin,
+  Building,
+  Building2,
+  Tag,
+  Globe,
   Search,
   Plus,
   X,
@@ -15,7 +18,7 @@ import {
   Sparkles,
   AlertTriangle,
   RefreshCw,
-  Building
+  Info
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -24,7 +27,9 @@ import { useLanguage } from '@/lib/LanguageContext';
 function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
   const colors = {
     blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    indigo: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
     emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    neutral: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
   };
 
   return (
@@ -32,14 +37,14 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.35, ease: 'easeOut' }}
-      className="bg-white dark:bg-neutral-900/40 border border-neutral-200/70 dark:border-white/[0.06] rounded-2xl p-5 hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 transition-shadow"
+      className="bg-white dark:bg-neutral-900/40 border border-neutral-200/70 dark:border-white/[0.06] rounded-2xl p-4.5 hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 transition-shadow"
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">{label}</p>
+          <p className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">{label}</p>
           <p className="text-2xl font-black text-neutral-900 dark:text-white mt-1">{value}</p>
         </div>
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${colors[color]}`}>
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color] || colors.blue}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
@@ -51,10 +56,14 @@ export default function MarketingBranchPage() {
   const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [error, setError] = useState(null);
 
   // Filters and Searching
   const [search, setSearch] = useState('');
+  const [filterCompany, setFilterCompany] = useState('');
+  const [filterBrand, setFilterBrand] = useState('');
   const [page, setPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -67,15 +76,26 @@ export default function MarketingBranchPage() {
   const [deleteError, setDeleteError] = useState(null);
 
   // Form State
-  const [formData, setFormData] = useState({ name: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    company_id: '',
+    brand_id: ''
+  });
 
-  // ── Fetch Data ──
+  // ── Fetch Data & Metadata ──
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await apiClient.get('/api/marketing/branches');
-      setData(res || []);
+      const [resBranches, resMeta] = await Promise.all([
+        apiClient.get('/api/marketing/branches'),
+        apiClient.get('/api/marketing/metadata')
+      ]);
+      setData(resBranches || []);
+      if (resMeta) {
+        setCompanies(resMeta.companies || []);
+        setBrands(resMeta.brands || []);
+      }
     } catch (err) {
       setError(err.message || 'Gagal memuat data cabang sasaran.');
     } finally {
@@ -88,9 +108,12 @@ export default function MarketingBranchPage() {
   }, [fetchData]);
 
   // Filtered and paginated data
-  const filteredData = data.filter(item => 
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredData = data.filter((item) => {
+    const matchSearch = item.name.toLowerCase().includes(search.toLowerCase());
+    const matchCompany = !filterCompany || String(item.company_id) === String(filterCompany);
+    const matchBrand = !filterBrand || String(item.brand_id) === String(filterBrand);
+    return matchSearch && matchCompany && matchBrand;
+  });
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
   const paginatedData = filteredData.slice(
@@ -98,10 +121,14 @@ export default function MarketingBranchPage() {
     page * itemsPerPage
   );
 
+  const boundCount = data.filter((d) => d.company_id || d.brand_id).length;
+  const universalCount = data.filter((d) => !d.company_id && !d.brand_id).length;
+  const hasActiveFilters = Boolean(search || filterCompany || filterBrand);
+
   // Open Drawer for Add
   const handleAdd = () => {
     setEditingItem(null);
-    setFormData({ name: '' });
+    setFormData({ name: '', company_id: '', brand_id: '' });
     setFormError(null);
     setShowDrawer(true);
   };
@@ -109,7 +136,11 @@ export default function MarketingBranchPage() {
   // Open Drawer for Edit
   const handleEdit = (item) => {
     setEditingItem(item);
-    setFormData({ name: item.name });
+    setFormData({
+      name: item.name,
+      company_id: item.company_id ? String(item.company_id) : '',
+      brand_id: item.brand_id ? String(item.brand_id) : ''
+    });
     setFormError(null);
     setShowDrawer(true);
   };
@@ -123,10 +154,16 @@ export default function MarketingBranchPage() {
       setSubmitting(true);
       setFormError(null);
 
+      const payload = {
+        name: formData.name.trim(),
+        company_id: formData.company_id ? parseInt(formData.company_id, 10) : null,
+        brand_id: formData.brand_id ? parseInt(formData.brand_id, 10) : null
+      };
+
       if (editingItem) {
-        await apiClient.put(`/api/marketing/branches/${editingItem.id}`, formData);
+        await apiClient.put(`/api/marketing/branches/${editingItem.id}`, payload);
       } else {
-        await apiClient.post('/api/marketing/branches', formData);
+        await apiClient.post('/api/marketing/branches', payload);
       }
 
       setShowDrawer(false);
@@ -155,6 +192,13 @@ export default function MarketingBranchPage() {
     }
   };
 
+  const handleResetFilters = () => {
+    setSearch('');
+    setFilterCompany('');
+    setFilterBrand('');
+    setPage(1);
+  };
+
   return (
     <div className="space-y-6">
       {/* ── Header Section ── */}
@@ -168,8 +212,8 @@ export default function MarketingBranchPage() {
               {t('marketing_branch_title')}
             </h1>
           </div>
-          <p className="text-xs text-neutral-450 dark:text-neutral-500 mt-1">
-            Konfigurasi daftar cabang toko / unit sasaran yang menerima dampak aktivitas pemasaran.
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+            Konfigurasi daftar cabang / toko fisik sasaran berdasarkan Entitas PT dan Brand ritel terkait.
           </p>
         </div>
 
@@ -177,7 +221,7 @@ export default function MarketingBranchPage() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleAdd}
-          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer self-start sm:self-auto"
+          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           Tambah Cabang
@@ -185,42 +229,106 @@ export default function MarketingBranchPage() {
       </div>
 
       {/* ── Summary Stats Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Cabang Toko"
           value={data.length}
           icon={Building}
           color="blue"
+          delay={0.02}
+        />
+        <StatCard
+          label="Terikat PT / Brand"
+          value={boundCount}
+          icon={Building2}
+          color="indigo"
           delay={0.05}
         />
         <StatCard
-          label="Hasil Pencarian"
+          label="Toko Universal"
+          value={universalCount}
+          icon={Globe}
+          color="neutral"
+          delay={0.08}
+        />
+        <StatCard
+          label="Hasil Filter"
           value={filteredData.length}
           icon={Sparkles}
           color="emerald"
-          delay={0.1}
+          delay={0.11}
         />
       </div>
 
       {/* ── Filter & Search Bar ── */}
-      <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
-        <div className="relative w-full md:max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-450" />
-          <input
-            type="text"
-            placeholder={t('marketing_branch_search')}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
-          />
+      <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-3 flex-1 items-stretch sm:items-center">
+          {/* Search by name */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+            <input
+              type="text"
+              placeholder={t('marketing_branch_search')}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+            />
+          </div>
+
+          {/* Filter by Company */}
+          <div className="w-full sm:w-48">
+            <select
+              value={filterCompany}
+              onChange={(e) => {
+                setFilterCompany(e.target.value);
+                setPage(1);
+              }}
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            >
+              <option value="">Semua Perusahaan (PT)</option>
+              {companies.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter by Brand */}
+          <div className="w-full sm:w-44">
+            <select
+              value={filterBrand}
+              onChange={(e) => {
+                setFilterBrand(e.target.value);
+                setPage(1);
+              }}
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            >
+              <option value="">Semua Brand</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              onClick={handleResetFilters}
+              className="px-3 py-2 text-xs font-semibold text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors whitespace-nowrap cursor-pointer"
+            >
+              Reset
+            </button>
+          )}
         </div>
 
         <button
           onClick={fetchData}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-neutral-500 hover:text-neutral-750 dark:text-neutral-450 dark:hover:text-white border border-neutral-200 dark:border-neutral-850 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-all cursor-pointer"
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-neutral-500 hover:text-neutral-750 dark:text-neutral-450 dark:hover:text-white border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-all cursor-pointer self-stretch sm:self-auto shrink-0"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {t('marketing_branch_refresh')}
@@ -243,40 +351,80 @@ export default function MarketingBranchPage() {
           <div className="flex flex-col items-center justify-center py-20 gap-2">
             <Building className="w-8 h-8 text-neutral-300 dark:text-neutral-700" />
             <p className="text-xs text-neutral-450 font-bold">Tidak ada cabang ditemukan.</p>
+            {hasActiveFilters && (
+              <button
+                onClick={handleResetFilters}
+                className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+              >
+                Reset semua filter pencarian
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
-                  <th className="px-6 py-3.5 w-[15%]">ID</th>
-                  <th className="px-6 py-3.5 w-[65%]">{t('marketing_branch_colName')}</th>
-                  <th className="px-6 py-3.5 w-[20%] text-center">{t('marketing_branch_colAction')}</th>
+                  <th className="px-6 py-3.5 w-[10%]">ID</th>
+                  <th className="px-6 py-3.5 w-[32%]">{t('marketing_branch_colName')}</th>
+                  <th className="px-6 py-3.5 w-[26%]">{t('marketing_branch_colCompany')}</th>
+                  <th className="px-6 py-3.5 w-[20%]">{t('marketing_branch_colBrand')}</th>
+                  <th className="px-6 py-3.5 w-[12%] text-center">{t('marketing_branch_colAction')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
                 {paginatedData.map((item) => (
-                  <tr key={item.id} className="hover:bg-neutral-550/5 dark:hover:bg-neutral-955/10 transition-colors">
+                  <tr key={item.id} className="hover:bg-neutral-500/5 dark:hover:bg-neutral-950/20 transition-colors">
                     <td className="px-6 py-3.5 text-neutral-400 font-mono font-bold">#{item.id}</td>
-                    <td className="px-6 py-3.5 font-bold text-neutral-855 dark:text-white">{item.name}</td>
-                    <td className="px-6 py-3.5 text-center flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="p-1.5 text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors cursor-pointer"
-                        title="Edit Cabang"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDeleteTarget(item);
-                          setDeleteError(null);
-                        }}
-                        className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                        title="Hapus Cabang"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <td className="px-6 py-3.5 font-bold text-neutral-850 dark:text-white">
+                      <span>{item.name}</span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      {item.m_company ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40">
+                          <Building2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                          <span className="truncate max-w-[180px]">{item.m_company.name}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800/60">
+                          <Globe className="w-3 h-3 text-neutral-400 shrink-0" />
+                          Semua PT (Universal)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3.5">
+                      {item.m_brand ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40">
+                          <Tag className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span className="truncate max-w-[140px]">{item.m_brand.name}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800/60">
+                          <Globe className="w-3 h-3 text-neutral-400 shrink-0" />
+                          Semua Brand (Universal)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-3.5 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => handleEdit(item)}
+                          className="p-1.5 text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors cursor-pointer"
+                          title="Edit Cabang & Setup"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteTarget(item);
+                            setDeleteError(null);
+                          }}
+                          className="p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                          title="Hapus Cabang"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -294,7 +442,7 @@ export default function MarketingBranchPage() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                 disabled={page === 1}
                 className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900 disabled:opacity-40 transition-all cursor-pointer"
               >
@@ -304,7 +452,7 @@ export default function MarketingBranchPage() {
                 Halaman {page} dari {totalPages}
               </span>
               <button
-                onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
                 disabled={page === totalPages}
                 className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-900 disabled:opacity-40 transition-all cursor-pointer"
               >
@@ -333,14 +481,16 @@ export default function MarketingBranchPage() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-850 z-50 shadow-2xl p-6 flex flex-col justify-between"
             >
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-850 pb-4">
                   <div>
                     <h3 className="text-sm font-black text-neutral-850 dark:text-white">
                       {editingItem ? 'Edit Cabang Sasaran' : 'Tambah Cabang Sasaran Baru'}
                     </h3>
                     <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
-                      {editingItem ? 'Ubah data nama cabang toko saat ini.' : 'Daftarkan data nama cabang toko sasaran baru.'}
+                      {editingItem
+                        ? 'Konfigurasi nama cabang serta tautan entitas PT & Brand.'
+                        : 'Daftarkan nama cabang baru dan tautkan ke PT atau Brand jika spesifik.'}
                     </p>
                   </div>
                   <button
@@ -352,19 +502,67 @@ export default function MarketingBranchPage() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
+                  {/* Nama Cabang */}
+                  <div className="space-y-1.5">
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">
-                      Nama Cabang Sasaran / Terdampak *
+                      Nama Cabang / Toko Fisik *
                     </label>
                     <input
                       type="text"
-                      placeholder="Contoh: Toko Jakarta, Toko Bali"
+                      placeholder="Contoh: Plaza Indonesia, Bali Boutique, Senayan City"
                       value={formData.name}
-                      onChange={(e) => setFormData({ name: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                       required
                       autoFocus
                     />
+                  </div>
+
+                  {/* Entitas PT / Perusahaan */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">
+                      Entitas Perusahaan (PT)
+                    </label>
+                    <select
+                      value={formData.company_id}
+                      onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
+                      className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium cursor-pointer"
+                    >
+                      <option value="">-- Universal / Berlaku untuk Semua PT --</option>
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.code ? `(${c.code})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Brand Ritel */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">
+                      Brand / Principal
+                    </label>
+                    <select
+                      value={formData.brand_id}
+                      onChange={(e) => setFormData({ ...formData, brand_id: e.target.value })}
+                      className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium cursor-pointer"
+                    >
+                      <option value="">-- Universal / Berlaku untuk Semua Brand --</option>
+                      {brands.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Petunjuk Setup Card */}
+                  <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl text-blue-700 dark:text-blue-300 text-[11px] leading-relaxed flex items-start gap-2">
+                    <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
+                    <div>
+                      <span className="font-bold block">Smart Filtering Setup:</span>
+                      Jika PT dan/atau Brand dipilih, cabang toko ini akan otomatis difilter dan muncul saat user membuat rencana anggaran marketing untuk entitas/brand tersebut. Jika dibiarkan Universal, toko akan selalu muncul sebagai opsi di seluruh kampanye.
+                    </div>
                   </div>
 
                   {formError && (

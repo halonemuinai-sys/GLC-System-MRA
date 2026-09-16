@@ -7,8 +7,13 @@ async function getMetadata(req, res, next) {
   try {
     const brands = await prisma.m_brand.findMany({ orderBy: { name: 'asc' } });
     const lobs = await prisma.m_line_business.findMany({ orderBy: { name: 'asc' } });
-    const branches = await prisma.m_branch.findMany({ orderBy: { name: 'asc' } });
-    const event_locations = await prisma.m_event_location.findMany({ orderBy: { name: 'asc' } });
+    const branches = await prisma.m_branch.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        m_company: { select: { id: true, name: true, code: true } },
+        m_brand: { select: { id: true, name: true } }
+      }
+    });
     
     const marketingCoaNames = [
       'Advertising & Promotion Event',
@@ -231,8 +236,22 @@ async function serveAttachment(req, res, next) {
 // GET /branches
 async function getBranches(req, res, next) {
   try {
+    const { company_id, brand_id } = req.query;
+    const where = {};
+    if (company_id) {
+      where.company_id = parseInt(company_id, 10);
+    }
+    if (brand_id) {
+      where.brand_id = parseInt(brand_id, 10);
+    }
+
     const branches = await prisma.m_branch.findMany({
-      orderBy: { name: 'asc' }
+      where,
+      orderBy: { name: 'asc' },
+      include: {
+        m_company: { select: { id: true, name: true, code: true } },
+        m_brand: { select: { id: true, name: true } }
+      }
     });
     res.json(branches);
   } catch (err) {
@@ -243,20 +262,35 @@ async function getBranches(req, res, next) {
 // POST /branches
 async function createBranch(req, res, next) {
   try {
-    const { name } = req.body;
+    const { name, company_id, brand_id } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Nama lokasi/cabang wajib diisi.' });
     }
 
-    const existing = await prisma.m_branch.findUnique({
-      where: { name: name.trim() }
+    const parsedCompanyId = company_id ? parseInt(company_id, 10) : null;
+    const parsedBrandId = brand_id ? parseInt(brand_id, 10) : null;
+
+    const existing = await prisma.m_branch.findFirst({
+      where: {
+        name: name.trim(),
+        company_id: parsedCompanyId,
+        brand_id: parsedBrandId
+      }
     });
     if (existing) {
-      return res.status(400).json({ error: 'Nama lokasi/cabang sudah terdaftar.' });
+      return res.status(400).json({ error: 'Nama lokasi/cabang untuk PT & Brand tersebut sudah terdaftar.' });
     }
 
     const branch = await prisma.m_branch.create({
-      data: { name: name.trim() }
+      data: {
+        name: name.trim(),
+        company_id: parsedCompanyId,
+        brand_id: parsedBrandId
+      },
+      include: {
+        m_company: { select: { id: true, name: true, code: true } },
+        m_brand: { select: { id: true, name: true } }
+      }
     });
     res.status(201).json(branch);
   } catch (err) {
@@ -268,24 +302,37 @@ async function createBranch(req, res, next) {
 async function updateBranch(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
-    const { name } = req.body;
+    const { name, company_id, brand_id } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Nama lokasi/cabang wajib diisi.' });
     }
 
+    const parsedCompanyId = company_id !== undefined ? (company_id ? parseInt(company_id, 10) : null) : undefined;
+    const parsedBrandId = brand_id !== undefined ? (brand_id ? parseInt(brand_id, 10) : null) : undefined;
+
     const existing = await prisma.m_branch.findFirst({
       where: {
         name: name.trim(),
+        company_id: parsedCompanyId,
+        brand_id: parsedBrandId,
         id: { not: id }
       }
     });
     if (existing) {
-      return res.status(400).json({ error: 'Nama lokasi/cabang sudah terdaftar.' });
+      return res.status(400).json({ error: 'Nama lokasi/cabang untuk PT & Brand tersebut sudah terdaftar.' });
     }
+
+    const dataToUpdate = { name: name.trim() };
+    if (company_id !== undefined) dataToUpdate.company_id = parsedCompanyId;
+    if (brand_id !== undefined) dataToUpdate.brand_id = parsedBrandId;
 
     const branch = await prisma.m_branch.update({
       where: { id },
-      data: { name: name.trim() }
+      data: dataToUpdate,
+      include: {
+        m_company: { select: { id: true, name: true, code: true } },
+        m_brand: { select: { id: true, name: true } }
+      }
     });
     res.json(branch);
   } catch (err) {

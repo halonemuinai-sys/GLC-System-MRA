@@ -527,6 +527,7 @@ model m_company {
   vendors           vendors[]
   marketing_plans   marketing_plans[]
   marketing_budgets m_marketing_budget[]
+  m_branches        m_branch[]
   m_company_master  m_company_master? @relation(fields: [company_master_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
   user_access       m_user_company_access[]
 
@@ -943,6 +944,7 @@ model m_brand {
   name              String                 @unique @db.VarChar(100)
   items             marketing_plan_items[]
   marketing_budgets m_marketing_budget[]
+  m_branches        m_branch[]
 
   @@schema("marketing_budget")
 }
@@ -957,9 +959,13 @@ model m_line_business {
 }
 
 model m_branch {
-  id        Int                    @id @default(autoincrement())
-  name      String                 @unique @db.VarChar(100)
-  items     marketing_plan_items[]
+  id         Int                    @id @default(autoincrement())
+  name       String                 @db.VarChar(100)
+  company_id Int?
+  brand_id   Int?
+  items      marketing_plan_items[]
+  m_company  m_company?             @relation(fields: [company_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  m_brand    m_brand?               @relation(fields: [brand_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@schema("marketing_budget")
 }

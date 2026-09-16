@@ -369,28 +369,34 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
                   <span className={`text-xs font-semibold ${wizardHeader.branch_ids.length === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{t('globalSales')}</span>
                 </label>
                 <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-                {metadata.branches.map(b => (
-                  <label key={b.id} className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={wizardHeader.branch_ids.includes(String(b.id))}
-                      onChange={(e) => {
-                        setWizardHeader(prev => {
-                          const ids = [...prev.branch_ids];
-                          if (e.target.checked) {
-                            ids.push(String(b.id));
-                          } else {
-                            const idx = ids.indexOf(String(b.id));
-                            if (idx > -1) ids.splice(idx, 1);
-                          }
-                          return { ...prev, branch_ids: ids };
-                        });
-                      }}
-                      className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
-                    />
-                    <span className={`text-xs font-medium ${wizardHeader.branch_ids.includes(String(b.id)) ? 'text-neutral-900 dark:text-white' : 'text-neutral-600 dark:text-neutral-400'}`}>{b.name}</span>
-                  </label>
-                ))}
+                {(metadata.branches || [])
+                  .filter(b => {
+                    const matchCompany = !b.company_id || String(b.company_id) === String(wizardHeader.company_id);
+                    const matchBrand = !b.brand_id || String(b.brand_id) === String(wizardHeader.brand_id);
+                    return matchCompany && matchBrand;
+                  })
+                  .map(b => (
+                    <label key={b.id} className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={wizardHeader.branch_ids.includes(String(b.id))}
+                        onChange={(e) => {
+                          setWizardHeader(prev => {
+                            const ids = [...prev.branch_ids];
+                            if (e.target.checked) {
+                              ids.push(String(b.id));
+                            } else {
+                              const idx = ids.indexOf(String(b.id));
+                              if (idx > -1) ids.splice(idx, 1);
+                            }
+                            return { ...prev, branch_ids: ids };
+                          });
+                        }}
+                        className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
+                      />
+                      <span className={`text-xs font-medium ${wizardHeader.branch_ids.includes(String(b.id)) ? 'text-neutral-900 dark:text-white' : 'text-neutral-600 dark:text-neutral-400'}`}>{b.name}</span>
+                    </label>
+                  ))}
               </div>
             </>
           )}

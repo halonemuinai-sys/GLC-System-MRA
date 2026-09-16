@@ -115,7 +115,7 @@ export default function MarketingPlanQuickModal({
         total_budget: '',
         coa_id: metadata.coas?.[0]?.id ? String(metadata.coas[0].id) : '',
         brand_id: metadata.brands?.[0]?.id ? String(metadata.brands[0].id) : '',
-        branch_id: metadata.branches?.[0]?.id ? String(metadata.branches[0].id) : '',
+        branch_id: '',
         description: '',
         doc_url: ''
       });
@@ -390,11 +390,17 @@ export default function MarketingPlanQuickModal({
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
                     >
                       <option value="">Pusat / Semua Cabang</option>
-                      {(metadata.branches || []).map((br) => (
-                        <option key={br.id} value={br.id}>
-                          {br.name}
-                        </option>
-                      ))}
+                      {(metadata.branches || [])
+                        .filter((br) => {
+                          const matchCompany = !br.company_id || String(br.company_id) === String(formData.company_id);
+                          const matchBrand = !br.brand_id || String(br.brand_id) === String(formData.brand_id);
+                          return matchCompany && matchBrand;
+                        })
+                        .map((br) => (
+                          <option key={br.id} value={br.id}>
+                            {br.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </div>
