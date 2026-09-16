@@ -420,10 +420,10 @@ export default function MarketingPlanPage() {
 
           <button
             onClick={() => setIsQuickModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white px-4 py-2 rounded-xl text-xs font-extrabold shadow-md shadow-amber-500/25 transition-all cursor-pointer active:scale-95"
+            className="flex items-center gap-2 bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/25 transition-all cursor-pointer active:scale-95"
             title="Express Mode: Pendaftaran Campaign Ringkas"
           >
-            <Zap className="w-4 h-4 fill-white" />
+            <Zap className="w-4 h-4" />
             Quick Campaign
           </button>
 

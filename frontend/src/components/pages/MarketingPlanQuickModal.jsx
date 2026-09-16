@@ -171,15 +171,15 @@ export default function MarketingPlanQuickModal({
               className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               {/* Header Modal */}
-              <div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-indigo-500/5 to-transparent">
+              <div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-transparent">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/30 shrink-0">
-                    <Zap className="w-5 h-5 fill-white" />
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center shadow-lg shadow-indigo-600/25 shrink-0">
+                    <Zap className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="font-extrabold text-neutral-900 dark:text-white text-base flex items-center gap-2">
                       Quick Marketing Campaign
-                      <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold px-2 py-0.5 rounded-full border border-amber-500/20">
+                      <span className="text-[10px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold px-2 py-0.5 rounded-full border border-indigo-500/20">
                         Express Mode
                       </span>
                     </h3>
@@ -216,7 +216,7 @@ export default function MarketingPlanQuickModal({
                     placeholder="e.g. Cetak Brosur & Spanduk Promo Toko"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors font-medium text-xs"
+                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors font-medium text-xs"
                   />
                 </div>
 
@@ -240,7 +240,7 @@ export default function MarketingPlanQuickModal({
                     <select
                       value={formData.fiscal_year}
                       onChange={(e) => setFormData({ ...formData, fiscal_year: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-neutral-900 dark:text-white focus:outline-none focus:border-amber-500 transition-colors text-xs font-semibold"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors text-xs font-semibold"
                     >
                       {FISCAL_YEAR_OPTIONS.map((y) => (
                         <option key={y} value={y}>
@@ -261,7 +261,7 @@ export default function MarketingPlanQuickModal({
                       type="date"
                       value={formData.start_date}
                       onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-amber-500 text-xs"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
                     />
                   </div>
                   <div>
@@ -272,7 +272,7 @@ export default function MarketingPlanQuickModal({
                       type="date"
                       value={formData.end_date}
                       onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-amber-500 text-xs"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
                     />
                   </div>
                 </div>
@@ -296,7 +296,7 @@ export default function MarketingPlanQuickModal({
                           const raw = e.target.value.replace(/\D/g, '');
                           setFormData({ ...formData, total_budget: raw });
                         }}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs focus:outline-none focus:border-amber-500"
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs focus:outline-none focus:border-indigo-500"
                       />
                     </div>
                   </div>
@@ -308,7 +308,7 @@ export default function MarketingPlanQuickModal({
                     <select
                       value={formData.coa_id}
                       onChange={(e) => setFormData({ ...formData, coa_id: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-amber-500 text-xs"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
                     >
                       <option value="">-- Pilih COA --</option>
                       {(metadata.coas || []).map((c) => (
@@ -329,7 +329,7 @@ export default function MarketingPlanQuickModal({
                     <select
                       value={formData.brand_id}
                       onChange={(e) => setFormData({ ...formData, brand_id: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-amber-500 text-xs"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
                     >
                       <option value="">Semua / Tidak Spesifik</option>
                       {(metadata.brands || []).map((b) => (
@@ -347,7 +347,7 @@ export default function MarketingPlanQuickModal({
                     <select
                       value={formData.branch_id}
                       onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-amber-500 text-xs"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
                     >
                       <option value="">Pusat / Semua Cabang</option>
                       {(metadata.branches || []).map((br) => (
@@ -369,7 +369,7 @@ export default function MarketingPlanQuickModal({
                     placeholder="Rincian singkat kebutuhan..."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-amber-500 text-xs"
+                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
                   />
                 </div>
 
@@ -385,7 +385,7 @@ export default function MarketingPlanQuickModal({
                       placeholder="https://drive.google.com/..."
                       value={formData.doc_url}
                       onChange={(e) => setFormData({ ...formData, doc_url: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-amber-500 text-xs"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
                     />
                   </div>
                 </div>
@@ -419,12 +419,12 @@ export default function MarketingPlanQuickModal({
                     type="button"
                     disabled={submitting}
                     onClick={() => handleSubmit(false)}
-                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-extrabold shadow-lg shadow-amber-500/25 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 text-white text-xs font-bold shadow-lg shadow-indigo-600/25 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {submitting && submitMode === 'submit' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <Zap className="w-3.5 h-3.5 fill-white" />
+                      <Zap className="w-3.5 h-3.5" />
                     )}
                     Kirim Approval
                   </button>
