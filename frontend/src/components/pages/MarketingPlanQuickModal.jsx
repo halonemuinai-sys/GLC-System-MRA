@@ -269,7 +269,18 @@ export default function MarketingPlanQuickModal({
                     <SearchableCompanySelect
                       companies={metadata.companies || []}
                       value={formData.company_id}
-                      onChange={(val) => setFormData({ ...formData, company_id: val })}
+                      onChange={(val) => {
+                        setFormData((prev) => {
+                          let newBrandId = prev.brand_id;
+                          if (val && prev.brand_id) {
+                            const b = (metadata.brands || []).find((item) => String(item.id) === String(prev.brand_id));
+                            if (b && b.company_id && String(b.company_id) !== String(val)) {
+                              newBrandId = '';
+                            }
+                          }
+                          return { ...prev, company_id: val, brand_id: newBrandId };
+                        });
+                      }}
                       placeholder="Pilih Perusahaan..."
                     />
                   </div>
@@ -372,11 +383,16 @@ export default function MarketingPlanQuickModal({
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
                     >
                       <option value="">Semua / Tidak Spesifik</option>
-                      {(metadata.brands || []).map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name}
-                        </option>
-                      ))}
+                      {(metadata.brands || [])
+                        .filter((b) => {
+                          if (!formData.company_id) return true;
+                          return !b.company_id || String(b.company_id) === String(formData.company_id);
+                        })
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
 

@@ -4,6 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Tag,
+  Building2,
+  Globe,
   Search,
   Plus,
   X,
@@ -14,7 +16,8 @@ import {
   ChevronRight,
   Sparkles,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Info
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -24,6 +27,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
   const colors = {
     blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
     emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    indigo: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
   };
 
   return (
@@ -38,7 +42,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
           <p className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">{label}</p>
           <p className="text-2xl font-black text-neutral-900 dark:text-white mt-1">{value}</p>
         </div>
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${colors[color]}`}>
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${colors[color] || colors.blue}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
@@ -50,12 +54,14 @@ export default function MasterBrandPage() {
   const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [error, setError] = useState(null);
 
   // Filters and Searching
   const [search, setSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState(''); // Committed search
+  const [filterCompany, setFilterCompany] = useState('');
   const [page, setPage] = useState(1);
 
   // UI state
@@ -66,7 +72,25 @@ export default function MasterBrandPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   // Form State
-  const [formData, setFormData] = useState({ name: '' });
+  const [formData, setFormData] = useState({
+    name: '',
+    company_id: ''
+  });
+
+  // ── Fetch Companies ──
+  useEffect(() => {
+    async function loadCompanies() {
+      try {
+        const res = await apiClient.get('/api/marketing/metadata');
+        if (res && res.companies) {
+          setCompanies(res.companies);
+        }
+      } catch (err) {
+        console.warn('Failed to load companies for brand setup:', err);
+      }
+    }
+    loadCompanies();
+  }, []);
 
   // ── Fetch Data ──
   const fetchData = useCallback(async () => {
@@ -78,7 +102,8 @@ export default function MasterBrandPage() {
         params: {
           page,
           limit: 10,
-          search: searchQuery || undefined
+          search: searchQuery || undefined,
+          company_id: filterCompany || undefined
         }
       });
 
@@ -89,7 +114,7 @@ export default function MasterBrandPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, searchQuery]);
+  }, [page, searchQuery, filterCompany]);
 
   useEffect(() => {
     fetchData();
@@ -105,7 +130,7 @@ export default function MasterBrandPage() {
   // Open Drawer for Add
   const handleAdd = () => {
     setEditingItem(null);
-    setFormData({ name: '' });
+    setFormData({ name: '', company_id: '' });
     setFormError(null);
     setShowDrawer(true);
   };
@@ -113,7 +138,10 @@ export default function MasterBrandPage() {
   // Open Drawer for Edit
   const handleEdit = (item) => {
     setEditingItem(item);
-    setFormData({ name: item.name });
+    setFormData({
+      name: item.name,
+      company_id: item.company_id ? String(item.company_id) : ''
+    });
     setFormError(null);
     setShowDrawer(true);
   };
@@ -127,10 +155,15 @@ export default function MasterBrandPage() {
       setSubmitting(true);
       setFormError(null);
 
+      const payload = {
+        name: formData.name.trim(),
+        company_id: formData.company_id ? parseInt(formData.company_id, 10) : null
+      };
+
       if (editingItem) {
-        await apiClient.put(`/api/master/brands/${editingItem.id}`, formData);
+        await apiClient.put(`/api/master/brands/${editingItem.id}`, payload);
       } else {
-        await apiClient.post('/api/master/brands', formData);
+        await apiClient.post('/api/master/brands', payload);
       }
 
       setShowDrawer(false);
@@ -183,7 +216,7 @@ export default function MasterBrandPage() {
       </div>
 
       {/* 2. Filter Bar */}
-      <form onSubmit={handleSearchSubmit} className="bg-neutral-50 dark:bg-neutral-950 p-4.5 rounded-2xl border border-neutral-200/60 dark:border-neutral-850/80 flex flex-col md:flex-row gap-4 items-center">
+      <form onSubmit={handleSearchSubmit} className="bg-neutral-50 dark:bg-neutral-950 p-4.5 rounded-2xl border border-neutral-200/60 dark:border-neutral-850/80 flex flex-col md:flex-row gap-3 items-center">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
           <input
@@ -194,9 +227,29 @@ export default function MasterBrandPage() {
             className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
           />
         </div>
+
+        {/* Filter by PT */}
+        <div className="w-full md:w-56">
+          <select
+            value={filterCompany}
+            onChange={(e) => {
+              setFilterCompany(e.target.value);
+              setPage(1);
+            }}
+            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+          >
+            <option value="">Semua Perusahaan (PT)</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <button
           type="submit"
-          className="w-full md:w-auto bg-neutral-900 dark:bg-white hover:bg-neutral-850 dark:hover:bg-neutral-100 text-white dark:text-neutral-950 text-xs font-extrabold px-6 py-2.5 rounded-xl transition-all cursor-pointer"
+          className="w-full md:w-auto bg-neutral-900 dark:bg-white hover:bg-neutral-850 dark:hover:bg-neutral-100 text-white dark:text-neutral-950 text-xs font-extrabold px-6 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap"
         >
           {t('processData')}
         </button>
@@ -237,15 +290,29 @@ export default function MasterBrandPage() {
               <thead>
                 <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200 dark:border-neutral-850 text-neutral-450 dark:text-neutral-500 font-black uppercase tracking-wider">
                   <th className="px-6 py-3.5 w-16 text-center">ID</th>
-                  <th className="px-6 py-3.5">{t('masterBrand_colName')}</th>
-                  <th className="px-6 py-3.5 w-32 text-center">{t('masterBrand_colAction')}</th>
+                  <th className="px-6 py-3.5 w-[45%]">{t('masterBrand_colName')}</th>
+                  <th className="px-6 py-3.5 w-[35%]">Perusahaan (PT)</th>
+                  <th className="px-6 py-3.5 w-24 text-center">{t('masterBrand_colAction')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-855 text-neutral-750 dark:text-neutral-300">
                 {data.map((item) => (
                   <tr key={item.id} className="hover:bg-neutral-50/40 dark:hover:bg-neutral-950/20 transition-colors font-medium">
-                    <td className="px-6 py-3.5 text-center text-neutral-400 font-bold">{item.id}</td>
+                    <td className="px-6 py-3.5 text-center text-neutral-400 font-bold">#{item.id}</td>
                     <td className="px-6 py-3.5 font-bold text-neutral-800 dark:text-white">{item.name}</td>
+                    <td className="px-6 py-3.5">
+                      {item.m_company ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/40">
+                          <Building2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                          <span className="truncate max-w-[200px]">{item.m_company.name}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800/60">
+                          <Globe className="w-3 h-3 text-neutral-400 shrink-0" />
+                          Semua PT (Universal)
+                        </span>
+                      )}
+                    </td>
                     <td className="px-6 py-3.5 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
@@ -321,7 +388,7 @@ export default function MasterBrandPage() {
                     {editingItem ? 'Edit Brand' : 'Tambah Brand Baru'}
                   </h3>
                   <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold mt-0.5">
-                    {editingItem ? 'Perbarui data master merek' : 'Masukkan informasi merek baru'}
+                    {editingItem ? 'Perbarui data master merek dan entitas PT' : 'Masukkan nama merek dan tautkan ke entitas PT'}
                   </p>
                 </div>
                 <button onClick={() => setShowDrawer(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-850 rounded-xl text-neutral-400 cursor-pointer">
@@ -345,10 +412,36 @@ export default function MasterBrandPage() {
                       type="text"
                       required
                       value={formData.name}
-                      onChange={(e) => setFormData({ name: e.target.value })}
-                      placeholder="Masukkan nama brand..."
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Contoh: Bvlgari, Omega, Haagen Dazs..."
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-555 uppercase tracking-wider block">
+                      Entitas Perusahaan (PT)
+                    </label>
+                    <select
+                      value={formData.company_id}
+                      onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold cursor-pointer"
+                    >
+                      <option value="">-- Universal / Berlaku untuk Semua PT --</option>
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} {c.code ? `(${c.code})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="p-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl text-blue-700 dark:text-blue-300 text-[11px] leading-relaxed flex items-start gap-2">
+                    <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-500" />
+                    <div>
+                      <span className="font-bold block">Sinkronisasi Otomatis:</span>
+                      Jika brand dikaitkan ke PT tertentu, brand ini akan otomatis muncul tersaring saat memilih PT tersebut di menu master cabang toko dan formulir proposal kampanye.
+                    </div>
                   </div>
                 </div>
 

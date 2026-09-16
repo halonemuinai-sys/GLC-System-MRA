@@ -308,11 +308,16 @@ export default function MarketingBranchPage() {
               className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
             >
               <option value="">Semua Brand</option>
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
+              {brands
+                .filter((b) => {
+                  if (!filterCompany) return true;
+                  return !b.company_id || String(b.company_id) === String(filterCompany);
+                })
+                .map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -525,7 +530,19 @@ export default function MarketingBranchPage() {
                     </label>
                     <select
                       value={formData.company_id}
-                      onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
+                      onChange={(e) => {
+                        const newCompanyId = e.target.value;
+                        setFormData((prev) => {
+                          let newBrandId = prev.brand_id;
+                          if (newCompanyId && prev.brand_id) {
+                            const currentBrand = brands.find((b) => String(b.id) === String(prev.brand_id));
+                            if (currentBrand && currentBrand.company_id && String(currentBrand.company_id) !== String(newCompanyId)) {
+                              newBrandId = '';
+                            }
+                          }
+                          return { ...prev, company_id: newCompanyId, brand_id: newBrandId };
+                        });
+                      }}
                       className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium cursor-pointer"
                     >
                       <option value="">-- Universal / Berlaku untuk Semua PT --</option>
@@ -539,20 +556,44 @@ export default function MarketingBranchPage() {
 
                   {/* Brand Ritel */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">
-                      Brand / Principal
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">
+                        Brand / Principal
+                      </label>
+                      {formData.company_id && (
+                        <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold">
+                          ✓ Tersinkronisasi dengan PT
+                        </span>
+                      )}
+                    </div>
                     <select
                       value={formData.brand_id}
-                      onChange={(e) => setFormData({ ...formData, brand_id: e.target.value })}
+                      onChange={(e) => {
+                        const newBrandId = e.target.value;
+                        setFormData((prev) => {
+                          let newCompanyId = prev.company_id;
+                          if (newBrandId) {
+                            const selectedBrand = brands.find((b) => String(b.id) === String(newBrandId));
+                            if (selectedBrand && selectedBrand.company_id) {
+                              newCompanyId = String(selectedBrand.company_id);
+                            }
+                          }
+                          return { ...prev, brand_id: newBrandId, company_id: newCompanyId };
+                        });
+                      }}
                       className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium cursor-pointer"
                     >
                       <option value="">-- Universal / Berlaku untuk Semua Brand --</option>
-                      {brands.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          {b.name}
-                        </option>
-                      ))}
+                      {brands
+                        .filter((b) => {
+                          if (!formData.company_id) return true;
+                          return !b.company_id || String(b.company_id) === String(formData.company_id);
+                        })
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.name}
+                          </option>
+                        ))}
                     </select>
                   </div>
 

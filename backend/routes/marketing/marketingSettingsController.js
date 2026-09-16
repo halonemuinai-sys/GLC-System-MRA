@@ -5,7 +5,12 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // GET /metadata
 async function getMetadata(req, res, next) {
   try {
-    const brands = await prisma.m_brand.findMany({ orderBy: { name: 'asc' } });
+    const brands = await prisma.m_brand.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        m_company: { select: { id: true, name: true, code: true } }
+      }
+    });
     const lobs = await prisma.m_line_business.findMany({ orderBy: { name: 'asc' } });
     const branches = await prisma.m_branch.findMany({
       orderBy: { name: 'asc' },

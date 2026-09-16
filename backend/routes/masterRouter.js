@@ -574,18 +574,24 @@ router.post('/companies/seed', allowWrite, async (req, res, next) => {
 // GET /api/master/brands — List all brands (with pagination/search)
 router.get('/brands', allowRead, async (req, res, next) => {
   try {
-    const { search = '', page = 1, limit = 20 } = req.query;
+    const { search = '', company_id, page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     
     const where = {};
     if (search) {
       where.name = { contains: search, mode: 'insensitive' };
     }
+    if (company_id) {
+      where.company_id = parseInt(company_id, 10);
+    }
 
     const [data, total] = await Promise.all([
       prisma.m_brand.findMany({
         where,
         orderBy: { name: 'asc' },
+        include: {
+          m_company: { select: { id: true, name: true, code: true } }
+        },
         skip: parseInt(skip),
         take: parseInt(limit)
       }),
@@ -609,13 +615,21 @@ router.get('/brands', allowRead, async (req, res, next) => {
 // POST /api/master/brands — Create new brand
 router.post('/brands', allowWrite, async (req, res, next) => {
   try {
-    const { name } = req.body;
+    const { name, company_id } = req.body;
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Brand name is required.' });
+      return res.status(400).json({ error: 'Nama brand / merek wajib diisi.' });
     }
 
+    const parsedCompanyId = company_id ? parseInt(company_id, 10) : null;
+
     const brand = await prisma.m_brand.create({
-      data: { name: name.trim() }
+      data: {
+        name: name.trim(),
+        company_id: parsedCompanyId
+      },
+      include: {
+        m_company: { select: { id: true, name: true, code: true } }
+      }
     });
 
     res.status(201).json(brand);
@@ -628,14 +642,22 @@ router.post('/brands', allowWrite, async (req, res, next) => {
 router.put('/brands/:id', allowWrite, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name } = req.body;
+    const { name, company_id } = req.body;
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Brand name is required.' });
+      return res.status(400).json({ error: 'Nama brand / merek wajib diisi.' });
+    }
+
+    const dataToUpdate = { name: name.trim() };
+    if (company_id !== undefined) {
+      dataToUpdate.company_id = company_id ? parseInt(company_id, 10) : null;
     }
 
     const brand = await prisma.m_brand.update({
-      where: { id: parseInt(id) },
-      data: { name: name.trim() }
+      where: { id: parseInt(id, 10) },
+      data: dataToUpdate,
+      include: {
+        m_company: { select: { id: true, name: true, code: true } }
+      }
     });
 
     res.json(brand);

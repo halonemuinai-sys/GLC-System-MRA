@@ -238,7 +238,19 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
           <SearchableCompanySelect
             companies={metadata.companies}
             value={wizardHeader.company_id}
-            onChange={(id) => setWizardHeader(prev => ({ ...prev, company_id: String(id) }))}
+            onChange={(id) => {
+              const strId = String(id);
+              setWizardHeader(prev => {
+                let newBrandId = prev.brand_id;
+                if (strId && prev.brand_id) {
+                  const b = (metadata.brands || []).find(item => String(item.id) === String(prev.brand_id));
+                  if (b && b.company_id && String(b.company_id) !== strId) {
+                    newBrandId = '';
+                  }
+                }
+                return { ...prev, company_id: strId, brand_id: newBrandId };
+              });
+            }}
           />
         </div>
 
@@ -278,9 +290,16 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
             required
           >
             <option value="">{t('selectBrand')}</option>
-            {metadata.brands.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
+            {(metadata.brands || [])
+              .filter((b) => {
+                if (!wizardHeader.company_id) return true;
+                return !b.company_id || String(b.company_id) === String(wizardHeader.company_id);
+              })
+              .map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
           </select>
         </div>
 
