@@ -82,11 +82,21 @@ export default function MasterBrandPage() {
     async function loadCompanies() {
       try {
         const res = await apiClient.get('/api/marketing/metadata');
-        if (res && res.companies) {
+        if (res && res.companies && res.companies.length > 0) {
           setCompanies(res.companies);
+          return;
         }
       } catch (err) {
-        console.warn('Failed to load companies for brand setup:', err);
+        console.warn('Metadata fetch failed, falling back to master companies:', err);
+      }
+
+      try {
+        const fallbackRes = await apiClient.get('/api/master/companies?limit=200');
+        if (fallbackRes && fallbackRes.data) {
+          setCompanies(fallbackRes.data);
+        }
+      } catch (e) {
+        console.warn('Failed to load companies for brand setup:', e);
       }
     }
     loadCompanies();

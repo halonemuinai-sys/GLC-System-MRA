@@ -87,14 +87,52 @@ export default function MarketingBranchPage() {
     try {
       setLoading(true);
       setError(null);
-      const [resBranches, resMeta] = await Promise.all([
+      const [resBranches, resMeta] = await Promise.allSettled([
         apiClient.get('/api/marketing/branches'),
         apiClient.get('/api/marketing/metadata')
       ]);
-      setData(resBranches || []);
-      if (resMeta) {
-        setCompanies(resMeta.companies || []);
-        setBrands(resMeta.brands || []);
+
+      if (resBranches.status === 'fulfilled') {
+        setData(resBranches.value || []);
+      }
+
+      let loadedCompanies = [];
+      let loadedBrands = [];
+
+      if (resMeta.status === 'fulfilled' && resMeta.value) {
+        loadedCompanies = resMeta.value.companies || [];
+        loadedBrands = resMeta.value.brands || [];
+      }
+
+      // Fallback if companies empty
+      if (loadedCompanies.length === 0) {
+        try {
+          const compRes = await apiClient.get('/api/master/companies?limit=200');
+          if (compRes && compRes.data) {
+            loadedCompanies = compRes.data;
+          }
+        } catch (e) {
+          console.warn('Fallback company fetch failed:', e);
+        }
+      }
+
+      // Fallback if brands empty
+      if (loadedBrands.length === 0) {
+        try {
+          const brandRes = await apiClient.get('/api/master/brands?limit=200');
+          if (brandRes && brandRes.data) {
+            loadedBrands = brandRes.data;
+          }
+        } catch (e) {
+          console.warn('Fallback brand fetch failed:', e);
+        }
+      }
+
+      setCompanies(loadedCompanies);
+      setBrands(loadedBrands);
+
+      if (resBranches.status === 'rejected' && resMeta.status === 'rejected') {
+        setError('Gagal memuat data cabang sasaran.');
       }
     } catch (err) {
       setError(err.message || 'Gagal memuat data cabang sasaran.');
@@ -227,6 +265,21 @@ export default function MarketingBranchPage() {
           Tambah Cabang
         </motion.button>
       </div>
+
+      {error && (
+        <div className="p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl text-red-600 dark:text-red-400 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={fetchData}
+            className="flex items-center gap-1 font-bold text-red-700 dark:text-red-300 hover:underline cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Coba Lagi
+          </button>
+        </div>
+      )}
 
       {/* ── Summary Stats Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

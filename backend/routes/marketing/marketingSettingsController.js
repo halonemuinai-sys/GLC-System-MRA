@@ -19,6 +19,7 @@ async function getMetadata(req, res, next) {
         m_brand: { select: { id: true, name: true } }
       }
     });
+    const event_locations = await prisma.m_event_location.findMany({ orderBy: { name: 'asc' } });
     
     const marketingCoaNames = [
       'Advertising & Promotion Event',
