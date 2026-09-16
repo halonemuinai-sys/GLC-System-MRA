@@ -925,6 +925,12 @@ async function deletePlan(req, res, next) {
       await tx.marketing_plans.delete({ where: { id: planId } });
     });
 
+    res.json({ message: 'Rencana pemasaran berhasil dihapus.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // POST /plans/:id/duplicate
 async function duplicatePlan(req, res, next) {
   try {
