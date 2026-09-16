@@ -859,17 +859,30 @@ async function deletePlan(req, res, next) {
       return res.status(403).json({ error: 'Forbidden. Only the creator or admin can delete this plan.' });
     }
 
-    // Jangan izinkan hapus plan yang sedang aktif
+    // Hanya admin yang berhak menghapus plan berstatus APPROVED, COMPLETED, atau PENDING_APPROVAL
     if (['APPROVED', 'COMPLETED'].includes(plan.status)) {
-      return res.status(400).json({ error: `Rencana berstatus ${plan.status} tidak dapat dihapus. Hanya DRAFT dan REJECTED yang bisa dihapus.` });
+      if (!isAdmin) {
+        return res.status(400).json({ error: `Rencana berstatus ${plan.status} tidak dapat dihapus. Hanya Admin yang memiliki akses untuk menghapus rencana berstatus ${plan.status}.` });
+      }
+
+      // Jika admin, cek apakah sudah ada payment request yang berstatus PAID
+      const hasPaidPayment = await prisma.payment_requests.findFirst({
+        where: {
+          marketing_plan_item: { marketing_plan_id: planId },
+          status: 'PAID'
+        }
+      });
+      if (hasPaidPayment) {
+        return res.status(400).json({ error: 'Rencana ini sudah memiliki pembayaran yang telah dicairkan (PAID) dan tidak dapat dihapus demi integritas audit keuangan.' });
+      }
     }
+
     // PENDING_APPROVAL hanya admin yang boleh hapus
     if (plan.status === 'PENDING_APPROVAL' && !isAdmin) {
       return res.status(400).json({ error: 'Rencana yang sedang dalam proses approval hanya dapat dihapus oleh admin.' });
     }
 
-    // Hapus payment_requests (dan approval_history terkait) sebelum delete plan
-    // karena FK payment_requests -> marketing_plan_items tidak cascade otomatis
+    // Hapus payment_requests, approval_history, magic_links sebelum delete plan
     await prisma.$transaction(async (tx) => {
       const items = await tx.marketing_plan_items.findMany({
         where: { marketing_plan_id: planId },
@@ -885,9 +898,28 @@ async function deletePlan(req, res, next) {
         const paymentIds = payments.map(p => p.id);
 
         if (paymentIds.length > 0) {
-          await tx.approval_history.deleteMany({ where: { payment_request_id: { in: paymentIds } } });
+          const prHistories = await tx.approval_history.findMany({
+            where: { payment_request_id: { in: paymentIds } },
+            select: { id: true }
+          });
+          const prHistoryIds = prHistories.map(h => h.id);
+          if (prHistoryIds.length > 0) {
+            await tx.approval_magic_links.deleteMany({ where: { approval_history_id: { in: prHistoryIds } } });
+            await tx.approval_history.deleteMany({ where: { id: { in: prHistoryIds } } });
+          }
           await tx.payment_requests.deleteMany({ where: { id: { in: paymentIds } } });
         }
+      }
+
+      // Hapus magic links dan approval history milik plan
+      const planHistories = await tx.approval_history.findMany({
+        where: { marketing_plan_id: planId },
+        select: { id: true }
+      });
+      const planHistoryIds = planHistories.map(h => h.id);
+      if (planHistoryIds.length > 0) {
+        await tx.approval_magic_links.deleteMany({ where: { approval_history_id: { in: planHistoryIds } } });
+        await tx.approval_history.deleteMany({ where: { id: { in: planHistoryIds } } });
       }
 
       await tx.marketing_plans.delete({ where: { id: planId } });

@@ -789,14 +789,17 @@ export default function MarketingPlanPage() {
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </motion.button>
-                            <motion.button
-                              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                              onClick={() => setPlanToDelete(plan)}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200/60 dark:hover:border-red-500/20 transition-all cursor-pointer"
-                              title={t('btnDeleteTitle')}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </motion.button>
+                            {/* Delete button: hanya untuk DRAFT/REJECTED atau role ADMIN */}
+                            {(plan.status === 'DRAFT' || plan.status === 'REJECTED' || userRole === 'admin') && (
+                              <motion.button
+                                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                onClick={() => setPlanToDelete(plan)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200/60 dark:hover:border-red-500/20 transition-all cursor-pointer"
+                                title={t('btnDeleteTitle')}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </motion.button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -911,6 +914,11 @@ export default function MarketingPlanPage() {
                 <p className="text-xs text-neutral-450 dark:text-neutral-500 px-2 leading-relaxed">
                   {t('deleteBodyPrefix')} <strong>"{planToDelete.title}"</strong> {t('deleteBodySuffix')}
                 </p>
+                {planToDelete.status === 'APPROVED' && (
+                  <div className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/60 dark:border-amber-800/40 text-left">
+                    ⚠️ <strong>Perhatian:</strong> Rencana ini berstatus <strong>APPROVED</strong>. Menghapus rencana ini akan membatalkan alokasi anggarannya. Pastikan belum ada tagihan atau pembayaran yang diproses.
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2.5 w-full pt-2">
                 <button
