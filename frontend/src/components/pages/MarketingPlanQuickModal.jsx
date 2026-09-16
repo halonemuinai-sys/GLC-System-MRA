@@ -18,6 +18,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import Cookies from 'js-cookie';
 import SearchableCompanySelect from './SearchableCompanySelect';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -63,6 +64,45 @@ export default function MarketingPlanQuickModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitMode, setSubmitMode] = useState(null); // 'draft' | 'submit'
   const [errMessage, setErrMessage] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      formDataUpload.append('folder', 'marketing');
+
+      const token = Cookies.get('glc_mra_token');
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const apiBase = process.env.NEXT_PUBLIC_API_URL !== undefined ? process.env.NEXT_PUBLIC_API_URL : 'http://localhost:5005';
+      const res = await fetch(`${apiBase}/api/marketing/upload`, {
+        method: 'POST',
+        headers,
+        body: formDataUpload
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Gagal mengunggah file.');
+      }
+
+      const data = await res.json();
+      setFormData(prev => ({ ...prev, doc_url: data.url }));
+    } catch (err) {
+      setUploadError(err.message || 'Gagal mengunggah file.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -373,21 +413,51 @@ export default function MarketingPlanQuickModal({
                   />
                 </div>
 
-                {/* Link Proposal / Dokumen */}
+                {/* Link Proposal / Dokumen & Upload */}
                 <div>
                   <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                    Link Proposal / Dokumen Pendukung (Google Drive / cloud)
+                    Proposal / Dokumen Pendukung (Upload atau Link)
                   </label>
-                  <div className="relative">
-                    <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                      <input
+                        type="url"
+                        placeholder="https://drive.google.com/... atau upload file"
+                        value={formData.doc_url}
+                        onChange={(e) => setFormData({ ...formData, doc_url: e.target.value })}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
+                      />
+                    </div>
                     <input
-                      type="url"
-                      placeholder="https://drive.google.com/..."
-                      value={formData.doc_url}
-                      onChange={(e) => setFormData({ ...formData, doc_url: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
+                      type="file"
+                      id="quick-proposal-file-upload"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
                     />
+                    <label
+                      htmlFor="quick-proposal-file-upload"
+                      className={`px-3.5 py-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Paperclip className="w-3.5 h-3.5" />
+                          <span>Upload File</span>
+                        </>
+                      )}
+                    </label>
                   </div>
+                  {uploadError && (
+                    <p className="text-[10px] text-red-500 font-bold mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> {uploadError}
+                    </p>
+                  )}
                 </div>
               </div>
 

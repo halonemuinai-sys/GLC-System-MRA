@@ -132,7 +132,7 @@ async function deleteApprovalContact(req, res, next) {
   }
 }
 
-// POST /upload
+// POST /upload (Upload to Proxmox CDN with database fallback)
 async function uploadAttachment(req, res, next) {
   try {
     if (!req.file) {
@@ -140,7 +140,45 @@ async function uploadAttachment(req, res, next) {
     }
 
     const { originalname, mimetype, buffer } = req.file;
+    const folder = req.body.folder || 'marketing';
 
+    // 1. Upload ke Proxmox CDN server
+    const cdnBase = process.env.PROXMOX_CDN_URL || 'https://bvl.mogems.co.id';
+    let cdnUrl = null;
+
+    try {
+      const fd = new FormData();
+      fd.append('folder', folder);
+      fd.append('file', new Blob([buffer], { type: mimetype }), originalname);
+
+      const cdnRes = await fetch(`${cdnBase}/api/cdn/upload`, {
+        method: 'POST',
+        body: fd,
+        signal: AbortSignal.timeout(15000)
+      });
+
+      if (cdnRes.ok) {
+        const cdnJson = await cdnRes.json();
+        if (cdnJson.success && cdnJson.data?.url) {
+          cdnUrl = cdnJson.data.url;
+        }
+      }
+    } catch (cdnErr) {
+      console.warn('[Proxmox CDN] Upload to CDN failed, using database fallback:', cdnErr.message);
+    }
+
+    // Jika berhasil upload ke Proxmox CDN, langsung kembalikan CDN URL
+    if (cdnUrl) {
+      return res.json({
+        success: true,
+        source: 'proxmox_cdn',
+        filename: originalname,
+        mime_type: mimetype,
+        url: cdnUrl
+      });
+    }
+
+    // 2. Fallback: simpan di PostgreSQL jika Proxmox CDN offline/gagal
     const newAttachment = await prisma.attachments.create({
       data: {
         filename: originalname,
@@ -155,6 +193,7 @@ async function uploadAttachment(req, res, next) {
 
     res.json({
       success: true,
+      source: 'database_fallback',
       id: newAttachment.id,
       filename: originalname,
       mime_type: mimetype,
