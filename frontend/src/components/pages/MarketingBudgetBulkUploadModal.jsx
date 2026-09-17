@@ -15,7 +15,10 @@ import {
   RefreshCw,
   Info,
   Calendar,
-  Layers
+  Layers,
+  Trash2,
+  Filter,
+  Sparkles
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 
@@ -43,21 +46,49 @@ const MONTH_NAMES = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-const parseMonth = (val) => {
+// Smart Cell Value Extractor (handles formula result, rich text, hyperlinks, dates)
+export function extractCellValue(cell) {
+  if (!cell) return null;
+  const val = cell.value;
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'object') {
+    if ('result' in val) return val.result;
+    if (Array.isArray(val.richText)) return val.richText.map(r => r.text || '').join('');
+    if ('text' in val) return val.text;
+    if (val instanceof Date) return val;
+  }
+  return val;
+}
+
+// Smart Month Parser: handles 1-12, Indonesian/English names, abbreviations, dates, and "Bulan X"
+export const parseMonth = (val) => {
   if (val === null || val === undefined || val === '') return null;
   if (val instanceof Date) return val.getMonth() + 1;
   if (typeof val === 'number') {
     const intVal = Math.round(val);
     if (intVal >= 1 && intVal <= 12) return intVal;
     if (intVal > 1000) {
+      // Excel serial date number
       const dt = new Date(Math.round((intVal - 25569) * 86400 * 1000));
       return dt.getMonth() + 1;
     }
   }
   const str = String(val).trim().toLowerCase();
-  const num = parseInt(str, 10);
-  if (!isNaN(num) && num >= 1 && num <= 12) return num;
 
+  // Pattern like "Bulan 1", "Bln 02", "Month 3", "M04"
+  const mMatch = str.match(/(?:bulan|bln|month|m)\s*(\d{1,2})/i);
+  if (mMatch) {
+    const n = parseInt(mMatch[1], 10);
+    if (n >= 1 && n <= 12) return n;
+  }
+
+  // Pure integer string: "1" to "12" or "01" to "12"
+  const num = parseInt(str, 10);
+  if (!isNaN(num) && num >= 1 && num <= 12 && String(num) === str.replace(/^0+/, '')) {
+    return num;
+  }
+
+  // Indonesian and English month names & common abbreviations
   const monthMap = {
     jan: 1, januari: 1, january: 1,
     feb: 2, februari: 2, february: 2,
@@ -67,12 +98,23 @@ const parseMonth = (val) => {
     jun: 6, juni: 6, june: 6,
     jul: 7, juli: 7, july: 7,
     agu: 8, ags: 8, agustus: 8, aug: 8, august: 8,
-    sep: 9, september: 9,
+    sep: 9, sept: 9, september: 9,
     okt: 10, oktober: 10, oct: 10, october: 10,
     nov: 11, november: 11,
     des: 12, desember: 12, dec: 12, december: 12
   };
-  return monthMap[str] || null;
+
+  for (const [k, v] of Object.entries(monthMap)) {
+    if (str === k || str.startsWith(k)) return v;
+  }
+
+  // Try parsing ISO/locale date string
+  const parsedDate = new Date(str);
+  if (!isNaN(parsedDate.getTime())) {
+    return parsedDate.getMonth() + 1;
+  }
+
+  return null;
 };
 
 // ─── Vendor Fuzzy Matching Helpers ──────────────────────────────────────────
@@ -214,6 +256,83 @@ export function findBestVendorMatch(rawVendor, vendorsList = []) {
       vendor: bestVendor,
       score: highestScore,
       matchType: highestScore >= 0.9 ? 'high_confidence' : 'fuzzy'
+    };
+  }
+
+  return null;
+}
+
+// ─── CoA Intelligent & Fuzzy Matching Helper ────────────────────────────────
+export function findBestCoaMatch(rawCoa, coasList = []) {
+  if (!rawCoa || !coasList || coasList.length === 0) return null;
+  const rawStr = String(rawCoa).trim();
+  const rawLower = rawStr.toLowerCase();
+  const cleanAlnum = rawLower.replace(/[^a-z0-9]/gi, '');
+
+  // 1. Direct exact match on code (e.g. "61101")
+  for (const c of coasList) {
+    if (c.code && String(c.code).trim().toLowerCase() === rawLower) {
+      return { coa: c, score: 1.0, matchType: 'exact_code' };
+    }
+  }
+
+  // 2. Alphanumeric match on code (e.g. "611-01" vs "61101" or float 61101.0)
+  if (cleanAlnum) {
+    for (const c of coasList) {
+      if (c.code) {
+        const cClean = String(c.code).replace(/[^a-z0-9]/gi, '').toLowerCase();
+        if (cClean && cClean === cleanAlnum) {
+          return { coa: c, score: 0.98, matchType: 'normalized_code' };
+        }
+      }
+    }
+  }
+
+  // 3. String contains code prefix/suffix (e.g. "61101 - Advertising" or "[61101] Advertising")
+  for (const c of coasList) {
+    if (c.code && String(c.code).length >= 3) {
+      const cCode = String(c.code).trim().toLowerCase();
+      if (rawLower.startsWith(cCode) || rawLower.includes(`[${cCode}]`) || rawLower.includes(`(${cCode})`)) {
+        return { coa: c, score: 0.95, matchType: 'code_contained' };
+      }
+    }
+  }
+
+  // 4. Exact match on CoA Name
+  for (const c of coasList) {
+    if (c.name && c.name.trim().toLowerCase() === rawLower) {
+      return { coa: c, score: 0.95, matchType: 'exact_name' };
+    }
+  }
+
+  // 5. Fuzzy match on CoA Name
+  let bestCoa = null;
+  let highestScore = 0;
+
+  for (const c of coasList) {
+    const cName = String(c.name || '').trim().toLowerCase();
+    const tokScore = tokenSimilarity(rawLower, cName);
+    const levScore = stringSimilarity(rawLower, cName);
+
+    let containScore = 0;
+    if (rawLower.length >= 4 && cName.length >= 4) {
+      if (cName.includes(rawLower) || rawLower.includes(cName)) {
+        containScore = 0.85;
+      }
+    }
+
+    const composite = Math.max(tokScore, levScore, containScore);
+    if (composite > highestScore) {
+      highestScore = composite;
+      bestCoa = c;
+    }
+  }
+
+  if (bestCoa && highestScore >= 0.65) {
+    return {
+      coa: bestCoa,
+      score: highestScore,
+      matchType: 'fuzzy_name'
     };
   }
 
@@ -398,6 +517,7 @@ export default function MarketingBudgetBulkUploadModal({
   const [parsedRows, setParsedRows] = useState([]);
   const [parseError, setParseError] = useState(null);
   const [importMode, setImportMode] = useState('replace'); // 'replace' | 'append'
+  const [filterTab, setFilterTab] = useState('all'); // 'all' | 'valid' | 'error'
   const fileInputRef = useRef(null);
 
   // Reset state when modal opens/closes
@@ -408,8 +528,49 @@ export default function MarketingBudgetBulkUploadModal({
       setParseError(null);
       setParsing(false);
       setImportMode('replace');
+      setFilterTab('all');
     }
   }, [isOpen]);
+
+  // Inline Fix: Update CoA for a row
+  const handleFixRowCoa = (rowNumber, newCoaId) => {
+    const selectedCoa = metadata.coas?.find(c => String(c.id) === String(newCoaId));
+    if (!selectedCoa) return;
+    setParsedRows(prev => prev.map(row => {
+      if (row.rowNumber !== rowNumber) return row;
+      const newErrors = row.errors.filter(e => !e.toLowerCase().includes('coa'));
+      return {
+        ...row,
+        coa_id: String(selectedCoa.id),
+        coa_name: selectedCoa.name,
+        coa_code: selectedCoa.code || '',
+        errors: newErrors,
+        isValid: newErrors.length === 0
+      };
+    }));
+  };
+
+  // Inline Fix: Update Month for a row
+  const handleFixRowMonth = (rowNumber, newMonthNum) => {
+    const mNum = parseInt(newMonthNum, 10);
+    if (!(mNum >= 1 && mNum <= 12)) return;
+    setParsedRows(prev => prev.map(row => {
+      if (row.rowNumber !== rowNumber) return row;
+      const newErrors = row.errors.filter(e => !e.toLowerCase().includes('bulan') && !e.toLowerCase().includes('month'));
+      return {
+        ...row,
+        period_month: String(mNum),
+        monthDisplay: MONTH_NAMES[mNum - 1],
+        errors: newErrors,
+        isValid: newErrors.length === 0
+      };
+    }));
+  };
+
+  // Inline Fix: Delete row
+  const handleDeleteRow = (rowNumber) => {
+    setParsedRows(prev => prev.filter(r => r.rowNumber !== rowNumber));
+  };
 
   // Handle drag and drop
   const [isDragging, setIsDragging] = useState(false);
@@ -444,19 +605,27 @@ export default function MarketingBudgetBulkUploadModal({
     setParsing(true);
     setParseError(null);
     setParsedRows([]);
+    setFilterTab('all');
 
     try {
       const workbook = new ExcelJS.Workbook();
       const arrayBuffer = await selectedFile.arrayBuffer();
       await workbook.xlsx.load(arrayBuffer);
 
-      // Select worksheet
-      const sheet = workbook.getWorksheet('Alokasi_Anggaran') || workbook.getWorksheet(1);
+      // Select worksheet: match by name or fallback to first sheet
+      let sheet = workbook.getWorksheet('Alokasi_Anggaran');
       if (!sheet) {
-        throw new Error('Lembar kerja (worksheet) tidak ditemukan di dalam file.');
+        sheet = workbook.worksheets.find(ws => {
+          const wsName = ws.name.toLowerCase();
+          return wsName.includes('alokasi') || wsName.includes('anggaran') || wsName.includes('budget');
+        }) || workbook.getWorksheet(1);
       }
 
-      // Detect header row (search row 1 to 10)
+      if (!sheet) {
+        throw new Error('Lembar kerja (worksheet) tidak ditemukan di dalam file Excel.');
+      }
+
+      // Detect header row (search rows 1 to 15)
       let headerRowNumber = 4;
       let colMap = {
         month: 2,
@@ -467,16 +636,16 @@ export default function MarketingBudgetBulkUploadModal({
         desc: 7
       };
 
-      for (let r = 1; r <= 10; r++) {
+      for (let r = 1; r <= 15; r++) {
         const row = sheet.getRow(r);
         const values = row.values || [];
-        const joined = values.map(v => String(v || '').toLowerCase()).join(' ');
+        const joined = values.map(v => String(extractCellValue({ value: v }) || '').toLowerCase()).join(' ');
 
         if (joined.includes('bulan') || joined.includes('month') || joined.includes('coa') || joined.includes('akun') || joined.includes('kode')) {
           headerRowNumber = r;
           // Dynamically map column indexes
           row.eachCell((cell, colNumber) => {
-            const val = String(cell.value || '').toLowerCase().trim();
+            const val = String(extractCellValue(cell) || '').toLowerCase().trim();
             if (val.includes('bulan') || val.includes('month') || val.includes('period')) colMap.month = colNumber;
             else if (val.includes('kode') || val.includes('coa') || val.includes('akun') || val.includes('account')) colMap.coa = colNumber;
             else if (val.includes('vendor') || val.includes('partner') || val.includes('rekanan')) colMap.vendor = colNumber;
@@ -493,16 +662,22 @@ export default function MarketingBudgetBulkUploadModal({
       sheet.eachRow((row, rowNumber) => {
         if (rowNumber <= headerRowNumber) return; // Skip headers
 
-        const rawMonth = row.getCell(colMap.month).value;
-        const rawCoa = row.getCell(colMap.coa).value;
-        const rawVendor = row.getCell(colMap.vendor).value;
-        const rawQty = row.getCell(colMap.qty).value;
-        const rawPrice = row.getCell(colMap.price).value;
-        const rawDesc = row.getCell(colMap.desc).value;
+        const rawMonth = extractCellValue(row.getCell(colMap.month));
+        const rawCoa = extractCellValue(row.getCell(colMap.coa));
+        const rawVendor = extractCellValue(row.getCell(colMap.vendor));
+        const rawQty = extractCellValue(row.getCell(colMap.qty));
+        const rawPrice = extractCellValue(row.getCell(colMap.price));
+        const rawDesc = extractCellValue(row.getCell(colMap.desc));
 
         // Skip completely empty row
         const hasContent = [rawMonth, rawCoa, rawVendor, rawQty, rawPrice, rawDesc].some(v => v !== null && v !== undefined && String(v).trim() !== '');
         if (!hasContent) return;
+
+        // Skip summary / total row
+        const rowTexts = [rawMonth, rawCoa, rawVendor, rawDesc].map(v => String(v || '').toLowerCase()).join(' ');
+        if (rowTexts.includes('total') || rowTexts.includes('jumlah') || rowTexts.includes('subtotal') || rowTexts.includes('grand total')) {
+          return;
+        }
 
         const errors = [];
         const warnings = [];
@@ -513,24 +688,16 @@ export default function MarketingBudgetBulkUploadModal({
           errors.push(`Bulan "${rawMonth || '-'}" tidak valid`);
         }
 
-        // 2. CoA validation (prioritize Code, fallback to Name)
+        // 2. CoA validation (prioritize Code, fallback to Name, with fuzzy matching)
         let matchedCoa = null;
+        let coaMatchInfo = null;
         if (rawCoa !== null && rawCoa !== undefined && String(rawCoa).trim() !== '') {
-          const searchCoa = String(rawCoa).trim().toLowerCase();
-          const cleanCoa = searchCoa.replace(/[^a-z0-9]/gi, '');
-
-          // Priority 1: Exact match on code (e.g. "61101")
-          matchedCoa = metadata.coas?.find(c => c.code && String(c.code).trim().toLowerCase() === searchCoa);
-
-          // Priority 2: Normalized alphanumeric match on code (e.g. "611-01" or numeric variations)
-          if (!matchedCoa && cleanCoa) {
-            matchedCoa = metadata.coas?.find(c => c.code && String(c.code).replace(/[^a-z0-9]/gi, '').toLowerCase() === cleanCoa);
-          }
-
-          // Priority 3: Fallback match on account name (in case user pasted account name)
-          if (!matchedCoa) {
-            matchedCoa = metadata.coas?.find(c => c.name && c.name.trim().toLowerCase() === searchCoa) ||
-                         metadata.coas?.find(c => c.name && c.name.trim().toLowerCase().includes(searchCoa));
+          coaMatchInfo = findBestCoaMatch(rawCoa, metadata.coas || []);
+          if (coaMatchInfo && coaMatchInfo.coa) {
+            matchedCoa = coaMatchInfo.coa;
+            if (coaMatchInfo.matchType === 'fuzzy_name') {
+              warnings.push(`Akun "${rawCoa}" dicocokkan otomatis ke "[${matchedCoa.code || '-'}] ${matchedCoa.name}" (kemiripan ${Math.round(coaMatchInfo.score * 100)}%)`);
+            }
           }
         }
 
@@ -561,17 +728,41 @@ export default function MarketingBudgetBulkUploadModal({
           }
         }
 
-        // 4. Qty parsing
-        const qtyNum = parseInt(String(rawQty || '1').replace(/\D/g, ''), 10) || 1;
+        // 4. Smart Qty parsing (extract numeric count)
+        let qtyNum = 1;
+        if (rawQty !== null && rawQty !== undefined) {
+          if (typeof rawQty === 'number') {
+            qtyNum = Math.max(1, Math.round(rawQty));
+          } else {
+            const matchQty = String(rawQty).match(/\d+/);
+            if (matchQty) {
+              qtyNum = Math.max(1, parseInt(matchQty[0], 10));
+            }
+          }
+        }
 
-        // 5. Price parsing
+        // 5. Smart Price parsing (handles Rupiah symbols, Indonesian dots, US commas, formula results)
         let unitPrice = 0;
         if (rawPrice !== null && rawPrice !== undefined) {
           if (typeof rawPrice === 'number') {
-            unitPrice = rawPrice;
+            unitPrice = Math.max(0, Math.round(rawPrice));
           } else {
-            const cleanStr = String(rawPrice).replace(/[^\d]/g, '');
-            unitPrice = parseFloat(cleanStr) || 0;
+            const strPrice = String(rawPrice).trim();
+            const cleaned = strPrice
+              .replace(/^(rp|idr|\$)\.?\s*/i, '')
+              .replace(/[,.]-$/, '')
+              .trim();
+
+            if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(cleaned)) {
+              const normalized = cleaned.replace(/\./g, '').replace(',', '.');
+              unitPrice = Math.round(parseFloat(normalized)) || 0;
+            } else if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(cleaned)) {
+              const normalized = cleaned.replace(/,/g, '');
+              unitPrice = Math.round(parseFloat(normalized)) || 0;
+            } else {
+              const digitsOnly = cleaned.replace(/[^\d]/g, '');
+              unitPrice = parseInt(digitsOnly, 10) || 0;
+            }
           }
         }
 
@@ -623,6 +814,12 @@ export default function MarketingBudgetBulkUploadModal({
       .filter(r => r.isValid)
       .reduce((sum, r) => sum + (parseFloat(r.budget_amount) || 0), 0);
   }, [parsedRows]);
+
+  const displayedRows = useMemo(() => {
+    if (filterTab === 'valid') return parsedRows.filter(r => r.isValid);
+    if (filterTab === 'error') return parsedRows.filter(r => !r.isValid);
+    return parsedRows;
+  }, [parsedRows, filterTab]);
 
   // Apply to wizard
   const handleApply = () => {
@@ -852,107 +1049,225 @@ export default function MarketingBudgetBulkUploadModal({
                     <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl text-amber-700 dark:text-amber-300 text-[11px] leading-relaxed flex items-start gap-2">
                       <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
                       <div>
-                        <span className="font-bold block">Terdapat ${errorCount} baris yang tidak dapat diimpor:</span>
-                        Pastikan kolom Bulan (1-12) dan Akun CoA terisi sesuai daftar resmi di tab referensi template. Hanya baris yang valid yang akan dimasukkan ke rencana alokasi.
+                        <span className="font-bold block">Terdapat {errorCount} baris yang memerlukan perbaikan:</span>
+                        Anda dapat langsung memilih Akun CoA atau Bulan yang benar pada baris bertanda merah di bawah, atau menghapus baris yang tidak diinginkan.
                       </div>
                     </div>
                   )}
 
                   {/* Preview Table */}
                   <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-                    <div className="px-3.5 py-2 bg-neutral-100/70 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
-                      <span className="text-[10px] font-extrabold text-neutral-600 dark:text-neutral-300 uppercase tracking-wider">
-                        Pratinjau Data Impor (${parsedRows.length} Baris)
-                      </span>
-                      <span className="text-[10px] text-neutral-400">
-                        Gulir ke bawah untuk melihat semua baris
+                    {/* Filter Tabs Bar */}
+                    <div className="px-3.5 py-2 bg-neutral-100/70 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 overflow-x-auto">
+                        <button
+                          type="button"
+                          onClick={() => setFilterTab('all')}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            filterTab === 'all'
+                              ? 'bg-white dark:bg-neutral-900 text-blue-600 dark:text-blue-400 shadow-sm'
+                              : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+                          }`}
+                        >
+                          Semua
+                          <span className="text-[10px] bg-neutral-200/70 dark:bg-neutral-800 px-1.5 py-0.2 rounded-full font-mono">
+                            {parsedRows.length}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFilterTab('valid')}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            filterTab === 'valid'
+                              ? 'bg-white dark:bg-neutral-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                              : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+                          }`}
+                        >
+                          Valid
+                          <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.2 rounded-full font-mono font-bold">
+                            {validCount}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFilterTab('error')}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            filterTab === 'error'
+                              ? 'bg-white dark:bg-neutral-900 text-amber-600 dark:text-amber-400 shadow-sm'
+                              : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200'
+                          }`}
+                        >
+                          Perlu Perhatian
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                            errorCount > 0
+                              ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 font-black'
+                              : 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-500'
+                          }`}>
+                            {errorCount}
+                          </span>
+                        </button>
+                      </div>
+
+                      <span className="text-[10px] text-neutral-400 hidden sm:inline">
+                        Koreksi langsung Akun CoA & Bulan pada tabel jika bertanda merah
                       </span>
                     </div>
 
-                    <div className="max-h-56 overflow-y-auto scrollbar-thin">
+                    <div className="max-h-64 overflow-y-auto scrollbar-thin">
                       <table className="w-full text-left text-[10px] border-collapse table-fixed">
                         <thead>
                           <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 font-extrabold uppercase tracking-wider sticky top-0 z-10">
                             <th className="px-2 py-2 text-center w-8">No</th>
-                            <th className="px-2 py-2 w-20">Status</th>
-                            <th className="px-2 py-2 w-20">Bulan</th>
-                            <th className="px-2 py-2 w-48">Kode & Akun CoA</th>
+                            <th className="px-2 py-2 w-16">Status</th>
+                            <th className="px-2 py-2 w-28">Bulan</th>
+                            <th className="px-2 py-2 w-52">Kode & Akun CoA</th>
                             <th className="px-2 py-2 w-40">Vendor Partner</th>
                             <th className="px-2 py-2 text-center w-12">Qty</th>
                             <th className="px-2 py-2 text-right pr-3 w-28">Harga Satuan</th>
                             <th className="px-2 py-2 text-right pr-3 w-28">Sub Total</th>
-                            <th className="px-2 py-2 w-36">Catatan</th>
+                            <th className="px-2 py-2 w-32">Catatan</th>
+                            <th className="px-2 py-2 text-center w-10">Aksi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-neutral-700 dark:text-neutral-300 font-medium">
-                          {parsedRows.map((r, idx) => (
-                            <tr
-                              key={idx}
-                              className={
-                                !r.isValid
-                                  ? 'bg-red-50/40 dark:bg-red-950/10 text-red-900 dark:text-red-300'
-                                  : 'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30'
-                              }
-                            >
-                              <td className="px-2 py-1.5 text-center text-neutral-400 font-bold">{idx + 1}</td>
-                              <td className="px-2 py-1.5">
-                                {r.isValid ? (
-                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
-                                    <Check className="w-3 h-3" /> Valid
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-md" title={r.errors.join(', ')}>
-                                    <X className="w-3 h-3" /> Error
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-2 py-1.5 truncate font-semibold">{r.monthDisplay}</td>
-                              <td className="px-2 py-1.5 truncate font-semibold" title={r.coa_name}>
-                                <div className="flex items-center gap-1.5 truncate">
-                                  {r.coa_code && (
-                                    <span className="font-mono text-[9px] bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 px-1 py-0.5 rounded font-bold shrink-0">
-                                      {r.coa_code}
-                                    </span>
-                                  )}
-                                  <span className="truncate">{r.coa_name}</span>
-                                </div>
-                                {r.errors.some(e => e.includes('CoA')) && (
-                                  <span className="block text-[9px] text-red-500 font-normal">Tidak cocok</span>
-                                )}
-                              </td>
-                              <td className="px-2 py-1.5 truncate text-neutral-600 dark:text-neutral-300" title={r.vendor_name}>
-                                <div className="flex items-center gap-1.5 truncate">
-                                  <span className="truncate font-medium">{r.vendor_name || '-'}</span>
-                                  {r.vendor_match_type && r.vendor_match_type !== 'exact' && r.vendor_match_type !== 'new' && r.vendor_match_type !== 'empty' && (
-                                    <span
-                                      className="shrink-0 text-[8px] font-black bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800/60 px-1 py-0.5 rounded cursor-help"
-                                      title={`Fuzzy matched dari: "${r.raw_vendor}" (Kemiripan ${Math.round(r.vendor_match_score * 100)}%)`}
-                                    >
-                                      Fuzzy {Math.round(r.vendor_match_score * 100)}%
-                                    </span>
-                                  )}
-                                  {r.vendor_match_type === 'new' && r.vendor_name && (
-                                    <span
-                                      className="shrink-0 text-[8px] font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-500 px-1 py-0.5 rounded"
-                                      title="Vendor rekanan baru (akan otomatis dicatat)"
-                                    >
-                                      Baru
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-2 py-1.5 text-center">{r.qty}</td>
-                              <td className="px-2 py-1.5 text-right pr-3 font-mono">
-                                {formatThousands(r.unit_price)}
-                              </td>
-                              <td className="px-2 py-1.5 text-right pr-3 font-mono font-bold text-neutral-900 dark:text-white">
-                                {formatThousands(r.budget_amount)}
-                              </td>
-                              <td className="px-2 py-1.5 truncate text-neutral-500 dark:text-neutral-400" title={r.description}>
-                                {r.description || '-'}
+                          {displayedRows.length === 0 ? (
+                            <tr>
+                              <td colSpan={10} className="px-4 py-8 text-center text-neutral-400 text-xs">
+                                Tidak ada data baris pada filter ini.
                               </td>
                             </tr>
-                          ))}
+                          ) : (
+                            displayedRows.map((r, idx) => (
+                              <tr
+                                key={r.rowNumber || idx}
+                                className={
+                                  !r.isValid
+                                    ? 'bg-red-50/40 dark:bg-red-950/10 text-red-900 dark:text-red-300'
+                                    : 'hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30'
+                                }
+                              >
+                                <td className="px-2 py-1.5 text-center text-neutral-400 font-bold">{idx + 1}</td>
+                                <td className="px-2 py-1.5">
+                                  {r.isValid ? (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                                      <Check className="w-3 h-3" /> Valid
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-md" title={r.errors.join(', ')}>
+                                      <X className="w-3 h-3" /> Perbaiki
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Bulan Column with Inline Correction if Error */}
+                                <td className="px-2 py-1.5">
+                                  {r.errors.some(e => e.toLowerCase().includes('bulan') || e.toLowerCase().includes('month')) ? (
+                                    <div className="space-y-0.5">
+                                      <select
+                                        value={r.period_month || '1'}
+                                        onChange={(e) => handleFixRowMonth(r.rowNumber, e.target.value)}
+                                        className="w-full text-[9px] bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 rounded px-1 py-1 font-sans focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                                      >
+                                        <option value="">Pilih Bulan</option>
+                                        {MONTH_NAMES.map((m, mIdx) => (
+                                          <option key={mIdx + 1} value={mIdx + 1}>{mIdx + 1} - {m}</option>
+                                        ))}
+                                      </select>
+                                      <span className="block text-[8px] text-red-500 font-normal">Bulan invalid</span>
+                                    </div>
+                                  ) : (
+                                    <span className="truncate font-semibold block">{r.monthDisplay}</span>
+                                  )}
+                                </td>
+
+                                {/* CoA Column with Inline Correction if Error */}
+                                <td className="px-2 py-1.5">
+                                  {r.errors.some(e => e.toLowerCase().includes('coa')) ? (
+                                    <div className="space-y-0.5 py-0.5">
+                                      <select
+                                        value={r.coa_id || ''}
+                                        onChange={(e) => handleFixRowCoa(r.rowNumber, e.target.value)}
+                                        className="w-full text-[9px] bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 rounded px-1.5 py-1 font-sans focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                                      >
+                                        <option value="">-- Pilih Akun CoA --</option>
+                                        {metadata.coas?.map(coa => (
+                                          <option key={coa.id} value={coa.id}>
+                                            [{coa.code || '-'}] {coa.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <span className="block text-[8px] text-red-500 font-normal truncate" title={r.errors.find(e => e.toLowerCase().includes('coa'))}>
+                                        {r.errors.find(e => e.toLowerCase().includes('coa'))}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col gap-0.5 truncate">
+                                      <div className="flex items-center gap-1.5 truncate">
+                                        {r.coa_code && (
+                                          <span className="font-mono text-[9px] bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 px-1 py-0.5 rounded font-bold shrink-0">
+                                            {r.coa_code}
+                                          </span>
+                                        )}
+                                        <span className="truncate font-medium">{r.coa_name}</span>
+                                      </div>
+                                      {r.warnings?.some(w => w.toLowerCase().includes('dicocokkan') && w.toLowerCase().includes('akun')) && (
+                                        <span className="text-[8px] text-sky-600 dark:text-sky-400 flex items-center gap-0.5">
+                                          <Sparkles className="w-2.5 h-2.5 shrink-0" /> Cocok otomatis
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* Vendor Partner */}
+                                <td className="px-2 py-1.5 truncate text-neutral-600 dark:text-neutral-300" title={r.vendor_name}>
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className="truncate font-medium">{r.vendor_name || '-'}</span>
+                                    {r.vendor_match_type && r.vendor_match_type !== 'exact' && r.vendor_match_type !== 'new' && r.vendor_match_type !== 'empty' && (
+                                      <span
+                                        className="shrink-0 text-[8px] font-black bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800/60 px-1 py-0.5 rounded cursor-help flex items-center gap-0.5"
+                                        title={`Fuzzy matched dari: "${r.raw_vendor}" (Kemiripan ${Math.round(r.vendor_match_score * 100)}%)`}
+                                      >
+                                        <Sparkles className="w-2.5 h-2.5 text-sky-500 shrink-0" />
+                                        {Math.round(r.vendor_match_score * 100)}%
+                                      </span>
+                                    )}
+                                    {r.vendor_match_type === 'new' && r.vendor_name && (
+                                      <span
+                                        className="shrink-0 text-[8px] font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-500 px-1 py-0.5 rounded"
+                                        title="Vendor rekanan baru (akan otomatis dicatat)"
+                                      >
+                                        Baru
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="px-2 py-1.5 text-center">{r.qty}</td>
+                                <td className="px-2 py-1.5 text-right pr-3 font-mono">
+                                  {formatThousands(r.unit_price)}
+                                </td>
+                                <td className="px-2 py-1.5 text-right pr-3 font-mono font-bold text-neutral-900 dark:text-white">
+                                  {formatThousands(r.budget_amount)}
+                                </td>
+                                <td className="px-2 py-1.5 truncate text-neutral-500 dark:text-neutral-400" title={r.description}>
+                                  {r.description || '-'}
+                                </td>
+
+                                {/* Action: Delete Row */}
+                                <td className="px-2 py-1.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteRow(r.rowNumber)}
+                                    title="Hapus baris ini dari pratinjau"
+                                    className="p-1 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -1023,7 +1338,7 @@ export default function MarketingBudgetBulkUploadModal({
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <Check className="w-3.5 h-3.5" />
-                  Terapkan ${validCount > 0 ? `${validCount} Baris` : ''} ke Alokasi Anggaran
+                  Terapkan {validCount > 0 ? `${validCount} Baris ` : ''}ke Alokasi Anggaran
                 </button>
               </div>
             </div>
