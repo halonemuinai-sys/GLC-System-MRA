@@ -1308,12 +1308,16 @@ export default function MarketingPlanWizardModal({
       }
 
       if (contacts.length > 0) {
-        return contacts.map((c, idx) => ({
-          step_number: idx + 1,
-          approver_name: c.contact_name || c.label || '',
-          approver_email: c.email || c.contact_email || '',
-          approver_role: c.label || c.role?.replace(/_/g, ' ') || 'Approver'
-        }));
+        return contacts.map((c, idx) => {
+          const email = c.email || c.contact_email || '';
+          const matchedUser = (metadata.users || []).find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
+          return {
+            step_number: idx + 1,
+            approver_name: matchedUser ? matchedUser.full_name : (c.contact_name || c.label || ''),
+            approver_email: email,
+            approver_role: c.label || c.role?.replace(/_/g, ' ') || 'Approver'
+          };
+        });
       }
     }
 
@@ -1322,7 +1326,7 @@ export default function MarketingPlanWizardModal({
       { step_number: 2, approver_name: '', approver_email: '', approver_role: 'General Manager' },
       { step_number: 3, approver_name: '', approver_email: '', approver_role: 'Finance Controller' }
     ];
-  }, [metadata.defaultApproverContacts, metadata.companies, wizardHeader.company_id]);
+  }, [metadata.defaultApproverContacts, metadata.companies, metadata.users, wizardHeader.company_id]);
 
   // Initialize company ID once metadata is ready
   useEffect(() => {
