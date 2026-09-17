@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Check, Save, Loader2, AlertTriangle, Info, Target, Paperclip, Plus, Calendar
+  X, Check, Save, Loader2, AlertTriangle, Info, Target, Paperclip, Plus, Calendar, Download, Upload
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -12,6 +12,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/comp
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
 import SearchableCompanySelect from './SearchableCompanySelect';
+import MarketingBudgetBulkUploadModal, { downloadMarketingBudgetTemplate } from './MarketingBudgetBulkUploadModal';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const FISCAL_YEAR_OPTIONS = Array.from({ length: 4 }, (_, i) => String(CURRENT_YEAR - 1 + i));
@@ -474,7 +475,23 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
   );
 }
 
-function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, removeWizardItem, handleItemChange, metadata, overBudgetMonths, budgetAvailability, t, lang }) {
+function WizardStep2BudgetItems({ wizardHeader, wizardItems, setWizardItems, addWizardItem, removeWizardItem, handleItemChange, metadata, overBudgetMonths, budgetAvailability, t, lang }) {
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+
+  const handleApplyBulkUpload = (importedItems, mode) => {
+    if (mode === 'replace') {
+      setWizardItems(importedItems);
+    } else {
+      // mode === 'append': replace initial single blank row if it exists
+      const isSingleBlank = wizardItems.length === 1 && !wizardItems[0].coa_id && (!wizardItems[0].unit_price || wizardItems[0].unit_price === '0');
+      if (isSingleBlank) {
+        setWizardItems(importedItems);
+      } else {
+        setWizardItems(prev => [...prev, ...importedItems]);
+      }
+    }
+  };
+
   const budgetMonthlyMap = React.useMemo(() => {
     if (!budgetAvailability?.monthly) return {};
     return budgetAvailability.monthly.reduce((acc, m) => { acc[m.month] = m; return acc; }, {});
@@ -526,18 +543,43 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h4 className="text-xs font-bold text-neutral-800 dark:text-white">{t('monthlyAllocationTitle')}</h4>
           <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{t('monthlyAllocationSub')}</p>
         </div>
-        <button
-          type="button"
-          onClick={addWizardItem}
-          className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 text-[11px] font-extrabold border border-blue-500/20 px-3.5 py-2 rounded-xl hover:bg-blue-500/5 transition-all cursor-pointer shadow-sm"
-        >
-          <Plus className="w-3.5 h-3.5" /> {t('addRow')}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={() => downloadMarketingBudgetTemplate({
+              metadata,
+              currentItems: wizardItems,
+              campaignTitle: wizardHeader.title,
+              fiscalYear: wizardHeader.fiscal_year,
+              includeCurrentData: wizardItems.some(it => it.coa_id || (it.unit_price && it.unit_price !== '0'))
+            })}
+            className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-[11px] font-bold border border-neutral-200 dark:border-neutral-750 px-3 py-1.5 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all cursor-pointer shadow-sm"
+            title="Download Excel Template"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>{t('downloadTemplateBtn') || 'Download Template'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowBulkUpload(true)}
+            className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-xl hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30 transition-all cursor-pointer shadow-sm"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            <span>{t('bulkUploadBtn') || 'Bulk Upload'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={addWizardItem}
+            className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 text-[11px] font-extrabold border border-blue-500/20 px-3.5 py-1.5 rounded-xl hover:bg-blue-500/5 transition-all cursor-pointer shadow-sm"
+          >
+            <Plus className="w-3.5 h-3.5" /> {t('addRow')}
+          </button>
+        </div>
       </div>
 
       <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
@@ -729,6 +771,21 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, addWizardItem, remo
             ))}
           </div>
         </div>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {showBulkUpload && (
+        <MarketingBudgetBulkUploadModal
+          isOpen={showBulkUpload}
+          onClose={() => setShowBulkUpload(false)}
+          metadata={metadata}
+          onApply={handleApplyBulkUpload}
+          currentItems={wizardItems}
+          campaignTitle={wizardHeader.title}
+          fiscalYear={wizardHeader.fiscal_year}
+          t={t}
+          lang={lang}
+        />
       )}
     </div>
   );
@@ -1341,6 +1398,7 @@ export default function MarketingPlanWizardModal({
                     <WizardStep2BudgetItems
                       wizardHeader={wizardHeader}
                       wizardItems={wizardItems}
+                      setWizardItems={setWizardItems}
                       addWizardItem={addWizardItem}
                       removeWizardItem={removeWizardItem}
                       handleItemChange={handleItemChange}
