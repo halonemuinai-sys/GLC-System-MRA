@@ -907,6 +907,7 @@ model marketing_plans {
   items             marketing_plan_items[]
   approval_history  approval_history[]
   amendments        marketing_plan_amendments[]
+  approvers         marketing_plan_approvers[]
 
   @@schema("marketing_budget")
 }
@@ -1035,6 +1036,26 @@ model marketing_plan_amendment_items {
 
   amendment marketing_plan_amendments @relation(fields: [amendment_id], references: [id], onDelete: Cascade)
 
+  @@schema("marketing_budget")
+}
+
+model marketing_plan_approvers {
+  id                Int             @id @default(autoincrement())
+  marketing_plan_id Int
+  step_number       Int             @db.SmallInt
+  approver_name     String          @db.VarChar(150)
+  approver_email    String          @db.VarChar(150)
+  approver_role     String?         @db.VarChar(100)
+  status            String          @default("WAITING") @db.VarChar(20) // WAITING, PENDING, APPROVED, REJECTED
+  action_at         DateTime?       @db.Timestamp(6)
+  comment           String?
+  signature_url     String?
+  created_at        DateTime        @default(now()) @db.Timestamp(6)
+  updated_at        DateTime        @default(now()) @db.Timestamp(6)
+
+  marketing_plan    marketing_plans @relation(fields: [marketing_plan_id], references: [id], onDelete: Cascade)
+
+  @@index([marketing_plan_id], map: "idx_plan_approvers_plan_id")
   @@schema("marketing_budget")
 }
 

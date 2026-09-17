@@ -723,7 +723,11 @@ export default function MarketingPlanPage() {
                           {plan.pipeline && (
                             <p className="text-[9px] text-neutral-400 font-bold mt-1">
                               Step {plan.pipeline.currentStep}/{plan.pipeline.totalSteps || '?'}
-                              {plan.pipeline.approverRole && <> · {plan.pipeline.approverRole.replace(/_/g, ' ')}</>}
+                              {plan.pipeline.approverName ? (
+                                <> · <span className="text-neutral-700 dark:text-neutral-300 font-semibold">{plan.pipeline.approverName}</span>{plan.pipeline.approverRole ? ` (${plan.pipeline.approverRole.replace(/_/g, ' ')})` : ''}</>
+                              ) : plan.pipeline.approverRole ? (
+                                <> · {plan.pipeline.approverRole.replace(/_/g, ' ')}</>
+                              ) : null}
                             </p>
                           )}
                         </td>

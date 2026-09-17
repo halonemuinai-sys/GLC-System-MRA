@@ -55,7 +55,18 @@ async function getMetadata(req, res, next) {
       select: { id: true, vendor_code: true, vendor_name: true }
     });
 
-    res.json({ brands, lobs, branches, event_locations, coas, companies, vendors });
+    const users = await prisma.m_user.findMany({
+      where: { is_active: true },
+      select: { id: true, full_name: true, email: true, role: true, department: true, position: true },
+      orderBy: { full_name: 'asc' }
+    });
+
+    const defaultApproverContacts = await prisma.approval_role_contacts.findMany({
+      orderBy: { id: 'asc' },
+      include: { m_company_master: { select: { id: true, name: true } } }
+    });
+
+    res.json({ brands, lobs, branches, event_locations, coas, companies, vendors, users, defaultApproverContacts });
   } catch (err) {
     next(err);
   }

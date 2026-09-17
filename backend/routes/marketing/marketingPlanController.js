@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const prisma = require('../../api/db');
 const { sendMail } = require('../../api/mailer');
 const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope } = require('./marketingHelper');
@@ -69,7 +70,7 @@ async function createPlan(req, res, next) {
       return res.status(403).json({ error: 'User email not registered in employee database.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url, over_budget_reason, save_as_draft,
+    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason, save_as_draft,
       target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
@@ -161,36 +162,88 @@ async function createPlan(req, res, next) {
         });
       }
 
+      // Save custom signers / approvers (DocHub style)
+      if (approvers && Array.isArray(approvers) && approvers.length > 0) {
+        for (let i = 0; i < approvers.length; i++) {
+          const app = approvers[i];
+          if (!app.approver_name || !app.approver_email) continue;
+          await tx.marketing_plan_approvers.create({
+            data: {
+              marketing_plan_id: plan.id,
+              step_number: app.step_number || (i + 1),
+              approver_name: String(app.approver_name).trim(),
+              approver_email: String(app.approver_email).trim(),
+              approver_role: app.approver_role ? String(app.approver_role).trim() : null,
+              status: (!save_as_draft && (app.step_number === 1 || i === 0)) ? 'PENDING' : 'WAITING'
+            }
+          });
+        }
+      }
+
       if (!save_as_draft) {
-        const firstRules = await tx.approval_rules.findMany({
-          where: {
-            module: 'MARKETING_PLAN',
-            min_amount: { lte: totalBudget },
-            OR: [
-              { max_amount: { gte: totalBudget } },
-              { max_amount: null }
-            ],
-            step_number: 1
-          }
+        const planApprovers = await tx.marketing_plan_approvers.findMany({
+          where: { marketing_plan_id: plan.id },
+          orderBy: { step_number: 'asc' }
         });
 
-        const planCompany = await tx.m_company.findUnique({ where: { id: plan.company_id }, select: { company_master_id: true } });
-
-        for (const rule of firstRules) {
+        if (planApprovers.length > 0) {
+          const step1 = planApprovers[0];
           const history = await tx.approval_history.create({
             data: {
               marketing_plan_id: plan.id,
               approver_id: employee.id,
-              step_number: rule.step_number,
+              step_number: step1.step_number,
               status: 'PENDING'
             }
           });
-          await queueMagicLink(tx, magicLinkQueue, {
-            approvalHistoryId: history.id,
-            role: rule.approver_role,
-            stepNumber: rule.step_number,
-            companyMasterId: planCompany?.company_master_id
+          const token = crypto.randomBytes(32).toString('hex');
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          await tx.approval_magic_links.create({
+            data: {
+              token,
+              approval_history_id: history.id,
+              recipient_email: step1.approver_email,
+              expires_at: expiresAt
+            }
           });
+          magicLinkQueue.push({
+            email: step1.approver_email,
+            role: step1.approver_role || step1.approver_name,
+            stepNumber: step1.step_number,
+            token
+          });
+        } else {
+          // Fallback legacy approval_rules
+          const firstRules = await tx.approval_rules.findMany({
+            where: {
+              module: 'MARKETING_PLAN',
+              min_amount: { lte: totalBudget },
+              OR: [
+                { max_amount: { gte: totalBudget } },
+                { max_amount: null }
+              ],
+              step_number: 1
+            }
+          });
+
+          const planCompany = await tx.m_company.findUnique({ where: { id: plan.company_id }, select: { company_master_id: true } });
+
+          for (const rule of firstRules) {
+            const history = await tx.approval_history.create({
+              data: {
+                marketing_plan_id: plan.id,
+                approver_id: employee.id,
+                step_number: rule.step_number,
+                status: 'PENDING'
+              }
+            });
+            await queueMagicLink(tx, magicLinkQueue, {
+              approvalHistoryId: history.id,
+              role: rule.approver_role,
+              stepNumber: rule.step_number,
+              companyMasterId: planCompany?.company_master_id
+            });
+          }
         }
       }
 
@@ -239,7 +292,7 @@ async function updatePlan(req, res, next) {
       return res.status(404).json({ error: 'Marketing Plan not found.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url, over_budget_reason,
+    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason,
       target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
@@ -313,6 +366,26 @@ async function updatePlan(req, res, next) {
           }
         });
       }
+
+      // Sync custom signers / approvers (DocHub style)
+      if (approvers && Array.isArray(approvers)) {
+        await tx.marketing_plan_approvers.deleteMany({ where: { marketing_plan_id: planId } });
+        for (let i = 0; i < approvers.length; i++) {
+          const app = approvers[i];
+          if (!app.approver_name || !app.approver_email) continue;
+          await tx.marketing_plan_approvers.create({
+            data: {
+              marketing_plan_id: planId,
+              step_number: app.step_number || (i + 1),
+              approver_name: String(app.approver_name).trim(),
+              approver_email: String(app.approver_email).trim(),
+              approver_role: app.approver_role ? String(app.approver_role).trim() : null,
+              status: 'WAITING'
+            }
+          });
+        }
+      }
+
       return plan;
     });
 
@@ -352,23 +425,62 @@ async function submitPlan(req, res, next) {
         data: { status: 'PENDING_APPROVAL', is_over_budget: isOverBudget, updated_at: new Date() }
       });
 
-      const firstRules = await tx.approval_rules.findMany({
-        where: {
-          module: 'MARKETING_PLAN',
-          min_amount: { lte: totalBudget },
-          OR: [{ max_amount: { gte: totalBudget } }, { max_amount: null }],
-          step_number: 1
-        }
+      const planApprovers = await tx.marketing_plan_approvers.findMany({
+        where: { marketing_plan_id: planId },
+        orderBy: { step_number: 'asc' }
       });
-      const planCompany = await tx.m_company.findUnique({ where: { id: existingPlan.company_id }, select: { company_master_id: true } });
-      for (const rule of firstRules) {
+
+      if (planApprovers.length > 0) {
+        await tx.marketing_plan_approvers.updateMany({
+          where: { marketing_plan_id: planId },
+          data: { status: 'WAITING', action_at: null, comment: null, signature_url: null }
+        });
+        const step1 = planApprovers[0];
+        await tx.marketing_plan_approvers.update({
+          where: { id: step1.id },
+          data: { status: 'PENDING' }
+        });
+
         const history = await tx.approval_history.create({
-          data: { marketing_plan_id: planId, approver_id: employee.id, step_number: rule.step_number, status: 'PENDING' }
+          data: { marketing_plan_id: planId, approver_id: employee.id, step_number: step1.step_number, status: 'PENDING' }
         });
-        await queueMagicLink(tx, magicLinkQueue, {
-          approvalHistoryId: history.id, role: rule.approver_role, stepNumber: rule.step_number,
-          companyMasterId: planCompany?.company_master_id
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await tx.approval_magic_links.create({
+          data: {
+            token,
+            approval_history_id: history.id,
+            recipient_email: step1.approver_email,
+            expires_at: expiresAt
+          }
         });
+        magicLinkQueue.push({
+          email: step1.approver_email,
+          role: step1.approver_role || step1.approver_name,
+          stepNumber: step1.step_number,
+          token
+        });
+      } else {
+        // Fallback: legacy rule-based
+        const firstRules = await tx.approval_rules.findMany({
+          where: {
+            module: 'MARKETING_PLAN',
+            min_amount: { lte: totalBudget },
+            OR: [{ max_amount: { gte: totalBudget } }, { max_amount: null }],
+            step_number: 1
+          }
+        });
+        const planCompany = await tx.m_company.findUnique({ where: { id: existingPlan.company_id }, select: { company_master_id: true } });
+        for (const rule of firstRules) {
+          const history = await tx.approval_history.create({
+            data: { marketing_plan_id: planId, approver_id: employee.id, step_number: rule.step_number, status: 'PENDING' }
+          });
+          await queueMagicLink(tx, magicLinkQueue, {
+            approvalHistoryId: history.id, role: rule.approver_role, stepNumber: rule.step_number,
+            companyMasterId: planCompany?.company_master_id
+          });
+        }
       }
     });
 
@@ -436,6 +548,12 @@ async function recallPlan(req, res, next) {
         });
       }
 
+      // Reset marketing_plan_approvers kembali ke status WAITING
+      await tx.marketing_plan_approvers.updateMany({
+        where: { marketing_plan_id: planId },
+        data: { status: 'WAITING', action_at: null, comment: null, signature_url: null }
+      });
+
       await tx.marketing_plans.update({ where: { id: planId }, data: { status: 'DRAFT', updated_at: new Date() } });
     });
 
@@ -499,7 +617,7 @@ async function revisePlan(req, res, next) {
       return res.status(404).json({ error: 'Marketing Plan not found.' });
     }
 
-    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, doc_url, over_budget_reason,
+    const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason,
       target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
@@ -596,23 +714,75 @@ async function revisePlan(req, res, next) {
         });
       }
 
-      const firstRules = await tx.approval_rules.findMany({
-        where: {
-          module: 'MARKETING_PLAN',
-          min_amount: { lte: totalBudget },
-          OR: [{ max_amount: { gte: totalBudget } }, { max_amount: null }],
-          step_number: 1
+      // Sync custom signers / approvers (DocHub style)
+      if (approvers && Array.isArray(approvers) && approvers.length > 0) {
+        await tx.marketing_plan_approvers.deleteMany({ where: { marketing_plan_id: planId } });
+        for (let i = 0; i < approvers.length; i++) {
+          const app = approvers[i];
+          if (!app.approver_name || !app.approver_email) continue;
+          await tx.marketing_plan_approvers.create({
+            data: {
+              marketing_plan_id: planId,
+              step_number: app.step_number || (i + 1),
+              approver_name: String(app.approver_name).trim(),
+              approver_email: String(app.approver_email).trim(),
+              approver_role: app.approver_role ? String(app.approver_role).trim() : null,
+              status: (app.step_number === 1 || i === 0) ? 'PENDING' : 'WAITING'
+            }
+          });
         }
+      }
+
+      const planApprovers = await tx.marketing_plan_approvers.findMany({
+        where: { marketing_plan_id: planId },
+        orderBy: { step_number: 'asc' }
       });
-      const planCompany = await tx.m_company.findUnique({ where: { id: parseInt(company_id, 10) }, select: { company_master_id: true } });
-      for (const rule of firstRules) {
+
+      if (planApprovers.length > 0) {
+        const step1 = planApprovers[0];
+        await tx.marketing_plan_approvers.update({
+          where: { id: step1.id },
+          data: { status: 'PENDING' }
+        });
         const history = await tx.approval_history.create({
-          data: { marketing_plan_id: planId, approver_id: employee.id, step_number: rule.step_number, status: 'PENDING' }
+          data: { marketing_plan_id: planId, approver_id: employee.id, step_number: step1.step_number, status: 'PENDING' }
         });
-        await queueMagicLink(tx, magicLinkQueue, {
-          approvalHistoryId: history.id, role: rule.approver_role, stepNumber: rule.step_number,
-          companyMasterId: planCompany?.company_master_id
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await tx.approval_magic_links.create({
+          data: {
+            token,
+            approval_history_id: history.id,
+            recipient_email: step1.approver_email,
+            expires_at: expiresAt
+          }
         });
+        magicLinkQueue.push({
+          email: step1.approver_email,
+          role: step1.approver_role || step1.approver_name,
+          stepNumber: step1.step_number,
+          token
+        });
+      } else {
+        // Fallback legacy approval_rules
+        const firstRules = await tx.approval_rules.findMany({
+          where: {
+            module: 'MARKETING_PLAN',
+            min_amount: { lte: totalBudget },
+            OR: [{ max_amount: { gte: totalBudget } }, { max_amount: null }],
+            step_number: 1
+          }
+        });
+        const planCompany = await tx.m_company.findUnique({ where: { id: parseInt(company_id, 10) }, select: { company_master_id: true } });
+        for (const rule of firstRules) {
+          const history = await tx.approval_history.create({
+            data: { marketing_plan_id: planId, approver_id: employee.id, step_number: rule.step_number, status: 'PENDING' }
+          });
+          await queueMagicLink(tx, magicLinkQueue, {
+            approvalHistoryId: history.id, role: rule.approver_role, stepNumber: rule.step_number,
+            companyMasterId: planCompany?.company_master_id
+          });
+        }
       }
 
       return plan;
@@ -678,6 +848,7 @@ async function getPlans(req, res, next) {
         include: {
           company: { select: { id: true, name: true } },
           creator: { select: { id: true, name: true } },
+          approvers: { orderBy: { step_number: 'asc' } },
           approval_history: {
             where: { status: 'PENDING' },
             orderBy: { step_number: 'asc' },
@@ -710,9 +881,27 @@ async function getPlans(req, res, next) {
     });
 
     const plansWithPipeline = plans.map(plan => {
-      const { approval_history, ...rest } = plan;
-      const pendingStep = approval_history[0];
-      if (!pendingStep) return { ...rest, pipeline: null };
+      const { approval_history, approvers, ...rest } = plan;
+
+      // If plan has DocHub style custom approvers
+      if (approvers && approvers.length > 0) {
+        const activeApprover = approvers.find(a => a.status === 'PENDING') || approvers.find(a => a.status === 'WAITING') || approvers[0];
+        const isPending = plan.status === 'PENDING_APPROVAL';
+        return {
+          ...rest,
+          approvers,
+          pipeline: isPending ? {
+            currentStep: activeApprover.step_number,
+            totalSteps: approvers.length,
+            approverRole: activeApprover.approver_role || activeApprover.approver_name,
+            approverName: activeApprover.approver_name,
+            approverEmail: activeApprover.approver_email
+          } : null
+        };
+      }
+
+      const pendingStep = approval_history ? approval_history[0] : null;
+      if (!pendingStep) return { ...rest, approvers: [], pipeline: null };
       const amt = parseFloat(plan.total_budget);
       const bracketRules = allRules.filter(r =>
         amt >= parseFloat(r.min_amount) && (r.max_amount === null || amt <= parseFloat(r.max_amount))
@@ -720,6 +909,7 @@ async function getPlans(req, res, next) {
       const currentRule = bracketRules.find(r => r.step_number === pendingStep.step_number);
       return {
         ...rest,
+        approvers: [],
         pipeline: {
           currentStep: pendingStep.step_number,
           totalSteps: bracketRules.length,
@@ -757,8 +947,18 @@ async function getPlanDetail(req, res, next) {
             }
           }
         },
+        approvers: {
+          orderBy: { step_number: 'asc' }
+        },
         approval_history: {
-          include: { approver: true },
+          include: {
+            approver: true,
+            magic_links: {
+              where: { used_at: null, expires_at: { gt: new Date() } },
+              orderBy: { created_at: 'desc' },
+              take: 1
+            }
+          },
           orderBy: { step_number: 'asc' }
         },
         // amendments di-include setelah migrasi — dihandle terpisah di bawah

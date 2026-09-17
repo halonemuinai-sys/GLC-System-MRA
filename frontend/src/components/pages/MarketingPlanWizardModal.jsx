@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Check, Save, Loader2, AlertTriangle, Info, Target, Paperclip, Plus, Calendar, Download, Upload
+  X, Check, Save, Loader2, AlertTriangle, Info, Target, Paperclip, Plus, Calendar, Download, Upload,
+  Users, Mail, ArrowUp, ArrowDown, Sparkles, Trash2
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -791,7 +792,237 @@ function WizardStep2BudgetItems({ wizardHeader, wizardItems, setWizardItems, add
   );
 }
 
-function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, metadata, overBudgetMonths, budgetAvailability, t, lang }) {
+function WizardApproversSection({ wizardApprovers, setWizardApprovers, users = [], onUseDefaults, lang }) {
+  const addApprover = () => {
+    setWizardApprovers(prev => [
+      ...prev,
+      {
+        step_number: prev.length + 1,
+        approver_name: '',
+        approver_email: '',
+        approver_role: ''
+      }
+    ]);
+  };
+
+  const removeApprover = (index) => {
+    if (wizardApprovers.length <= 1) return;
+    setWizardApprovers(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      return updated.map((item, i) => ({ ...item, step_number: i + 1 }));
+    });
+  };
+
+  const updateApprover = (index, field, value) => {
+    setWizardApprovers(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const moveApprover = (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= wizardApprovers.length) return;
+    setWizardApprovers(prev => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      return updated.map((item, i) => ({ ...item, step_number: i + 1 }));
+    });
+  };
+
+  const handleUserSelect = (index, val) => {
+    const matched = users.find(u => u.full_name === val);
+    if (matched) {
+      setWizardApprovers(prev => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          approver_name: matched.full_name,
+          approver_email: matched.email || updated[index].approver_email,
+          approver_role: matched.position || matched.department || matched.role || updated[index].approver_role
+        };
+        return updated;
+      });
+    } else {
+      updateApprover(index, 'approver_name', val);
+    }
+  };
+
+  return (
+    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 space-y-4 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-100 dark:border-neutral-800 pb-3.5">
+        <div>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs">
+              <Users className="w-3.5 h-3.5" />
+            </div>
+            <h4 className="text-xs font-black text-neutral-850 dark:text-white uppercase tracking-wider">
+              {lang === 'id' ? 'Alur Penandatangan Dokumen (DocHub Workflow)' : 'Document Signers & Approval Chain'}
+            </h4>
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-200/60 dark:border-blue-900/30">
+              {lang === 'id' ? 'Berurutan' : 'Sequential'}
+            </span>
+          </div>
+          <p className="text-[10px] text-neutral-450 dark:text-neutral-500 mt-1">
+            {lang === 'id'
+              ? 'Tentukan pihak yang menandatangani dokumen secara berurutan. Setiap penandatangan akan menerima notifikasi email beserta Magic Link persetujuan.'
+              : 'Specify ordered signers. Each approver will receive an email notification with a digital approval Magic Link.'}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {onUseDefaults && (
+            <button
+              type="button"
+              onClick={onUseDefaults}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-250 dark:border-neutral-750 text-neutral-650 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-[11px] font-bold hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition-all cursor-pointer shadow-sm"
+              title={lang === 'id' ? 'Muat ulang approver rekomendasi dari sistem MRA' : 'Load default MRA recommended signers'}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>{lang === 'id' ? 'Rekomendasi MRA' : 'Use Default Chain'}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={addApprover}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition-all cursor-pointer shadow-sm shadow-blue-500/15"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{lang === 'id' ? 'Tambah Penandatangan' : 'Add Signer'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Approver list */}
+      <div className="space-y-3">
+        {wizardApprovers.map((approver, idx) => (
+          <div
+            key={idx}
+            className="group p-3.5 rounded-xl border border-neutral-200/80 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/30 hover:border-blue-500/40 transition-all flex flex-col md:flex-row md:items-center gap-3"
+          >
+            {/* Step badge & reorder controls */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="w-7 h-7 rounded-xl bg-blue-600 text-white text-xs font-black flex items-center justify-center shadow-sm shadow-blue-500/20">
+                {idx + 1}
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  disabled={idx === 0}
+                  onClick={() => moveApprover(idx, -1)}
+                  className="p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                  title="Move Up"
+                >
+                  <ArrowUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  disabled={idx === wizardApprovers.length - 1}
+                  onClick={() => moveApprover(idx, 1)}
+                  className="p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
+                  title="Move Down"
+                >
+                  <ArrowDown className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            {/* Fields grid */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              {/* Name with user datalist */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">
+                  {lang === 'id' ? 'Nama Penandatangan *' : 'Signer Name *'}
+                </label>
+                <input
+                  type="text"
+                  list={`users-datalist-${idx}`}
+                  value={approver.approver_name}
+                  onChange={(e) => handleUserSelect(idx, e.target.value)}
+                  placeholder="e.g. Budi Santoso"
+                  required
+                  className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
+                />
+                <datalist id={`users-datalist-${idx}`}>
+                  {users.map(u => (
+                    <option key={u.id} value={u.full_name}>
+                      {u.position ? `${u.position} · ${u.email}` : u.email}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">
+                  Email *
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
+                  <input
+                    type="email"
+                    value={approver.approver_email}
+                    onChange={(e) => updateApprover(idx, 'approver_email', e.target.value)}
+                    placeholder="approver@mraretail.co.id"
+                    required
+                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Role / Jabatan */}
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">
+                  {lang === 'id' ? 'Jabatan / Role' : 'Role / Position'}
+                </label>
+                <input
+                  type="text"
+                  value={approver.approver_role || ''}
+                  onChange={(e) => updateApprover(idx, 'approver_role', e.target.value)}
+                  placeholder="e.g. General Manager Retail"
+                  className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
+                />
+              </div>
+            </div>
+
+            {/* Remove button */}
+            <div className="flex items-center justify-end">
+              {wizardApprovers.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => removeApprover(idx)}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
+                  title={lang === 'id' ? 'Hapus Penandatangan' : 'Remove Signer'}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <div className="w-8 h-8" />
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WizardStep3ReviewSubmit({
+  wizardHeader,
+  setWizardHeader,
+  wizardItems,
+  metadata,
+  overBudgetMonths,
+  budgetAvailability,
+  wizardApprovers,
+  setWizardApprovers,
+  onUseDefaults,
+  t,
+  lang
+}) {
   const totalEstimation = wizardItems.reduce((acc, curr) => acc + Number(curr.budget_amount || 0), 0);
 
   const thresholdAlert = React.useMemo(() => {
@@ -939,6 +1170,15 @@ function WizardStep3ReviewSubmit({ wizardHeader, setWizardHeader, wizardItems, m
           </table>
         </div>
       </div>
+
+      {/* DocHub-style Document Signers Section */}
+      <WizardApproversSection
+        wizardApprovers={wizardApprovers}
+        setWizardApprovers={setWizardApprovers}
+        users={metadata.users || []}
+        onUseDefaults={onUseDefaults}
+        lang={lang}
+      />
     </div>
   );
 }
@@ -995,8 +1235,42 @@ export default function MarketingPlanWizardModal({
     { period_month: '1', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }
   ]);
 
+  const [wizardApprovers, setWizardApprovers] = useState([]);
+
   const [budgetAvailability, setBudgetAvailability] = useState(null);
   const [checkingBudget, setCheckingBudget] = useState(false);
+
+  // Helper to load default recommended approvers from metadata or fallback
+  const getDefaultApprovers = useCallback(() => {
+    if (metadata.defaultApproverContacts && metadata.defaultApproverContacts.length > 0) {
+      const selectedCompany = (metadata.companies || []).find(c => String(c.id) === String(wizardHeader.company_id));
+      const masterId = selectedCompany?.m_company_master?.id || selectedCompany?.company_master_id;
+
+      let contacts = metadata.defaultApproverContacts;
+      if (masterId) {
+        const matching = contacts.filter(c => c.company_master_id === masterId);
+        if (matching.length > 0) contacts = matching;
+        else contacts = contacts.filter(c => !c.company_master_id);
+      } else {
+        contacts = contacts.filter(c => !c.company_master_id);
+      }
+
+      if (contacts.length > 0) {
+        return contacts.map((c, idx) => ({
+          step_number: idx + 1,
+          approver_name: c.contact_name || c.label || '',
+          approver_email: c.email || c.contact_email || '',
+          approver_role: c.label || c.role?.replace(/_/g, ' ') || 'Approver'
+        }));
+      }
+    }
+
+    return [
+      { step_number: 1, approver_name: '', approver_email: '', approver_role: 'Marketing Manager' },
+      { step_number: 2, approver_name: '', approver_email: '', approver_role: 'General Manager' },
+      { step_number: 3, approver_name: '', approver_email: '', approver_role: 'Finance Controller' }
+    ];
+  }, [metadata.defaultApproverContacts, metadata.companies, wizardHeader.company_id]);
 
   // Initialize company ID once metadata is ready
   useEffect(() => {
@@ -1039,6 +1313,7 @@ export default function MarketingPlanWizardModal({
         setWizardItems([
           { period_month: '1', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }
         ]);
+        setWizardApprovers(getDefaultApprovers());
         setBudgetAvailability(null);
       }
       return;
@@ -1097,6 +1372,18 @@ export default function MarketingPlanWizardModal({
             }))
           : [{ period_month: '1', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }]
         );
+
+        if (plan.approvers && plan.approvers.length > 0) {
+          setWizardApprovers(plan.approvers.map((a, i) => ({
+            step_number: a.step_number || (i + 1),
+            approver_name: a.approver_name || '',
+            approver_email: a.approver_email || '',
+            approver_role: a.approver_role || ''
+          })));
+        } else {
+          setWizardApprovers(getDefaultApprovers());
+        }
+
         setWizardStep(1);
       } catch (err) {
         onError('Failed to load plan details: ' + err.message);
@@ -1106,7 +1393,7 @@ export default function MarketingPlanWizardModal({
     };
 
     loadPlanDetails();
-  }, [draftPlanId, revisingPlanId, isOpen, metadata.companies, getDefaultCompanyId, onError]);
+  }, [draftPlanId, revisingPlanId, isOpen, metadata.companies, getDefaultCompanyId, getDefaultApprovers, onError]);
 
   // Check budget availability
   const checkBudgetAvailability = useCallback(async () => {
@@ -1205,6 +1492,12 @@ export default function MarketingPlanWizardModal({
     target_impressions: wizardHeader.target_impressions ? parseInt(wizardHeader.target_impressions, 10) : null,
     target_roi_pct: wizardHeader.target_roi_pct ? parseFloat(wizardHeader.target_roi_pct) : null,
     target_notes: wizardHeader.target_notes || null,
+    approvers: wizardApprovers.map((a, i) => ({
+      step_number: i + 1,
+      approver_name: a.approver_name ? a.approver_name.trim() : '',
+      approver_email: a.approver_email ? a.approver_email.trim() : '',
+      approver_role: a.approver_role ? a.approver_role.trim() : ''
+    })),
     items: wizardItems.map(item => ({
       ...item,
       coa_id: Number(item.coa_id),
@@ -1263,13 +1556,36 @@ export default function MarketingPlanWizardModal({
       return;
     }
 
+    // Validate DocHub-style signers
+    const validApprovers = wizardApprovers.filter(a => a.approver_name?.trim() && a.approver_email?.trim());
+    if (validApprovers.length === 0) {
+      onError(lang === 'id' ? 'Minimal 1 penandatangan (approver) wajib ditentukan pada Step 3.' : 'Please define at least 1 signer in Step 3.');
+      setSubmitting(false);
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    for (let i = 0; i < wizardApprovers.length; i++) {
+      const app = wizardApprovers[i];
+      if (!app.approver_name || !app.approver_name.trim()) {
+        onError(lang === 'id' ? `Nama penandatangan pada Step ${i + 1} belum diisi.` : `Signer name at Step ${i + 1} is required.`);
+        setSubmitting(false);
+        return;
+      }
+      if (!app.approver_email || !emailRegex.test(app.approver_email.trim())) {
+        onError(lang === 'id' ? `Format email penandatangan pada Step ${i + 1} ("${app.approver_name}") tidak valid.` : `Email format for signer at Step ${i + 1} is invalid.`);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const payload = buildWizardPayload();
       if (revisingPlanId) {
         await apiClient.post(`/api/marketing/plans/${revisingPlanId}/revise`, payload);
         onSuccess(t('successRevised'));
       } else if (draftPlanId) {
-        await apiClient.post(`/api/marketing/plans/${draftPlanId}/submit-draft`, payload);
+        await apiClient.put(`/api/marketing/plans/${draftPlanId}`, payload);
+        await apiClient.post(`/api/marketing/plans/${draftPlanId}/submit`);
         onSuccess(t('successSubmitted'));
       } else {
         await apiClient.post('/api/marketing/plans', payload);
@@ -1418,6 +1734,9 @@ export default function MarketingPlanWizardModal({
                       metadata={metadata}
                       overBudgetMonths={overBudgetMonths}
                       budgetAvailability={budgetAvailability}
+                      wizardApprovers={wizardApprovers}
+                      setWizardApprovers={setWizardApprovers}
+                      onUseDefaults={() => setWizardApprovers(getDefaultApprovers())}
                       t={t}
                       lang={lang}
                     />

@@ -121,6 +121,74 @@ async function executeApprovalDecision({ task, action, comment, signature, actin
     const amt = isPlan ? parseFloat(task.marketing_plan.total_budget) : parseFloat(task.payment_request.amount);
     const mod = isPlan ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
 
+    // Check if this marketing plan uses the DocHub-style marketing_plan_approvers chain
+    if (isPlan) {
+      const planApprovers = await tx.marketing_plan_approvers.findMany({
+        where: { marketing_plan_id: task.marketing_plan_id },
+        orderBy: { step_number: 'asc' }
+      });
+
+      if (planApprovers.length > 0) {
+        if (action === 'REJECT') {
+          await tx.marketing_plan_approvers.updateMany({
+            where: { marketing_plan_id: task.marketing_plan_id, step_number: task.step_number },
+            data: { status: 'REJECTED', action_at: new Date(), comment }
+          });
+          await tx.marketing_plans.update({ where: { id: docId }, data: { status: 'REJECTED' } });
+          return { message: 'Document successfully rejected and returned to draft.', action, finalStatus: 'REJECTED', isPlan: true };
+        }
+
+        // Action is APPROVE
+        await tx.marketing_plan_approvers.updateMany({
+          where: { marketing_plan_id: task.marketing_plan_id, step_number: task.step_number },
+          data: { status: 'APPROVED', action_at: new Date(), comment, signature_url: signature || null }
+        });
+
+        const nextStep = task.step_number + 1;
+        const nextApprover = planApprovers.find(a => a.step_number === nextStep);
+
+        if (nextApprover) {
+          await tx.marketing_plan_approvers.update({
+            where: { id: nextApprover.id },
+            data: { status: 'PENDING' }
+          });
+
+          const nextHistory = await tx.approval_history.create({
+            data: {
+              marketing_plan_id: task.marketing_plan_id,
+              approver_id: actingApproverId,
+              step_number: nextStep,
+              status: 'PENDING'
+            }
+          });
+
+          const token = crypto.randomBytes(32).toString('hex');
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          await tx.approval_magic_links.create({
+            data: {
+              token,
+              approval_history_id: nextHistory.id,
+              recipient_email: nextApprover.approver_email,
+              expires_at: expiresAt
+            }
+          });
+
+          magicLinkQueue.push({
+            email: nextApprover.approver_email,
+            role: nextApprover.approver_role || nextApprover.approver_name,
+            stepNumber: nextStep,
+            token
+          });
+
+          return { message: 'Approved. Forwarded to the next step approval chain.', action };
+        } else {
+          // All signers have approved
+          await tx.marketing_plans.update({ where: { id: docId }, data: { status: 'APPROVED' } });
+          return { message: 'Final approval complete. Document marked as APPROVED.', action, finalStatus: 'APPROVED', isPlan: true };
+        }
+      }
+    }
+
     if (action === 'REJECT') {
       if (isPlan) {
         await tx.marketing_plans.update({ where: { id: docId }, data: { status: 'REJECTED' } });

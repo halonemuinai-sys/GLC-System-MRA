@@ -27,6 +27,7 @@ router.post('/plans/:id/submit', verifyToken, checkRole(['admin', 'marketing']),
 router.post('/plans/:id/recall', verifyToken, checkRole(['admin', 'marketing']), planController.recallPlan);
 router.put('/plans/:id/actuals', verifyToken, checkRole(['admin', 'marketing']), planController.updatePlanActuals);
 router.put('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.revisePlan);
+router.post('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.revisePlan);
 router.post('/plans/:id/complete', verifyToken, checkRole(['admin', 'marketing']), planController.completePlan);
 router.get('/plans', verifyToken, attachCompanyScope, planController.getPlans);
 router.get('/plans/:id', verifyToken, attachCompanyScope, planController.getPlanDetail);

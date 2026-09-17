@@ -6,7 +6,7 @@ import {
   X, Calendar, Paperclip, FileSpreadsheet, Building, Loader2,
   AlertTriangle, Info, BarChart2, CheckCircle, Clock,
   GitMerge, CheckSquare, Plus, Send, Trash2, ChevronDown, ChevronUp,
-  TrendingUp, Flag, Copy
+  TrendingUp, Flag, Copy, Check, Users
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -56,6 +56,15 @@ export default function MarketingPlanDetailModal({
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [copiedToken, setCopiedToken] = useState(null);
+
+  const handleCopyMagicLink = (token) => {
+    if (!token) return;
+    const link = `${window.location.origin}/approve/${token}`;
+    navigator.clipboard.writeText(link);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 2500);
+  };
 
   const handleDuplicatePlan = async () => {
     if (!selectedPlan) return;
@@ -634,6 +643,201 @@ export default function MarketingPlanDetailModal({
                         </div>
                       );
                     })()}
+
+                    {/* DocHub-style Document Signers & Approval Timeline Card */}
+                    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/40">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                            <Users className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black text-neutral-850 dark:text-white uppercase tracking-wider">
+                              {lang === 'id' ? 'Alur Persetujuan & Penandatangan Dokumen' : 'Approval Chain & Document Signers'}
+                            </h4>
+                            <p className="text-[10px] text-neutral-400">DocHub-style sequential signing workflow</p>
+                          </div>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-200/60 dark:border-blue-900/30">
+                          {selectedPlan.approvers?.length || selectedPlan.approval_history?.length || 0} {lang === 'id' ? 'Penandatangan' : 'Signers'}
+                        </span>
+                      </div>
+
+                      <div className="p-5 space-y-4">
+                        {selectedPlan.approvers && selectedPlan.approvers.length > 0 ? (
+                          <div className="relative pl-6 border-l-2 border-neutral-200 dark:border-neutral-800 space-y-5 my-2">
+                            {selectedPlan.approvers.map((signer, idx) => {
+                              const isApproved = signer.status === 'APPROVED';
+                              const isPending = signer.status === 'PENDING';
+                              const isRejected = signer.status === 'REJECTED';
+                              const isWaiting = signer.status === 'WAITING' || !signer.status;
+
+                              // Find matching active magic link token
+                              const matchingHistory = (selectedPlan.approval_history || []).find(h => h.step_number === signer.step_number);
+                              const activeMagicLink = matchingHistory?.magic_links?.[0]?.token;
+
+                              return (
+                                <div key={signer.id || idx} className="relative">
+                                  {/* Step indicator circle on timeline */}
+                                  <div className={`absolute -left-[31px] top-2 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border-2 bg-white dark:bg-neutral-900 ${
+                                    isApproved ? 'border-emerald-500 text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30' :
+                                    isPending ? 'border-blue-500 text-blue-600 animate-pulse bg-blue-50 dark:bg-blue-950/30' :
+                                    isRejected ? 'border-red-500 text-red-600 bg-red-50 dark:bg-red-950/30' :
+                                    'border-neutral-300 text-neutral-400'
+                                  }`}>
+                                    {isApproved ? '✓' : idx + 1}
+                                  </div>
+
+                                  {/* Signer Card */}
+                                  <div className={`p-4 rounded-xl border transition-all ${
+                                    isPending
+                                      ? 'border-blue-500/40 bg-blue-50/20 dark:bg-blue-950/10 shadow-sm ring-1 ring-blue-500/20'
+                                      : isApproved
+                                      ? 'border-emerald-500/30 bg-emerald-50/10 dark:bg-emerald-950/5'
+                                      : isRejected
+                                      ? 'border-red-500/30 bg-red-50/10 dark:bg-red-950/5'
+                                      : 'border-neutral-200/80 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-950/20'
+                                  }`}>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                      <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-xs font-black text-neutral-900 dark:text-white">
+                                            {signer.approver_name}
+                                          </span>
+                                          {signer.approver_role && (
+                                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
+                                              {signer.approver_role}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <p className="text-[11px] text-neutral-400 font-mono mt-0.5">
+                                          {signer.approver_email}
+                                        </p>
+                                      </div>
+
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        {/* Status badge */}
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase inline-flex items-center gap-1 ${
+                                          isApproved ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' :
+                                          isPending ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20 animate-pulse' :
+                                          isRejected ? 'bg-red-500/10 text-red-600 border border-red-500/20' :
+                                          'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 border border-neutral-200 dark:border-neutral-700'
+                                        }`}>
+                                          {isApproved && <CheckCircle className="w-3 h-3" />}
+                                          {isPending && <Clock className="w-3 h-3" />}
+                                          {isRejected && <AlertTriangle className="w-3 h-3" />}
+                                          {isWaiting && <Clock className="w-3 h-3 text-neutral-400" />}
+                                          {isApproved ? (lang === 'id' ? 'Disetujui' : 'Approved') :
+                                           isPending ? (lang === 'id' ? 'Menunggu Persetujuan' : 'Pending Signature') :
+                                           isRejected ? (lang === 'id' ? 'Ditolak' : 'Rejected') :
+                                           (lang === 'id' ? 'Menunggu Giliran' : 'Waiting in Queue')}
+                                        </span>
+
+                                        {/* Copy Magic Link Button for PENDING step */}
+                                        {isPending && activeMagicLink && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCopyMagicLink(activeMagicLink)}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black transition-all cursor-pointer shadow-sm ${
+                                              copiedToken === activeMagicLink
+                                                ? 'bg-emerald-600 text-white shadow-emerald-500/20'
+                                                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
+                                            }`}
+                                            title="Salin Magic Link untuk penandatangan ini"
+                                          >
+                                            {copiedToken === activeMagicLink ? (
+                                              <>
+                                                <Check className="w-3 h-3" />
+                                                <span>{lang === 'id' ? 'Link Tersalin!' : 'Link Copied!'}</span>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Copy className="w-3 h-3" />
+                                                <span>{lang === 'id' ? 'Salin Link Approval' : 'Copy Approval Link'}</span>
+                                              </>
+                                            )}
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Additional metadata: action_at, comment, signature */}
+                                    {(signer.action_at || signer.comment || signer.signature_url) && (
+                                      <div className="mt-3 pt-2.5 border-t border-neutral-100 dark:border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[10px]">
+                                        <div className="space-y-1">
+                                          {signer.action_at && (
+                                            <p className="text-neutral-400">
+                                              {isApproved ? (lang === 'id' ? 'Ditandatangani pada: ' : 'Signed on: ') : (lang === 'id' ? 'Waktu aksi: ' : 'Action date: ')}
+                                              <span className="font-semibold text-neutral-700 dark:text-neutral-300">
+                                                {new Date(signer.action_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                                              </span>
+                                            </p>
+                                          )}
+                                          {signer.comment && (
+                                            <p className="italic text-neutral-600 dark:text-neutral-300">
+                                              "{signer.comment}"
+                                            </p>
+                                          )}
+                                        </div>
+
+                                        {signer.signature_url && (
+                                          <div className="shrink-0 flex items-center gap-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-1 px-2.5">
+                                            <span className="text-[9px] font-bold text-neutral-400 uppercase">Tanda Tangan</span>
+                                            <img
+                                              src={signer.signature_url}
+                                              alt="Signature"
+                                              className="h-7 max-w-[120px] object-contain dark:invert"
+                                            />
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          /* Legacy fallback */
+                          (selectedPlan.approval_history && selectedPlan.approval_history.length > 0) ? (
+                            <div className="space-y-3">
+                              {selectedPlan.approval_history.map((hist, idx) => (
+                                <div key={hist.id || idx} className="p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/40 dark:bg-neutral-950/20 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-xs font-bold text-neutral-800 dark:text-white">
+                                      Step {hist.step_number}: {hist.approver?.name || hist.approver?.email || 'Approver'}
+                                    </p>
+                                    <p className="text-[10px] text-neutral-400">{hist.approver?.email}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                      hist.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-600' :
+                                      hist.status === 'REJECTED' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
+                                    }`}>
+                                      {hist.status}
+                                    </span>
+                                    {hist.magic_links?.[0]?.token && hist.status === 'PENDING' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCopyMagicLink(hist.magic_links[0].token)}
+                                        className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                                        title="Salin Magic Link"
+                                      >
+                                        <Copy className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-neutral-400 text-center py-3">
+                              {lang === 'id' ? 'Belum ada data alur penandatangan untuk plan ini.' : 'No signer workflow data found.'}
+                            </p>
+                          )
+                        )}
+                      </div>
+                    </div>
 
                     {/* Amendment Section */}
                     {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
