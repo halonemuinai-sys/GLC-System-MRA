@@ -213,7 +213,7 @@ export default function CostApprovalsPage() {
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-600/25 shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-600/25 shrink-0">
             <BadgeCheck className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -381,7 +381,7 @@ export default function CostApprovalsPage() {
                       <tr key={task.id} className={`border-l-[3px] ${isOverbudget ? 'border-l-transparent hover:border-l-red-400' : 'border-l-transparent hover:border-l-indigo-400'} hover:bg-neutral-50/30 dark:hover:bg-neutral-800/5 text-neutral-700 dark:text-neutral-300 transition-colors`}>
                         <td className="px-5 py-4">
                           <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase inline-block ${
-                            isPlan ? 'bg-blue-500/10 text-blue-600 border border-blue-200' : 'bg-violet-500/10 text-violet-600 border border-violet-200'
+                            isPlan ? 'bg-blue-500/10 text-blue-600 border border-blue-200' : 'bg-emerald-500/10 text-emerald-600 border border-emerald-200'
                           }`}>
                             {isPlan ? 'Marketing Plan' : 'Payment Request'}
                           </span>

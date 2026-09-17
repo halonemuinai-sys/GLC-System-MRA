@@ -21,7 +21,7 @@ function SectorBadge({ sector }) {
   
   const sectorColors = {
     'GENERAL': 'bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400',
-    'MEDIA': 'bg-purple-100 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400',
+    'MEDIA': 'bg-sky-100 dark:bg-sky-500/15 text-sky-700 dark:text-sky-400',
     'FB': 'bg-orange-100 dark:bg-orange-500/15 text-orange-700 dark:text-orange-400',
     'RADIO': 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
     'RETAIL': 'bg-pink-100 dark:bg-pink-500/15 text-pink-700 dark:text-pink-400',

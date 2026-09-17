@@ -91,17 +91,17 @@ const ACCENT = {
     border:   'border-blue-100 dark:border-blue-800/60'
   },
   violet: {
-    text:     'text-violet-600 dark:text-violet-400',
-    iconBg:   'bg-violet-100 dark:bg-violet-500/20',
-    navBg:    'bg-violet-50 dark:bg-violet-500/10',
-    bar:      'bg-violet-500',
-    subBg:    'bg-violet-50/50 dark:bg-violet-500/[0.06]',
-    badge:    'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400',
-    chevron:  'text-violet-400 dark:text-violet-500',
-    flyout:   'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10',
-    label:    'from-violet-500 to-purple-500',
-    dot:      'bg-gradient-to-br from-violet-400 to-purple-500',
-    border:   'border-violet-100 dark:border-violet-800/60'
+    text:     'text-blue-600 dark:text-blue-400',
+    iconBg:   'bg-blue-100 dark:bg-blue-500/20',
+    navBg:    'bg-blue-50 dark:bg-blue-500/10',
+    bar:      'bg-blue-500',
+    subBg:    'bg-blue-50/50 dark:bg-blue-500/[0.06]',
+    badge:    'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
+    chevron:  'text-blue-400 dark:text-blue-500',
+    flyout:   'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10',
+    label:    'from-blue-500 to-cyan-500',
+    dot:      'bg-gradient-to-br from-blue-400 to-cyan-500',
+    border:   'border-blue-100 dark:border-blue-800/60'
   },
   rose: {
     text:     'text-rose-600 dark:text-rose-400',
@@ -578,7 +578,7 @@ function SidebarContent({
     },
     {
       label: 'MASTER DATA',
-      accent: 'violet',
+      accent: 'blue',
       submenus: [
         {
           name: 'Master Data',
