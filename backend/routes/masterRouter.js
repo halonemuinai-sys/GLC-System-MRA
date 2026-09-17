@@ -621,10 +621,33 @@ router.post('/brands', allowWrite, async (req, res, next) => {
     }
 
     const parsedCompanyId = company_id ? parseInt(company_id, 10) : null;
+    const trimmedName = name.trim();
+
+    // Check if brand already exists (case-insensitive)
+    const existing = await prisma.m_brand.findFirst({
+      where: { name: { equals: trimmedName, mode: 'insensitive' } },
+      include: {
+        m_company: { select: { id: true, name: true, code: true } }
+      }
+    });
+
+    if (existing) {
+      if (!existing.company_id && parsedCompanyId) {
+        const updated = await prisma.m_brand.update({
+          where: { id: existing.id },
+          data: { company_id: parsedCompanyId },
+          include: {
+            m_company: { select: { id: true, name: true, code: true } }
+          }
+        });
+        return res.status(200).json(updated);
+      }
+      return res.status(200).json(existing);
+    }
 
     const brand = await prisma.m_brand.create({
       data: {
-        name: name.trim(),
+        name: trimmedName,
         company_id: parsedCompanyId
       },
       include: {

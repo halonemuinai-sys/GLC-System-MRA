@@ -13,6 +13,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/comp
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
 import SearchableCompanySelect from './SearchableCompanySelect';
+import SearchableBrandSelect from './SearchableBrandSelect';
 import MarketingBudgetBulkUploadModal, { downloadMarketingBudgetTemplate } from './MarketingBudgetBulkUploadModal';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -285,24 +286,18 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
 
         <div className="space-y-2">
           <FormLabel label="Brand / Principal *" tooltip={t('brandTooltip')} />
-          <select
+          <SearchableBrandSelect
+            brands={metadata.brands || []}
             value={wizardHeader.brand_id}
-            onChange={(e) => setWizardHeader(prev => ({ ...prev, brand_id: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
-            required
-          >
-            <option value="">{t('selectBrand')}</option>
-            {(metadata.brands || [])
-              .filter((b) => {
-                if (!wizardHeader.company_id) return true;
-                return !b.company_id || String(b.company_id) === String(wizardHeader.company_id);
-              })
-              .map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-          </select>
+            onChange={(val) => setWizardHeader(prev => ({ ...prev, brand_id: val }))}
+            selectedCompanyId={wizardHeader.company_id}
+            onBrandCreated={(newBrand) => {
+              if (metadata.brands && !metadata.brands.some(b => b.id === newBrand.id)) {
+                metadata.brands.push(newBrand);
+              }
+            }}
+            placeholder={t('selectBrand') || 'Select Brand / Principal'}
+          />
         </div>
 
         {/* Line of Business & Event Location */}

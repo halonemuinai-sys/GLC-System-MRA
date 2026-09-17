@@ -20,6 +20,7 @@ import {
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
 import SearchableCompanySelect from './SearchableCompanySelect';
+import SearchableBrandSelect from './SearchableBrandSelect';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const FISCAL_YEAR_OPTIONS = Array.from({ length: 4 }, (_, i) => String(CURRENT_YEAR - 1 + i));
@@ -377,23 +378,18 @@ export default function MarketingPlanQuickModal({
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
                       Brand (Opsional)
                     </label>
-                    <select
+                    <SearchableBrandSelect
+                      brands={metadata.brands || []}
                       value={formData.brand_id}
-                      onChange={(e) => setFormData({ ...formData, brand_id: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
-                    >
-                      <option value="">Semua / Tidak Spesifik</option>
-                      {(metadata.brands || [])
-                        .filter((b) => {
-                          if (!formData.company_id) return true;
-                          return !b.company_id || String(b.company_id) === String(formData.company_id);
-                        })
-                        .map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
-                    </select>
+                      onChange={(val) => setFormData({ ...formData, brand_id: val })}
+                      selectedCompanyId={formData.company_id}
+                      onBrandCreated={(newBrand) => {
+                        if (metadata.brands && !metadata.brands.some(b => b.id === newBrand.id)) {
+                          metadata.brands.push(newBrand);
+                        }
+                      }}
+                      placeholder="Semua / Tidak Spesifik"
+                    />
                   </div>
 
                   <div>
