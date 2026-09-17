@@ -22,14 +22,15 @@ export default function SearchableCompanySelect({ companies, value, onChange, pl
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const selectedCompany = companies.find(c => String(c.id) === String(value));
-  const filtered = companies.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const companyList = companies || [];
+  const selectedCompany = companyList.find(c => String(c.id) === String(value));
+  const filtered = companyList.filter(c => (c.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="relative w-full">
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[36px] select-none"
+        className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 flex items-center justify-between cursor-pointer min-h-[36px] select-none"
       >
         <span className="flex items-center gap-2 truncate">
           <span className={selectedCompany ? 'text-neutral-850 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
@@ -58,7 +59,7 @@ export default function SearchableCompanySelect({ companies, value, onChange, pl
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
                   autoFocus
                 />
               </div>
@@ -70,13 +71,18 @@ export default function SearchableCompanySelect({ companies, value, onChange, pl
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => { onChange(c.id); setSearchQuery(''); setIsOpen(false); }}
-                      className={`w-full text-left px-2.5 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-955/20 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors ${
-                        String(c.id) === String(value) ? 'bg-indigo-500/10' : ''
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChange(c.id);
+                        setSearchQuery('');
+                        setIsOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${
+                        String(c.id) === String(value) ? 'bg-blue-500/10' : ''
                       }`}
                     >
                       <span className="flex items-center gap-1.5">
-                        <span className={`text-xs font-medium ${String(c.id) === String(value) ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'}`}>
+                        <span className={`text-xs font-medium ${String(c.id) === String(value) ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-neutral-700 dark:text-neutral-300'}`}>
                           {c.name}
                         </span>
                         <SectorTag sector={c.m_company_master?.sector} />

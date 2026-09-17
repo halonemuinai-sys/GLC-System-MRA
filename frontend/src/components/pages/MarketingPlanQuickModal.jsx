@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -48,6 +48,8 @@ export default function MarketingPlanQuickModal({
   onSuccess,
   onError
 }) {
+  const prevIsOpenRef = useRef(false);
+
   const [formData, setFormData] = useState({
     title: '',
     company_id: '',
@@ -106,7 +108,10 @@ export default function MarketingPlanQuickModal({
   };
 
   useEffect(() => {
-    if (isOpen) {
+    const isOpening = isOpen && !prevIsOpenRef.current;
+    prevIsOpenRef.current = isOpen;
+
+    if (isOpening) {
       setFormData({
         title: '',
         company_id: metadata.companies?.[0]?.id ? String(metadata.companies[0].id) : '',
@@ -122,7 +127,7 @@ export default function MarketingPlanQuickModal({
       });
       setErrMessage(null);
     }
-  }, [isOpen, metadata]);
+  }, [isOpen, metadata.companies, metadata.coas, metadata.brands]);
 
   if (!isOpen) return null;
 

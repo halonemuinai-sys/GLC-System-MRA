@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Check, Save, Loader2, AlertTriangle, Info, Target, Paperclip, Plus, Calendar, Download, Upload,
@@ -173,7 +173,15 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
   );
 }
 
-function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) {
+function WizardStep1GeneralInfo({
+  wizardHeader,
+  setWizardHeader,
+  setWizardApprovers,
+  getDefaultApproversForCompany,
+  isDraftOrRevise,
+  metadata,
+  t
+}) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [branchSearch, setBranchSearch] = useState('');
@@ -278,6 +286,9 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
                 }
                 return { ...prev, company_id: strId, brand_id: newBrandId };
               });
+              if (!isDraftOrRevise && setWizardApprovers && getDefaultApproversForCompany) {
+                setWizardApprovers(getDefaultApproversForCompany(strId));
+              }
             }}
           />
         </div>
@@ -1247,6 +1258,9 @@ export default function MarketingPlanWizardModal({
   const { lang } = useLanguage();
   const t = useCallback((key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key), [lang]);
 
+  const prevIsOpenRef = useRef(false);
+  const prevActivePlanIdRef = useRef(null);
+
   const [wizardStep, setWizardStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submittingDraft, setSubmittingDraft] = useState(false);
@@ -1293,9 +1307,10 @@ export default function MarketingPlanWizardModal({
   const [checkingBudget, setCheckingBudget] = useState(false);
 
   // Helper to load default recommended approvers from metadata or fallback
-  const getDefaultApprovers = useCallback(() => {
+  const getDefaultApproversForCompany = useCallback((companyId) => {
+    const targetCid = companyId || wizardHeader.company_id;
     if (metadata.defaultApproverContacts && metadata.defaultApproverContacts.length > 0) {
-      const selectedCompany = (metadata.companies || []).find(c => String(c.id) === String(wizardHeader.company_id));
+      const selectedCompany = (metadata.companies || []).find(c => String(c.id) === String(targetCid));
       const masterId = selectedCompany?.m_company_master?.id || selectedCompany?.company_master_id;
 
       let contacts = metadata.defaultApproverContacts;
@@ -1326,52 +1341,69 @@ export default function MarketingPlanWizardModal({
       { step_number: 2, approver_name: '', approver_email: '', approver_role: 'General Manager' },
       { step_number: 3, approver_name: '', approver_email: '', approver_role: 'Finance Controller' }
     ];
-  }, [metadata.defaultApproverContacts, metadata.companies, metadata.users, wizardHeader.company_id]);
+  }, [metadata.defaultApproverContacts, metadata.companies, metadata.users]);
+
+  const getDefaultApprovers = useCallback((companyId) => {
+    return getDefaultApproversForCompany(companyId);
+  }, [getDefaultApproversForCompany]);
 
   // Initialize company ID once metadata is ready
   useEffect(() => {
-    if (metadata.companies && metadata.companies.length > 0 && !wizardHeader.company_id) {
-      setWizardHeader(prev => ({ ...prev, company_id: getDefaultCompanyId(metadata.companies) }));
+    if (isOpen && metadata.companies && metadata.companies.length > 0 && !wizardHeader.company_id) {
+      setWizardHeader(prev => {
+        if (prev.company_id) return prev;
+        return { ...prev, company_id: getDefaultCompanyId(metadata.companies) };
+      });
     }
-  }, [metadata.companies, wizardHeader.company_id, getDefaultCompanyId]);
+  }, [isOpen, metadata.companies, wizardHeader.company_id, getDefaultCompanyId]);
 
   // Load plan to edit or revise
   useEffect(() => {
     const activePlanId = draftPlanId || revisingPlanId;
-    if (!activePlanId || !isOpen) {
+    const isOpening = isOpen && !prevIsOpenRef.current;
+    const isPlanChanged = isOpen && activePlanId !== prevActivePlanIdRef.current;
+
+    prevIsOpenRef.current = isOpen;
+    prevActivePlanIdRef.current = activePlanId;
+
+    if (!isOpen) return;
+
+    // Only run when modal first opens or when activePlanId switches
+    if (!isOpening && !isPlanChanged) return;
+
+    if (!activePlanId) {
       // If we are opening a fresh modal, reset state
-      if (isOpen) {
-        setWizardStep(1);
-        setWizardHeader({
-          title: '',
-          description: '',
-          company_id: metadata.companies && metadata.companies.length > 0 ? getDefaultCompanyId(metadata.companies) : '',
-          fiscal_year: String(new Date().getFullYear()),
-          start_date: '',
-          end_date: '',
-          event_start_date: '',
-          event_end_date: '',
-          cta_start_date: '',
-          cta_end_date: '',
-          brand_id: '',
-          lob_id: '',
-          branch_ids: [],
-          event_location_id: '',
-          doc_url: '',
-          over_budget_reason: '',
-          target_sales: '',
-          target_leads: '',
-          target_reach: '',
-          target_impressions: '',
-          target_roi_pct: '',
-          target_notes: ''
-        });
-        setWizardItems([
-          { period_month: '1', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }
-        ]);
-        setWizardApprovers(getDefaultApprovers());
-        setBudgetAvailability(null);
-      }
+      const defaultCompId = metadata.companies && metadata.companies.length > 0 ? getDefaultCompanyId(metadata.companies) : '';
+      setWizardStep(1);
+      setWizardHeader({
+        title: '',
+        description: '',
+        company_id: defaultCompId,
+        fiscal_year: String(new Date().getFullYear()),
+        start_date: '',
+        end_date: '',
+        event_start_date: '',
+        event_end_date: '',
+        cta_start_date: '',
+        cta_end_date: '',
+        brand_id: '',
+        lob_id: '',
+        branch_ids: [],
+        event_location_id: '',
+        doc_url: '',
+        over_budget_reason: '',
+        target_sales: '',
+        target_leads: '',
+        target_reach: '',
+        target_impressions: '',
+        target_roi_pct: '',
+        target_notes: ''
+      });
+      setWizardItems([
+        { period_month: '1', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }
+      ]);
+      setWizardApprovers(getDefaultApproversForCompany(defaultCompId));
+      setBudgetAvailability(null);
       return;
     }
 
@@ -1437,7 +1469,7 @@ export default function MarketingPlanWizardModal({
             approver_role: a.approver_role || ''
           })));
         } else {
-          setWizardApprovers(getDefaultApprovers());
+          setWizardApprovers(getDefaultApproversForCompany(plan.company_id));
         }
 
         setWizardStep(1);
@@ -1449,7 +1481,7 @@ export default function MarketingPlanWizardModal({
     };
 
     loadPlanDetails();
-  }, [draftPlanId, revisingPlanId, isOpen, metadata.companies, getDefaultCompanyId, getDefaultApprovers, onError]);
+  }, [draftPlanId, revisingPlanId, isOpen, metadata.companies, getDefaultCompanyId, getDefaultApproversForCompany, onError]);
 
   // Check budget availability
   const checkBudgetAvailability = useCallback(async () => {
@@ -1696,7 +1728,7 @@ export default function MarketingPlanWizardModal({
 
             {loadingPlan ? (
               <div className="flex-1 py-32 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
                 <span className="text-xs text-neutral-400 font-medium">Loading plan details...</span>
               </div>
             ) : (
@@ -1761,6 +1793,9 @@ export default function MarketingPlanWizardModal({
                     <WizardStep1GeneralInfo
                       wizardHeader={wizardHeader}
                       setWizardHeader={setWizardHeader}
+                      setWizardApprovers={setWizardApprovers}
+                      getDefaultApproversForCompany={getDefaultApproversForCompany}
+                      isDraftOrRevise={Boolean(draftPlanId || revisingPlanId)}
                       metadata={metadata}
                       t={t}
                     />
