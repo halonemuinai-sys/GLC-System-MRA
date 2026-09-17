@@ -17,8 +17,7 @@ import {
   Calendar,
   Layers,
   Trash2,
-  Filter,
-  Sparkles
+  Filter
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 
@@ -1211,8 +1210,8 @@ export default function MarketingBudgetBulkUploadModal({
                                         <span className="truncate font-medium">{r.coa_name}</span>
                                       </div>
                                       {r.warnings?.some(w => w.toLowerCase().includes('dicocokkan') && w.toLowerCase().includes('akun')) && (
-                                        <span className="text-[8px] text-sky-600 dark:text-sky-400 flex items-center gap-0.5">
-                                          <Sparkles className="w-2.5 h-2.5 shrink-0" /> Cocok otomatis
+                                        <span className="text-[8px] text-sky-600 dark:text-sky-400 font-medium">
+                                          Cocok otomatis
                                         </span>
                                       )}
                                     </div>
@@ -1225,11 +1224,10 @@ export default function MarketingBudgetBulkUploadModal({
                                     <span className="truncate font-medium">{r.vendor_name || '-'}</span>
                                     {r.vendor_match_type && r.vendor_match_type !== 'exact' && r.vendor_match_type !== 'new' && r.vendor_match_type !== 'empty' && (
                                       <span
-                                        className="shrink-0 text-[8px] font-black bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800/60 px-1 py-0.5 rounded cursor-help flex items-center gap-0.5"
+                                        className="shrink-0 text-[8px] font-black bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800/60 px-1 py-0.5 rounded cursor-help"
                                         title={`Fuzzy matched dari: "${r.raw_vendor}" (Kemiripan ${Math.round(r.vendor_match_score * 100)}%)`}
                                       >
-                                        <Sparkles className="w-2.5 h-2.5 text-sky-500 shrink-0" />
-                                        {Math.round(r.vendor_match_score * 100)}%
+                                        Fuzzy {Math.round(r.vendor_match_score * 100)}%
                                       </span>
                                     )}
                                     {r.vendor_match_type === 'new' && r.vendor_name && (

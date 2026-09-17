@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Check, Plus, Loader2, X, Tag, Sparkles } from 'lucide-react';
+import { Search, Check, Plus, Loader2, X, Tag } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
 export default function SearchableBrandSelect({
@@ -219,8 +219,7 @@ export default function SearchableBrandSelect({
               {/* Group 1: Matching Company Brands (if company is selected) */}
               {matchingCompanyBrands.length > 0 && (
                 <div className="pt-1.5 pb-1">
-                  <div className="px-2.5 py-1 text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-3 h-3" />
+                  <div className="px-2.5 py-1 text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                     Brand Terdaftar pada PT Ini ({matchingCompanyBrands.length})
                   </div>
                   {matchingCompanyBrands.map((b) => {

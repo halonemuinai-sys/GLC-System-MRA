@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Check, Save, Loader2, AlertTriangle, Info, Target, Paperclip, Plus, Calendar, Download, Upload,
-  Users, Mail, ArrowUp, ArrowDown, Sparkles, Trash2
+  Users, Mail, ArrowUp, ArrowDown, Trash2
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -876,7 +876,7 @@ function WizardApproversSection({ wizardApprovers, setWizardApprovers, users = [
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-250 dark:border-neutral-750 text-neutral-650 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-[11px] font-bold hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition-all cursor-pointer shadow-sm"
               title={lang === 'id' ? 'Muat ulang approver rekomendasi dari sistem MRA' : 'Load default MRA recommended signers'}
             >
-              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>{lang === 'id' ? 'Rekomendasi MRA' : 'Use Default Chain'}</span>
             </button>
           )}
