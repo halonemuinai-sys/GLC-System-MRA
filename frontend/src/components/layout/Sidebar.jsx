@@ -581,12 +581,12 @@ function SidebarContent({
       accent: 'violet',
       submenus: [
         {
-          name: 'Data Master',
+          name: 'Master Data',
           icon: Database,
           children: [
-            { name: 'Perusahaan', path: '/dashboard/master/companies', icon: Building2, allowed: hasAccess(['ga', 'legal', 'compliance', 'marketing', 'auditor']) },
+            { name: 'Companies', path: '/dashboard/master/companies', icon: Building2, allowed: hasAccess(['ga', 'legal', 'compliance', 'marketing', 'auditor']) },
             { name: 'Vendors', path: '/dashboard/vendors', icon: Users, allowed: hasAccess(['ga', 'legal', 'compliance', 'marketing', 'auditor']) },
-            { name: 'Brand / Merek', path: '/dashboard/master/brands', icon: Tag, allowed: true },
+            { name: 'Brands', path: '/dashboard/master/brands', icon: Tag, allowed: true },
             { name: 'Line of Business', path: '/dashboard/master/lobs', icon: ClipboardList, allowed: true }
           ]
         }

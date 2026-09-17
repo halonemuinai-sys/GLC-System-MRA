@@ -292,9 +292,9 @@ const g = {
     masterCompany_seedData: 'Seed sample companies...',
 
     // ─── Master Brand ────────────────────────────────────────────────────
-    masterBrand_title: 'Brand & Trademark',
+    masterBrand_title: 'Brands',
     masterBrand_addBtn: 'Add Brand',
-    masterBrand_colName: 'Brand / Trademark Name',
+    masterBrand_colName: 'Brand Name',
     masterBrand_colAction: 'Actions',
     masterBrand_kpiTotal: 'Total Registered Brands',
     masterBrand_kpiActive: 'Active Brands',
@@ -611,9 +611,9 @@ const g = {
     masterCompany_seedData: 'Seed data perusahaan...',
 
     // ─── Master Brand ────────────────────────────────────────────────────
-    masterBrand_title: 'Brand & Merek',
+    masterBrand_title: 'Brands',
     masterBrand_addBtn: 'Tambah Brand',
-    masterBrand_colName: 'Nama Brand / Merek',
+    masterBrand_colName: 'Brand Name',
     masterBrand_colAction: 'Aksi',
     masterBrand_kpiTotal: 'Total Brand Terdaftar',
     masterBrand_kpiActive: 'Brand Aktif',

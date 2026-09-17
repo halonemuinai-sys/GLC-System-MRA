@@ -633,7 +633,7 @@ export default function MasterBrandPage() {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-555 uppercase tracking-wider block">
-                      Nama Brand / Merek *
+                      {t('masterBrand_colName')} *
                     </label>
                     <input
                       type="text"
