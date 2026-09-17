@@ -79,11 +79,11 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
         className="w-full flex items-center justify-between px-5 py-3.5 bg-neutral-50 dark:bg-neutral-955/30 hover:bg-neutral-105 dark:hover:bg-neutral-800/30 transition-colors text-left"
       >
         <div className="flex items-center gap-2">
-          <Target className="w-4 h-4 text-indigo-500" />
+          <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           <span className="text-xs font-extrabold text-neutral-700 dark:text-neutral-300">{t('kpiTargetsTitle')}</span>
           {(wizardHeader.target_sales || wizardHeader.target_leads || wizardHeader.target_reach ||
             wizardHeader.target_impressions || wizardHeader.target_roi_pct) && (
-            <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md">{t('hasTarget')}</span>
+            <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-md">{t('hasTarget')}</span>
           )}
         </div>
         <span className="text-neutral-400 text-xs">{open ? '▲' : '▼'}</span>
@@ -103,7 +103,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_sales: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-semibold"
               />
             </div>
             <div className="space-y-1">
@@ -116,7 +116,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_leads: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <div className="space-y-1">
@@ -129,7 +129,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_reach: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <div className="space-y-1">
@@ -142,7 +142,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_impressions: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <div className="space-y-1">
@@ -153,7 +153,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                 placeholder="0.00"
                 value={wizardHeader.target_roi_pct || ''}
                 onChange={(e) => setWizardHeader(p => ({ ...p, target_roi_pct: e.target.value }))}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
@@ -164,7 +164,7 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
               placeholder={t('targetNotesPlaceholder')}
               value={wizardHeader.target_notes || ''}
               onChange={(e) => setWizardHeader(p => ({ ...p, target_notes: e.target.value }))}
-              className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none"
             />
           </div>
         </div>
@@ -176,6 +176,31 @@ function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
 function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [branchSearch, setBranchSearch] = useState('');
+
+  const filteredBranches = useMemo(() => {
+    const allBranches = metadata.branches || [];
+    let list = allBranches.filter((b) => {
+      if (wizardHeader.company_id && b.company_id) {
+        if (String(b.company_id) !== String(wizardHeader.company_id)) return false;
+      }
+      if (wizardHeader.brand_id && b.brand_id) {
+        if (String(b.brand_id) !== String(wizardHeader.brand_id)) return false;
+      }
+      return true;
+    });
+
+    if (list.length === 0 && allBranches.length > 0) {
+      list = allBranches;
+    }
+
+    if (branchSearch.trim()) {
+      const q = branchSearch.trim().toLowerCase();
+      list = list.filter((b) => String(b.name || '').toLowerCase().includes(q));
+    }
+
+    return list;
+  }, [metadata.branches, wizardHeader.company_id, wizardHeader.brand_id, branchSearch]);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -361,10 +386,15 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
             onClick={() => setWizardHeader(prev => ({ ...prev, _branchDropdownOpen: !prev._branchDropdownOpen }))}
             className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-left font-medium flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
           >
-            <span className={wizardHeader.branch_ids.length === 0 ? 'text-neutral-850 dark:text-white' : 'text-blue-600 dark:text-blue-400'}>
-              {wizardHeader.branch_ids.length === 0
-                ? t('globalSales')
-                : `${wizardHeader.branch_ids.length} branch selected`}
+            <span className={wizardHeader.branch_ids.length === 0 ? 'text-neutral-850 dark:text-white font-medium' : 'text-blue-600 dark:text-blue-400 font-semibold'}>
+              {(() => {
+                if (wizardHeader.branch_ids.length === 0) return t('globalSales');
+                if (wizardHeader.branch_ids.length === 1) {
+                  const b = (metadata.branches || []).find(item => String(item.id) === String(wizardHeader.branch_ids[0]));
+                  return b ? b.name : '1 branch selected';
+                }
+                return `${wizardHeader.branch_ids.length} branches selected`;
+              })()}
             </span>
             <svg className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${wizardHeader._branchDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
           </button>
@@ -373,46 +403,73 @@ function WizardStep1GeneralInfo({ wizardHeader, setWizardHeader, metadata, t }) 
           {wizardHeader._branchDropdownOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setWizardHeader(prev => ({ ...prev, _branchDropdownOpen: false }))} />
-              <div className="absolute z-40 w-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl p-2.5 space-y-1 max-h-52 overflow-y-auto">
-                {/* Global / All Branches */}
-                <label className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
+              <div className="absolute z-40 w-full mt-1 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl p-2.5 space-y-2 max-h-64 flex flex-col">
+                {/* Search branch */}
+                <div className="relative shrink-0">
                   <input
-                    type="checkbox"
-                    checked={wizardHeader.branch_ids.length === 0}
-                    onChange={() => setWizardHeader(prev => ({ ...prev, branch_ids: [] }))}
-                    className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
+                    type="text"
+                    placeholder="Cari Branch / Store Name..."
+                    value={branchSearch}
+                    onChange={(e) => setBranchSearch(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-3 pr-7 py-1.5 text-xs text-neutral-800 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-blue-500 font-medium"
                   />
-                  <span className={`text-xs font-semibold ${wizardHeader.branch_ids.length === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{t('globalSales')}</span>
-                </label>
-                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-                {(metadata.branches || [])
-                  .filter(b => {
-                    const matchCompany = !b.company_id || String(b.company_id) === String(wizardHeader.company_id);
-                    const matchBrand = !b.brand_id || String(b.brand_id) === String(wizardHeader.brand_id);
-                    return matchCompany && matchBrand;
-                  })
-                  .map(b => (
-                    <label key={b.id} className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={wizardHeader.branch_ids.includes(String(b.id))}
-                        onChange={(e) => {
-                          setWizardHeader(prev => {
-                            const ids = [...prev.branch_ids];
-                            if (e.target.checked) {
-                              ids.push(String(b.id));
-                            } else {
-                              const idx = ids.indexOf(String(b.id));
-                              if (idx > -1) ids.splice(idx, 1);
-                            }
-                            return { ...prev, branch_ids: ids };
-                          });
-                        }}
-                        className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
-                      />
-                      <span className={`text-xs font-medium ${wizardHeader.branch_ids.includes(String(b.id)) ? 'text-neutral-900 dark:text-white' : 'text-neutral-600 dark:text-neutral-400'}`}>{b.name}</span>
-                    </label>
-                  ))}
+                  {branchSearch && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBranchSearch('');
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="overflow-y-auto space-y-0.5 pr-0.5 max-h-48">
+                  {/* Global / All Branches */}
+                  <label className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={wizardHeader.branch_ids.length === 0}
+                      onChange={() => setWizardHeader(prev => ({ ...prev, branch_ids: [] }))}
+                      className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
+                    />
+                    <span className={`text-xs font-semibold ${wizardHeader.branch_ids.length === 0 ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-500 dark:text-neutral-400'}`}>{t('globalSales')}</span>
+                  </label>
+                  <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+
+                  {filteredBranches.length === 0 ? (
+                    <div className="py-4 text-center text-xs text-neutral-400">
+                      Tidak ada cabang ditemukan
+                    </div>
+                  ) : (
+                    filteredBranches.map(b => (
+                      <label key={b.id} className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={wizardHeader.branch_ids.includes(String(b.id))}
+                          onChange={(e) => {
+                            setWizardHeader(prev => {
+                              const ids = [...prev.branch_ids];
+                              if (e.target.checked) {
+                                ids.push(String(b.id));
+                              } else {
+                                const idx = ids.indexOf(String(b.id));
+                                if (idx > -1) ids.splice(idx, 1);
+                              }
+                              return { ...prev, branch_ids: ids };
+                            });
+                          }}
+                          className="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
+                        />
+                        <span className={`text-xs font-medium ${wizardHeader.branch_ids.includes(String(b.id)) ? 'text-neutral-900 dark:text-white font-semibold' : 'text-neutral-600 dark:text-neutral-400'}`}>{b.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
             </>
           )}
@@ -1045,7 +1102,7 @@ function WizardStep3ReviewSubmit({
             <div>Brand: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.brands.find(b => String(b.id) === String(wizardHeader.brand_id))?.name || '-'}</span></div>
             <div>Line of Business: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.lobs.find(l => String(l.id) === String(wizardHeader.lob_id))?.name || '-'}</span></div>
             <div>{t('eventLocationReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { const br = metadata.event_locations.find(b => String(b.id) === String(wizardHeader.event_location_id)); return br ? br.name : '-'; })()}</span></div>
-            <div>{t('targetBranchReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { if (wizardHeader.branch_ids.length === 0) return t('globalSales'); return wizardHeader.branch_ids.map(bid => { const br = metadata.branches.find(b => String(b.id) === bid); return br ? br.name : bid; }).join(', '); })()}</span></div>
+            <div>{t('targetBranchReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{(() => { if (wizardHeader.branch_ids.length === 0) return t('globalSales'); return wizardHeader.branch_ids.map(bid => { const br = (metadata.branches || []).find(b => String(b.id) === String(bid)); return br ? br.name : bid; }).join(', '); })()}</span></div>
           </div>
         </div>
 

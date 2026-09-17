@@ -394,25 +394,36 @@ export default function MarketingPlanQuickModal({
 
                   <div>
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                      Cabang (Opsional)
+                      Target / Impacted Branch (Opsional)
                     </label>
                     <select
                       value={formData.branch_id}
                       onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
+                      className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs font-medium"
                     >
-                      <option value="">Pusat / Semua Cabang</option>
-                      {(metadata.branches || [])
-                        .filter((br) => {
-                          const matchCompany = !br.company_id || String(br.company_id) === String(formData.company_id);
-                          const matchBrand = !br.brand_id || String(br.brand_id) === String(formData.brand_id);
-                          return matchCompany && matchBrand;
-                        })
-                        .map((br) => (
+                      <option value="">Global Sales (Semua Cabang)</option>
+                      {(() => {
+                        const allBranches = metadata.branches || [];
+                        let list = allBranches.filter((br) => {
+                          if (formData.company_id && br.company_id) {
+                            if (String(br.company_id) !== String(formData.company_id)) return false;
+                          }
+                          if (formData.brand_id && br.brand_id) {
+                            if (String(br.brand_id) !== String(formData.brand_id)) return false;
+                          }
+                          return true;
+                        });
+
+                        if (list.length === 0 && allBranches.length > 0) {
+                          list = allBranches;
+                        }
+
+                        return list.map((br) => (
                           <option key={br.id} value={br.id}>
                             {br.name}
                           </option>
-                        ))}
+                        ));
+                      })()}
                     </select>
                   </div>
                 </div>
@@ -427,7 +438,7 @@ export default function MarketingPlanQuickModal({
                     placeholder="Rincian singkat kebutuhan..."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 text-xs"
+                    className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs"
                   />
                 </div>
 
