@@ -24,7 +24,8 @@ import {
   ArrowRightLeft,
   Calendar,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -33,8 +34,33 @@ import MarketingBudgetShiftHistoryModal from './MarketingBudgetShiftHistoryModal
 
 const FISCAL_YEAR_OPTIONS = ['2024', '2025', '2026', '2027'];
 
+// ─── Reusable Floating Tooltip Component ─────────────────────────────────────────
+function InfoTooltip({ content, position = 'top' }) {
+  if (!content) return null;
+  return (
+    <span className="relative inline-flex items-center group/tip align-middle ml-1.5 cursor-help">
+      <Info className="w-3.5 h-3.5 text-neutral-400 hover:text-blue-500 dark:text-neutral-500 dark:hover:text-blue-400 transition-colors" />
+      <span
+        role="tooltip"
+        className={`absolute z-50 hidden group-hover/tip:block px-3 py-2 text-[11px] font-normal leading-relaxed rounded-xl shadow-2xl border pointer-events-none w-64 text-neutral-100 bg-neutral-900/95 dark:bg-neutral-950/95 border-neutral-700/60 backdrop-blur-md normal-case text-left ${
+          position === 'top'
+            ? 'bottom-full mb-2 left-1/2 -translate-x-1/2'
+            : 'top-full mt-2 left-1/2 -translate-x-1/2'
+        }`}
+      >
+        <span className="relative z-10 block font-sans">{content}</span>
+        <span
+          className={`absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 border-neutral-700/60 rotate-45 ${
+            position === 'top' ? 'top-full -mt-1 border-r border-b' : 'bottom-full -mb-1 border-l border-t'
+          }`}
+        />
+      </span>
+    </span>
+  );
+}
+
 // ─── Stat Card Component ────────────────────────────────────────────────────────
-function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
+function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0, tooltip = '' }) {
   const colors = {
     blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
     emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
@@ -47,14 +73,17 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.35, ease: 'easeOut' }}
-      className="bg-white dark:bg-neutral-900/40 border border-neutral-200/70 dark:border-white/[0.06] rounded-2xl p-5 hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 transition-shadow"
+      className="bg-white dark:bg-neutral-900/40 border border-neutral-200/70 dark:border-white/[0.06] rounded-2xl p-5 hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 transition-shadow relative overflow-visible"
     >
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold text-neutral-450 dark:text-neutral-500 uppercase tracking-wider">{label}</p>
+        <div className="min-w-0 flex-1 pr-2">
+          <div className="flex items-center">
+            <p className="text-xs font-semibold text-neutral-450 dark:text-neutral-500 uppercase tracking-wider truncate">{label}</p>
+            {tooltip && <InfoTooltip content={tooltip} position="top" />}
+          </div>
           <p className="text-xl font-black text-neutral-900 dark:text-white mt-1">{value}</p>
         </div>
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${colors[color]}`}>
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${colors[color]}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
@@ -405,6 +434,7 @@ export default function MarketingBudgetPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowShiftHistoryModal(true)}
+                title="Buka riwayat pergeseran anggaran antar-bulan, alur persetujuan berjenjang, dan audit trail"
                 className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 <History className="w-3.5 h-3.5 text-neutral-500" />
@@ -421,6 +451,7 @@ export default function MarketingBudgetPage() {
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowShiftDrawer(true)}
                 disabled={activeBudget?.is_locked}
+                title="Ajukan relokasi kuota anggaran antar-bulan (Intra-Kuartal: FC | Cross-Kuartal: Head of Marketing + FC)"
                 className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer"
               >
                 <ArrowRightLeft className="w-3.5 h-3.5" />
@@ -431,6 +462,7 @@ export default function MarketingBudgetPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleToggleLock}
+                title={activeBudget.is_locked ? 'Buka kunci untuk mengizinkan perubahan limit alokasi bulanan' : 'Kunci anggaran untuk melindungi limit alokasi dari perubahan tidak sah'}
                 className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer ${activeBudget.is_locked ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/15' : 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/15'}`}
               >
                 {activeBudget.is_locked ? (
@@ -568,6 +600,7 @@ export default function MarketingBudgetPage() {
           icon={Coins}
           color="blue"
           delay={0.05}
+          tooltip="Total plafon alokasi anggaran maksimal yang ditetapkan untuk periode terpilih (12 bulan penuh atau kuartal aktif). Menjadi batas tertinggi komitmen biaya marketing."
         />
         <StatCard
           label="Committed (Plan)"
@@ -575,6 +608,7 @@ export default function MarketingBudgetPage() {
           icon={Clock}
           color="amber"
           delay={0.1}
+          tooltip="Akumulasi anggaran yang telah dialokasikan/diajukan oleh proposal Marketing Plans (status Menunggu, Disetujui, maupun Selesai) pada periode ini."
         />
         <StatCard
           label="Realisasi (Actual)"
@@ -582,6 +616,7 @@ export default function MarketingBudgetPage() {
           icon={TrendingUp}
           color="cyan"
           delay={0.15}
+          tooltip="Total pengeluaran riil aktual yang telah dicatatkan/terbayarkan dari pelaksanaan kampanye marketing yang sedang atau telah selesai berjalan."
         />
         <StatCard
           label="Sisa Kuota (Available)"
@@ -589,6 +624,7 @@ export default function MarketingBudgetPage() {
           icon={Sparkles}
           color="emerald"
           delay={0.2}
+          tooltip="Sisa plafon anggaran yang masih bebas dan dapat digunakan untuk proposal kampanye baru. Pada bulan yang telah ditutup bukunya, sisa dialihkan ke holding pool."
         />
       </div>
 
@@ -619,15 +655,55 @@ export default function MarketingBudgetPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
-                <th className="px-5 py-3.5">Bulan</th>
-                <th className="px-5 py-3.5">Status Buku</th>
-                <th className="px-5 py-3.5">Limit Anggaran</th>
-                <th className="px-5 py-3.5">Committed</th>
-                <th className="px-5 py-3.5">Realisasi</th>
-                <th className="px-5 py-3.5">Sisa Kuota</th>
-                <th className="px-5 py-3.5">Pemakaian</th>
-                <th className="px-5 py-3.5 text-right">Aksi</th>
+              <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider text-[11px]">
+                <th className="px-5 py-3.5">
+                  <span className="inline-flex items-center">
+                    Bulan
+                    <InfoTooltip content="Bulan dalam periode fiskal dan pengelompokan kuartal (Q1–Q4) terkait." position="bottom" />
+                  </span>
+                </th>
+                <th className="px-5 py-3.5">
+                  <span className="inline-flex items-center">
+                    Status Buku
+                    <InfoTooltip content="Status pembukuan bulan. 'Tutup Buku' mengunci alokasi dan menahan sisa anggaran di holding pool (tidak otomatis rollover per aturan COO)." position="bottom" />
+                  </span>
+                </th>
+                <th className="px-5 py-3.5">
+                  <span className="inline-flex items-center">
+                    Limit Anggaran
+                    <InfoTooltip content="Plafon maksimal alokasi belanja untuk bulan bersangkutan. Dapat disunting jika status master budget belum terkunci." position="bottom" />
+                  </span>
+                </th>
+                <th className="px-5 py-3.5">
+                  <span className="inline-flex items-center">
+                    Committed
+                    <InfoTooltip content="Akumulasi anggaran dari rencana kampanye (Marketing Plans) yang aktif pada bulan ini." position="bottom" />
+                  </span>
+                </th>
+                <th className="px-5 py-3.5">
+                  <span className="inline-flex items-center">
+                    Realisasi
+                    <InfoTooltip content="Pengeluaran riil aktual yang sudah dibayarkan/dieksekusi pada bulan ini." position="bottom" />
+                  </span>
+                </th>
+                <th className="px-5 py-3.5">
+                  <span className="inline-flex items-center">
+                    Sisa Kuota
+                    <InfoTooltip content="Kapasitas sisa pagu belanja (Limit - Committed). Pada bulan yang ditutup buku, sisa ditahan di pool korporat." position="bottom" />
+                  </span>
+                </th>
+                <th className="px-5 py-3.5">
+                  <span className="inline-flex items-center">
+                    Pemakaian
+                    <InfoTooltip content="Rasio persentase serapan anggaran realisasi terhadap limit pagu bulanan." position="bottom" />
+                  </span>
+                </th>
+                <th className="px-5 py-3.5 text-right">
+                  <span className="inline-flex items-center justify-end">
+                    Aksi
+                    <InfoTooltip content="Aksi manajerial Tutup Buku (membekukan sisa anggaran per aturan COO) atau Buka Buku kembali." position="bottom" />
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">

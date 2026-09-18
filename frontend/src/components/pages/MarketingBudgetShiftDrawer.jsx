@@ -10,7 +10,8 @@ import {
   Clock,
   Loader2,
   CheckCircle2,
-  DollarSign
+  DollarSign,
+  Info
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
@@ -18,6 +19,30 @@ const MONTH_NAMES = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
+
+function InfoTooltip({ content, position = 'top' }) {
+  if (!content) return null;
+  return (
+    <span className="relative inline-flex items-center group/tip align-middle ml-1.5 cursor-help">
+      <Info className="w-3.5 h-3.5 text-neutral-400 hover:text-blue-500 dark:text-neutral-500 dark:hover:text-blue-400 transition-colors" />
+      <span
+        role="tooltip"
+        className={`absolute z-50 hidden group-hover/tip:block px-3 py-2 text-[11px] font-normal leading-relaxed rounded-xl shadow-2xl border pointer-events-none w-64 text-neutral-100 bg-neutral-900/95 dark:bg-neutral-950/95 border-neutral-700/60 backdrop-blur-md normal-case text-left ${
+          position === 'top'
+            ? 'bottom-full mb-2 left-1/2 -translate-x-1/2'
+            : 'top-full mt-2 left-1/2 -translate-x-1/2'
+        }`}
+      >
+        <span className="relative z-10 block font-sans">{content}</span>
+        <span
+          className={`absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 border-neutral-700/60 rotate-45 ${
+            position === 'top' ? 'top-full -mt-1 border-r border-b' : 'bottom-full -mb-1 border-l border-t'
+          }`}
+        />
+      </span>
+    </span>
+  );
+}
 
 export default function MarketingBudgetShiftDrawer({
   isOpen,
@@ -179,8 +204,9 @@ export default function MarketingBudgetShiftDrawer({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* From Month */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">
+                  <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider flex items-center">
                     Bulan Sumber (Asal)
+                    <InfoTooltip content="Bulan yang memiliki sisa alokasi kuota aktif dan belum ditutup bukunya." />
                   </label>
                   <select
                     value={fromMonth}
@@ -205,8 +231,9 @@ export default function MarketingBudgetShiftDrawer({
 
                 {/* To Month */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">
+                  <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider flex items-center">
                     Bulan Tujuan
+                    <InfoTooltip content="Bulan yang akan menerima penambahan alokasi pagu belanja dari hasil pergeseran." />
                   </label>
                   <select
                     value={toMonth}
@@ -267,8 +294,9 @@ export default function MarketingBudgetShiftDrawer({
 
               {/* Amount Input */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">
+                <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider flex items-center">
                   Nominal yang Digeser (Rp)
+                  <InfoTooltip content="Nilai dana yang dipindahkan. Tidak boleh melebihi sisa alokasi bulan sumber." />
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">
@@ -286,8 +314,9 @@ export default function MarketingBudgetShiftDrawer({
 
               {/* Reason Textarea */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">
+                <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider flex items-center">
                   Alasan & Justifikasi Pergeseran
+                  <InfoTooltip content="Penjelasan alasan bisnis atau kebutuhan program kampanye yang membutuhkan tambahan anggaran." />
                 </label>
                 <textarea
                   rows={4}

@@ -13,7 +13,8 @@ import {
   Loader2,
   AlertTriangle,
   FileSpreadsheet,
-  MoreVertical
+  MoreVertical,
+  Info
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -27,6 +28,31 @@ import {
   formatIDRCompact,
   CURRENT_YEAR
 } from './MarketingGanttUtils';
+
+// ── Floating Tooltip Component ───────────────────────────────────────────────
+function InfoTooltip({ content, position = 'top' }) {
+  if (!content) return null;
+  return (
+    <span className="relative inline-flex items-center group/tip align-middle ml-1.5 cursor-help">
+      <Info className="w-3.5 h-3.5 text-neutral-400 hover:text-blue-500 dark:text-neutral-500 dark:hover:text-blue-400 transition-colors" />
+      <span
+        role="tooltip"
+        className={`absolute z-50 hidden group-hover/tip:block px-3 py-2 text-[11px] font-normal leading-relaxed rounded-xl shadow-2xl border pointer-events-none w-64 text-neutral-100 bg-neutral-900/95 dark:bg-neutral-950/95 border-neutral-700/60 backdrop-blur-md normal-case text-left ${
+          position === 'top'
+            ? 'bottom-full mb-2 left-1/2 -translate-x-1/2'
+            : 'top-full mt-2 left-1/2 -translate-x-1/2'
+        }`}
+      >
+        <span className="relative z-10 block font-sans">{content}</span>
+        <span
+          className={`absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 border-neutral-700/60 rotate-45 ${
+            position === 'top' ? 'top-full -mt-1 border-r border-b' : 'bottom-full -mb-1 border-l border-t'
+          }`}
+        />
+      </span>
+    </span>
+  );
+}
 
 // ── Custom Tooltip: Budget vs Realisasi ───────────────────────────────────────
 function CustomBudgetTooltip({ active, payload }) {
@@ -315,6 +341,7 @@ export default function MarketingOverviewPage() {
                 theme: 'blue',
                 stroke: '#3b82f6',
                 icon: DollarSign,
+                tooltip: 'Total akumulasi pagu anggaran seluruh rencana campaign marketing dalam tahun fiskal aktif.',
                 strokePath: 'M 0 25 L 30 18 L 60 22 L 90 12 L 120 28 L 150 10 L 180 20 L 210 5 L 240 18 L 270 8 L 300 15 L 330 25 L 360 12 L 400 25',
                 fillPath: 'M 0 40 L 0 25 L 30 18 L 60 22 L 90 12 L 120 28 L 150 10 L 180 20 L 210 5 L 240 18 L 270 8 L 300 15 L 330 25 L 360 12 L 400 25 L 400 40 Z'
               },
@@ -325,6 +352,7 @@ export default function MarketingOverviewPage() {
                 theme: 'emerald',
                 stroke: '#10b981',
                 icon: TrendingUp,
+                tooltip: 'Total nominal pengeluaran riil yang telah terbayarkan dari item campaign yang berjalan (burn rate terhadap pagu).',
                 strokePath: 'M 0 35 L 40 32 L 80 25 L 120 28 L 160 18 L 200 20 L 240 12 L 280 15 L 320 8 L 360 10 L 400 35',
                 fillPath: 'M 0 40 L 0 35 L 40 32 L 80 25 L 120 28 L 160 18 L 200 20 L 240 12 L 280 15 L 320 8 L 360 10 L 400 35 L 400 40 Z'
               },
@@ -335,6 +363,7 @@ export default function MarketingOverviewPage() {
                 theme: 'amber',
                 stroke: '#f59e0b',
                 icon: TrendingDown,
+                tooltip: 'Sisa pagu anggaran yang belum terserap dan masih tersedia untuk alokasi rencana campaign baru.',
                 strokePath: 'M 0 10 L 40 12 L 80 18 L 120 15 L 160 22 L 200 20 L 240 28 L 280 25 L 320 32 L 360 30 L 400 10',
                 fillPath: 'M 0 40 L 0 10 L 40 12 L 80 18 L 120 15 L 160 22 L 200 20 L 240 28 L 280 25 L 320 32 L 360 30 L 400 10 L 400 40 Z'
               },
@@ -361,9 +390,10 @@ export default function MarketingOverviewPage() {
                 ),
                 theme: 'slate',
                 icon: Layers,
+                tooltip: 'Distribusi status keseluruhan proposal campaign marketing (Disetujui, Menunggu, Ditolak, dan Draft).',
                 showProgress: true
               },
-            ].map(({ label, value, sub, theme, stroke, icon: Icon, strokePath, fillPath, showProgress }, idx) => {
+            ].map(({ label, value, sub, theme, stroke, icon: Icon, strokePath, fillPath, showProgress, tooltip }, idx) => {
               const currentTheme = CARD_THEMES[theme];
               const approvedPercentage = kpis.total > 0 ? Math.round((kpis.approved / kpis.total) * 100) : 0;
               return (
@@ -372,7 +402,7 @@ export default function MarketingOverviewPage() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.08, duration: 0.4, ease: 'easeOut' }}
-                  className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-5 pb-8 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 hover:-translate-y-0.5 transition-all duration-300 group min-h-[128px]"
+                  className="relative bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-5 pb-8 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 hover:-translate-y-0.5 transition-all duration-300 group min-h-[128px] overflow-visible"
                 >
                   <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full blur-2xl group-hover:opacity-100 opacity-60 transition-opacity duration-350 ${currentTheme.glow}`} />
                   <div className={`absolute left-0 top-5 bottom-5 w-1 rounded-r-md transition-all duration-300 group-hover:top-3 group-hover:bottom-3 ${currentTheme.indicator}`} />
@@ -381,7 +411,10 @@ export default function MarketingOverviewPage() {
                       <Icon className={`w-5.5 h-5.5 ${currentTheme.iconText}`} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[10px] text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider leading-none">{label}</p>
+                      <div className="flex items-center">
+                        <p className="text-[10px] text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider leading-none truncate">{label}</p>
+                        {tooltip && <InfoTooltip content={tooltip} position="top" />}
+                      </div>
                       <h3 className="text-lg font-black text-neutral-900 dark:text-white truncate mt-1.5 leading-none">{value}</h3>
                       {typeof sub === 'string' ? (
                         <p className="text-[10px] text-neutral-455 dark:text-neutral-500 mt-2 font-semibold truncate leading-none">{sub}</p>

@@ -20,15 +20,41 @@ import {
   Mail,
   Calendar,
   Sparkles,
-  Award
+  Award,
+  Info
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
 
 const FISCAL_YEAR_OPTIONS = ['2024', '2025', '2026', '2027'];
 
+// ─── Floating Tooltip Component ───────────────────────────────────────────────
+function InfoTooltip({ content, position = 'top' }) {
+  if (!content) return null;
+  return (
+    <span className="relative inline-flex items-center group/tip align-middle ml-1.5 cursor-help">
+      <Info className="w-3.5 h-3.5 text-neutral-400 hover:text-blue-500 dark:text-neutral-500 dark:hover:text-blue-400 transition-colors" />
+      <span
+        role="tooltip"
+        className={`absolute z-50 hidden group-hover/tip:block px-3 py-2 text-[11px] font-normal leading-relaxed rounded-xl shadow-2xl border pointer-events-none w-64 text-neutral-100 bg-neutral-900/95 dark:bg-neutral-950/95 border-neutral-700/60 backdrop-blur-md normal-case text-left ${
+          position === 'top'
+            ? 'bottom-full mb-2 left-1/2 -translate-x-1/2'
+            : 'top-full mt-2 left-1/2 -translate-x-1/2'
+        }`}
+      >
+        <span className="relative z-10 block font-sans">{content}</span>
+        <span
+          className={`absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 border-neutral-700/60 rotate-45 ${
+            position === 'top' ? 'top-full -mt-1 border-r border-b' : 'bottom-full -mb-1 border-l border-t'
+          }`}
+        />
+      </span>
+    </span>
+  );
+}
+
 // ─── Stat Card Component ────────────────────────────────────────────────────────
-function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
+function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0, tooltip = '' }) {
   const colors = {
     blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
     emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
@@ -41,14 +67,17 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.35, ease: 'easeOut' }}
-      className="bg-white dark:bg-neutral-900/40 border border-neutral-200/70 dark:border-white/[0.06] rounded-2xl p-5 hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 transition-shadow"
+      className="bg-white dark:bg-neutral-900/40 border border-neutral-200/70 dark:border-white/[0.06] rounded-2xl p-5 hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 transition-shadow relative overflow-visible"
     >
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold text-neutral-450 dark:text-neutral-500 uppercase tracking-wider">{label}</p>
+        <div className="min-w-0 flex-1 pr-2">
+          <div className="flex items-center">
+            <p className="text-xs font-semibold text-neutral-450 dark:text-neutral-500 uppercase tracking-wider truncate">{label}</p>
+            {tooltip && <InfoTooltip content={tooltip} position="top" />}
+          </div>
           <p className="text-xl font-black text-neutral-900 dark:text-white mt-1">{value}</p>
         </div>
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${colors[color]}`}>
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${colors[color]}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
@@ -313,6 +342,7 @@ export default function MarketingApprovalOverviewPage() {
           icon={ClipboardCheck}
           color="blue"
           delay={0.05}
+          tooltip="Jumlah keseluruhan proposal Marketing Plan yang terdaftar pada kriteria filter aktif."
         />
         <StatCard
           label={t('marketing_approval_kpiPending')}
@@ -320,6 +350,7 @@ export default function MarketingApprovalOverviewPage() {
           icon={Clock}
           color="amber"
           delay={0.1}
+          tooltip="Proposal yang saat ini sedang menunggu giliran persetujuan atau tanda tangan penandatangan aktif."
         />
         <StatCard
           label="Pengajuan Over-Budget"
@@ -327,6 +358,7 @@ export default function MarketingApprovalOverviewPage() {
           icon={AlertTriangle}
           color="rose"
           delay={0.15}
+          tooltip="Proposal yang nilai anggarannya melampaui sisa kuota bulanan dan membutuhkan otorisasi approval khusus."
         />
         <StatCard
           label="Disetujui (Approved)"
@@ -334,6 +366,7 @@ export default function MarketingApprovalOverviewPage() {
           icon={CheckCircle}
           color="emerald"
           delay={0.2}
+          tooltip="Proposal yang telah tuntas disetujui oleh seluruh penandatangan berurutan dalam dokumen alur approval."
         />
       </div>
 
