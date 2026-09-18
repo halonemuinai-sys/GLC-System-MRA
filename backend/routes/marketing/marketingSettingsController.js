@@ -1,4 +1,5 @@
 const prisma = require('../../api/db');
+const { resolveEmployee } = require('./marketingHelper');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -576,14 +577,52 @@ async function checkBudgetAvailability(req, res, next) {
       const budgetLimit = limitObj ? parseFloat(limitObj.budget_limit || 0) : 0;
       const committed = monthlyCommitted[i];
       const actual = monthlyActual[i];
+      const isClosed = limitObj ? !!limitObj.is_closed : false;
+      const quarterNum = Math.ceil(monthNum / 3);
 
       return {
+        id: limitObj ? limitObj.id : null,
         month: monthNum,
+        quarter: quarterNum,
         limit: budgetLimit,
         committed,
         actual,
-        available: budgetLimit - committed,
-        is_locked: budget ? budget.is_locked : false
+        available: isClosed ? 0 : Math.max(0, budgetLimit - committed),
+        unspent: Math.max(0, budgetLimit - (committed > 0 ? committed : actual)),
+        is_locked: budget ? budget.is_locked : false,
+        is_closed: isClosed,
+        closed_at: limitObj ? limitObj.closed_at : null,
+        closed_by: limitObj ? limitObj.closed_by : null
+      };
+    });
+
+    // Quarterly aggregates & deadlines according to COO rules
+    const quarterConfigs = [
+      { quarter: 1, name: 'Q1 (Jan - Mar)', months: [1, 2, 3], deadline: `${fiscal_year - 1}-12-31` },
+      { quarter: 2, name: 'Q2 (Apr - Jun)', months: [4, 5, 6], deadline: `${fiscal_year}-02-28` },
+      { quarter: 3, name: 'Q3 (Jul - Sep)', months: [7, 8, 9], deadline: `${fiscal_year}-05-31` },
+      { quarter: 4, name: 'Q4 (Okt - Des)', months: [10, 11, 12], deadline: `${fiscal_year}-10-31` }
+    ];
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const quarterly = quarterConfigs.map(qc => {
+      const qMonths = result.filter(r => qc.months.includes(r.month));
+      const total_limit = qMonths.reduce((sum, m) => sum + m.limit, 0);
+      const total_committed = qMonths.reduce((sum, m) => sum + m.committed, 0);
+      const total_actual = qMonths.reduce((sum, m) => sum + m.actual, 0);
+      const total_available = qMonths.reduce((sum, m) => sum + m.available, 0);
+      const is_all_closed = qMonths.length > 0 && qMonths.every(m => m.is_closed);
+      const is_deadline_passed = todayStr > qc.deadline;
+
+      return {
+        ...qc,
+        total_limit,
+        total_committed,
+        total_actual,
+        total_available,
+        is_all_closed,
+        is_deadline_passed
       };
     });
 
@@ -601,9 +640,11 @@ async function checkBudgetAvailability(req, res, next) {
       }));
 
     res.json({
+      id: budget ? budget.id : null,
       is_locked: budget ? budget.is_locked : false,
       total_budget: budget ? parseFloat(budget.total_budget || 0) : 0,
       monthly: result,
+      quarterly,
       related_plans
     });
   } catch (err) {
@@ -783,6 +824,341 @@ async function unlockBudget(req, res, next) {
   }
 }
 
+// ── Month-End Closing & Reopen ───────────────────────────────────────────────
+
+// POST /budgets/:id/close-month
+async function closeMonth(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { period_month } = req.body;
+    const month = parseInt(period_month, 10);
+
+    if (!month || month < 1 || month > 12) {
+      return res.status(400).json({ error: 'Nomor bulan tidak valid (1-12).' });
+    }
+
+    const monthlyRecord = await prisma.m_marketing_budget_monthly.findUnique({
+      where: {
+        marketing_budget_id_period_month: {
+          marketing_budget_id: id,
+          period_month: month
+        }
+      }
+    });
+
+    if (!monthlyRecord) {
+      return res.status(404).json({ error: 'Data alokasi bulan tidak ditemukan.' });
+    }
+
+    const updated = await prisma.m_marketing_budget_monthly.update({
+      where: { id: monthlyRecord.id },
+      data: {
+        is_closed: true,
+        closed_at: new Date(),
+        closed_by: req.user?.email || req.user?.name || 'Finance/Admin'
+      }
+    });
+
+    res.json({ message: `Bulan ke-${month} berhasil ditutup buku.`, data: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /budgets/:id/reopen-month
+async function reopenMonth(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { period_month } = req.body;
+    const month = parseInt(period_month, 10);
+
+    if (!month || month < 1 || month > 12) {
+      return res.status(400).json({ error: 'Nomor bulan tidak valid (1-12).' });
+    }
+
+    const monthlyRecord = await prisma.m_marketing_budget_monthly.findUnique({
+      where: {
+        marketing_budget_id_period_month: {
+          marketing_budget_id: id,
+          period_month: month
+        }
+      }
+    });
+
+    if (!monthlyRecord) {
+      return res.status(404).json({ error: 'Data alokasi bulan tidak ditemukan.' });
+    }
+
+    const updated = await prisma.m_marketing_budget_monthly.update({
+      where: { id: monthlyRecord.id },
+      data: {
+        is_closed: false,
+        closed_at: null,
+        closed_by: null
+      }
+    });
+
+    res.json({ message: `Bulan ke-${month} berhasil dibuka kembali.`, data: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Budget Shifting (Relokasi Anggaran) ───────────────────────────────────────
+
+// GET /budgets/:id/shifts
+async function getBudgetShifts(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const shifts = await prisma.m_marketing_budget_shift.findMany({
+      where: { marketing_budget_id: id },
+      include: {
+        from_monthly: true,
+        to_monthly: true,
+        approvers: { orderBy: { step_number: 'asc' } },
+        creator: { select: { id: true, name: true, email: true } }
+      },
+      orderBy: { created_at: 'desc' }
+    });
+    res.json(shifts);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /budgets/:id/shifts
+async function createBudgetShift(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { from_month, to_month, amount, reason } = req.body;
+    const fromM = parseInt(from_month, 10);
+    const toM = parseInt(to_month, 10);
+    const shiftAmt = parseFloat(amount);
+
+    if (!fromM || !toM || fromM === toM || fromM < 1 || fromM > 12 || toM < 1 || toM > 12) {
+      return res.status(400).json({ error: 'Bulan asal dan tujuan harus valid (1-12) dan berbeda.' });
+    }
+    if (!shiftAmt || shiftAmt <= 0) {
+      return res.status(400).json({ error: 'Nominal pergeseran harus lebih besar dari 0.' });
+    }
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'Alasan pergeseran anggaran wajib diisi.' });
+    }
+
+    const budget = await prisma.m_marketing_budget.findUnique({
+      where: { id },
+      include: { monthly_limits: true }
+    });
+
+    if (!budget) {
+      return res.status(404).json({ error: 'Data master anggaran tidak ditemukan.' });
+    }
+
+    const fromMonthly = budget.monthly_limits.find(m => m.period_month === fromM);
+    const toMonthly = budget.monthly_limits.find(m => m.period_month === toM);
+
+    if (!fromMonthly || !toMonthly) {
+      return res.status(404).json({ error: 'Alokasi bulan asal atau tujuan tidak ditemukan.' });
+    }
+
+    if (fromMonthly.is_closed) {
+      return res.status(400).json({ error: 'Bulan asal telah ditutup buku (closed period).' });
+    }
+
+    // Determine shift type: Intra-Quarter vs Cross-Quarter
+    const fromQ = Math.ceil(fromM / 3);
+    const toQ = Math.ceil(toM / 3);
+    const isIntra = fromQ === toQ;
+    const shift_type = isIntra ? 'INTRA_QUARTER' : 'CROSS_QUARTER';
+
+    // Fetch contacts for FC and HEAD_MARKETING from approval_role_contacts
+    const [fcContact, headContact] = await Promise.all([
+      prisma.approval_role_contacts.findFirst({ where: { role: 'FC' } }),
+      prisma.approval_role_contacts.findFirst({ where: { role: 'HEAD_MARKETING' } })
+    ]);
+
+    const fcEmail = fcContact?.email || 'financial.controller@mra.co.id';
+    const fcName = fcContact?.label || 'Financial Controller (FC)';
+    const headEmail = headContact?.email || 'head.marketing@mra.co.id';
+    const headName = headContact?.label || 'Head of Marketing';
+
+    // Resolve creator ID in helpdesk_user
+    let creatorId = null;
+    if (req.user?.email) {
+      const emp = await resolveEmployee(req.user.email);
+      if (emp) creatorId = emp.id;
+    }
+    if (!creatorId) {
+      const fallbackUser = await prisma.helpdesk_user.findFirst();
+      creatorId = fallbackUser ? fallbackUser.id : (req.user?.id ? String(req.user.id) : 'system');
+    }
+
+    // Create Shift Record & Sequential Approvers in transaction
+    const newShift = await prisma.$transaction(async (tx) => {
+      const shift = await tx.m_marketing_budget_shift.create({
+        data: {
+          marketing_budget_id: id,
+          from_monthly_id: fromMonthly.id,
+          to_monthly_id: toMonthly.id,
+          amount: shiftAmt,
+          reason: reason.trim(),
+          shift_type,
+          status: 'PENDING',
+          current_step: 1,
+          total_steps: isIntra ? 1 : 2,
+          creator_id: creatorId
+        }
+      });
+
+      if (isIntra) {
+        // Step 1: FC (PENDING)
+        await tx.m_marketing_budget_shift_approver.create({
+          data: {
+            shift_id: shift.id,
+            step_number: 1,
+            approver_role: 'FC',
+            approver_name: fcName,
+            approver_email: fcEmail,
+            status: 'PENDING'
+          }
+        });
+      } else {
+        // Step 1: Head of Marketing (PENDING)
+        await tx.m_marketing_budget_shift_approver.create({
+          data: {
+            shift_id: shift.id,
+            step_number: 1,
+            approver_role: 'HEAD_MARKETING',
+            approver_name: headName,
+            approver_email: headEmail,
+            status: 'PENDING'
+          }
+        });
+        // Step 2: FC (WAITING)
+        await tx.m_marketing_budget_shift_approver.create({
+          data: {
+            shift_id: shift.id,
+            step_number: 2,
+            approver_role: 'FC',
+            approver_name: fcName,
+            approver_email: fcEmail,
+            status: 'WAITING'
+          }
+        });
+      }
+
+      return shift;
+    });
+
+    res.status(201).json(newShift);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /budgets/shifts/:shift_id/decision
+async function processShiftDecision(req, res, next) {
+  try {
+    const shiftId = parseInt(req.params.shift_id, 10);
+    const { action, comment } = req.body; // action: 'APPROVE' | 'REJECT'
+
+    if (!['APPROVE', 'REJECT'].includes(action)) {
+      return res.status(400).json({ error: 'Action harus APPROVE atau REJECT.' });
+    }
+
+    const shift = await prisma.m_marketing_budget_shift.findUnique({
+      where: { id: shiftId },
+      include: {
+        approvers: { orderBy: { step_number: 'asc' } },
+        from_monthly: true,
+        to_monthly: true
+      }
+    });
+
+    if (!shift) {
+      return res.status(404).json({ error: 'Permohonan pergeseran anggaran tidak ditemukan.' });
+    }
+
+    if (shift.status !== 'PENDING') {
+      return res.status(400).json({ error: `Permohonan sudah berstatus ${shift.status}.` });
+    }
+
+    const currentApprover = shift.approvers.find(a => a.step_number === shift.current_step && a.status === 'PENDING');
+
+    if (!currentApprover) {
+      return res.status(400).json({ error: 'Tidak ada approver yang sedang menunggu tindakan.' });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (action === 'REJECT') {
+        await tx.m_marketing_budget_shift_approver.update({
+          where: { id: currentApprover.id },
+          data: {
+            status: 'REJECTED',
+            action_at: new Date(),
+            comment: comment || null
+          }
+        });
+
+        return await tx.m_marketing_budget_shift.update({
+          where: { id: shiftId },
+          data: { status: 'REJECTED' }
+        });
+      }
+
+      // Action is APPROVE
+      await tx.m_marketing_budget_shift_approver.update({
+        where: { id: currentApprover.id },
+        data: {
+          status: 'APPROVED',
+          action_at: new Date(),
+          comment: comment || null
+        }
+      });
+
+      // Check if more steps exist
+      const nextApprover = shift.approvers.find(a => a.step_number === shift.current_step + 1);
+      if (nextApprover) {
+        // Promote to next step
+        await tx.m_marketing_budget_shift_approver.update({
+          where: { id: nextApprover.id },
+          data: { status: 'PENDING' }
+        });
+
+        return await tx.m_marketing_budget_shift.update({
+          where: { id: shiftId },
+          data: { current_step: shift.current_step + 1 }
+        });
+      }
+
+      // Final step approved -> Execute balance shift atomically
+      const shiftAmount = parseFloat(shift.amount);
+      await tx.m_marketing_budget_monthly.update({
+        where: { id: shift.from_monthly_id },
+        data: {
+          budget_limit: { decrement: shiftAmount }
+        }
+      });
+
+      await tx.m_marketing_budget_monthly.update({
+        where: { id: shift.to_monthly_id },
+        data: {
+          budget_limit: { increment: shiftAmount }
+        }
+      });
+
+      return await tx.m_marketing_budget_shift.update({
+        where: { id: shiftId },
+        data: { status: 'APPROVED' }
+      });
+    });
+
+    res.json({ message: `Pergeseran anggaran berhasil di-${action.toLowerCase()}.`, data: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ── Approval Rules CRUD ───────────────────────────────────────────────────────
 
 // GET /approval-rules
@@ -875,6 +1251,11 @@ module.exports = {
   updateBudget,
   lockBudget,
   unlockBudget,
+  closeMonth,
+  reopenMonth,
+  getBudgetShifts,
+  createBudgetShift,
+  processShiftDecision,
   getApprovalRules,
   createApprovalRule,
   updateApprovalRule,

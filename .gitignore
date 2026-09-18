@@ -41,3 +41,4 @@ yarn-error.log*
 *.tar.gz
 backups/
 Database_Backups/
+.snapshots/

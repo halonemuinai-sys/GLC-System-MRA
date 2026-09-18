@@ -810,6 +810,7 @@ model helpdesk_user {
   payment_requests             payment_requests[]
   approval_history             approval_history[]
   marketing_plan_amendments    marketing_plan_amendments[]
+  marketing_budget_shifts      m_marketing_budget_shift[]
 
   @@map("User")
   @@schema("helpdesk")
@@ -1145,20 +1146,71 @@ model m_marketing_budget {
   brand          m_brand                      @relation(fields: [brand_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   lob            m_line_business              @relation(fields: [lob_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   monthly_limits m_marketing_budget_monthly[]
+  shifts         m_marketing_budget_shift[]
 
   @@unique([company_id, brand_id, lob_id, fiscal_year])
   @@schema("marketing_budget")
 }
 
 model m_marketing_budget_monthly {
-  id                  Int                 @id @default(autoincrement())
+  id                  Int                         @id @default(autoincrement())
   marketing_budget_id Int
-  period_month        Int                 @db.SmallInt // 1-12
-  budget_limit        Decimal             @default(0) @db.Decimal(18, 2)
+  period_month        Int                         @db.SmallInt // 1-12
+  quarter_number      Int?                        @db.SmallInt // 1, 2, 3, 4
+  budget_limit        Decimal                     @default(0) @db.Decimal(18, 2)
+  is_closed           Boolean                     @default(false)
+  closed_at           DateTime?                   @db.Timestamp(6)
+  closed_by           String?                     @db.VarChar(50)
   
-  marketing_budget    m_marketing_budget  @relation(fields: [marketing_budget_id], references: [id], onDelete: Cascade)
+  marketing_budget    m_marketing_budget          @relation(fields: [marketing_budget_id], references: [id], onDelete: Cascade)
+  shifts_from         m_marketing_budget_shift[]  @relation("ShiftFromMonth")
+  shifts_to           m_marketing_budget_shift[]  @relation("ShiftToMonth")
 
   @@unique([marketing_budget_id, period_month])
+  @@schema("marketing_budget")
+}
+
+model m_marketing_budget_shift {
+  id                  Int                                  @id @default(autoincrement())
+  marketing_budget_id Int
+  from_monthly_id     Int
+  to_monthly_id       Int
+  amount              Decimal                              @db.Decimal(18, 2)
+  reason              String                               @db.Text
+  shift_type          String                               @db.VarChar(20) // INTRA_QUARTER | CROSS_QUARTER
+  status              String                               @default("PENDING") @db.VarChar(20) // PENDING, APPROVED, REJECTED, CANCELLED
+  current_step        Int                                  @default(1) @db.SmallInt
+  total_steps         Int                                  @default(1) @db.SmallInt
+  creator_id          String                               @db.VarChar(50)
+  created_at          DateTime                             @default(now()) @db.Timestamp(6)
+  updated_at          DateTime                             @default(now()) @db.Timestamp(6)
+
+  marketing_budget    m_marketing_budget                   @relation(fields: [marketing_budget_id], references: [id], onDelete: Cascade)
+  from_monthly        m_marketing_budget_monthly           @relation("ShiftFromMonth", fields: [from_monthly_id], references: [id], onDelete: Cascade)
+  to_monthly          m_marketing_budget_monthly           @relation("ShiftToMonth", fields: [to_monthly_id], references: [id], onDelete: Cascade)
+  creator             helpdesk_user                        @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  approvers           m_marketing_budget_shift_approver[]
+
+  @@index([marketing_budget_id], map: "idx_shift_budget_id")
+  @@schema("marketing_budget")
+}
+
+model m_marketing_budget_shift_approver {
+  id                  Int                       @id @default(autoincrement())
+  shift_id            Int
+  step_number         Int                       @db.SmallInt // 1 or 2
+  approver_role       String                    @db.VarChar(50) // FC | HEAD_MARKETING
+  approver_name       String                    @db.VarChar(150)
+  approver_email      String                    @db.VarChar(150)
+  status              String                    @default("WAITING") @db.VarChar(20) // WAITING, PENDING, APPROVED, REJECTED
+  action_at           DateTime?                 @db.Timestamp(6)
+  comment             String?                   @db.Text
+  created_at          DateTime                  @default(now()) @db.Timestamp(6)
+  updated_at          DateTime                  @default(now()) @db.Timestamp(6)
+
+  shift               m_marketing_budget_shift  @relation(fields: [shift_id], references: [id], onDelete: Cascade)
+
+  @@index([shift_id], map: "idx_shift_approver_shift_id")
   @@schema("marketing_budget")
 }
 

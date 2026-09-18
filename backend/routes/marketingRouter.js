@@ -90,6 +90,15 @@ router.put('/budgets/:id', verifyToken, checkRole(['admin', 'finance']), setting
 router.put('/budgets/:id/lock', verifyToken, checkRole(['admin', 'finance']), settingsController.lockBudget);
 router.put('/budgets/:id/unlock', verifyToken, checkRole(['admin', 'finance']), settingsController.unlockBudget);
 
+// Month-End Closing & Reopen (admin + finance)
+router.post('/budgets/:id/close-month', verifyToken, checkRole(['admin', 'finance']), settingsController.closeMonth);
+router.post('/budgets/:id/reopen-month', verifyToken, checkRole(['admin', 'finance']), settingsController.reopenMonth);
+
+// Budget Shifting (Relokasi Anggaran)
+router.get('/budgets/:id/shifts', verifyToken, settingsController.getBudgetShifts);
+router.post('/budgets/:id/shifts', verifyToken, settingsController.createBudgetShift);
+router.post('/budgets/shifts/:shift_id/decision', verifyToken, settingsController.processShiftDecision);
+
 // Approval Rules CRUD (admin only)
 router.get('/approval-rules', verifyToken, checkRole(['admin']), settingsController.getApprovalRules);
 router.post('/approval-rules', verifyToken, checkRole(['admin']), settingsController.createApprovalRule);

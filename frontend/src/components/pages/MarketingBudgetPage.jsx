@@ -19,10 +19,17 @@ import {
   ChevronRight,
   TrendingUp,
   Clock,
-  Briefcase
+  Briefcase,
+  History,
+  ArrowRightLeft,
+  Calendar,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
+import MarketingBudgetShiftDrawer from './MarketingBudgetShiftDrawer';
+import MarketingBudgetShiftHistoryModal from './MarketingBudgetShiftHistoryModal';
 
 const FISCAL_YEAR_OPTIONS = ['2024', '2025', '2026', '2027'];
 
@@ -73,10 +80,15 @@ export default function MarketingBudgetPage() {
   // Current Budget Data
   const [activeBudget, setActiveBudget] = useState(null);
   const [monthlyData, setMonthlyData] = useState([]);
+  const [quarterlyData, setQuarterlyData] = useState([]);
+  const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'Q1' | 'Q2' | 'Q3' | 'Q4'
   const [relatedPlans, setRelatedPlans] = useState([]);
+  const [shifts, setShifts] = useState([]);
 
   // UI state
   const [showDrawer, setShowDrawer] = useState(false);
+  const [showShiftDrawer, setShowShiftDrawer] = useState(false);
+  const [showShiftHistoryModal, setShowShiftHistoryModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
   
@@ -145,11 +157,19 @@ export default function MarketingBudgetPage() {
 
       if (allBudgets && allBudgets.length > 0) {
         setActiveBudget(allBudgets[0]);
+        try {
+          const shiftRes = await apiClient.get(`/api/marketing/budgets/${allBudgets[0].id}/shifts`);
+          setShifts(shiftRes || []);
+        } catch (e) {
+          console.error('Failed to load shifts:', e);
+        }
       } else {
         setActiveBudget(null);
+        setShifts([]);
       }
 
       setMonthlyData(res.monthly || []);
+      setQuarterlyData(res.quarterly || []);
       setRelatedPlans(res.related_plans || []);
     } catch (err) {
       setError(err.message || 'Gagal memuat anggaran.');
@@ -166,14 +186,12 @@ export default function MarketingBudgetPage() {
   }, [filter.company_id, filter.brand_id, filter.lob_id, filter.fiscal_year]);
 
   // Handle Edit Limit for a Specific Month
-  const handleLimitChange = (index, value) => {
+  const handleLimitChange = (monthNum, value) => {
     if (activeBudget?.is_locked) return;
     const cleanVal = parseFloat(value.replace(/[^0-9]/g, '')) || 0;
     
     setMonthlyData(prev => {
-      const next = [...prev];
-      next[index] = { ...next[index], limit: cleanVal };
-      return next;
+      return prev.map(m => m.month === monthNum ? { ...m, limit: cleanVal } : m);
     });
   };
 
@@ -215,6 +233,44 @@ export default function MarketingBudgetPage() {
       await handleProses();
     } catch (err) {
       alert(err.message || 'Gagal mengubah status kunci.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Close Month (Tutup Buku)
+  const handleCloseMonth = async (monthNum) => {
+    if (!activeBudget) return;
+    if (!confirm(`Konfirmasi Tutup Buku untuk bulan ${getMonthName(monthNum)}? Sisa alokasi tidak akan diakumulasikan ke bulan berikutnya.`)) {
+      return;
+    }
+    try {
+      setProcessing(true);
+      await apiClient.post(`/api/marketing/budgets/${activeBudget.id}/close-month`, {
+        period_month: monthNum
+      });
+      await handleProses();
+    } catch (err) {
+      alert(err.message || 'Gagal menutup buku bulan ini.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Reopen Month (Buka Tutup Buku)
+  const handleReopenMonth = async (monthNum) => {
+    if (!activeBudget) return;
+    if (!confirm(`Buka kembali pembukuan untuk bulan ${getMonthName(monthNum)}?`)) {
+      return;
+    }
+    try {
+      setProcessing(true);
+      await apiClient.post(`/api/marketing/budgets/${activeBudget.id}/reopen-month`, {
+        period_month: monthNum
+      });
+      await handleProses();
+    } catch (err) {
+      alert(err.message || 'Gagal membuka kembali bulan ini.');
     } finally {
       setProcessing(false);
     }
@@ -266,11 +322,22 @@ export default function MarketingBudgetPage() {
     }
   };
 
-  // Helpers for calculations
-  const totalLimit = monthlyData.reduce((sum, m) => sum + m.limit, 0);
-  const totalCommitted = monthlyData.reduce((sum, m) => sum + m.committed, 0);
-  const totalRealized = monthlyData.reduce((sum, m) => sum + (m.actual || 0), 0);
-  const totalAvailable = totalLimit - totalCommitted;
+  // Helpers for calculations respecting activeTab
+  const getFilteredMonthly = () => {
+    if (activeTab === 'Q1') return monthlyData.filter(m => [1, 2, 3].includes(m.month));
+    if (activeTab === 'Q2') return monthlyData.filter(m => [4, 5, 6].includes(m.month));
+    if (activeTab === 'Q3') return monthlyData.filter(m => [7, 8, 9].includes(m.month));
+    if (activeTab === 'Q4') return monthlyData.filter(m => [10, 11, 12].includes(m.month));
+    return monthlyData;
+  };
+
+  const displayedMonthly = getFilteredMonthly();
+  const currentQuarterConfig = quarterlyData.find(q => `Q${q.quarter}` === activeTab);
+
+  const totalLimit = displayedMonthly.reduce((sum, m) => sum + m.limit, 0);
+  const totalCommitted = displayedMonthly.reduce((sum, m) => sum + m.committed, 0);
+  const totalRealized = displayedMonthly.reduce((sum, m) => sum + (m.actual || 0), 0);
+  const totalAvailable = displayedMonthly.reduce((sum, m) => sum + m.available, 0);
 
   const getMonthName = (num) => {
     const names = [
@@ -304,7 +371,7 @@ export default function MarketingBudgetPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
               <Wallet className="w-4 h-4" />
             </div>
             <h1 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">
@@ -331,32 +398,60 @@ export default function MarketingBudgetPage() {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {activeBudget ? (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleToggleLock}
-              className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer ${activeBudget.is_locked ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/15' : 'bg-red-600 hover:bg-red-750 text-white shadow-red-500/15'}`}
-            >
-              {activeBudget.is_locked ? (
-                <>
-                  <Unlock className="w-3.5 h-3.5" />
-                  Buka Kunci (Unlock)
-                </>
-              ) : (
-                <>
-                  <Lock className="w-3.5 h-3.5" />
-                  Kunci Budget (Lock)
-                </>
-              )}
-            </motion.button>
+            <>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowShiftHistoryModal(true)}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                <History className="w-3.5 h-3.5 text-neutral-500" />
+                Riwayat Pergeseran
+                {shifts.length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 text-[9px] font-extrabold rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                    {shifts.length}
+                  </span>
+                )}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowShiftDrawer(true)}
+                disabled={activeBudget?.is_locked}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                Ajukan Pergeseran
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleToggleLock}
+                className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer ${activeBudget.is_locked ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/15' : 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/15'}`}
+              >
+                {activeBudget.is_locked ? (
+                  <>
+                    <Unlock className="w-3.5 h-3.5" />
+                    Buka Kunci (Unlock)
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5" />
+                    Kunci Budget (Lock)
+                  </>
+                )}
+              </motion.button>
+            </>
           ) : (
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleOpenCreate}
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Inisialisasi Budget Baru
@@ -421,6 +516,50 @@ export default function MarketingBudgetPage() {
         </button>
       </div>
 
+      {/* ── Quarterly Horizon Tabs & Planning Deadlines (COO Policy) ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-neutral-200/70 dark:border-neutral-800 pb-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+          {[
+            { key: 'ALL', label: 'Semua Bulan (Full Year)' },
+            { key: 'Q1', label: 'Q1 (Jan - Mar)' },
+            { key: 'Q2', label: 'Q2 (Apr - Jun)' },
+            { key: 'Q3', label: 'Q3 (Jul - Sep)' },
+            { key: 'Q4', label: 'Q4 (Okt - Des)' },
+          ].map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                  isActive
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
+                    : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/70 dark:border-white/[0.06]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Advance Planning Deadline Status */}
+        {activeTab !== 'ALL' && currentQuarterConfig && (
+          <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border ${
+            currentQuarterConfig.is_deadline_passed
+              ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-300'
+              : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300'
+          }`}>
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              Batas Pengajuan ({activeTab}): <strong className="font-semibold">{currentQuarterConfig.deadline}</strong>
+              {currentQuarterConfig.is_deadline_passed ? ' (Lewat Batas H-3)' : ' (Sesuai Jadwal Horizon H-3)'}
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* ── Summary Stats Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -453,18 +592,24 @@ export default function MarketingBudgetPage() {
         />
       </div>
 
-      {/* ── Interactive 12-Month Table ── */}
+      {/* ── Interactive Monthly Allocation Table ── */}
       <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-neutral-100 dark:border-neutral-855 flex items-center justify-between">
-          <h3 className="text-xs font-bold text-neutral-850 dark:text-white flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-blue-500" />
-            Alokasi Bulanan
-          </h3>
+            <h3 className="text-xs font-bold text-neutral-850 dark:text-white">
+              Alokasi Bulanan
+            </h3>
+            <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold">
+              {activeTab === 'ALL' ? '12 Bulan' : `${activeTab}`}
+            </span>
+          </div>
           {activeBudget && !activeBudget.is_locked && (
             <button
+              type="button"
               onClick={handleSaveLimits}
               disabled={processing}
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-750 text-white rounded-lg text-[10px] font-extrabold transition-all cursor-pointer shadow-sm shadow-blue-500/10"
+              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-extrabold transition-all cursor-pointer shadow-sm shadow-blue-500/10"
             >
               {processing ? 'Menyimpan...' : 'Simpan Limit Anggaran'}
             </button>
@@ -475,62 +620,135 @@ export default function MarketingBudgetPage() {
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
-                <th className="px-6 py-3.5 w-[20%]">Bulan</th>
-                <th className="px-6 py-3.5 w-[25%]">Limit Anggaran</th>
-                <th className="px-6 py-3.5 w-[20%]">Committed (Plan)</th>
-                <th className="px-6 py-3.5 w-[20%]">Realisasi (Actual)</th>
-                <th className="px-6 py-3.5 w-[15%] text-right">Persentase Pemakaian</th>
+                <th className="px-5 py-3.5">Bulan</th>
+                <th className="px-5 py-3.5">Status Buku</th>
+                <th className="px-5 py-3.5">Limit Anggaran</th>
+                <th className="px-5 py-3.5">Committed</th>
+                <th className="px-5 py-3.5">Realisasi</th>
+                <th className="px-5 py-3.5">Sisa Kuota</th>
+                <th className="px-5 py-3.5">Pemakaian</th>
+                <th className="px-5 py-3.5 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
-              {monthlyData.length === 0 ? (
+              {displayedMonthly.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-neutral-450 font-bold">
+                  <td colSpan="8" className="px-6 py-10 text-center text-neutral-450 font-bold">
                     Belum ada inisialisasi anggaran untuk konfigurasi ini. Klik tombol "Inisialisasi Budget Baru" untuk memulai.
                   </td>
                 </tr>
               ) : (
-                monthlyData.map((item, idx) => {
+                displayedMonthly.map((item) => {
                   const usagePct = item.limit > 0 ? ((item.actual || 0) / item.limit) * 100 : 0;
                   const barColor = usagePct > 100 ? 'bg-red-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-emerald-500';
 
                   return (
                     <tr key={item.month} className="hover:bg-neutral-550/5 dark:hover:bg-neutral-955/10 transition-colors">
-                      <td className="px-6 py-3.5 font-bold text-neutral-850 dark:text-white">
-                        {getMonthName(item.month)}
+                      <td className="px-5 py-3.5 font-bold text-neutral-850 dark:text-white">
+                        <div className="flex items-center gap-2">
+                          <span>{getMonthName(item.month)}</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
+                            Q{item.quarter}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-6 py-3.5">
-                        {activeBudget?.is_locked ? (
+                      <td className="px-5 py-3.5">
+                        {item.is_closed ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700 w-fit">
+                              <Lock className="w-2.5 h-2.5" />
+                              Tutup Buku
+                            </span>
+                            {item.closed_at && (
+                              <span className="text-[9px] text-neutral-400 font-medium">
+                                {new Date(item.closed_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/20 w-fit">
+                            <CheckCircle2 className="w-2.5 h-2.5" />
+                            Terbuka
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        {activeBudget?.is_locked || item.is_closed ? (
                           <span className="font-mono font-bold text-neutral-800 dark:text-white">
                             {formatRupiah(item.limit)}
                           </span>
                         ) : (
-                          <div className="relative max-w-[160px]">
-                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold">Rp</span>
+                          <div className="relative max-w-[150px]">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">Rp</span>
                             <input
                               type="text"
                               value={item.limit.toLocaleString('id-ID')}
-                              onChange={(e) => handleLimitChange(idx, e.target.value)}
+                              onChange={(e) => handleLimitChange(item.month, e.target.value)}
                               className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-8 pr-2.5 py-1.5 font-mono text-[11px] font-bold text-neutral-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-3.5 font-mono text-neutral-500 dark:text-neutral-400">
+                      <td className="px-5 py-3.5 font-mono text-neutral-500 dark:text-neutral-400">
                         {formatRupiah(item.committed)}
                       </td>
-                      <td className="px-6 py-3.5 font-mono text-neutral-500 dark:text-neutral-400">
+                      <td className="px-5 py-3.5 font-mono text-neutral-500 dark:text-neutral-400">
                         {formatRupiah(item.actual || 0)}
                       </td>
-                      <td className="px-6 py-3.5 text-right">
-                        <div className="flex flex-col items-end gap-1">
+                      <td className="px-5 py-3.5 font-mono font-bold">
+                        {item.is_closed ? (
+                          <div className="flex flex-col">
+                            <span className="text-neutral-400 text-xs">Rp 0</span>
+                            {item.unspent > 0 && (
+                              <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">
+                                Ditahan: {formatRupiah(item.unspent)}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className={item.available < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}>
+                            {formatRupiah(item.available)}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-col gap-1 min-w-[90px]">
                           <span className={`text-[10px] font-extrabold ${usagePct > 100 ? 'text-red-500' : usagePct > 80 ? 'text-amber-500' : 'text-emerald-500'}`}>
                             {usagePct.toFixed(1)}%
                           </span>
-                          <div className="w-24 h-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+                          <div className="w-full h-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
                             <div className={`h-full ${barColor}`} style={{ width: `${Math.min(usagePct, 100)}%` }} />
                           </div>
                         </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        {activeBudget && !activeBudget.is_locked ? (
+                          item.is_closed ? (
+                            <button
+                              type="button"
+                              onClick={() => handleReopenMonth(item.month)}
+                              disabled={processing}
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
+                              title="Buka kembali pembukuan bulan ini"
+                            >
+                              <Unlock className="w-3 h-3" />
+                              Buka
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleCloseMonth(item.month)}
+                              disabled={processing}
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-neutral-100 hover:bg-red-50 hover:text-red-600 dark:bg-neutral-800 dark:hover:bg-red-500/10 text-neutral-600 dark:text-neutral-300 dark:hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
+                              title="Tutup buku bulan ini per kebijakan COO"
+                            >
+                              <Lock className="w-3 h-3" />
+                              Tutup
+                            </button>
+                          )
+                        ) : (
+                          <span className="text-[10px] text-neutral-400">—</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -546,11 +764,11 @@ export default function MarketingBudgetPage() {
         <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
           <div className="p-4 border-b border-neutral-100 dark:border-neutral-855 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-indigo-500" />
+              <Briefcase className="w-4 h-4 text-blue-500" />
               <h3 className="text-xs font-bold text-neutral-850 dark:text-white">
                 Marketing Plans Terkait
               </h3>
-              <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-extrabold">
+              <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold">
                 {relatedPlans.length} rencana
               </span>
             </div>
@@ -739,7 +957,7 @@ export default function MarketingBudgetPage() {
                   type="button"
                   onClick={handleCreateSubmit}
                   disabled={submitting}
-                  className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-750 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Inisialisasi'}
                 </button>
@@ -748,6 +966,23 @@ export default function MarketingBudgetPage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* ── Budget Shift Drawer (Intra & Cross-Quarter) ── */}
+      <MarketingBudgetShiftDrawer
+        isOpen={showShiftDrawer}
+        onClose={() => setShowShiftDrawer(false)}
+        activeBudget={activeBudget}
+        monthlyData={monthlyData}
+        onShiftSuccess={handleProses}
+      />
+
+      {/* ── Budget Shift History & Approval Modal ── */}
+      <MarketingBudgetShiftHistoryModal
+        isOpen={showShiftHistoryModal}
+        onClose={() => setShowShiftHistoryModal(false)}
+        shifts={shifts}
+        onDecisionSuccess={handleProses}
+      />
     </div>
   );
 }
