@@ -729,15 +729,17 @@ function SidebarContent({
 
       {/* ── Dashboard links ── */}
       <div className="px-3 pt-4 pb-1 space-y-0.5">
-        <NavItem
-          href="/dashboard"
-          icon={LayoutDashboard}
-          name="Dashboard GA"
-          isActive={pathname === '/dashboard'}
-          delay={0}
-          onClick={onClose}
-          collapsed={collapsed}
-        />
+        {hasAccess(['ga', 'auditor']) && (
+          <NavItem
+            href="/dashboard"
+            icon={LayoutDashboard}
+            name="Dashboard GA"
+            isActive={pathname === '/dashboard'}
+            delay={0}
+            onClick={onClose}
+            collapsed={collapsed}
+          />
+        )}
         {hasAccess(['compliance', 'legal_compliance', 'auditor']) && (
           <NavItem
             href="/dashboard/compliance"

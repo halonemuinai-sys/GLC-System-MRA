@@ -34,16 +34,28 @@ import {
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
 
-const ROLE_BADGES = {
-  admin: 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30',
-  ga: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/30',
-  legal: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/30',
-  compliance: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30',
-  legal_compliance: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-900/30',
-  auditor: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/30',
-  marketing: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/30',
-  finance: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-900/30',
-  manager: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30'
+const ROLE_DOT_COLORS = {
+  admin: 'bg-red-500',
+  ga: 'bg-indigo-500',
+  legal: 'bg-purple-500',
+  compliance: 'bg-emerald-500',
+  legal_compliance: 'bg-cyan-500',
+  auditor: 'bg-amber-500',
+  marketing: 'bg-rose-500',
+  finance: 'bg-teal-500',
+  manager: 'bg-blue-500'
+};
+
+const ROLE_LABELS = {
+  admin: 'Admin',
+  ga: 'GA',
+  legal: 'Legal',
+  compliance: 'Compliance',
+  legal_compliance: 'Legal & Compliance',
+  auditor: 'Auditor',
+  marketing: 'Marketing',
+  finance: 'Finance',
+  manager: 'Manager'
 };
 
 const COMPANY_SCOPE_BYPASS_ROLES = ['admin', 'auditor'];
@@ -571,8 +583,9 @@ export default function AdminPage() {
                           <div className="text-[10px] text-neutral-400 mt-0.5">{user.position || '-'}</div>
                         </td>
                         <td className="p-4">
-                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase ${ROLE_BADGES[user.role] || 'bg-neutral-100 text-neutral-600'}`}>
-                            {user.role}
+                          <span className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ROLE_DOT_COLORS[user.role] || 'bg-neutral-400'}`} />
+                            {ROLE_LABELS[user.role] || user.role}
                           </span>
                         </td>
                         <td className="p-4 text-center">
@@ -665,8 +678,9 @@ export default function AdminPage() {
                       return (
                         <tr key={roleName} className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/10 transition-colors">
                           <td className="p-4">
-                            <span className={`inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase ${ROLE_BADGES[roleName] || 'bg-neutral-100 text-neutral-600'}`}>
-                              {roleName}
+                            <span className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ROLE_DOT_COLORS[roleName] || 'bg-neutral-400'}`} />
+                              {ROLE_LABELS[roleName] || roleName}
                             </span>
                           </td>
                           {modules.map(mod => {

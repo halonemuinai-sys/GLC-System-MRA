@@ -1089,6 +1089,11 @@ async function processShiftDecision(req, res, next) {
       return res.status(400).json({ error: 'Tidak ada approver yang sedang menunggu tindakan.' });
     }
 
+    const userRole = (req.user.role || '').toUpperCase();
+    if (userRole !== 'ADMIN' && currentApprover.approver_role.toUpperCase() !== userRole) {
+      return res.status(403).json({ error: 'Anda tidak memiliki kewenangan untuk memproses tahap approval ini.' });
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       if (action === 'REJECT') {
         await tx.m_marketing_budget_shift_approver.update({

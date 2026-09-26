@@ -7,6 +7,7 @@ import * as z from 'zod';
 import Cookies from 'js-cookie';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getLandingPath } from '@/lib/roleLanding';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2,
@@ -201,9 +202,9 @@ export default function LoginPage() {
         Cookies.set('glc_user_name', response.user.full_name, { expires: 1 });
         Cookies.set('glc_user_role', response.user.role, { expires: 1 });
 
-        // Redirect to dashboard page
+        // Redirect to the landing page appropriate for this user's role
         router.refresh();
-        router.push('/dashboard');
+        router.push(getLandingPath(response.user.role));
       } else {
         setApiError('Invalid response received from authentication server.');
       }
