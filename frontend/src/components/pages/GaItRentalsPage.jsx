@@ -45,8 +45,8 @@ const CustomTooltip = ({ active, payload, globalHidePrices }) => {
     const data = payload[0].payload;
     const displayVal = globalHidePrices ? '••••' : data.value;
     return (
-      <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 p-2.5 rounded-xl shadow-xl text-xs">
-        <p className="font-bold text-neutral-850 dark:text-neutral-200 capitalize mb-1">{data.name}</p>
+      <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-2.5 rounded-xl shadow-xl text-xs">
+        <p className="font-bold text-neutral-900 dark:text-neutral-200 capitalize mb-1">{data.name}</p>
         <p className="text-indigo-500 font-semibold font-mono">Jumlah: {displayVal} unit</p>
       </div>
     );
@@ -71,7 +71,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none"
       >
-        <span className={selectedCompany ? 'text-neutral-850 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
+        <span className={selectedCompany ? 'text-neutral-900 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
           {selectedCompany ? selectedCompany.name : placeholder}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -764,7 +764,7 @@ export default function GaItRentalsPage() {
                           style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
                         />
                         <span className="text-neutral-500 dark:text-neutral-400 capitalize truncate">{entry.name}</span>
-                        <span className="font-bold text-neutral-700 dark:text-neutral-350 ml-auto font-mono">{maskNum(entry.value)}</span>
+                        <span className="font-bold text-neutral-700 dark:text-neutral-300 ml-auto font-mono">{maskNum(entry.value)}</span>
                       </div>
                     ))}
                   </div>
@@ -838,11 +838,11 @@ export default function GaItRentalsPage() {
                       <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(expiringCount)} Kontrak</h3>
                       <div className="text-[9px] text-neutral-400 mt-1.5 font-bold">
                         {expiringCount > 0 ? (
-                          <span className="text-red-650 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded">
+                          <span className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded">
                             Perlu Perpanjangan (≤ 30 hari)
                           </span>
                         ) : (
-                          <span className="text-emerald-650 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                          <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
                             Semua Kontrak Aman
                           </span>
                         )}
@@ -1101,7 +1101,7 @@ export default function GaItRentalsPage() {
                               setUserSearch('');
                               setSelectedEmployeeId('');
                             }}
-                            className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-850 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 font-bold rounded-lg transition-colors cursor-pointer text-[10px]"
+                            className="px-2.5 py-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 font-bold rounded-lg transition-colors cursor-pointer text-[10px]"
                           >
                             Cancel
                           </button>

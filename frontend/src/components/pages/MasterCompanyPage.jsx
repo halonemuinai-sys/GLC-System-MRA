@@ -419,7 +419,7 @@ export default function MasterCompanyPage() {
             }
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-755 transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-800 transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             {
@@ -439,7 +439,7 @@ export default function MasterCompanyPage() {
       />
 
       {/* Navigation Tabs */}
-      <div className="flex border-b border-neutral-200 dark:border-neutral-850 gap-6">
+      <div className="flex border-b border-neutral-200 dark:border-neutral-800 gap-6">
         <button
           onClick={() => handleTabChange('companies')}
           className={`pb-3 text-xs font-black uppercase tracking-wider transition relative ${

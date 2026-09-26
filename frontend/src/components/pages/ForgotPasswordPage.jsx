@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
         </Link>
 
         <div className="flex items-center gap-4 mb-7">
-          <div className="w-12 h-12 rounded-2xl bg-white border border-indigo-150 flex items-center justify-center shadow-sm flex-shrink-0 p-1.5">
+          <div className="w-12 h-12 rounded-2xl bg-white border border-indigo-100 flex items-center justify-center shadow-sm flex-shrink-0 p-1.5">
             <img src="/mra_logo.png" alt="MRA Group Logo" className="max-w-full max-h-full object-contain" />
           </div>
           <div>

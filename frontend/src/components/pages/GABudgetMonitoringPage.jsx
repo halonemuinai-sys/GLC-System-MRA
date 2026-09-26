@@ -139,7 +139,7 @@ function DetailBudgetModal({ payment, onClose, onCreatePo }) {
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
         className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-955/50">
+        <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
               <Wallet className="w-5 h-5" />
@@ -239,7 +239,7 @@ function DetailBudgetModal({ payment, onClose, onCreatePo }) {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-5 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-955/50 flex items-center justify-between gap-3">
+        <div className="p-5 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/50 flex items-center justify-between gap-3">
           <button onClick={onClose} className="px-4 py-2 font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/50 dark:hover:bg-neutral-800 rounded-xl transition-all cursor-pointer">
             Tutup
           </button>
@@ -346,7 +346,7 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
         className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col my-6 max-h-[92vh]">
         
         {/* Modal Header */}
-        <div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50 dark:bg-neutral-955">
+        <div className="p-5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50 dark:bg-neutral-950">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
               <FileText className="w-5 h-5" />
@@ -499,12 +499,12 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
 
               {/* Vendor & Ship To */}
               <div className="grid grid-cols-2 gap-6 text-xs">
-                <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-150">
+                <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-100">
                   <p className="font-black text-neutral-400 uppercase text-[10px] mb-1">VENDOR / SUPPLIER</p>
                   <p className="font-extrabold text-neutral-900">{vendorName}</p>
                   <p className="text-neutral-600 mt-0.5">{vendorAddress}</p>
                 </div>
-                <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-150">
+                <div className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-100">
                   <p className="font-black text-neutral-400 uppercase text-[10px] mb-1">SHIP TO / ALAMAT KIRIM</p>
                   <p className="font-extrabold text-neutral-900">{shipTo}</p>
                   <p className="text-neutral-600 mt-0.5">GA Procurement Department</p>
@@ -522,7 +522,7 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
                     <th className="py-2 text-right">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-neutral-150 font-medium text-neutral-800">
+                <tbody className="divide-y divide-neutral-100 font-medium text-neutral-800">
                   <tr>
                     <td className="py-3">1</td>
                     <td className="py-3 font-semibold">{itemDesc}</td>
@@ -575,7 +575,7 @@ function CreatePoModal({ payment, onClose, onPoGenerated }) {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-5 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-955 flex items-center justify-between gap-3">
+        <div className="p-5 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 flex items-center justify-between gap-3">
           <button onClick={onClose} className="px-4 py-2 font-bold text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200/50 rounded-xl transition-all cursor-pointer">
             Batal
           </button>

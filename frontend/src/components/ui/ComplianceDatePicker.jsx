@@ -32,7 +32,7 @@ const TriggerInput = forwardRef(function TriggerInput({ value, onClick, onClear,
     >
       <div className="flex items-center gap-2 truncate">
         <CalendarIcon className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-        <span className={value ? 'text-neutral-850 dark:text-neutral-200 font-medium' : 'text-neutral-400'}>
+        <span className={value ? 'text-neutral-900 dark:text-neutral-200 font-medium' : 'text-neutral-400'}>
           {value || placeholder}
         </span>
       </div>

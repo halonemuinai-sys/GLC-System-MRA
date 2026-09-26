@@ -91,7 +91,7 @@ export default function MasterCompanyTables({
                     className="border-b border-neutral-50 dark:border-neutral-800/50 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/[0.04] transition-colors cursor-pointer group"
                   >
                     <td className="px-5 py-3.5">
-                      <span className="font-mono text-xs font-bold text-indigo-650 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md">
+                      <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-md">
                         {company.code || '—'}
                       </span>
                     </td>
@@ -251,7 +251,7 @@ export default function MasterCompanyTables({
                     <td className="px-5 py-3.5 font-semibold text-neutral-900 dark:text-white">
                       {branch.name}
                     </td>
-                    <td className="px-5 py-3.5 text-neutral-600 dark:text-neutral-350 text-xs font-semibold">
+                    <td className="px-5 py-3.5 text-neutral-600 dark:text-neutral-300 text-xs font-semibold">
                       <div className="flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-neutral-400" />
                         {branch.location}
@@ -334,7 +334,7 @@ export default function MasterCompanyTables({
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-bold text-neutral-600 dark:text-neutral-350 px-2">{meta.page}</span>
+            <span className="text-xs font-bold text-neutral-600 dark:text-neutral-300 px-2">{meta.page}</span>
             <button
               onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
               disabled={page >= meta.totalPages}

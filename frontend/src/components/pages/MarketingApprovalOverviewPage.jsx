@@ -72,7 +72,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0, tooltip
       <div className="flex items-center justify-between">
         <div className="min-w-0 flex-1 pr-2">
           <div className="flex items-center">
-            <p className="text-xs font-semibold text-neutral-450 dark:text-neutral-500 uppercase tracking-wider truncate">{label}</p>
+            <p className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider truncate">{label}</p>
             {tooltip && <InfoTooltip content={tooltip} position="top" />}
           </div>
           <p className="text-xl font-black text-neutral-900 dark:text-white mt-1">{value}</p>
@@ -93,7 +93,7 @@ function HorizontalStepper({ steps }) {
     <div className="flex items-center gap-1">
       {steps.map((step, idx) => {
         let dotClass = 'bg-neutral-200 dark:bg-neutral-800 text-neutral-500';
-        let lineClass = 'bg-neutral-200 dark:bg-neutral-850';
+        let lineClass = 'bg-neutral-200 dark:bg-neutral-800';
 
         if (step.status === 'APPROVED') {
           dotClass = 'bg-emerald-500 text-white';
@@ -249,7 +249,7 @@ export default function MarketingApprovalOverviewPage() {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-3">
         <Loader2 className="w-9 h-9 animate-spin text-blue-600" />
-        <p className="text-xs text-neutral-450 dark:text-neutral-500 font-bold">Memuat modul monitoring...</p>
+        <p className="text-xs text-neutral-400 dark:text-neutral-500 font-bold">Memuat modul monitoring...</p>
       </div>
     );
   }
@@ -266,7 +266,7 @@ export default function MarketingApprovalOverviewPage() {
             {t('marketing_approval_title')}
           </h1>
         </div>
-        <p className="text-xs text-neutral-450 dark:text-neutral-500 mt-1">
+        <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
           Pantau status penandatanganan dan step-by-step alur persetujuan rencana anggaran marketing yang diajukan.
         </p>
       </div>
@@ -289,7 +289,7 @@ export default function MarketingApprovalOverviewPage() {
           <select
             value={filter.fiscal_year}
             onChange={(e) => setFilter(prev => ({ ...prev, fiscal_year: e.target.value }))}
-            className="bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-800 dark:text-white"
+            className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-800 dark:text-white"
           >
             {FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
@@ -300,7 +300,7 @@ export default function MarketingApprovalOverviewPage() {
           <select
             value={filter.status}
             onChange={(e) => setFilter(prev => ({ ...prev, status: e.target.value }))}
-            className="bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-800 dark:text-white"
+            className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-800 dark:text-white"
           >
             <option value="">Semua Status</option>
             <option value="DRAFT">DRAFT</option>
@@ -320,14 +320,14 @@ export default function MarketingApprovalOverviewPage() {
             placeholder="Cari nama campaign atau pembuat..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3.5 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-800 dark:text-white"
+            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3.5 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-800 dark:text-white"
           />
         </div>
 
         <button
           onClick={handleProses}
           disabled={processing}
-          className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-800 dark:hover:bg-neutral-750 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 mt-4"
+          className="flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 mt-4"
         >
           {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           {t('processData')}
@@ -375,7 +375,7 @@ export default function MarketingApprovalOverviewPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
+              <tr className="bg-neutral-50 dark:bg-white/[0.02] border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
                 <th className="px-6 py-3.5">ID / Nama Rencana Campaign</th>
                 <th className="px-6 py-3.5">PT / Company</th>
                 <th className="px-6 py-3.5">Pembuat</th>
@@ -385,20 +385,20 @@ export default function MarketingApprovalOverviewPage() {
                 <th className="px-6 py-3.5 text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
+            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium text-neutral-700 dark:text-neutral-300">
               {filteredPlans.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-10 text-center text-neutral-450 font-bold">
+                  <td colSpan="7" className="px-6 py-10 text-center text-neutral-500 dark:text-neutral-400 font-bold">
                     Tidak ditemukan data persetujuan yang cocok.
                   </td>
                 </tr>
               ) : (
                 filteredPlans.map((plan) => (
-                  <tr key={plan.id} className="hover:bg-neutral-550/5 dark:hover:bg-neutral-955/10 transition-colors">
+                  <tr key={plan.id} className="hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors">
                     <td className="px-6 py-3.5">
                       <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] font-bold text-neutral-400">ID: {plan.id}</span>
-                        <div className="flex items-center gap-1.5 font-bold text-neutral-850 dark:text-white">
+                        <div className="flex items-center gap-1.5 font-bold text-neutral-900 dark:text-white">
                           {plan.title}
                           {plan.is_over_budget && (
                             <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 text-[8px] font-extrabold flex items-center gap-0.5" title="Melebihi limit anggaran bulanan">
@@ -409,12 +409,12 @@ export default function MarketingApprovalOverviewPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-3.5 text-neutral-500 dark:text-neutral-450">
+                    <td className="px-6 py-3.5 text-neutral-500 dark:text-neutral-400">
                       {plan.company_name}
                     </td>
                     <td className="px-6 py-3.5">
                       <span className="font-bold text-neutral-800 dark:text-neutral-300 block">{plan.creator_name}</span>
-                      <span className="text-[10px] text-neutral-450 block">{new Date(plan.created_at).toLocaleDateString('id-ID')}</span>
+                      <span className="text-[10px] text-neutral-400 dark:text-neutral-500 block">{new Date(plan.created_at).toLocaleDateString('id-ID')}</span>
                     </td>
                     <td className="px-6 py-3.5 text-right font-mono font-bold text-neutral-900 dark:text-white">
                       {formatIDR(plan.total_budget)}
@@ -433,7 +433,7 @@ export default function MarketingApprovalOverviewPage() {
                           setSelectedPlan(plan);
                           setShowDrawer(true);
                         }}
-                        className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg text-neutral-450 hover:text-blue-500 transition-colors cursor-pointer"
+                        className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg text-neutral-400 dark:text-neutral-500 hover:text-blue-500 transition-colors cursor-pointer"
                         title="Tampilkan Audit Trail"
                       >
                         <Eye className="w-4 h-4" />
@@ -463,13 +463,13 @@ export default function MarketingApprovalOverviewPage() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-lg bg-white dark:bg-neutral-955 border-l border-neutral-200 dark:border-neutral-850 z-50 shadow-2xl p-6 flex flex-col justify-between"
+              className="fixed top-0 right-0 h-full w-full max-w-lg bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 z-50 shadow-2xl p-6 flex flex-col justify-between"
             >
               <div className="space-y-6 overflow-y-auto flex-1 pr-1.5">
-                <div className="flex items-start justify-between border-b border-neutral-100 dark:border-neutral-850 pb-4">
+                <div className="flex items-start justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
                   <div>
                     <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">Detail & Audit Trail</span>
-                    <h3 className="text-sm font-black text-neutral-855 dark:text-white mt-1">
+                    <h3 className="text-sm font-black text-neutral-900 dark:text-white mt-1">
                       {selectedPlan.title}
                     </h3>
                     <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">
@@ -478,7 +478,7 @@ export default function MarketingApprovalOverviewPage() {
                   </div>
                   <button
                     onClick={() => setShowDrawer(false)}
-                    className="p-1.5 text-neutral-450 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg transition-colors cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -491,7 +491,7 @@ export default function MarketingApprovalOverviewPage() {
                       <AlertTriangle className="w-4 h-4" />
                       <span>Alasan Pengajuan Over-Budget:</span>
                     </div>
-                    <p className="text-[11px] text-neutral-650 dark:text-neutral-400 italic leading-relaxed font-semibold">
+                    <p className="text-[11px] text-neutral-600 dark:text-neutral-400 italic leading-relaxed font-semibold">
                       "{selectedPlan.over_budget_reason || 'Tidak dilampirkan alasan.'}"
                     </p>
                   </div>
@@ -521,7 +521,7 @@ export default function MarketingApprovalOverviewPage() {
 
                           <div className="space-y-1">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-neutral-850 dark:text-white">
+                              <span className="text-xs font-bold text-neutral-900 dark:text-white">
                                 Step {step.step_number}: {step.role}
                               </span>
                               <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold ${
@@ -535,15 +535,15 @@ export default function MarketingApprovalOverviewPage() {
 
                             {/* Approver Action Details */}
                             {step.status === 'APPROVED' && (
-                              <div className="text-[10px] text-neutral-500 dark:text-neutral-450 space-y-0.5">
-                                <div>Disetujui oleh: <span className="font-bold text-neutral-750 dark:text-neutral-300">{step.approver_name}</span></div>
+                              <div className="text-[10px] text-neutral-500 dark:text-neutral-400 space-y-0.5">
+                                <div>Disetujui oleh: <span className="font-bold text-neutral-700 dark:text-neutral-300">{step.approver_name}</span></div>
                                 <div>Waktu: <span>{new Date(step.action_at).toLocaleString('id-ID')}</span></div>
                               </div>
                             )}
 
                             {step.status === 'REJECTED' && (
-                              <div className="text-[10px] text-neutral-500 dark:text-neutral-450 space-y-1">
-                                <div>Ditolak oleh: <span className="font-bold text-neutral-750 dark:text-neutral-300">{step.approver_name}</span></div>
+                              <div className="text-[10px] text-neutral-500 dark:text-neutral-400 space-y-1">
+                                <div>Ditolak oleh: <span className="font-bold text-neutral-700 dark:text-neutral-300">{step.approver_name}</span></div>
                                 <div>Waktu: <span>{new Date(step.action_at).toLocaleString('id-ID')}</span></div>
                                 {step.comment && (
                                   <div className="bg-red-500/5 border border-red-500/10 p-2 rounded-lg italic text-red-500/90 font-medium">
@@ -589,10 +589,10 @@ export default function MarketingApprovalOverviewPage() {
                 </div>
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-neutral-855 pt-4">
+              <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4">
                 <button
                   onClick={() => setShowDrawer(false)}
-                  className="w-full px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-350 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer text-center block"
+                  className="w-full px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer text-center block"
                 >
                   Tutup Monitor
                 </button>

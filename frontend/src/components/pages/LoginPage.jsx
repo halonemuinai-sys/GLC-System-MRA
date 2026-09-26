@@ -231,7 +231,7 @@ export default function LoginPage() {
 
            {/* Mobile top logo (shows only on small screens) */}
           <div className="lg:hidden flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 rounded-xl bg-white border border-indigo-150 flex items-center justify-center shadow-sm p-1.5">
+            <div className="w-10 h-10 rounded-xl bg-white border border-indigo-100 flex items-center justify-center shadow-sm p-1.5">
               <img src="/mra_logo.png" alt="MRA Group Logo" className="max-w-full max-h-full object-contain" />
             </div>
             <span className="text-xl font-bold text-gray-900">MRA</span>
@@ -240,7 +240,7 @@ export default function LoginPage() {
           <div className="space-y-7">
             {/* Form Title & Subtitle Header */}
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white border border-indigo-150 flex items-center justify-center shadow-sm flex-shrink-0 p-1.5">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-indigo-100 flex items-center justify-center shadow-sm flex-shrink-0 p-1.5">
                 <img src="/mra_logo.png" alt="MRA Group Logo" className="max-w-full max-h-full object-contain" />
               </div>
               <div>

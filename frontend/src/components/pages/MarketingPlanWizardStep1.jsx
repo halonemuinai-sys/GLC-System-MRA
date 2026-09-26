@@ -33,7 +33,7 @@ export function FormLabel({ label, tooltip }) {
       </span>
       {tooltip && (
         <Tooltip>
-          <TooltipTrigger type="button" className="text-neutral-455 hover:text-neutral-700 dark:text-neutral-450 dark:hover:text-neutral-200 transition-colors p-0.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-help">
+          <TooltipTrigger type="button" className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors p-0.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-900 cursor-help">
             <Info className="w-3 h-3" />
           </TooltipTrigger>
           <TooltipContent className="text-[11px] leading-relaxed max-w-[220px]" side="top" align="center">
@@ -56,7 +56,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-3.5 bg-neutral-50 dark:bg-neutral-955/30 hover:bg-neutral-105 dark:hover:bg-neutral-800/30 transition-colors text-left"
+        className="w-full flex items-center justify-between px-5 py-3.5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800/30 transition-colors text-left"
       >
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -83,7 +83,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_sales: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-semibold"
+                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-semibold"
               />
             </div>
             <div className="space-y-1">
@@ -96,7 +96,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_leads: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <div className="space-y-1">
@@ -109,7 +109,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_reach: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <div className="space-y-1">
@@ -122,7 +122,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_impressions: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <div className="space-y-1">
@@ -133,7 +133,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                 placeholder="0.00"
                 value={wizardHeader.target_roi_pct || ''}
                 onChange={(e) => setWizardHeader(p => ({ ...p, target_roi_pct: e.target.value }))}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
           </div>
@@ -144,7 +144,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
               placeholder={t('targetNotesPlaceholder')}
               value={wizardHeader.target_notes || ''}
               onChange={(e) => setWizardHeader(p => ({ ...p, target_notes: e.target.value }))}
-              className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none"
             />
           </div>
         </div>
@@ -243,7 +243,7 @@ export default function MarketingPlanWizardStep1({
             placeholder="e.g. Ramadhan Promotion Campaign Bvlgari"
             value={wizardHeader.title}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, title: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
             required
           />
         </div>
@@ -281,7 +281,7 @@ export default function MarketingPlanWizardStep1({
             placeholder={t('descriptionPlaceholder')}
             value={wizardHeader.description}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, description: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-relaxed font-medium resize-none"
+            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-relaxed font-medium resize-none"
           />
         </div>
 
@@ -291,7 +291,7 @@ export default function MarketingPlanWizardStep1({
           <select
             value={wizardHeader.fiscal_year}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, fiscal_year: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
             required
           >
             {FISCAL_YEAR_OPTIONS.map(y => (
@@ -322,7 +322,7 @@ export default function MarketingPlanWizardStep1({
           <select
             value={wizardHeader.lob_id}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, lob_id: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
             required
           >
             <option value="">{t('selectLob')}</option>
@@ -337,7 +337,7 @@ export default function MarketingPlanWizardStep1({
           <select
             value={wizardHeader.event_location_id}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, event_location_id: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
           >
             <option value="">{t('selectLocationOption')}</option>
             {metadata.event_locations.map(loc => (
@@ -375,9 +375,9 @@ export default function MarketingPlanWizardStep1({
           <button
             type="button"
             onClick={() => setWizardHeader(prev => ({ ...prev, _branchDropdownOpen: !prev._branchDropdownOpen }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-left font-medium flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-left font-medium flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
           >
-            <span className={wizardHeader.branch_ids.length === 0 ? 'text-neutral-850 dark:text-white font-medium' : 'text-blue-600 dark:text-blue-400 font-semibold'}>
+            <span className={wizardHeader.branch_ids.length === 0 ? 'text-neutral-900 dark:text-white font-medium' : 'text-blue-600 dark:text-blue-400 font-semibold'}>
               {(() => {
                 if (wizardHeader.branch_ids.length === 0) return t('globalSales');
                 if (wizardHeader.branch_ids.length === 1) {
@@ -476,7 +476,7 @@ export default function MarketingPlanWizardStep1({
                 placeholder={t('proposalLinkPlaceholder')}
                 value={wizardHeader.doc_url || ''}
                 onChange={(e) => setWizardHeader(prev => ({ ...prev, doc_url: e.target.value }))}
-                className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
               />
             </div>
             <div className="relative shrink-0">
@@ -490,7 +490,7 @@ export default function MarketingPlanWizardStep1({
               />
               <label
                 htmlFor="wizard-proposal-upload"
-                className={`px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 text-neutral-750 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-750 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 h-full ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                className={`px-4 py-2.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 h-full ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
               >
                 {uploading ? (
                   <>

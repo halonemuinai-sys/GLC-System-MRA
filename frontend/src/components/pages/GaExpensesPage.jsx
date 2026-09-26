@@ -45,7 +45,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[36px] select-none"
       >
-        <span className={selectedCompany ? 'text-neutral-850 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
+        <span className={selectedCompany ? 'text-neutral-900 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
           {selectedCompany ? selectedCompany.name : placeholder}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">

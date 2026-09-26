@@ -141,7 +141,7 @@ export default function PublicApprovalPage({ token }) {
           </div>
           <div>
             <h1 className="text-base font-black text-neutral-900 dark:text-white tracking-tight">GLC Apps - Persetujuan via Email</h1>
-            <p className="text-[11px] text-neutral-450">MRA Group · Marketing Budget Approval</p>
+            <p className="text-[11px] text-neutral-400">MRA Group · Marketing Budget Approval</p>
           </div>
         </div>
 
@@ -153,8 +153,8 @@ export default function PublicApprovalPage({ token }) {
         ) : loadError ? (
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl py-16 px-6 flex flex-col items-center justify-center gap-3 text-center shadow-sm">
             <AlertTriangle className="w-10 h-10 text-red-500" />
-            <h3 className="text-sm font-black text-neutral-850 dark:text-white">Link Tidak Bisa Diakses</h3>
-            <p className="text-xs text-neutral-450 max-w-sm">{loadError}</p>
+            <h3 className="text-sm font-black text-neutral-900 dark:text-white">Link Tidak Bisa Diakses</h3>
+            <p className="text-xs text-neutral-400 max-w-sm">{loadError}</p>
           </div>
         ) : result ? (
           <motion.div
@@ -167,10 +167,10 @@ export default function PublicApprovalPage({ token }) {
             ) : (
               <CheckCircle className="w-12 h-12 text-emerald-500" />
             )}
-            <h3 className="text-sm font-black text-neutral-850 dark:text-white">
+            <h3 className="text-sm font-black text-neutral-900 dark:text-white">
               {result.action === 'REJECT' ? 'Pengajuan Ditolak' : 'Persetujuan Berhasil Diproses'}
             </h3>
-            <p className="text-xs text-neutral-450 max-w-sm">{result.message}</p>
+            <p className="text-xs text-neutral-400 max-w-sm">{result.message}</p>
           </motion.div>
         ) : (
           <>
@@ -178,8 +178,8 @@ export default function PublicApprovalPage({ token }) {
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/20 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-neutral-850 dark:text-white">Detail Pengajuan</h3>
-                  <p className="text-[10px] text-neutral-450 mt-0.5">
+                  <h3 className="text-sm font-black text-neutral-900 dark:text-white">Detail Pengajuan</h3>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">
                     Modul: {isPlan ? 'Marketing Plan' : 'Payment Request'} · Step {task.step_number} Approval
                   </p>
                 </div>
@@ -189,7 +189,7 @@ export default function PublicApprovalPage({ token }) {
               </div>
 
               <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs font-bold text-neutral-700 dark:text-neutral-350">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs font-bold text-neutral-700 dark:text-neutral-300">
                   <div>Judul: <span className="font-normal text-neutral-900 dark:text-white">{docTitle}</span></div>
                   <div>PT / Entitas: <span className="font-normal text-neutral-900 dark:text-white">{companyName || '-'}</span></div>
                   <div>Diajukan Oleh: <span className="font-normal text-neutral-900 dark:text-white">{requesterName || '-'}</span></div>
@@ -226,7 +226,7 @@ export default function PublicApprovalPage({ token }) {
                       <AlertTriangle className="w-4 h-4 shrink-0" />
                       <span>PERINGATAN OVERBUDGET</span>
                     </div>
-                    <p className="font-normal text-[11px] leading-relaxed text-red-650 dark:text-red-350">
+                    <p className="font-normal text-[11px] leading-relaxed text-red-600 dark:text-red-300">
                       Realisasi biaya ini melampaui sisa anggaran bulanan pos terkait dan membutuhkan persetujuan level akhir.
                     </p>
                   </div>
@@ -234,17 +234,17 @@ export default function PublicApprovalPage({ token }) {
 
                 {isPlan && task.marketing_plan.items?.length > 0 && (
                   <div className="space-y-2">
-                    <h5 className="text-[11px] font-bold text-neutral-450 uppercase">Rincian Anggaran</h5>
-                    <div className="border border-neutral-200 dark:border-neutral-850 rounded-2xl overflow-hidden text-xs max-h-48 overflow-y-auto">
+                    <h5 className="text-[11px] font-bold text-neutral-400 uppercase">Rincian Anggaran</h5>
+                    <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden text-xs max-h-48 overflow-y-auto">
                       <table className="w-full text-left">
                         <thead>
-                          <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-850 text-neutral-400 font-bold uppercase">
+                          <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 font-bold uppercase">
                             <th className="px-3 py-2">CoA</th>
                             <th className="px-3 py-2">Vendor</th>
                             <th className="px-3 py-2 text-right">Budget</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-neutral-150 dark:divide-neutral-850 text-neutral-700 dark:text-neutral-300 font-medium">
+                        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-neutral-700 dark:text-neutral-300 font-medium">
                           {task.marketing_plan.items.map(item => (
                             <tr key={item.id}>
                               <td className="px-3 py-2">{item.m_coa?.code} - {item.m_coa?.name}</td>
@@ -267,7 +267,7 @@ export default function PublicApprovalPage({ token }) {
                   <AlertTriangle className="w-4 h-4" /> {actionError}
                 </div>
               )}              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-neutral-450 uppercase flex items-center gap-1">
+                <label className="text-[10px] font-bold text-neutral-400 uppercase flex items-center gap-1">
                   <Edit3 className="w-3.5 h-3.5 text-indigo-500" /> Komentar / Catatan
                 </label>
                 <textarea
@@ -275,7 +275,7 @@ export default function PublicApprovalPage({ token }) {
                   placeholder="Komentar opsional untuk persetujuan, atau wajib diisi jika menolak (REJECT)..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-2xl px-3.5 py-3 text-xs text-neutral-850 dark:text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-2xl px-3.5 py-3 text-xs text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500"
                 />
               </div>
 

@@ -168,9 +168,9 @@ export default function DashboardLayout({ children }) {
             </button>
 
             <div className="flex items-center gap-3 text-xs border-l border-neutral-200 dark:border-white/[0.05] pl-4">
-              <Calendar className="w-4 h-4 text-neutral-450 dark:text-neutral-500 shrink-0" />
+              <Calendar className="w-4 h-4 text-neutral-400 dark:text-neutral-500 shrink-0" />
               <span className="text-neutral-600 dark:text-slate-300 font-bold hidden md:inline">{dateString}</span>
-              <span className="text-neutral-350 dark:text-neutral-700 hidden md:inline">•</span>
+              <span className="text-neutral-300 dark:text-neutral-700 hidden md:inline">•</span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               <span className="text-neutral-600 dark:text-slate-300 font-mono font-bold tracking-widest">{timeString || '00:00:00'}</span>
             </div>

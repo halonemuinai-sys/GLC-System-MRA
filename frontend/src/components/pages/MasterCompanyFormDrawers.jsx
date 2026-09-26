@@ -158,7 +158,7 @@ export default function MasterCompanyFormDrawers({
                   <button
                     type="submit"
                     disabled={submitting || !companyFormData.name.trim()}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-650 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-755 transition-colors cursor-pointer"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-800 transition-colors cursor-pointer"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                     {editingCompany ? 'Simpan' : 'Tambah'}
@@ -244,7 +244,7 @@ export default function MasterCompanyFormDrawers({
                   <button
                     type="submit"
                     disabled={submitting || !masterFormData.name.trim()}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-650 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-755 transition-colors cursor-pointer"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-800 transition-colors cursor-pointer"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                     {editingMaster ? 'Simpan' : 'Tambah'}
@@ -372,7 +372,7 @@ export default function MasterCompanyFormDrawers({
                   <button
                     type="submit"
                     disabled={submitting || !String(branchFormData.name || '').trim() || !String(branchFormData.location || '').trim()}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-650 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-755 transition-colors cursor-pointer"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-800 transition-colors cursor-pointer"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                     {editingBranch ? 'Simpan' : 'Tambah'}

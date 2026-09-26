@@ -111,7 +111,7 @@ function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap,
         className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer select-none ${
           isActive
             ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300'
-            : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-850'
+            : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800'
         }`}
       >
         {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0 opacity-70" />}
@@ -470,7 +470,7 @@ export default function MarketingPlanPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiTotalBudget')}</p>
-              <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalBudget)}</h3>
+              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalBudget)}</h3>
             </div>
           </div>
         </div>
@@ -485,7 +485,7 @@ export default function MarketingPlanPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiRealized')}</p>
-              <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalActual)}</h3>
+              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalActual)}</h3>
             </div>
           </div>
         </div>
@@ -500,7 +500,7 @@ export default function MarketingPlanPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiRemaining')}</p>
-              <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">{formatIDR(kpis.variance)}</h3>
+              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5 truncate">{formatIDR(kpis.variance)}</h3>
             </div>
           </div>
         </div>
@@ -515,7 +515,7 @@ export default function MarketingPlanPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiBurnRate')}</p>
-              <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">
+              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5 truncate">
                 {kpis.burnRate.toFixed(1)}% <span className="text-xs font-normal text-neutral-400">({kpis.activeCampaigns} Approved)</span>
               </h3>
             </div>
@@ -647,7 +647,7 @@ export default function MarketingPlanPage() {
                       {totalPlans === 0 ? (
                         <div className="flex flex-col items-center gap-3">
                           <FileSpreadsheet className="w-9 h-9 text-neutral-300 dark:text-neutral-700" />
-                          <p className="text-xs text-neutral-450 font-medium">{t('noPlans')}</p>
+                          <p className="text-xs text-neutral-400 font-medium">{t('noPlans')}</p>
                           <button
                             onClick={handleCreatePlan}
                             className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 transition-all cursor-pointer"
@@ -656,18 +656,18 @@ export default function MarketingPlanPage() {
                           </button>
                         </div>
                       ) : (
-                        <p className="text-xs text-neutral-450 font-normal">{t('noMatch')}</p>
+                        <p className="text-xs text-neutral-400 font-normal">{t('noMatch')}</p>
                       )}
                     </td>
                   </tr>
                 ) : (
                   plans.map(plan => {
-                    let statusBadge = 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/5 dark:text-amber-450 border-amber-200/60 dark:border-amber-900/30';
+                    let statusBadge = 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/5 dark:text-amber-400 border-amber-200/60 dark:border-amber-900/30';
                     let statusText = 'Pending Approval';
                     let StatusIcon = Clock;
                     let rowAccent = 'border-l-transparent hover:border-l-amber-400';
                     if (plan.status === 'APPROVED') {
-                      statusBadge = 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/5 dark:text-emerald-450 border-emerald-200/60 dark:border-emerald-900/30';
+                      statusBadge = 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/5 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-900/30';
                       statusText = 'Approved';
                       StatusIcon = CheckCircle;
                       rowAccent = 'border-l-transparent hover:border-l-emerald-400';
@@ -677,12 +677,12 @@ export default function MarketingPlanPage() {
                       StatusIcon = CheckCircle;
                       rowAccent = 'border-l-transparent hover:border-l-blue-400';
                     } else if (plan.status === 'REJECTED') {
-                      statusBadge = 'bg-red-500/10 text-red-600 dark:bg-red-500/5 dark:text-red-450 border-red-200/60 dark:border-red-900/30';
+                      statusBadge = 'bg-red-500/10 text-red-600 dark:bg-red-500/5 dark:text-red-400 border-red-200/60 dark:border-red-900/30';
                       statusText = 'Rejected';
                       StatusIcon = AlertTriangle;
                       rowAccent = 'border-l-transparent hover:border-l-red-400';
                     } else if (plan.status === 'DRAFT') {
-                      statusBadge = 'bg-neutral-500/10 text-neutral-600 dark:bg-neutral-500/5 dark:text-neutral-450 border-neutral-200/60 dark:border-neutral-700/40';
+                      statusBadge = 'bg-neutral-500/10 text-neutral-600 dark:bg-neutral-500/5 dark:text-neutral-400 border-neutral-200/60 dark:border-neutral-700/40';
                       statusText = 'Draft';
                       StatusIcon = FileSpreadsheet;
                       rowAccent = 'border-l-transparent hover:border-l-neutral-400';
@@ -707,12 +707,12 @@ export default function MarketingPlanPage() {
                             {plan.event_start_date ? new Date(plan.event_start_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : (plan.start_date ? new Date(plan.start_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : '-')} - {plan.event_end_date ? new Date(plan.event_end_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : (plan.end_date ? new Date(plan.end_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : '-')}
                           </span>
                           {plan.cta_start_date && (
-                            <span className="text-[9px] text-neutral-450 dark:text-neutral-500 block mt-0.5">
+                            <span className="text-[9px] text-neutral-400 dark:text-neutral-500 block mt-0.5">
                               {t('promoLabel')} {new Date(plan.cta_start_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' })} - {new Date(plan.cta_end_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' })}
                             </span>
                           )}
                         </td>
-                        <td className="px-5 py-4 text-right font-bold text-neutral-850 dark:text-white">
+                        <td className="px-5 py-4 text-right font-bold text-neutral-900 dark:text-white">
                           {formatIDR(plan.total_budget)}
                         </td>
                         <td className="px-5 py-4 text-center">
@@ -914,8 +914,8 @@ export default function MarketingPlanPage() {
                 <Trash2 className="w-6 h-6" />
               </div>
               <div className="space-y-1.5">
-                <h3 className="text-sm font-black text-neutral-850 dark:text-white">{t('deleteTitle')}</h3>
-                <p className="text-xs text-neutral-450 dark:text-neutral-500 px-2 leading-relaxed">
+                <h3 className="text-sm font-black text-neutral-900 dark:text-white">{t('deleteTitle')}</h3>
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 px-2 leading-relaxed">
                   {t('deleteBodyPrefix')} <strong>"{planToDelete.title}"</strong> {t('deleteBodySuffix')}
                 </p>
                 {planToDelete.status === 'APPROVED' && (
@@ -928,7 +928,7 @@ export default function MarketingPlanPage() {
                 <button
                   type="button"
                   onClick={() => setPlanToDelete(null)}
-                  className="flex-1 px-4 py-2.5 border border-neutral-250 dark:border-neutral-750 text-neutral-650 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
                   {t('btnCancel')}
                 </button>

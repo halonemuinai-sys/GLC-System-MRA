@@ -167,7 +167,7 @@ export default function MarketingEventLocationPage() {
               {t('marketing_eventloc_title')}
             </h1>
           </div>
-          <p className="text-xs text-neutral-450 dark:text-neutral-500 mt-1">
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
             Konfigurasi daftar lokasi fisik atau wilayah diselenggarakannya aktivitas pemasaran.
           </p>
         </div>
@@ -176,7 +176,7 @@ export default function MarketingEventLocationPage() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={handleAdd}
-          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer self-start sm:self-auto"
+          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer self-start sm:self-auto"
         >
           <Plus className="w-4 h-4" />
           Tambah Lokasi
@@ -204,7 +204,7 @@ export default function MarketingEventLocationPage() {
       {/* ── Filter & Search Bar ── */}
       <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
         <div className="relative w-full md:max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-450" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
           <input
             type="text"
             placeholder={t('marketing_eventloc_search')}
@@ -213,13 +213,13 @@ export default function MarketingEventLocationPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-neutral-855 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
           />
         </div>
 
         <button
           onClick={fetchData}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-neutral-500 hover:text-neutral-750 dark:text-neutral-450 dark:hover:text-white border border-neutral-200 dark:border-neutral-850 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-all cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-white border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-all cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Segarkan Data
@@ -241,23 +241,23 @@ export default function MarketingEventLocationPage() {
         ) : paginatedData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
             <MapPin className="w-8 h-8 text-neutral-300 dark:text-neutral-700" />
-            <p className="text-xs text-neutral-450 font-bold">Tidak ada lokasi ditemukan.</p>
+            <p className="text-xs text-neutral-400 font-bold">Tidak ada lokasi ditemukan.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
+                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
                   <th className="px-6 py-3.5 w-[15%]">ID</th>
                   <th className="px-6 py-3.5 w-[65%]">{t('marketing_eventloc_colName')}</th>
                   <th className="px-6 py-3.5 w-[20%] text-center">{t('marketing_eventloc_colAction')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium text-neutral-700 dark:text-neutral-300">
                 {paginatedData.map((item) => (
-                  <tr key={item.id} className="hover:bg-neutral-550/5 dark:hover:bg-neutral-955/10 transition-colors">
+                  <tr key={item.id} className="hover:bg-neutral-500/5 dark:hover:bg-neutral-950/10 transition-colors">
                     <td className="px-6 py-3.5 text-neutral-400 font-mono font-bold">#{item.id}</td>
-                    <td className="px-6 py-3.5 font-bold text-neutral-855 dark:text-white">{item.name}</td>
+                    <td className="px-6 py-3.5 font-bold text-neutral-900 dark:text-white">{item.name}</td>
                     <td className="px-6 py-3.5 text-center flex items-center justify-center gap-2">
                       <button
                         onClick={() => handleEdit(item)}
@@ -286,8 +286,8 @@ export default function MarketingEventLocationPage() {
 
         {/* ── Pagination Footer ── */}
         {!loading && filteredData.length > 0 && (
-          <div className="bg-neutral-50 dark:bg-neutral-955/40 border-t border-neutral-200/60 dark:border-neutral-800 px-6 py-3.5 flex items-center justify-between">
-            <span className="text-[10px] font-bold text-neutral-450 dark:text-neutral-500">
+          <div className="bg-neutral-50 dark:bg-neutral-950/40 border-t border-neutral-200/60 dark:border-neutral-800 px-6 py-3.5 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500">
               Menampilkan {Math.min(filteredData.length, (page - 1) * itemsPerPage + 1)} - {Math.min(filteredData.length, page * itemsPerPage)} dari {filteredData.length} Lokasi
             </span>
 
@@ -299,7 +299,7 @@ export default function MarketingEventLocationPage() {
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs font-bold text-neutral-700 dark:text-neutral-350 px-2">
+              <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300 px-2">
                 Halaman {page} dari {totalPages}
               </span>
               <button
@@ -330,12 +330,12 @@ export default function MarketingEventLocationPage() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-955 border-l border-neutral-200 dark:border-neutral-850 z-50 shadow-2xl p-6 flex flex-col justify-between"
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 z-50 shadow-2xl p-6 flex flex-col justify-between"
             >
               <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-850 pb-4">
+                <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
                   <div>
-                    <h3 className="text-sm font-black text-neutral-855 dark:text-white">
+                    <h3 className="text-sm font-black text-neutral-900 dark:text-white">
                       {editingItem ? 'Edit Lokasi Event' : 'Tambah Lokasi Event Baru'}
                     </h3>
                     <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
@@ -344,7 +344,7 @@ export default function MarketingEventLocationPage() {
                   </div>
                   <button
                     onClick={() => setShowDrawer(false)}
-                    className="p-1.5 text-neutral-450 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg transition-colors cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -375,11 +375,11 @@ export default function MarketingEventLocationPage() {
                 </form>
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-neutral-855 pt-4 flex gap-3">
+              <div className="border-t border-neutral-100 dark:border-neutral-900 pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowDrawer(false)}
-                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-350 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
                 >
                   Batal
                 </button>
@@ -387,7 +387,7 @@ export default function MarketingEventLocationPage() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={submitting || !formData.name.trim()}
-                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Simpan'}
                 </button>
@@ -433,7 +433,7 @@ export default function MarketingEventLocationPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setDeleteTarget(null)}
-                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-350 rounded-xl hover:bg-neutral-250 text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 text-xs font-bold transition-all cursor-pointer"
                 >
                   Batal
                 </button>

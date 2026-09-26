@@ -89,7 +89,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none"
       >
-        <span className={selectedCompany ? 'text-neutral-850 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
+        <span className={selectedCompany ? 'text-neutral-900 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
           {selectedCompany ? selectedCompany.name : placeholder}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1273,15 +1273,15 @@ export default function ComplianceDocPage({ config }) {
 
               <div className="mt-8 pt-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center gap-3">
                 <button type="button" onClick={() => { setSelectedDoc(null); openEditDoc(selectedDoc); }}
-                  className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-650 dark:text-indigo-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-indigo-200/50 dark:border-indigo-900/30">
+                  className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-indigo-200/50 dark:border-indigo-900/30">
                   Edit
                 </button>
                 <button type="button" onClick={() => handleDeleteDoc(selectedDoc)}
-                  className="flex-1 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-650 dark:text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-red-200/50 dark:border-red-900/30">
+                  className="flex-1 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-red-200/50 dark:border-red-900/30">
                   Hapus
                 </button>
                 <button onClick={() => setSelectedDoc(null)}
-                  className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 dark:bg-neutral-850 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center">
+                  className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 active:bg-neutral-300 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center">
                   Tutup
                 </button>
               </div>
@@ -1428,7 +1428,7 @@ export default function ComplianceDocPage({ config }) {
                   </div>
                 </div>
 
-                <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Konfirmasi Hapus Dokumen</h3>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Konfirmasi Hapus Dokumen</h3>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
                   Apakah Anda yakin ingin menghapus <strong className="text-red-500 dark:text-red-400 font-bold">"{docToDelete.doc_name}"</strong>? Tindakan ini bersifat permanen dan akan tercatat di riwayat aktivitas.
                 </p>
@@ -1439,7 +1439,7 @@ export default function ComplianceDocPage({ config }) {
                     Batal
                   </button>
                   <button type="button" onClick={confirmDeleteDoc} disabled={submitting}
-                    className="flex-1 py-2 bg-red-650 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50">
+                    className="flex-1 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50">
                     {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                     Ya, Hapus
                   </button>
@@ -1461,7 +1461,7 @@ export default function ComplianceDocPage({ config }) {
                 
                 {/* Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
-                  <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100 flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
                     <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
                     Import Data from Excel - {title}
                   </h3>
@@ -1475,7 +1475,7 @@ export default function ComplianceDocPage({ config }) {
                   {/* Step 1: Download Template */}
                   <div className="bg-neutral-50 dark:bg-neutral-950 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800/60 flex items-center justify-between gap-4">
                     <div className="flex-1">
-                      <h4 className="font-bold text-neutral-850 dark:text-neutral-250 mb-1">1. Unduh Template Excel</h4>
+                      <h4 className="font-bold text-neutral-900 dark:text-neutral-200 mb-1">1. Unduh Template Excel</h4>
                       <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">Gunakan template resmi kami agar format kolom sesuai dan proses import berjalan lancar.</p>
                     </div>
                     <button type="button" onClick={handleDownloadTemplate} className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap shadow-md">
@@ -1486,7 +1486,7 @@ export default function ComplianceDocPage({ config }) {
 
                   {/* Step 2: Upload File */}
                   <div className="space-y-2">
-                    <h4 className="font-bold text-neutral-850 dark:text-neutral-250">2. Pilih File Excel (.xlsx)</h4>
+                    <h4 className="font-bold text-neutral-900 dark:text-neutral-200">2. Pilih File Excel (.xlsx)</h4>
                     <div className="border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 text-center hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors relative cursor-pointer flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950">
                       <input type="file" accept=".xlsx" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
                       <Upload className="w-8 h-8 text-neutral-400 mb-2" />
@@ -1520,7 +1520,7 @@ export default function ComplianceDocPage({ config }) {
                   {/* Preview parsed data */}
                   {importPreview.length > 0 && (
                     <div className="space-y-2">
-                      <h4 className="font-bold text-neutral-850 dark:text-neutral-250 flex items-center justify-between">
+                      <h4 className="font-bold text-neutral-900 dark:text-neutral-200 flex items-center justify-between">
                         <span>Preview Data ({importPreview.length} baris ditemukan)</span>
                         {importErrors.length === 0 && (
                           <span className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold rounded-full">
@@ -1542,7 +1542,7 @@ export default function ComplianceDocPage({ config }) {
                           </thead>
                           <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
                             {importPreview.map((row, idx) => (
-                              <tr key={idx} className={`${row.hasError ? 'bg-red-500/5 text-red-500' : 'hover:bg-neutral-50 dark:hover:bg-neutral-850/40 text-neutral-700 dark:text-neutral-300'}`}>
+                              <tr key={idx} className={`${row.hasError ? 'bg-red-500/5 text-red-500' : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/40 text-neutral-700 dark:text-neutral-300'}`}>
                                 <td className="p-2 text-center font-medium">{row.rowNum}</td>
                                 <td className="p-2 font-bold max-w-[120px] truncate" title={row.doc_name}>{row.doc_name || '-'}</td>
                                 <td className="p-2">{row.category || '-'}</td>

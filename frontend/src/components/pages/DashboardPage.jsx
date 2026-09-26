@@ -276,13 +276,13 @@ export default function DashboardPage() {
   if (error) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
-        <div className="p-6 rounded-2xl bg-red-955/20 border border-red-500/20 text-red-200 max-w-md text-center">
+        <div className="p-6 rounded-2xl bg-red-950/20 border border-red-500/20 text-red-200 max-w-md text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4 animate-pulse" />
           <h3 className="text-lg font-bold mb-2">Failed to Load Dashboard</h3>
           <p className="text-sm text-red-300/80 mb-4">{error}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="px-5 py-2.5 bg-red-850 hover:bg-red-800 active:bg-red-900 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-lg"
+            className="px-5 py-2.5 bg-red-800 hover:bg-red-800 active:bg-red-900 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-lg"
           >
             Retry Connection
           </button>
@@ -306,8 +306,8 @@ export default function DashboardPage() {
       
       {/* ─── OVERVIEW HEADER ────────────────────────────────────────────────── */}
       <div className="pb-2">
-        <h1 className="text-3xl font-extrabold text-neutral-955 dark:text-white tracking-tight flex items-center gap-3">
-          {t('dashboard_title')} <span className="text-blue-550 dark:text-blue-400 font-medium text-lg px-2.5 py-0.5 bg-blue-500/10 rounded-full border border-blue-500/20">{t('dashboard_badge')}</span>
+        <h1 className="text-3xl font-extrabold text-neutral-950 dark:text-white tracking-tight flex items-center gap-3">
+          {t('dashboard_title')} <span className="text-blue-500 dark:text-blue-400 font-medium text-lg px-2.5 py-0.5 bg-blue-500/10 rounded-full border border-blue-500/20">{t('dashboard_badge')}</span>
         </h1>
         <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
           {t('dashboard_subtitle')}
@@ -331,9 +331,9 @@ export default function DashboardPage() {
 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-4-50 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiAssets')}</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiAssets')}</span>
                   <Tooltip>
-                    <TooltipTrigger className="text-neutral-450 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
+                    <TooltipTrigger className="text-neutral-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors">
                       <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
@@ -348,18 +348,18 @@ export default function DashboardPage() {
 
               <div className="my-1.5">
                 <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono transition-colors">
-                  {maskNum(stats?.totalAssets || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">{t('unit')}</span>
+                  {maskNum(stats?.totalAssets || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 font-sans">{t('unit')}</span>
                 </span>
-                <span className="text-[10.5px] text-neutral-450 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
+                <span className="text-[10.5px] text-neutral-400 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
                   {maskPrice(stats?.totalAssetValue || 0)}
                 </span>
               </div>
 
               <div className="flex items-center gap-2 pt-3 border-t border-neutral-100/70 dark:border-neutral-800/80 mt-2 flex-wrap">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-450 border-blue-100/50 dark:border-blue-900/30">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-100/50 dark:border-blue-900/30">
                   {t('dashboard_statGood')} {maskNum(stats?.goodAssets || 0)}
                 </span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455 border-emerald-100/50 dark:border-emerald-900/30">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-500 border-emerald-100/50 dark:border-emerald-900/30">
                   {t('dashboard_statDamaged')} {maskNum(stats?.badAssets || 0)}
                 </span>
               </div>
@@ -379,9 +379,9 @@ export default function DashboardPage() {
 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiInsurance')}</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiInsurance')}</span>
                   <Tooltip>
-                    <TooltipTrigger className="text-neutral-455 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
+                    <TooltipTrigger className="text-neutral-500 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
                       <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
@@ -396,18 +396,18 @@ export default function DashboardPage() {
 
               <div className="my-1.5">
                 <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono transition-colors">
-                  {maskNum(stats?.totalInsurances || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">policies</span>
+                  {maskNum(stats?.totalInsurances || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 font-sans">policies</span>
                 </span>
-                <span className="text-[10.5px] text-neutral-455 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
-                  {maskPrice(stats?.totalInsurancePremium || 0)} <span className="text-[9px] font-normal text-neutral-450 dark:text-neutral-555 font-sans normal-case">annual</span>
+                <span className="text-[10.5px] text-neutral-500 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
+                  {maskPrice(stats?.totalInsurancePremium || 0)} <span className="text-[9px] font-normal text-neutral-400 dark:text-neutral-600 font-sans normal-case">annual</span>
                 </span>
               </div>
 
               <div className="flex items-center gap-2 pt-3 border-t border-neutral-100/70 dark:border-neutral-800/80 mt-2 flex-wrap">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455 border-emerald-100/50 dark:border-emerald-900/30">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-500 border-emerald-100/50 dark:border-emerald-900/30">
                   {t('dashboard_statActive')} {maskNum(stats?.activeInsurances || 0)}
                 </span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-450 border-amber-100/50 dark:border-amber-900/30">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-100/50 dark:border-amber-900/30">
                   {t('dashboard_statExpiring')} {maskNum(stats?.expiringInsurances || 0)}
                 </span>
               </div>
@@ -417,7 +417,7 @@ export default function DashboardPage() {
           {/* KPI 3: VEHICLES FLEET */}
           <motion.div variants={cardVariants}>
             <div 
-              className="relative overflow-hidden bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm rounded-2xl border border-amber-100/60 dark:border-amber-955/50 hover:border-amber-300 dark:hover:border-amber-700/40 p-5 shadow-sm hover:shadow-lg hover:-translate-y-1.5 transition-[transform,box-shadow,border-color] will-change-[transform,box-shadow] duration-300 ease-out group cursor-pointer flex flex-col justify-between min-h-[170px]"
+              className="relative overflow-hidden bg-white/95 dark:bg-neutral-900/95 backdrop-blur-sm rounded-2xl border border-amber-100/60 dark:border-amber-950/50 hover:border-amber-300 dark:hover:border-amber-700/40 p-5 shadow-sm hover:shadow-lg hover:-translate-y-1.5 transition-[transform,box-shadow,border-color] will-change-[transform,box-shadow] duration-300 ease-out group cursor-pointer flex flex-col justify-between min-h-[170px]"
             >
               {/* Background Glow */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-amber-500/[0.03] to-amber-500/0 dark:from-amber-500/[0.05] dark:to-amber-500/0 rounded-full blur-2xl -z-10 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none" />
@@ -427,9 +427,9 @@ export default function DashboardPage() {
 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiVehicles')}</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiVehicles')}</span>
                   <Tooltip>
-                    <TooltipTrigger className="text-neutral-455 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
+                    <TooltipTrigger className="text-neutral-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors">
                       <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
@@ -437,25 +437,25 @@ export default function DashboardPage() {
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-amber-500/10 text-amber-500 dark:text-amber-455 border border-amber-500/20 dark:border-amber-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-amber-500/10 text-amber-500 dark:text-amber-500 border border-amber-500/20 dark:border-amber-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Car className="w-4 h-4" />
                 </div>
               </div>
 
               <div className="my-1.5">
                 <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono transition-colors">
-                  {maskNum(stats?.totalVehicles || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">{t('dashboard_kpiVehiclesUnit')}</span>
+                  {maskNum(stats?.totalVehicles || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 font-sans">{t('dashboard_kpiVehiclesUnit')}</span>
                 </span>
-                <span className="text-[10.5px] text-neutral-455 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
-                  {maskPrice(stats?.totalVehicleValue || 0)} <span className="text-[9px] font-normal text-neutral-450 dark:text-neutral-555 font-sans normal-case">insured</span>
+                <span className="text-[10.5px] text-neutral-500 dark:text-neutral-400 font-semibold tracking-wide block mt-1 leading-snug">
+                  {maskPrice(stats?.totalVehicleValue || 0)} <span className="text-[9px] font-normal text-neutral-400 dark:text-neutral-600 font-sans normal-case">insured</span>
                 </span>
               </div>
 
               <div className="flex items-center gap-2 pt-3 border-t border-neutral-100/70 dark:border-neutral-800/80 mt-2 flex-wrap">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455 border-emerald-100/50 dark:border-emerald-900/30">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-500 border-emerald-100/50 dark:border-emerald-900/30">
                   {t('dashboard_statActive')} {maskNum(stats?.activeVehicles || 0)}
                 </span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 dark:bg-amber-955/30 text-amber-600 dark:text-amber-450 border-amber-100/50 dark:border-amber-900/30">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border-amber-100/50 dark:border-amber-900/30">
                   {t('dashboard_statInService')} {maskNum(stats?.inServiceVehicles || 0)}
                 </span>
               </div>
@@ -475,9 +475,9 @@ export default function DashboardPage() {
 
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[10px] text-neutral-500 dark:text-neutral-450 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiVendors')}</span>
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-extrabold uppercase tracking-widest leading-none truncate">{t('dashboard_kpiVendors')}</span>
                   <Tooltip>
-                    <TooltipTrigger className="text-neutral-455 hover:text-emerald-600 dark:hover:text-emerald-450 transition-colors">
+                    <TooltipTrigger className="text-neutral-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
                       <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
@@ -485,26 +485,26 @@ export default function DashboardPage() {
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 dark:from-emerald-500/20 dark:to-emerald-500/10 text-emerald-500 dark:text-emerald-450 border border-emerald-500/20 dark:border-emerald-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 dark:from-emerald-500/20 dark:to-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                   <Users className="w-4 h-4" />
                 </div>
               </div>
 
               <div className="my-1.5">
                 <span className="text-2.5xl font-black text-neutral-900 dark:text-white tracking-tight leading-none font-mono transition-colors">
-                  {maskNum(stats?.totalVendors || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-550 font-sans">{t('dashboard_kpiPartners')}</span>
+                  {maskNum(stats?.totalVendors || 0)} <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 font-sans">{t('dashboard_kpiPartners')}</span>
                 </span>
-                <span className="text-[10.5px] text-neutral-450 dark:text-neutral-550 font-semibold tracking-wide block mt-1 leading-snug">
+                <span className="text-[10.5px] text-neutral-400 dark:text-neutral-500 font-semibold tracking-wide block mt-1 leading-snug">
                   {t('dashboard_partnersDir')}
                 </span>
               </div>
             </div>
 
             <div className="flex items-center gap-2 pt-3 border-t border-neutral-100/70 dark:border-neutral-800/80 mt-2 flex-wrap">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-455 border-emerald-100/50 dark:border-emerald-900/30">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-500 border-emerald-100/50 dark:border-emerald-900/30">
                 Active: {maskNum(stats?.activeVendors || 0)}
               </span>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-455 border-rose-100/50 dark:border-rose-900/30">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-500 border-rose-100/50 dark:border-rose-900/30">
                 Inactive: {maskNum(stats?.inactiveVendors || 0)}
               </span>
             </div>
@@ -525,7 +525,7 @@ export default function DashboardPage() {
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-neutral-850 dark:text-slate-200">Asset Overview</h2>
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-slate-200">Asset Overview</h2>
               <p className="text-xs text-neutral-400">Physical condition breakdown and operational status of all registered assets.</p>
             </div>
           </div>
@@ -550,7 +550,7 @@ export default function DashboardPage() {
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
                 <TrendingUp className="w-4 h-4" />
               </div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-555">CATEGORY BREAKDOWN</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-600">CATEGORY BREAKDOWN</h3>
             </div>
             {sortedCategories.length > 0 ? (
               <div className="space-y-4">
@@ -565,8 +565,8 @@ export default function DashboardPage() {
                           <span className="font-semibold text-neutral-700 dark:text-neutral-300 truncate">{cat.name}</span>
                         </div>
                         <div className="flex items-center gap-2.5 shrink-0">
-                          <span className="font-mono text-[10px] text-neutral-450 dark:text-neutral-550">{maskNum(cat.count)} units</span>
-                          <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">{maskPrice(cat.value)} <span className="text-[10px] font-normal text-neutral-450 dark:text-neutral-550">({percentage.toFixed(1)}%)</span></span>
+                          <span className="font-mono text-[10px] text-neutral-400 dark:text-neutral-500">{maskNum(cat.count)} units</span>
+                          <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">{maskPrice(cat.value)} <span className="text-[10px] font-normal text-neutral-400 dark:text-neutral-500">({percentage.toFixed(1)}%)</span></span>
                         </div>
                       </div>
                       <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -590,7 +590,7 @@ export default function DashboardPage() {
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
                 <Activity className="w-4 h-4" />
               </div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-555">ASSET CONDITION</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-600">ASSET CONDITION</h3>
             </div>
             {(stats?.assetConditionBreakdown || []).length > 0 ? (() => {
               const totalConditionCount = (stats?.assetConditionBreakdown || []).reduce((acc, c) => acc + c.count, 0);
@@ -665,7 +665,7 @@ export default function DashboardPage() {
                           <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: getConditionColor(c.name) }} />
                           <span className="font-medium">{c.name}</span>
                           <span className="font-mono font-bold text-neutral-700 dark:text-neutral-300">
-                            {maskNum(c.count)} <span className="text-[9px] font-normal text-neutral-450 dark:text-neutral-500">({pct.toFixed(1)}%)</span>
+                            {maskNum(c.count)} <span className="text-[9px] font-normal text-neutral-400 dark:text-neutral-500">({pct.toFixed(1)}%)</span>
                           </span>
                         </div>
                       );
@@ -684,7 +684,7 @@ export default function DashboardPage() {
               <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
                 <BarChart3 className="w-4 h-4" />
               </div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-555">ASSET STATUS</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-600">ASSET STATUS</h3>
             </div>
             {(stats?.assetStatusBreakdown || []).length > 0 ? (() => {
               const statusColors = {
@@ -711,7 +711,7 @@ export default function DashboardPage() {
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
                             <span className="font-semibold text-neutral-700 dark:text-neutral-300">{displayName}</span>
                           </div>
-                          <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">{maskNum(s.count)} <span className="text-[10px] font-normal text-neutral-450 dark:text-neutral-500 font-sans">units ({pctOfTotal.toFixed(1)}%)</span></span>
+                          <span className="font-mono font-bold text-neutral-800 dark:text-neutral-200">{maskNum(s.count)} <span className="text-[10px] font-normal text-neutral-400 dark:text-neutral-500 font-sans">units ({pctOfTotal.toFixed(1)}%)</span></span>
                         </div>
                         <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                           <div 
@@ -744,7 +744,7 @@ export default function DashboardPage() {
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-neutral-850 dark:text-slate-200">Insurance & Agreements</h2>
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-slate-200">Insurance & Agreements</h2>
             <p className="text-xs text-neutral-400">Insurer policy distribution and contract agreement status monitoring.</p>
           </div>
         </div>
@@ -770,8 +770,8 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-semibold text-neutral-700 dark:text-neutral-300 truncate max-w-[200px]">{ins.name}</span>
                           <div className="flex items-center gap-3">
-                            <span className="font-mono text-[10px] text-neutral-450">{maskPrice(ins.premium)}</span>
-                            <span className="font-mono font-bold text-teal-650 dark:text-teal-400">{maskNum(ins.count)} <span className="text-[10px] font-normal text-neutral-450 font-sans">policies</span></span>
+                            <span className="font-mono text-[10px] text-neutral-400">{maskPrice(ins.premium)}</span>
+                            <span className="font-mono font-bold text-teal-600 dark:text-teal-400">{maskNum(ins.count)} <span className="text-[10px] font-normal text-neutral-400 font-sans">policies</span></span>
                           </div>
                         </div>
                         <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -809,8 +809,8 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-semibold text-neutral-700 dark:text-neutral-300 truncate max-w-[150px]">{pt.name}</span>
                           <div className="flex items-center gap-2.5 shrink-0">
-                            <span className="font-mono text-[10px] text-neutral-450 mr-1.5">{maskPrice(pt.premium)}</span>
-                            <span className="font-mono font-bold text-teal-650 dark:text-teal-400">{maskNum(pt.count)} <span className="text-[10px] font-normal text-neutral-450 font-sans">policies</span></span>
+                            <span className="font-mono text-[10px] text-neutral-400 mr-1.5">{maskPrice(pt.premium)}</span>
+                            <span className="font-mono font-bold text-teal-600 dark:text-teal-400">{maskNum(pt.count)} <span className="text-[10px] font-normal text-neutral-400 font-sans">policies</span></span>
                           </div>
                         </div>
                         <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
@@ -845,7 +845,7 @@ export default function DashboardPage() {
                   <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500"><FileCheck2 className="w-4 h-4" /></div>
                   <span className="text-xs font-semibold text-neutral-600 dark:text-neutral-300">Total Agreements</span>
                 </div>
-                <span className="text-lg font-black text-neutral-850 dark:text-white font-mono">{maskNum(stats?.totalAgreements || 0)}</span>
+                <span className="text-lg font-black text-neutral-900 dark:text-white font-mono">{maskNum(stats?.totalAgreements || 0)}</span>
               </div>
 
               {/* Active */}
@@ -878,7 +878,7 @@ export default function DashboardPage() {
               {/* Total Value */}
               <div className="pt-3 border-t border-neutral-200/60 dark:border-neutral-800/50">
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-neutral-400 dark:text-neutral-555 font-bold uppercase tracking-wider">Contract Value</span>
+                  <span className="text-neutral-400 dark:text-neutral-600 font-bold uppercase tracking-wider">Contract Value</span>
                   <span className="text-sm font-bold text-blue-600 dark:text-blue-400 font-mono">{maskPrice(stats?.totalAgreementValue || 0)}</span>
                 </div>
               </div>
@@ -889,7 +889,7 @@ export default function DashboardPage() {
 
         {/* Footer Navigation Link */}
         <div className="mt-6 flex justify-center border-t border-neutral-100 dark:border-neutral-800/80 pt-4">
-          <a href="/dashboard/insurances" className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-350 flex items-center gap-1.5 group transition-colors">
+          <a href="/dashboard/insurances" className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 flex items-center gap-1.5 group transition-colors">
             <span>View all policies & Agreements</span>
             <span className="group-hover:translate-x-0.5 transition-transform">→</span>
           </a>
@@ -909,8 +909,8 @@ export default function DashboardPage() {
             <Laptop className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-neutral-850 dark:text-slate-200">Device Rentals Summary</h2>
-            <p className="text-xs text-neutral-400 dark:text-neutral-505">Procurement management of PC leases and active employee allocation.</p>
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-slate-200">Device Rentals Summary</h2>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">Procurement management of PC leases and active employee allocation.</p>
           </div>
         </div>
 
@@ -920,14 +920,14 @@ export default function DashboardPage() {
           {/* Card 1: TOTAL LEASED DEVICES */}
           <div className="relative bg-neutral-50/50 dark:bg-neutral-950/40 border border-neutral-200/50 dark:border-neutral-800 p-5 rounded-2xl flex flex-col justify-between min-h-[125px]">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-450 dark:text-neutral-500 font-bold uppercase tracking-wider">Total Leased Devices</span>
+              <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-wider">Total Leased Devices</span>
               <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-500 rounded-lg">
                 Leased
               </span>
             </div>
             <div className="my-2">
-              <span className="text-3xl font-black text-neutral-850 dark:text-white block font-mono">
-                {maskNum(stats?.totalDeviceRentals || 0)} <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-555 font-sans">devices</span>
+              <span className="text-3xl font-black text-neutral-900 dark:text-white block font-mono">
+                {maskNum(stats?.totalDeviceRentals || 0)} <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-600 font-sans">devices</span>
               </span>
             </div>
             {renderCountDiff(stats?.deviceRentalsDiff, 'devices')}
@@ -936,7 +936,7 @@ export default function DashboardPage() {
           {/* Card 2: TOTAL MONTHLY COST */}
           <div className="relative bg-neutral-50/50 dark:bg-neutral-950/40 border border-neutral-200/50 dark:border-neutral-800 p-5 rounded-2xl flex flex-col justify-between min-h-[125px]">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-455 dark:text-neutral-500 font-bold uppercase tracking-wider">Total Monthly Cost</span>
+              <span className="text-[10px] text-neutral-500 dark:text-neutral-500 font-bold uppercase tracking-wider">Total Monthly Cost</span>
               
               {/* Sparkline line SVG */}
               <svg className="w-12 h-6 text-cyan-500" viewBox="0 0 60 25" fill="none" stroke="currentColor" strokeWidth="2">
@@ -954,7 +954,7 @@ export default function DashboardPage() {
           {/* Card 3: ACTIVE ALLOCATIONS */}
           <div className="relative bg-neutral-50/50 dark:bg-neutral-950/40 border border-neutral-200/50 dark:border-neutral-800 p-5 rounded-2xl flex flex-col justify-between min-h-[125px]">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-455 dark:text-neutral-500 font-bold uppercase tracking-wider">Active Allocations</span>
+              <span className="text-[10px] text-neutral-500 dark:text-neutral-500 font-bold uppercase tracking-wider">Active Allocations</span>
               
               {/* Sparkline line SVG */}
               <svg className="w-12 h-6 text-emerald-500" viewBox="0 0 60 25" fill="none" stroke="currentColor" strokeWidth="2">
@@ -962,8 +962,8 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="my-2">
-              <span className="text-3xl font-black text-emerald-555 block font-mono">
-                {maskNum(stats?.activeDeviceRentals || 0)} <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-555 font-sans">users</span>
+              <span className="text-3xl font-black text-emerald-600 block font-mono">
+                {maskNum(stats?.activeDeviceRentals || 0)} <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-600 font-sans">users</span>
               </span>
             </div>
             {renderCountDiff(stats?.activeDeviceRentalsDiff, 'users')}
@@ -974,7 +974,7 @@ export default function DashboardPage() {
         {/* Device Types Breakdown */}
         {stats?.deviceTypeBreakdown && stats.deviceTypeBreakdown.length > 0 && (
           <div className="mb-6 p-5 bg-neutral-50/40 dark:bg-neutral-950/40 border border-neutral-200/60 dark:border-neutral-900/60 rounded-2xl">
-            <h3 className="text-xs font-bold text-neutral-400 dark:text-neutral-555 uppercase tracking-wider mb-3">Rented Devices by Type</h3>
+            <h3 className="text-xs font-bold text-neutral-400 dark:text-neutral-600 uppercase tracking-wider mb-3">Rented Devices by Type</h3>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               {stats.deviceTypeBreakdown.map((item, idx) => (
                 <div key={item.type} className="flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-800 rounded-xl text-xs shadow-sm">
@@ -982,8 +982,8 @@ export default function DashboardPage() {
                     {getDeviceIcon(item.type)}
                   </div>
                   <div>
-                    <span className="font-semibold text-neutral-500 dark:text-neutral-405 block text-[10px] uppercase tracking-wider truncate max-w-[70px]" title={item.type}>{item.type}</span>
-                    <span className="font-mono font-bold text-neutral-850 dark:text-white mt-0.5 block">{maskNum(item.count)} <span className="text-[10px] font-normal text-neutral-450 dark:text-neutral-500 font-sans">units</span></span>
+                    <span className="font-semibold text-neutral-500 dark:text-neutral-400 block text-[10px] uppercase tracking-wider truncate max-w-[70px]" title={item.type}>{item.type}</span>
+                    <span className="font-mono font-bold text-neutral-900 dark:text-white mt-0.5 block">{maskNum(item.count)} <span className="text-[10px] font-normal text-neutral-400 dark:text-neutral-500 font-sans">units</span></span>
                     <span className="text-[10px] font-semibold text-cyan-600 dark:text-cyan-400 font-mono block mt-0.5">{maskPrice(item.value || 0)}</span>
                   </div>
                 </div>
@@ -1002,8 +1002,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-bold block uppercase tracking-wider">Active Leases</span>
-              <span className="text-sm font-bold text-emerald-555 block mt-0.5 font-mono">
-                {maskNum(stats?.activeDeviceRentals || 0)} <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-555 font-sans">devices</span>
+              <span className="text-sm font-bold text-emerald-600 block mt-0.5 font-mono">
+                {maskNum(stats?.activeDeviceRentals || 0)} <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-600 font-sans">devices</span>
               </span>
             </div>
           </div>
@@ -1015,21 +1015,21 @@ export default function DashboardPage() {
             </div>
             <div>
               <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-bold block uppercase tracking-wider">Expiring Soon</span>
-              <span className="text-sm font-bold text-amber-555 block mt-0.5 font-mono">
-                {maskNum(stats?.expiringSoonLeases || 0)} <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-555 font-sans">devices</span>
+              <span className="text-sm font-bold text-amber-600 block mt-0.5 font-mono">
+                {maskNum(stats?.expiringSoonLeases || 0)} <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-600 font-sans">devices</span>
               </span>
             </div>
           </div>
 
           {/* Item 3: Returned This Month */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-550 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-500 shrink-0">
               <RotateCcw className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[11px] text-neutral-400 dark:text-neutral-550 font-bold block uppercase tracking-wider">Returned This Month</span>
-              <span className="text-sm font-bold text-neutral-550 dark:text-neutral-400 block mt-0.5 font-mono">
-                {maskNum(stats?.returnedThisMonth || 0)} <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-555 font-sans">devices</span>
+              <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-bold block uppercase tracking-wider">Returned This Month</span>
+              <span className="text-sm font-bold text-neutral-500 dark:text-neutral-400 block mt-0.5 font-mono">
+                {maskNum(stats?.returnedThisMonth || 0)} <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-600 font-sans">devices</span>
               </span>
             </div>
           </div>
@@ -1041,8 +1041,8 @@ export default function DashboardPage() {
             </div>
             <div>
               <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-bold block uppercase tracking-wider">Available Devices</span>
-              <span className="text-sm font-bold text-emerald-555 block mt-0.5 font-mono">
-                {maskNum(stats?.availableDeviceRentals || 0)} <span className="text-xs font-semibold text-neutral-450 dark:text-neutral-555 font-sans">devices</span>
+              <span className="text-sm font-bold text-emerald-600 block mt-0.5 font-mono">
+                {maskNum(stats?.availableDeviceRentals || 0)} <span className="text-xs font-semibold text-neutral-400 dark:text-neutral-600 font-sans">devices</span>
               </span>
             </div>
           </div>
@@ -1070,46 +1070,46 @@ export default function DashboardPage() {
             <Car className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-neutral-850 dark:text-slate-200">Vehicles Summary</h2>
-            <p className="text-xs text-neutral-400 dark:text-neutral-505">Fleet operational dispatch status, service logs, and tax dates monitoring.</p>
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-slate-200">Vehicles Summary</h2>
+            <p className="text-xs text-neutral-400 dark:text-neutral-500">Fleet operational dispatch status, service logs, and tax dates monitoring.</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <div className="bg-neutral-50/40 dark:bg-neutral-950/40 border border-neutral-200/60 dark:border-neutral-900/60 p-5 rounded-2xl text-center">
             <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold block uppercase">Total Fleet</span>
-            <span className="text-3xl font-extrabold text-neutral-850 dark:text-white block mt-1 font-mono">
-              {maskNum(stats?.totalVehicles || 0)} <span className="text-sm font-semibold text-neutral-400 dark:text-neutral-505 font-sans">units</span>
+            <span className="text-3xl font-extrabold text-neutral-900 dark:text-white block mt-1 font-mono">
+              {maskNum(stats?.totalVehicles || 0)} <span className="text-sm font-semibold text-neutral-400 dark:text-neutral-500 font-sans">units</span>
             </span>
           </div>
           <div className="bg-neutral-50/40 dark:bg-neutral-950/40 border border-neutral-200/60 dark:border-neutral-900/60 p-5 rounded-2xl text-center">
-            <span className="text-[10px] text-emerald-555 font-bold block uppercase flex items-center justify-center gap-1.5">
+            <span className="text-[10px] text-emerald-600 font-bold block uppercase flex items-center justify-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               Operational (Active)
             </span>
-            <span className="text-3xl font-extrabold text-emerald-555 block mt-1 font-mono">
-              {maskNum(stats?.activeVehicles || 0)} <span className="text-sm font-semibold text-neutral-450 font-sans">units</span>
+            <span className="text-3xl font-extrabold text-emerald-600 block mt-1 font-mono">
+              {maskNum(stats?.activeVehicles || 0)} <span className="text-sm font-semibold text-neutral-400 font-sans">units</span>
             </span>
           </div>
           <div className="bg-neutral-50/40 dark:bg-neutral-950/40 border border-neutral-200/60 dark:border-neutral-900/60 p-5 rounded-2xl text-center">
-            <span className="text-[10px] text-amber-555 font-bold block uppercase flex items-center justify-center gap-1.5">
+            <span className="text-[10px] text-amber-600 font-bold block uppercase flex items-center justify-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
               In Service
             </span>
-            <span className="text-3xl font-extrabold text-amber-555 block mt-1 font-mono">
-              {maskNum(stats?.inServiceVehicles || 0)} <span className="text-sm font-semibold text-neutral-455 font-sans">units</span>
+            <span className="text-3xl font-extrabold text-amber-600 block mt-1 font-mono">
+              {maskNum(stats?.inServiceVehicles || 0)} <span className="text-sm font-semibold text-neutral-500 font-sans">units</span>
             </span>
           </div>
           <div className={`p-5 rounded-2xl border text-center flex flex-col justify-center ${
             stats?.expiringTaxVehicles > 0 
-              ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-805 dark:text-red-305'
+              ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-300'
               : 'bg-neutral-50/40 dark:bg-neutral-950/40 border-neutral-200/60 dark:border-neutral-900/60 text-neutral-800'
           }`}>
             <span className="text-[10px] font-bold block uppercase opacity-70 flex items-center justify-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" />
               Tax Expiry &lt; 30 Days
             </span>
-            <span className={`text-3xl font-extrabold block mt-1 font-mono ${stats?.expiringTaxVehicles > 0 ? 'text-red-550' : 'text-neutral-400 dark:text-neutral-500'}`}>
+            <span className={`text-3xl font-extrabold block mt-1 font-mono ${stats?.expiringTaxVehicles > 0 ? 'text-red-500' : 'text-neutral-400 dark:text-neutral-500'}`}>
               {maskNum(stats?.expiringTaxVehicles || 0)} <span className="text-sm font-semibold opacity-70 font-sans">units</span>
             </span>
           </div>
@@ -1118,13 +1118,13 @@ export default function DashboardPage() {
         {/* Vehicles Breakdown */}
         {stats?.vehicleTypeBreakdown && stats.vehicleTypeBreakdown.length > 0 && (
           <div className="mt-6 p-5 bg-neutral-50/40 dark:bg-neutral-950/40 border border-neutral-200/60 dark:border-neutral-900/60 rounded-2xl">
-            <h3 className="text-xs font-bold text-neutral-400 dark:text-neutral-555 uppercase tracking-wider mb-3">Vehicles by Type</h3>
+            <h3 className="text-xs font-bold text-neutral-400 dark:text-neutral-600 uppercase tracking-wider mb-3">Vehicles by Type</h3>
             <div className="flex flex-wrap gap-3">
               {stats.vehicleTypeBreakdown.map((item, idx) => (
                 <div key={item.type} className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-800 rounded-xl text-xs shadow-sm">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CHART_COLORS[(idx + 2) % CHART_COLORS.length] }} />
                   <span className="font-semibold text-neutral-700 dark:text-neutral-300">{item.type}</span>
-                  <span className="font-mono font-bold text-amber-655 dark:text-amber-400 ml-1">{maskNum(item.count)} <span className="text-[10px] font-normal text-neutral-450 font-sans">units</span></span>
+                  <span className="font-mono font-bold text-amber-700 dark:text-amber-400 ml-1">{maskNum(item.count)} <span className="text-[10px] font-normal text-neutral-400 font-sans">units</span></span>
                 </div>
               ))}
             </div>

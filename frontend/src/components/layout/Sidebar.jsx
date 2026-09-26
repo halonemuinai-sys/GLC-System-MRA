@@ -790,8 +790,7 @@ function SidebarContent({
                   <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", sc.dot)} />
                   <p className={cn(
                     "text-[9px] font-extrabold uppercase tracking-widest whitespace-nowrap",
-                    "bg-gradient-to-r bg-clip-text text-transparent",
-                    sc.label
+                    sc.text
                   )}>
                     {section.label}
                   </p>

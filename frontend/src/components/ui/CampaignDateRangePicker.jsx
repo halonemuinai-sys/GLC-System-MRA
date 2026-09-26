@@ -39,7 +39,7 @@ const RangeTriggerInput = forwardRef(function RangeTriggerInput({ start, end, on
       <div className="flex items-center gap-2 truncate">
         <CalendarIcon className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
         {hasValue ? (
-          <span className="flex items-center gap-1.5 text-neutral-850 dark:text-neutral-200 font-bold truncate">
+          <span className="flex items-center gap-1.5 text-neutral-900 dark:text-neutral-200 font-bold truncate">
             {formatDisplay(start) || '...'}
             <ArrowRight className="w-3 h-3 text-neutral-400 flex-shrink-0" />
             {formatDisplay(end) || '...'}

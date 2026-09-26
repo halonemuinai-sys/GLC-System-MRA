@@ -490,14 +490,14 @@ export default function MarketingPlanWizardModal({
             className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-7xl z-55 overflow-hidden flex flex-col max-h-[90vh]"
           >
             {/* Wizard Header */}
-            <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-955/20">
+            <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
               <div>
-                <h3 className="text-md font-black text-neutral-850 dark:text-white">
+                <h3 className="text-md font-black text-neutral-900 dark:text-white">
                   {revisingPlanId ? t('wizardTitleRevise', revisingPlanId) :
                    draftPlanId ? t('wizardTitleDraft', draftPlanId) :
                    t('wizardTitle')}
                 </h3>
-                <p className="text-[10px] text-neutral-450 mt-0.5">
+                <p className="text-[10px] text-neutral-400 mt-0.5">
                   {revisingPlanId ? t('wizardSubtitleRevise') :
                    draftPlanId ? t('wizardSubtitleDraft') :
                    t('wizardSubtitle')}
@@ -505,7 +505,7 @@ export default function MarketingPlanWizardModal({
               </div>
               <button
                 onClick={onClose}
-                className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-805 rounded-full text-neutral-450 hover:text-neutral-800 dark:hover:text-white"
+                className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -519,7 +519,7 @@ export default function MarketingPlanWizardModal({
             ) : (
               <>
                 {/* Wizard Steps indicator */}
-                <div className="px-8 py-6 bg-neutral-50/50 dark:bg-neutral-955/20 border-b border-neutral-100 dark:border-neutral-800 select-none">
+                <div className="px-8 py-6 bg-neutral-50/50 dark:bg-neutral-950/20 border-b border-neutral-100 dark:border-neutral-800 select-none">
                   <div className="flex items-center justify-between max-w-2xl mx-auto relative px-4">
                     <div className="absolute left-6 right-6 top-4.5 h-0.5 bg-neutral-200 dark:bg-neutral-800 -z-10 rounded-full" />
                     
@@ -620,14 +620,14 @@ export default function MarketingPlanWizardModal({
                 </div>
 
                 {/* Wizard Footer Controls */}
-                <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/30 dark:bg-neutral-955/10">
+                <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/30 dark:bg-neutral-950/10">
                   <button
                     type="button"
                     onClick={() => {
                       if (wizardStep === 1) onClose();
                       else setWizardStep(prev => prev - 1);
                     }}
-                    className="px-4 py-2 border border-neutral-250 dark:border-neutral-750 text-neutral-650 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold cursor-pointer"
+                    className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold cursor-pointer"
                   >
                     {wizardStep === 1 ? t('btnCancel') : t('btnBack')}
                   </button>
@@ -638,7 +638,7 @@ export default function MarketingPlanWizardModal({
                         type="button"
                         disabled={submittingDraft || submitting}
                         onClick={handleSaveDraft}
-                        className="px-4 py-2 border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-350 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-450 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                        className="px-4 py-2 border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                       >
                         {submittingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                         {draftPlanId ? t('btnUpdateDraft') : t('btnSaveDraft')}

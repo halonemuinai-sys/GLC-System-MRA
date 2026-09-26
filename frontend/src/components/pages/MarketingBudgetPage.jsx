@@ -78,7 +78,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0, tooltip
       <div className="flex items-center justify-between">
         <div className="min-w-0 flex-1 pr-2">
           <div className="flex items-center">
-            <p className="text-xs font-semibold text-neutral-450 dark:text-neutral-500 uppercase tracking-wider truncate">{label}</p>
+            <p className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider truncate">{label}</p>
             {tooltip && <InfoTooltip content={tooltip} position="top" />}
           </div>
           <p className="text-xl font-black text-neutral-900 dark:text-white mt-1">{value}</p>
@@ -389,7 +389,7 @@ export default function MarketingBudgetPage() {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-3">
         <Loader2 className="w-9 h-9 animate-spin text-blue-600" />
-        <p className="text-xs text-neutral-450 dark:text-neutral-500 font-bold">{t('marketing_budget_loading')}</p>
+        <p className="text-xs text-neutral-400 dark:text-neutral-500 font-bold">{t('marketing_budget_loading')}</p>
       </div>
     );
   }
@@ -422,7 +422,7 @@ export default function MarketingBudgetPage() {
               </span>
             )}
           </div>
-          <p className="text-xs text-neutral-450 dark:text-neutral-500 mt-1">
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
             Pantau limit alokasi pengeluaran, realisasi rencana kampanye, dan sisa kuota bulanan.
           </p>
         </div>
@@ -510,7 +510,7 @@ export default function MarketingBudgetPage() {
           <select
             value={filter.brand_id}
             onChange={(e) => setFilter(prev => ({ ...prev, brand_id: e.target.value }))}
-            className="bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {metadata.brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -521,7 +521,7 @@ export default function MarketingBudgetPage() {
           <select
             value={filter.lob_id}
             onChange={(e) => setFilter(prev => ({ ...prev, lob_id: e.target.value }))}
-            className="bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {metadata.lobs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
@@ -532,7 +532,7 @@ export default function MarketingBudgetPage() {
           <select
             value={filter.fiscal_year}
             onChange={(e) => setFilter(prev => ({ ...prev, fiscal_year: e.target.value }))}
-            className="bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             {FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
@@ -541,7 +541,7 @@ export default function MarketingBudgetPage() {
         <button
           onClick={handleProses}
           disabled={processing}
-          className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-800 dark:hover:bg-neutral-750 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+          className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
         >
           {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
           Proses Data
@@ -630,10 +630,10 @@ export default function MarketingBudgetPage() {
 
       {/* ── Interactive Monthly Allocation Table ── */}
       <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-neutral-100 dark:border-neutral-855 flex items-center justify-between">
+        <div className="p-4 border-b border-neutral-100 dark:border-neutral-900 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-blue-500" />
-            <h3 className="text-xs font-bold text-neutral-850 dark:text-white">
+            <h3 className="text-xs font-bold text-neutral-900 dark:text-white">
               Alokasi Bulanan
             </h3>
             <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold">
@@ -655,7 +655,7 @@ export default function MarketingBudgetPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider text-[11px]">
+              <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider text-[11px]">
                 <th className="px-5 py-3.5">
                   <span className="inline-flex items-center">
                     Bulan
@@ -706,10 +706,10 @@ export default function MarketingBudgetPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
+            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium text-neutral-700 dark:text-neutral-300">
               {displayedMonthly.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-10 text-center text-neutral-450 font-bold">
+                  <td colSpan="8" className="px-6 py-10 text-center text-neutral-400 font-bold">
                     Belum ada inisialisasi anggaran untuk konfigurasi ini. Klik tombol "Inisialisasi Budget Baru" untuk memulai.
                   </td>
                 </tr>
@@ -719,8 +719,8 @@ export default function MarketingBudgetPage() {
                   const barColor = usagePct > 100 ? 'bg-red-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-emerald-500';
 
                   return (
-                    <tr key={item.month} className="hover:bg-neutral-550/5 dark:hover:bg-neutral-955/10 transition-colors">
-                      <td className="px-5 py-3.5 font-bold text-neutral-850 dark:text-white">
+                    <tr key={item.month} className="hover:bg-neutral-500/5 dark:hover:bg-neutral-950/10 transition-colors">
+                      <td className="px-5 py-3.5 font-bold text-neutral-900 dark:text-white">
                         <div className="flex items-center gap-2">
                           <span>{getMonthName(item.month)}</span>
                           <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
@@ -838,10 +838,10 @@ export default function MarketingBudgetPage() {
       {/* ── Related Marketing Plans ── */}
       {relatedPlans.length > 0 && (
         <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-neutral-100 dark:border-neutral-855 flex items-center justify-between">
+          <div className="p-4 border-b border-neutral-100 dark:border-neutral-900 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Briefcase className="w-4 h-4 text-blue-500" />
-              <h3 className="text-xs font-bold text-neutral-850 dark:text-white">
+              <h3 className="text-xs font-bold text-neutral-900 dark:text-white">
                 Marketing Plans Terkait
               </h3>
               <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold">
@@ -853,7 +853,7 @@ export default function MarketingBudgetPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
+                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
                   <th className="px-5 py-3.5">#</th>
                   <th className="px-5 py-3.5">Judul Rencana</th>
                   <th className="px-5 py-3.5">Status</th>
@@ -862,7 +862,7 @@ export default function MarketingBudgetPage() {
                   <th className="px-5 py-3.5">Dibuat Oleh</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium text-neutral-700 dark:text-neutral-300">
                 {relatedPlans.map((plan) => {
                   const statusColors = {
                     DRAFT: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500',
@@ -884,15 +884,15 @@ export default function MarketingBudgetPage() {
                   };
 
                   return (
-                    <tr key={plan.id} className="hover:bg-neutral-550/5 dark:hover:bg-neutral-955/10 transition-colors">
+                    <tr key={plan.id} className="hover:bg-neutral-500/5 dark:hover:bg-neutral-950/10 transition-colors">
                       <td className="px-5 py-3.5 text-neutral-400 font-mono font-bold">#{plan.id}</td>
-                      <td className="px-5 py-3.5 font-semibold text-neutral-850 dark:text-white max-w-[240px] truncate">{plan.title}</td>
+                      <td className="px-5 py-3.5 font-semibold text-neutral-900 dark:text-white max-w-[240px] truncate">{plan.title}</td>
                       <td className="px-5 py-3.5">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide ${statusColors[plan.status] || statusColors.DRAFT}`}>
                           {statusLabels[plan.status] || plan.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-right font-mono font-bold text-neutral-850 dark:text-white">{formatRupiah(plan.total_budget)}</td>
+                      <td className="px-5 py-3.5 text-right font-mono font-bold text-neutral-900 dark:text-white">{formatRupiah(plan.total_budget)}</td>
                       <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
                         {fmtDate(plan.start_date)} – {fmtDate(plan.end_date)}
                       </td>
@@ -922,12 +922,12 @@ export default function MarketingBudgetPage() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-955 border-l border-neutral-200 dark:border-neutral-850 z-50 shadow-2xl p-6 flex flex-col justify-between"
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 z-50 shadow-2xl p-6 flex flex-col justify-between"
             >
               <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-850 pb-4">
+                <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
                   <div>
-                    <h3 className="text-sm font-black text-neutral-855 dark:text-white">
+                    <h3 className="text-sm font-black text-neutral-900 dark:text-white">
                       Inisialisasi Budget Baru
                     </h3>
                     <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
@@ -936,7 +936,7 @@ export default function MarketingBudgetPage() {
                   </div>
                   <button
                     onClick={() => setShowDrawer(false)}
-                    className="p-1.5 text-neutral-450 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg transition-colors cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1021,11 +1021,11 @@ export default function MarketingBudgetPage() {
                 </form>
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-neutral-855 pt-4 flex gap-3">
+              <div className="border-t border-neutral-100 dark:border-neutral-900 pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowDrawer(false)}
-                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-350 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
                 >
                   Batal
                 </button>

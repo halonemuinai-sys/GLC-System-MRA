@@ -879,7 +879,7 @@ export default function AdminPage() {
                             {log.action}
                           </span>
                         </td>
-                        <td className="p-4 font-mono font-bold text-indigo-600 dark:text-indigo-450">{log.table_name}</td>
+                        <td className="p-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">{log.table_name}</td>
                         <td className="p-4 text-center font-mono font-bold text-neutral-500">{log.record_id || '-'}</td>
                         <td className="p-4 text-center">
                           <button
@@ -1338,11 +1338,11 @@ export default function AdminPage() {
                   <div className="grid grid-cols-2 gap-4 bg-neutral-50 dark:bg-neutral-950 p-3 rounded-2xl border border-neutral-100 dark:border-neutral-800">
                     <div>
                       <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider block">Aktor Pengubah</span>
-                      <span className="font-bold text-neutral-700 dark:text-slate-350">{selectedLog.m_user?.full_name || 'System / Admin'}</span>
+                      <span className="font-bold text-neutral-700 dark:text-slate-300">{selectedLog.m_user?.full_name || 'System / Admin'}</span>
                     </div>
                     <div>
                       <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider block">Tanggal & Waktu</span>
-                      <span className="font-medium text-neutral-700 dark:text-slate-350 font-mono">
+                      <span className="font-medium text-neutral-700 dark:text-slate-300 font-mono">
                         {selectedLog.created_at ? new Date(selectedLog.created_at).toLocaleString('id-ID') : '-'}
                       </span>
                     </div>
@@ -1401,17 +1401,17 @@ export default function AdminPage() {
             {!generatedKey ? (
               <>
                 <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
-                  <h3 className="text-md font-black text-neutral-850 dark:text-white flex items-center gap-2"><Zap className="w-4 h-4 text-indigo-500" /> Generate API Key</h3>
+                  <h3 className="text-md font-black text-neutral-900 dark:text-white flex items-center gap-2"><Zap className="w-4 h-4 text-indigo-500" /> Generate API Key</h3>
                   <button onClick={() => setShowKeyModal(false)} className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white cursor-pointer"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="p-6 space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Label / Nama</label>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Label / Nama</label>
                     <input type="text" value={newKeyLabel} onChange={(e) => setNewKeyLabel(e.target.value)}
                       placeholder="e.g. Power BI Dashboard" className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Scopes (akses modul)</label>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Scopes (akses modul)</label>
                     <div className="flex flex-wrap gap-2">
                       {['ga', 'marketing', 'legal', 'compliance', 'helpdesk'].map(scope => (
                         <label key={scope} className="flex items-center gap-1.5 cursor-pointer">
@@ -1424,7 +1424,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-neutral-450 uppercase">Rate Limit (per jam)</label>
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Rate Limit (per jam)</label>
                     <input type="number" value={newKeyRateLimit} onChange={(e) => setNewKeyRateLimit(e.target.value)}
                       className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" />
                   </div>

@@ -33,7 +33,7 @@ const CustomTooltip = ({ active, payload }) => {
     const data = payload[0].payload;
     return (
       <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-2.5 rounded-xl shadow-xl text-xs">
-        <p className="font-bold text-neutral-850 dark:text-neutral-200 capitalize mb-1">{data.type}</p>
+        <p className="font-bold text-neutral-900 dark:text-neutral-200 capitalize mb-1">{data.type}</p>
         <p className="text-indigo-500 font-semibold font-mono">Jumlah: {data.count} kendaraan</p>
       </div>
     );
@@ -102,7 +102,7 @@ export default function GaVehiclesSummaryDashboard({ showDashboard, summary, met
                       style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
                     />
                     <span className="text-neutral-500 dark:text-neutral-400 capitalize truncate">{entry.type}</span>
-                    <span className="font-bold text-neutral-700 dark:text-neutral-350 ml-auto font-mono">{entry.count}</span>
+                    <span className="font-bold text-neutral-700 dark:text-neutral-300 ml-auto font-mono">{entry.count}</span>
                   </div>
                 ))}
               </div>
@@ -125,7 +125,7 @@ export default function GaVehiclesSummaryDashboard({ showDashboard, summary, met
                   </div>
                 </div>
                 <div className="text-right hidden sm:block">
-                  <span className="text-[10px] bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 px-2.5 py-1 rounded-full font-bold">
+                  <span className="text-[10px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-1 rounded-full font-bold">
                     Database Sync
                   </span>
                 </div>

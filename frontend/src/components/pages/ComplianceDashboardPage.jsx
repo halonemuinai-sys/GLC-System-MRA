@@ -133,8 +133,8 @@ export default function ComplianceDashboardPage() {
       {/* Header */}
       <div className="pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-neutral-955 dark:text-white tracking-tight flex items-center gap-3">
-            {t('compliance_dashTitle')} <span className="text-blue-550 dark:text-blue-400 font-medium text-lg px-2.5 py-0.5 bg-blue-500/10 rounded-full border border-blue-500/20">{t('compliance_dashBadge')}</span>
+          <h1 className="text-3xl font-extrabold text-neutral-950 dark:text-white tracking-tight flex items-center gap-3">
+            {t('compliance_dashTitle')} <span className="text-blue-500 dark:text-blue-400 font-medium text-lg px-2.5 py-0.5 bg-blue-500/10 rounded-full border border-blue-500/20">{t('compliance_dashBadge')}</span>
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-sm mt-1">
             Ringkasan lintas modul: License & Permit, Compliance Docs, SOP & Policy, HR, Tax & Finance, Product Regulatory.
@@ -239,7 +239,7 @@ export default function ComplianceDashboardPage() {
 
       {/* Per-Module Breakdown */}
       <motion.section variants={cardVariants} className="bg-white dark:bg-neutral-900/40 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-xl">
-        <h2 className="text-lg font-bold text-neutral-850 dark:text-slate-200 mb-5">Ringkasan Per Modul</h2>
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-slate-200 mb-5">Ringkasan Per Modul</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {MODULES.map(mod => {
             const m = byModule.find(b => b.module === mod.key);
@@ -258,7 +258,7 @@ export default function ComplianceDashboardPage() {
                   </div>
                   <ChevronRight className="w-3.5 h-3.5 text-neutral-300 dark:text-neutral-700 group-hover:translate-x-0.5 transition-transform" />
                 </div>
-                <p className="text-xl font-black text-neutral-850 dark:text-white font-mono">{total}</p>
+                <p className="text-xl font-black text-neutral-900 dark:text-white font-mono">{total}</p>
                 <p className="text-[10px] text-neutral-400 mt-0.5">{p.toFixed(1)}% dari total dokumen</p>
                 <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden mt-2">
                   <div className="h-full rounded-full transition-all duration-700" style={{ width: `${p}%`, backgroundColor: mod.color }} />
@@ -278,7 +278,7 @@ export default function ComplianceDashboardPage() {
       {byCompany.length > 0 && (
         <motion.section variants={cardVariants} className="bg-white dark:bg-neutral-900/40 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-xl">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-neutral-850 dark:text-slate-200">{t('legal_healthPerCompany')}</h2>
+            <h2 className="text-lg font-bold text-neutral-900 dark:text-slate-200">{t('legal_healthPerCompany')}</h2>
             <span className="text-[10px] text-neutral-400 font-semibold">Menampilkan {byCompany.length} entitas</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -357,7 +357,7 @@ export default function ComplianceDashboardPage() {
 
       {/* Critical Documents Table */}
       <motion.section variants={cardVariants} className="bg-white dark:bg-neutral-900/40 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 md:p-8 shadow-xl">
-        <h2 className="text-lg font-bold text-neutral-850 dark:text-slate-200 mb-5">Dokumen Mendekati / Lewat Kadaluarsa</h2>
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-slate-200 mb-5">Dokumen Mendekati / Lewat Kadaluarsa</h2>
         {criticalDocs.length === 0 ? (
           <div className="py-12 text-center text-xs text-neutral-400">
             <ShieldCheck className="w-8 h-8 mx-auto mb-2 text-emerald-400" />

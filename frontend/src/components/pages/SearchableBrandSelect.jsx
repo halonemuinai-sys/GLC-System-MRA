@@ -112,7 +112,7 @@ export default function SearchableBrandSelect({
         onClick={() => {
           if (!disabled) setIsOpen(!isOpen);
         }}
-        className={`w-full bg-neutral-50 dark:bg-neutral-955 border rounded-xl px-3.5 py-2.5 text-xs flex items-center justify-between transition-all select-none min-h-[38px] ${
+        className={`w-full bg-neutral-50 dark:bg-neutral-950 border rounded-xl px-3.5 py-2.5 text-xs flex items-center justify-between transition-all select-none min-h-[38px] ${
           disabled
             ? 'opacity-50 cursor-not-allowed border-neutral-200 dark:border-neutral-800'
             : isOpen
@@ -123,7 +123,7 @@ export default function SearchableBrandSelect({
         <div className="flex items-center gap-2 truncate min-w-0 pr-2">
           <Tag className="w-3.5 h-3.5 text-blue-500 shrink-0" />
           {selectedBrand ? (
-            <span className="font-semibold text-neutral-850 dark:text-white truncate">
+            <span className="font-semibold text-neutral-900 dark:text-white truncate">
               {selectedBrand.name}
             </span>
           ) : (

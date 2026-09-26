@@ -139,14 +139,14 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
         onClick={e => e.stopPropagation()}
       >
         {/* ── HEADER ── */}
-        <div className="flex-shrink-0 flex items-center justify-between px-6 py-3.5 border-b border-neutral-200 dark:border-neutral-850 bg-white dark:bg-neutral-950">
+        <div className="flex-shrink-0 flex items-center justify-between px-6 py-3.5 border-b border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-950">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
               <Calendar className="w-5 h-5" />
             </div>
             <div>
               <p className="text-sm font-black text-neutral-900 dark:text-white leading-tight">{t('marketing_ganttTitle')} {fiscalYear}</p>
-              <p className="text-[10px] text-neutral-455 dark:text-neutral-500 font-bold mt-0.5">{filtered.length} campaign · Esc untuk tutup</p>
+              <p className="text-[10px] text-neutral-500 dark:text-neutral-500 font-bold mt-0.5">{filtered.length} campaign · Esc untuk tutup</p>
             </div>
           </div>
           <div className="flex items-center gap-6">
@@ -160,7 +160,7 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-550 dark:text-neutral-400 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
+              className="w-8 h-8 rounded-xl bg-neutral-100 dark:bg-neutral-900 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 transition-colors flex items-center justify-center cursor-pointer flex-shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
@@ -168,7 +168,7 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
         </div>
 
         {/* ── KPI STRIP ── */}
-        <div className="flex-shrink-0 flex items-center gap-2.5 px-6 py-2.5 border-b border-neutral-200 dark:border-neutral-850 bg-neutral-50/70 dark:bg-neutral-900/10 overflow-x-auto">
+        <div className="flex-shrink-0 flex items-center gap-2.5 px-6 py-2.5 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-900/10 overflow-x-auto">
           {[
             { label: t('marketing_kpiTotal'), value: String(kpis.total), color: '#2563eb' },
             { label: t('marketing_kpiApproved'), value: String(kpis.approved), color: '#10b981' },
@@ -182,15 +182,15 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
             <div key={label} className="flex-shrink-0 flex items-center gap-2.5 bg-white dark:bg-neutral-900 border border-neutral-200/70 dark:border-neutral-800 rounded-xl px-3.5 py-1.5 shadow-sm">
               <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
               <div>
-                <p className="text-[9px] text-neutral-455 dark:text-neutral-500 font-extrabold uppercase tracking-wider leading-none">{label}</p>
-                <p className="text-xs text-neutral-855 dark:text-white font-black mt-1 leading-none">{value}</p>
+                <p className="text-[9px] text-neutral-500 dark:text-neutral-500 font-extrabold uppercase tracking-wider leading-none">{label}</p>
+                <p className="text-xs text-neutral-900 dark:text-white font-black mt-1 leading-none">{value}</p>
               </div>
             </div>
           ))}
         </div>
 
         {/* ── TOOLBAR ── */}
-        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-6 py-2.5 border-b border-neutral-200 dark:border-neutral-855 bg-white dark:bg-neutral-950">
+        <div className="flex-shrink-0 flex items-center justify-between gap-3 px-6 py-2.5 border-b border-neutral-200 dark:border-neutral-900 bg-white dark:bg-neutral-950">
           <div className="flex items-center gap-2.5 flex-1 max-w-lg">
             <div className="relative flex-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">
@@ -200,7 +200,7 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
                 placeholder="Cari campaign atau perusahaan..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full h-9 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 text-xs text-neutral-850 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full h-9 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 text-xs text-neutral-900 dark:text-white outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
             {brands.length > 0 && (
@@ -225,13 +225,13 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
             )}
             <button
               onClick={() => scrollRef.current?.scrollBy({ left: -MONTH_COL_W * 3, behavior: 'smooth' })}
-              className="w-9 h-9 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors flex items-center justify-center text-neutral-555 dark:text-neutral-400 cursor-pointer"
+              className="w-9 h-9 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors flex items-center justify-center text-neutral-600 dark:text-neutral-400 cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => scrollRef.current?.scrollBy({ left: MONTH_COL_W * 3, behavior: 'smooth' })}
-              className="w-9 h-9 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors flex items-center justify-center text-neutral-555 dark:text-neutral-400 cursor-pointer"
+              className="w-9 h-9 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors flex items-center justify-center text-neutral-600 dark:text-neutral-400 cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -246,7 +246,7 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
             <div className="sticky top-0 z-10 flex h-16 bg-neutral-50 dark:bg-neutral-900 border-b-2 border-neutral-200 dark:border-neutral-800">
               {/* Sticky Top-Left Corner cell */}
               <div className="sticky left-0 z-12 w-[280px] flex-shrink-0 h-16 border-r border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 flex items-end px-5 pb-3">
-                <span className="text-[10px] font-black text-neutral-400 dark:text-neutral-505 uppercase tracking-widest">Campaign / Detail</span>
+                <span className="text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">Campaign / Detail</span>
               </div>
 
               {/* Top-Right scroll headers */}
@@ -282,7 +282,7 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
                       <div
                         key={m}
                         className={`flex-shrink-0 flex items-center justify-center relative h-full text-[10px] font-extrabold border-r border-neutral-200 dark:border-neutral-800/60 last:border-r-0 ${
-                          isCur ? 'text-blue-600 dark:text-blue-400 bg-blue-50/20 dark:bg-blue-500/[0.04]' : 'text-neutral-400 dark:text-neutral-505'
+                          isCur ? 'text-blue-600 dark:text-blue-400 bg-blue-50/20 dark:bg-blue-500/[0.04]' : 'text-neutral-400 dark:text-neutral-500'
                         }`}
                         style={{ width: MONTH_COL_W }}
                       >
@@ -311,7 +311,7 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
 
             {/* Empty state */}
             {filtered.length === 0 && (
-              <div className="py-24 flex flex-col items-center gap-3 text-neutral-400 dark:text-neutral-505">
+              <div className="py-24 flex flex-col items-center gap-3 text-neutral-400 dark:text-neutral-500">
                 <Calendar className="w-12 h-12 opacity-35" />
                 <p className="text-sm font-semibold">{t('marketing_emptyFilter')}</p>
               </div>
@@ -327,7 +327,7 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
               const barPos = getBarPos(plan);
               const rowClass = idx % 2 === 0
                 ? 'bg-white dark:bg-neutral-900'
-                : 'bg-neutral-50/50 dark:bg-neutral-955/20';
+                : 'bg-neutral-50/50 dark:bg-neutral-950/20';
 
               const fmtMs = d => d ? new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'short' }) : '';
               const milestones = [
@@ -337,21 +337,21 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
               ].filter(m => m.date && getMsX(m.date) !== null);
 
               return (
-                <div key={plan.id} className={`flex h-[68px] border-b border-neutral-100 dark:border-neutral-850 hover:bg-neutral-100/30 dark:hover:bg-neutral-800/10 transition-colors relative ${rowClass}`}>
+                <div key={plan.id} className={`flex h-[68px] border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-100/30 dark:hover:bg-neutral-800/10 transition-colors relative ${rowClass}`}>
                   {/* Sticky left cell info */}
                   <div className={`sticky left-0 z-5 w-[280px] flex-shrink-0 px-5 flex flex-col justify-center gap-1.5 border-r border-neutral-200 dark:border-neutral-800 ${rowClass}`}>
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="w-2.5 h-2.5 rounded-md flex-shrink-0" style={{ backgroundColor: color }} />
-                      <p className="text-xs font-bold text-neutral-855 dark:text-neutral-150 truncate leading-tight flex-1">{plan.title}</p>
+                      <p className="text-xs font-bold text-neutral-900 dark:text-neutral-100 truncate leading-tight flex-1">{plan.title}</p>
                     </div>
                     {plan.company?.name && (
-                      <p className="text-[10px] text-neutral-455 dark:text-neutral-500 pl-4.5 leading-none">{plan.company.name}</p>
+                      <p className="text-[10px] text-neutral-500 dark:text-neutral-500 pl-4.5 leading-none">{plan.company.name}</p>
                     )}
                     <div className="flex items-center gap-2 pl-4.5">
                       <span className="text-[8px] font-extrabold px-1.5 py-0.5 rounded" style={{ backgroundColor: color + '15', color }}>
                         {cfg.label}
                       </span>
-                      <span className="text-[10px] font-bold text-neutral-455 dark:text-neutral-400">
+                      <span className="text-[10px] font-bold text-neutral-500 dark:text-neutral-400">
                         {formatIDRCompact(totalBudget)}
                       </span>
                       {totalBudget > 0 && (
@@ -371,7 +371,7 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
                     {Array.from({ length: 12 }).map((_, ci) => (
                       <div
                         key={ci}
-                        className="absolute top-0 bottom-0 border-r border-neutral-100/60 dark:border-neutral-850/40 pointer-events-none"
+                        className="absolute top-0 bottom-0 border-r border-neutral-100/60 dark:border-neutral-800/40 pointer-events-none"
                         style={{ left: ci * MONTH_COL_W, width: 1 }}
                       />
                     ))}
@@ -417,8 +417,8 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
         </div>
 
         {/* ── FOOTER ── */}
-        <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-t border-neutral-200 dark:border-neutral-850 bg-neutral-50 dark:bg-neutral-955/40">
-          <div className="flex items-center gap-3 text-[10px] text-neutral-455 dark:text-neutral-500 font-bold uppercase tracking-wider">
+        <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/40">
+          <div className="flex items-center gap-3 text-[10px] text-neutral-500 dark:text-neutral-500 font-bold uppercase tracking-wider">
             <span className="flex items-center gap-1"><Info className="w-3.5 h-3.5" /> Milestones:</span>
             {[{ label: 'CTA Mulai', color: '#6366f1' }, { label: 'Event Mulai', color: '#10b981' }, { label: 'Event Selesai', color: '#f59e0b' }].map(m => (
               <span key={m.label} className="flex items-center gap-1.5 normal-case font-medium text-neutral-600 dark:text-neutral-400">

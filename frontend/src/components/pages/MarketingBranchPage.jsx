@@ -29,7 +29,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
   const colors = {
     blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
-    indigo: 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+    cyan: 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
     emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
     neutral: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
   };
@@ -515,7 +515,7 @@ export default function MarketingBranchPage() {
           label="Terikat PT / Brand"
           value={boundCount}
           icon={Building2}
-          color="indigo"
+          color="cyan"
           delay={0.05}
         />
         <StatCard
@@ -548,7 +548,7 @@ export default function MarketingBranchPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
             />
           </div>
 
@@ -603,7 +603,7 @@ export default function MarketingBranchPage() {
 
         <button
           onClick={fetchData}
-          className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-neutral-500 hover:text-neutral-750 dark:text-neutral-450 dark:hover:text-white border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-all cursor-pointer self-stretch sm:self-auto shrink-0"
+          className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-900/50 transition-all cursor-pointer self-stretch sm:self-auto shrink-0"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           {t('marketing_branch_refresh')}
@@ -625,7 +625,7 @@ export default function MarketingBranchPage() {
         ) : paginatedData.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
             <Building className="w-8 h-8 text-neutral-300 dark:text-neutral-700" />
-            <p className="text-xs text-neutral-450 font-bold">Tidak ada cabang ditemukan.</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 font-bold">Tidak ada cabang ditemukan.</p>
             {hasActiveFilters && (
               <button
                 onClick={handleResetFilters}
@@ -639,7 +639,7 @@ export default function MarketingBranchPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
+                <tr className="bg-neutral-50 dark:bg-white/[0.02] border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
                   <th className="px-6 py-3.5 w-[10%]">ID</th>
                   <th className="px-6 py-3.5 w-[32%]">{t('marketing_branch_colName')}</th>
                   <th className="px-6 py-3.5 w-[26%]">{t('marketing_branch_colCompany')}</th>
@@ -647,11 +647,11 @@ export default function MarketingBranchPage() {
                   <th className="px-6 py-3.5 w-[12%] text-center">{t('marketing_branch_colAction')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-850 font-medium text-neutral-700 dark:text-neutral-300">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium text-neutral-700 dark:text-neutral-300">
                 {paginatedData.map((item) => (
                   <tr key={item.id} className="hover:bg-neutral-500/5 dark:hover:bg-neutral-950/20 transition-colors">
                     <td className="px-6 py-3.5 text-neutral-400 font-mono font-bold">#{item.id}</td>
-                    <td className="px-6 py-3.5 font-bold text-neutral-850 dark:text-white">
+                    <td className="px-6 py-3.5 font-bold text-neutral-900 dark:text-white">
                       <span>{item.name}</span>
                     </td>
                     <td className="px-6 py-3.5">
@@ -711,7 +711,7 @@ export default function MarketingBranchPage() {
         {/* ── Pagination Footer ── */}
         {!loading && filteredData.length > 0 && (
           <div className="bg-neutral-50 dark:bg-neutral-950/40 border-t border-neutral-200/60 dark:border-neutral-800 px-6 py-3.5 flex items-center justify-between">
-            <span className="text-[10px] font-bold text-neutral-450 dark:text-neutral-500">
+            <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500">
               Menampilkan {Math.min(filteredData.length, (page - 1) * itemsPerPage + 1)} - {Math.min(filteredData.length, page * itemsPerPage)} dari {filteredData.length} Cabang
             </span>
 
@@ -723,7 +723,7 @@ export default function MarketingBranchPage() {
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
-              <span className="text-xs font-bold text-neutral-700 dark:text-neutral-350 px-2">
+              <span className="text-xs font-bold text-neutral-700 dark:text-neutral-300 px-2">
                 Halaman {page} dari {totalPages}
               </span>
               <button
@@ -754,12 +754,12 @@ export default function MarketingBranchPage() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-850 z-50 shadow-2xl p-6 flex flex-col justify-between overflow-y-auto"
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 z-50 shadow-2xl p-6 flex flex-col justify-between overflow-y-auto"
             >
               <div className="space-y-5 flex-1 pb-16">
-                <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-850 pb-4">
+                <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
                   <div>
-                    <h3 className="text-sm font-black text-neutral-850 dark:text-white">
+                    <h3 className="text-sm font-black text-neutral-900 dark:text-white">
                       {editingItem ? 'Edit Cabang Sasaran' : 'Tambah Cabang Sasaran Baru'}
                     </h3>
                     <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
@@ -770,7 +770,7 @@ export default function MarketingBranchPage() {
                   </div>
                   <button
                     onClick={() => setShowDrawer(false)}
-                    className="p-1.5 text-neutral-450 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg transition-colors cursor-pointer"
+                    className="p-1.5 text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg transition-colors cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -879,11 +879,11 @@ export default function MarketingBranchPage() {
                 </form>
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-neutral-850 pt-4 flex gap-3">
+              <div className="border-t border-neutral-100 dark:border-neutral-800 pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowDrawer(false)}
-                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-350 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
                 >
                   Batal
                 </button>
@@ -937,7 +937,7 @@ export default function MarketingBranchPage() {
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setDeleteTarget(null)}
-                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-350 rounded-xl hover:bg-neutral-250 text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
                 >
                   Batal
                 </button>

@@ -30,10 +30,10 @@ export default function SearchableCompanySelect({ companies, value, onChange, pl
     <div className="relative w-full">
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 flex items-center justify-between cursor-pointer min-h-[36px] select-none"
+        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 flex items-center justify-between cursor-pointer min-h-[36px] select-none"
       >
         <span className="flex items-center gap-2 truncate">
-          <span className={selectedCompany ? 'text-neutral-850 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
+          <span className={selectedCompany ? 'text-neutral-900 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
             {selectedCompany ? selectedCompany.name : placeholder}
           </span>
           {selectedCompany && <SectorTag sector={selectedCompany.m_company_master?.sector} />}

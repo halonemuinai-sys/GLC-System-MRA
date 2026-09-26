@@ -19,7 +19,7 @@ export const CURRENT_YEAR = new Date().getFullYear();
 
 export const STATUS_CONFIG = {
   APPROVED: { label: 'Approved', color: '#10b981', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200/60', icon: CheckCircle },
-  PENDING_APPROVAL: { label: 'Pending', color: '#f97316', bg: 'bg-amber-500/10', text: 'text-amber-655 dark:text-amber-400', border: 'border-amber-200/60', icon: Clock },
+  PENDING_APPROVAL: { label: 'Pending', color: '#f97316', bg: 'bg-amber-500/10', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200/60', icon: Clock },
   REJECTED: { label: 'Rejected', color: '#f43f5e', bg: 'bg-red-500/10', text: 'text-red-600 dark:text-red-400', border: 'border-red-200/60', icon: XCircle },
   DRAFT: { label: 'Draft', color: '#64748b', bg: 'bg-neutral-500/10', text: 'text-neutral-500', border: 'border-neutral-200/60', icon: Info },
 };

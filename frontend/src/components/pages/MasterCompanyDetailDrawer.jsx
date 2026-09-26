@@ -59,7 +59,7 @@ export default function MasterCompanyDetailDrawer({
             <div className="p-5 space-y-5">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold text-indigo-650 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 rounded-lg">
+                  <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 rounded-lg">
                     {selectedCompany.code || 'N/A'}
                   </span>
                   {selectedCompany.is_active ? (
@@ -88,7 +88,7 @@ export default function MasterCompanyDetailDrawer({
               <div className="flex gap-2 pt-3 border-t border-neutral-100 dark:border-neutral-800">
                 <button
                   onClick={() => openEditCompany(selectedCompany)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-650 text-white font-semibold text-sm hover:bg-indigo-750 transition-colors cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition-colors cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5" /> Edit
                 </button>

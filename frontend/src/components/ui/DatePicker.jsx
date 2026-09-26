@@ -169,11 +169,11 @@ export default function DatePicker({ value, onChange, placeholder = 'Pilih tangg
       {/* Trigger Button */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-neutral-805 dark:text-neutral-200 focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none text-[11px]"
+        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-neutral-800 dark:text-neutral-200 focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none text-[11px]"
       >
         <div className="flex items-center gap-2 truncate">
           <CalendarIcon className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
-          <span className={selectedDate ? 'text-neutral-850 dark:text-neutral-205 font-medium' : 'text-neutral-450'}>
+          <span className={selectedDate ? 'text-neutral-900 dark:text-neutral-200 font-medium' : 'text-neutral-400'}>
             {selectedDate ? formatDateDisplay(selectedDate) : placeholder}
           </span>
         </div>
@@ -185,7 +185,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Pilih tangg
                 e.stopPropagation();
                 handleClear();
               }}
-              className="p-0.5 hover:bg-neutral-200 dark:hover:bg-neutral-850 rounded-full text-neutral-400"
+              className="p-0.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400"
             >
               <X className="w-3 h-3" />
             </button>
@@ -218,7 +218,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Pilih tangg
                 <select
                   value={month}
                   onChange={handleMonthChange}
-                  className="bg-transparent text-neutral-700 dark:text-neutral-350 text-[11px] font-bold py-0.5 px-1 focus:outline-none rounded hover:bg-neutral-50 dark:hover:bg-neutral-850 cursor-pointer border-0"
+                  className="bg-transparent text-neutral-700 dark:text-neutral-300 text-[11px] font-bold py-0.5 px-1 focus:outline-none rounded hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer border-0"
                 >
                   {monthNames.map((mName, idx) => (
                     <option key={mName} value={idx} className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white">
@@ -231,7 +231,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Pilih tangg
                 <select
                   value={year}
                   onChange={handleYearChange}
-                  className="bg-transparent text-neutral-700 dark:text-neutral-350 text-[11px] font-bold py-0.5 px-1 focus:outline-none rounded hover:bg-neutral-50 dark:hover:bg-neutral-850 cursor-pointer font-mono border-0"
+                  className="bg-transparent text-neutral-700 dark:text-neutral-300 text-[11px] font-bold py-0.5 px-1 focus:outline-none rounded hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer font-mono border-0"
                 >
                   {years.map(yVal => (
                     <option key={yVal} value={yVal} className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white">
@@ -296,7 +296,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Pilih tangg
                   onChange(formatted);
                   setIsOpen(false);
                 }}
-                className="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-650 dark:text-indigo-400 font-bold rounded-lg text-[9px] transition-colors cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-950/30"
+                className="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 font-bold rounded-lg text-[9px] transition-colors cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-950/30"
               >
                 Hari Ini
               </button>

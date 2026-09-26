@@ -395,23 +395,23 @@ export default function MarketingPlanDetailModal({
               ) : selectedPlan ? (
                 <>
                   {/* Detail Header */}
-                  <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-955/20">
+                  <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-md font-black text-neutral-850 dark:text-white">{selectedPlan.title}</h3>
+                        <h3 className="text-md font-black text-neutral-900 dark:text-white">{selectedPlan.title}</h3>
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
                           selectedPlan.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-600' :
                           selectedPlan.status === 'COMPLETED' ? 'bg-blue-500/10 text-blue-600' :
-                          selectedPlan.status === 'REJECTED' ? 'bg-red-500/10 text-red-650' : 'bg-amber-500/10 text-amber-600'
+                          selectedPlan.status === 'REJECTED' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
                         }`}>
                           {selectedPlan.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-neutral-455 mt-0.5">{t('submittedBy')} {selectedPlan.creator?.name || 'N/A'} • {selectedPlan.company?.name || ''}</p>
+                      <p className="text-[10px] text-neutral-500 mt-0.5">{t('submittedBy')} {selectedPlan.creator?.name || 'N/A'} • {selectedPlan.company?.name || ''}</p>
                     </div>
                     <button
                       onClick={onClose}
-                      className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-805 rounded-full text-neutral-450 hover:text-neutral-850 dark:hover:text-white"
+                      className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -430,7 +430,7 @@ export default function MarketingPlanDetailModal({
                           <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest">{t('planDescription')}</span>
                         </div>
                         <div className="px-4 py-4">
-                          <p className="text-xs text-neutral-600 dark:text-neutral-350 leading-relaxed">{selectedPlan.description || t('noDescription')}</p>
+                          <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">{selectedPlan.description || t('noDescription')}</p>
                         </div>
                       </div>
 
@@ -554,11 +554,11 @@ export default function MarketingPlanDetailModal({
                                                 {item.vendors.vendor_name}
                                               </span>
                                             ) : (
-                                              <span className="text-neutral-350 dark:text-neutral-600">-</span>
+                                              <span className="text-neutral-300 dark:text-neutral-600">-</span>
                                             )}
                                           </td>
                                           <td className="px-3 py-3 text-right">
-                                            <span className="font-bold text-neutral-850 dark:text-white block whitespace-nowrap">{formatIDR(budget)}</span>
+                                            <span className="font-bold text-neutral-900 dark:text-white block whitespace-nowrap">{formatIDR(budget)}</span>
                                             <span className="text-[10px] text-neutral-400 font-normal block mt-0.5 whitespace-nowrap">
                                               {item.qty || 1} × {formatIDR(item.unit_price || budget)}
                                             </span>
@@ -595,7 +595,7 @@ export default function MarketingPlanDetailModal({
                                                 </span>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
                                                   {item.payment_requests.map((pr) => (
-                                                    <div key={pr.id} className="bg-white dark:bg-neutral-900/60 border border-neutral-200/80 dark:border-neutral-850 rounded-xl p-2.5 flex items-center justify-between text-[10px] shadow-sm">
+                                                    <div key={pr.id} className="bg-white dark:bg-neutral-900/60 border border-neutral-200/80 dark:border-neutral-800 rounded-xl p-2.5 flex items-center justify-between text-[10px] shadow-sm">
                                                       <div className="space-y-0.5">
                                                         <p className="font-bold text-neutral-800 dark:text-white">{pr.title}</p>
                                                         <p className="text-neutral-400 font-medium text-[9px]">{t('byLabel')} {pr.creator?.name || 'N/A'}</p>
@@ -652,7 +652,7 @@ export default function MarketingPlanDetailModal({
                             <Users className="w-3.5 h-3.5" />
                           </div>
                           <div>
-                            <h4 className="text-xs font-black text-neutral-850 dark:text-white uppercase tracking-wider">
+                            <h4 className="text-xs font-black text-neutral-900 dark:text-white uppercase tracking-wider">
                               {lang === 'id' ? 'Alur Persetujuan & Penandatangan Dokumen' : 'Approval Chain & Document Signers'}
                             </h4>
                             <p className="text-[10px] text-neutral-400">DocHub-style sequential signing workflow</p>
@@ -1018,7 +1018,7 @@ export default function MarketingPlanDetailModal({
 
                     {/* Post-Campaign Actuals */}
                     {selectedPlan.status === 'APPROVED' && (
-                      <div className="p-5 bg-neutral-50 dark:bg-neutral-950/40 rounded-3xl border border-neutral-200/80 dark:border-neutral-850 space-y-4">
+                      <div className="p-5 bg-neutral-50 dark:bg-neutral-950/40 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-200/50 dark:border-neutral-800/80 pb-3">
                           <div>
                             <h4 className="text-xs font-black text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
@@ -1026,7 +1026,7 @@ export default function MarketingPlanDetailModal({
                               {t('postCampaignActuals')}
                             </h4>
                             {selectedPlan.actuals_filled_at && (
-                              <p className="text-[10px] text-neutral-400 dark:text-neutral-550 mt-0.5">
+                              <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
                                 · {t('filledOn')} {new Date(selectedPlan.actuals_filled_at).toLocaleDateString(t('dateLocale'), { day: 'numeric', month: 'short', year: 'numeric' })}
                               </p>
                             )}
@@ -1034,26 +1034,26 @@ export default function MarketingPlanDetailModal({
                         </div>
 
                         {selectedPlan.actuals_filled_at && (
-                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5 p-4.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-850 rounded-2xl">
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5 p-4.5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
                             <div className="space-y-0.5">
                               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualSales')}</p>
-                              <p className="text-xs font-black text-neutral-850 dark:text-white">{selectedPlan.actual_sales != null ? formatIDR(selectedPlan.actual_sales) : '-'}</p>
+                              <p className="text-xs font-black text-neutral-900 dark:text-white">{selectedPlan.actual_sales != null ? formatIDR(selectedPlan.actual_sales) : '-'}</p>
                             </div>
                             <div className="space-y-0.5">
                               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualLeads')}</p>
-                              <p className="text-xs font-black text-neutral-850 dark:text-white">{selectedPlan.actual_leads != null ? selectedPlan.actual_leads.toLocaleString('id-ID') : '-'}</p>
+                              <p className="text-xs font-black text-neutral-900 dark:text-white">{selectedPlan.actual_leads != null ? selectedPlan.actual_leads.toLocaleString('id-ID') : '-'}</p>
                             </div>
                             <div className="space-y-0.5">
                               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualReach')}</p>
-                              <p className="text-xs font-black text-neutral-850 dark:text-white">{selectedPlan.actual_reach != null ? selectedPlan.actual_reach.toLocaleString('id-ID') : '-'}</p>
+                              <p className="text-xs font-black text-neutral-900 dark:text-white">{selectedPlan.actual_reach != null ? selectedPlan.actual_reach.toLocaleString('id-ID') : '-'}</p>
                             </div>
                             <div className="space-y-0.5">
                               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualImpressions')}</p>
-                              <p className="text-xs font-black text-neutral-850 dark:text-white">{selectedPlan.actual_impressions != null ? selectedPlan.actual_impressions.toLocaleString('id-ID') : '-'}</p>
+                              <p className="text-xs font-black text-neutral-900 dark:text-white">{selectedPlan.actual_impressions != null ? selectedPlan.actual_impressions.toLocaleString('id-ID') : '-'}</p>
                             </div>
                             <div className="space-y-0.5 col-span-2 md:col-span-1">
                               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualROI')}</p>
-                              <p className="text-xs font-black text-emerald-600 dark:text-emerald-450">{selectedPlan.actual_roi_pct != null ? `${selectedPlan.actual_roi_pct.toFixed(2)}%` : '-'}</p>
+                              <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">{selectedPlan.actual_roi_pct != null ? `${selectedPlan.actual_roi_pct.toFixed(2)}%` : '-'}</p>
                             </div>
                             {selectedPlan.actual_notes && (
                               <div className="col-span-2 md:col-span-5 border-t border-neutral-100 dark:border-neutral-800/80 pt-3 mt-1.5">
@@ -1082,7 +1082,7 @@ export default function MarketingPlanDetailModal({
                                 placeholder="0"
                                 value={actualsForm.actual_sales}
                                 onChange={(e) => setActualsForm(p => ({ ...p, actual_sales: e.target.value }))}
-                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-250 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
+                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -1092,7 +1092,7 @@ export default function MarketingPlanDetailModal({
                                 placeholder="0"
                                 value={actualsForm.actual_leads}
                                 onChange={(e) => setActualsForm(p => ({ ...p, actual_leads: e.target.value }))}
-                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-255 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
+                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -1102,7 +1102,7 @@ export default function MarketingPlanDetailModal({
                                 placeholder="0"
                                 value={actualsForm.actual_reach}
                                 onChange={(e) => setActualsForm(p => ({ ...p, actual_reach: e.target.value }))}
-                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-250 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
+                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -1112,7 +1112,7 @@ export default function MarketingPlanDetailModal({
                                 placeholder="0"
                                 value={actualsForm.actual_impressions}
                                 onChange={(e) => setActualsForm(p => ({ ...p, actual_impressions: e.target.value }))}
-                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-250 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
+                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -1123,7 +1123,7 @@ export default function MarketingPlanDetailModal({
                                 placeholder="0.00"
                                 value={actualsForm.actual_roi_pct}
                                 onChange={(e) => setActualsForm(p => ({ ...p, actual_roi_pct: e.target.value }))}
-                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-250 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
+                                className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
                               />
                             </div>
                           </div>
@@ -1135,7 +1135,7 @@ export default function MarketingPlanDetailModal({
                               placeholder={t('notesPlaceholder')}
                               value={actualsForm.actual_notes}
                               onChange={(e) => setActualsForm(p => ({ ...p, actual_notes: e.target.value }))}
-                              className="w-full bg-white dark:bg-neutral-900 border border-neutral-250 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 resize-none font-medium leading-relaxed"
+                              className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 resize-none font-medium leading-relaxed"
                             />
                           </div>
 
@@ -1144,7 +1144,7 @@ export default function MarketingPlanDetailModal({
                               type="button"
                               onClick={handleActualsSubmit}
                               disabled={submittingActuals}
-                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-750 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                             >
                               {submittingActuals ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BarChart2 className="w-3.5 h-3.5" />}
                               {t('btnSaveActuals')}
@@ -1156,7 +1156,7 @@ export default function MarketingPlanDetailModal({
                   </div>
 
                   {/* Detail Footer Controls */}
-                  <div className="px-6 py-4.5 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/30 dark:bg-neutral-955/10">
+                  <div className="px-6 py-4.5 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/30 dark:bg-neutral-950/10">
                     <div className="flex items-center gap-2">
                       {selectedPlan.status === 'PENDING_APPROVAL' && (userRole === 'admin' || userRole === 'staff') && (
                         <button
@@ -1218,7 +1218,7 @@ export default function MarketingPlanDetailModal({
                     <button
                       type="button"
                       onClick={onClose}
-                      className="px-4 py-2 border border-neutral-250 dark:border-neutral-750 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                      className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold cursor-pointer transition-colors"
                     >
                       {t('btnClose')}
                     </button>
@@ -1247,14 +1247,14 @@ export default function MarketingPlanDetailModal({
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-lg z-65 overflow-hidden"
             >
-              <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-955/20">
+              <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
                 <div>
-                  <h3 className="text-md font-black text-neutral-850 dark:text-white">{t('paymentModalTitle')}</h3>
-                  <p className="text-[10px] text-neutral-450 mt-0.5">Item: {paymentRequestItem.m_coa?.code} - {paymentRequestItem.m_coa?.name}</p>
+                  <h3 className="text-md font-black text-neutral-900 dark:text-white">{t('paymentModalTitle')}</h3>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">Item: {paymentRequestItem.m_coa?.code} - {paymentRequestItem.m_coa?.name}</p>
                 </div>
                 <button
                   onClick={() => setIsPaymentModalOpen(false)}
-                  className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-805 rounded-full text-neutral-450 hover:text-neutral-800 dark:hover:text-white"
+                  className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1281,8 +1281,8 @@ export default function MarketingPlanDetailModal({
                   );
                 })()}
 
-                <div className="bg-neutral-50 dark:bg-neutral-955 p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-850 space-y-1 text-xs">
-                  <div className="text-neutral-450 font-bold uppercase text-[9px] tracking-wider">{t('availableBalance')}</div>
+                <div className="bg-neutral-50 dark:bg-neutral-950 p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1 text-xs">
+                  <div className="text-neutral-400 font-bold uppercase text-[9px] tracking-wider">{t('availableBalance')}</div>
                   <div className="text-lg font-black text-indigo-600 dark:text-indigo-400">
                     {formatIDR(Number(paymentRequestItem.budget_amount) - Number(paymentRequestItem.actual_amount))}
                   </div>
@@ -1290,33 +1290,33 @@ export default function MarketingPlanDetailModal({
 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-neutral-455 uppercase">{t('paymentDescLabel')}</label>
+                    <label className="text-[10px] font-bold text-neutral-500 uppercase">{t('paymentDescLabel')}</label>
                     <input
                       type="text"
                       placeholder={t('paymentDescPlaceholder')}
                       value={paymentForm.title}
                       onChange={(e) => setPaymentForm(prev => ({ ...prev, title: e.target.value }))}
-                      className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
                       required
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-neutral-450 uppercase">{t('paymentAmountLabel')}</label>
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase">{t('paymentAmountLabel')}</label>
                       <input
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
                         value={formatThousands(paymentForm.amount)}
                         onChange={(e) => setPaymentForm(prev => ({ ...prev, amount: e.target.value.replace(/\D/g, '') }))}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-850 dark:text-white focus:outline-none focus:border-indigo-500 font-bold"
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500 font-bold"
                         required
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-neutral-450 uppercase">{t('supportingDocLabel')}</label>
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase">{t('supportingDocLabel')}</label>
                       <div className="flex gap-2">
                         <div className="relative flex-grow">
                           <input
@@ -1324,7 +1324,7 @@ export default function MarketingPlanDetailModal({
                             placeholder={t('docLinkPlaceholder')}
                             value={paymentForm.doc_url || ''}
                             onChange={(e) => setPaymentForm(prev => ({ ...prev, doc_url: e.target.value }))}
-                            className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-850 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-medium"
+                            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 font-medium"
                           />
                         </div>
                         <div className="relative shrink-0">
@@ -1338,7 +1338,7 @@ export default function MarketingPlanDetailModal({
                           />
                           <label
                             htmlFor="payment-doc-upload"
-                            className={`px-4 py-2 bg-neutral-105 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 text-neutral-750 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-750 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 h-full ${paymentUploading ? 'opacity-50 pointer-events-none' : ''}`}
+                            className={`px-4 py-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 h-full ${paymentUploading ? 'opacity-50 pointer-events-none' : ''}`}
                           >
                             {paymentUploading ? (
                               <>
@@ -1375,7 +1375,7 @@ export default function MarketingPlanDetailModal({
 
                 {/* Legal PKS warning alert */}
                 {paymentForm.amount && Number(paymentForm.amount) > 50000000 && (
-                  <div className="bg-indigo-500/10 border border-indigo-250 text-indigo-700 dark:text-indigo-400 text-[11px] font-bold p-3 rounded-2xl flex items-start gap-2">
+                  <div className="bg-indigo-500/10 border border-indigo-200 text-indigo-700 dark:text-indigo-400 text-[11px] font-bold p-3 rounded-2xl flex items-start gap-2">
                     <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
                     <span>
                       {t('legalWarning')}
@@ -1384,7 +1384,7 @@ export default function MarketingPlanDetailModal({
                 )}
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-450 uppercase">{t('additionalNotes')}</label>
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">{t('additionalNotes')}</label>
                   <textarea
                     rows="2"
                     placeholder={t('notesVendorPlaceholder')}
@@ -1399,7 +1399,7 @@ export default function MarketingPlanDetailModal({
                   <button
                     type="button"
                     onClick={() => setIsPaymentModalOpen(false)}
-                    className="px-4 py-2 border border-neutral-250 dark:border-neutral-700/60 rounded-xl text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white text-xs font-bold cursor-pointer"
+                    className="px-4 py-2 border border-neutral-200 dark:border-neutral-700/60 rounded-xl text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white text-xs font-bold cursor-pointer"
                   >
                     {t('btnCancel')}
                   </button>
@@ -1407,7 +1407,7 @@ export default function MarketingPlanDetailModal({
                   <button
                     type="submit"
                     disabled={submittingPayment}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-750 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {submittingPayment && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     {t('btnSubmitExpense')}

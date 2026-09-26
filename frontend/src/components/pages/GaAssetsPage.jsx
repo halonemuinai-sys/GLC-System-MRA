@@ -52,7 +52,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none"
       >
-        <span className={selectedCompany ? 'text-neutral-850 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
+        <span className={selectedCompany ? 'text-neutral-900 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
           {selectedCompany ? selectedCompany.name : placeholder}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -115,8 +115,8 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
                       setSearchQuery('');
                       setIsOpen(false);
                     }}
-                    className={`w-full text-left px-2.5 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-650 dark:hover:text-indigo-400 transition-colors font-medium ${
-                      String(c.id) === String(value) ? 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'
+                    className={`w-full text-left px-2.5 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium ${
+                      String(c.id) === String(value) ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'
                     }`}
                   >
                     {c.name}
@@ -491,7 +491,7 @@ export default function GaAssetsPage() {
             <button
               onClick={() => handleExportExcel({ search, categoryId, locationId, statusId, companyId, companies, formatIDR, maskNum, setExportingExcel })}
               disabled={exportingExcel}
-              className="flex items-center gap-2 px-4 py-2 bg-teal-650 hover:bg-teal-700 active:bg-teal-800 disabled:bg-teal-750 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-teal-600/20 w-fit"
+              className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 disabled:bg-teal-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-teal-600/20 w-fit"
             >
               {exportingExcel ? (
                 <>
@@ -510,7 +510,7 @@ export default function GaAssetsPage() {
             <button
               onClick={() => handleExportPDF({ search, categoryId, locationId, statusId, companyId, companies, categories, locations, statuses, formatIDR, maskNum, setExportingPDF })}
               disabled={exportingPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-750 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-600/20 w-fit"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-600/20 w-fit"
             >
               {exportingPDF ? (
                 <>
@@ -750,14 +750,14 @@ export default function GaAssetsPage() {
                         <td className="p-4">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             asset.m_condition?.name?.toLowerCase().includes('bagus') 
-                              ? 'bg-emerald-500/10 text-emerald-650 dark:text-emerald-400' 
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
                               : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                           }`}>
                             {asset.m_condition?.name || 'Bagus'}
                           </span>
                         </td>
                         <td className="p-4">
-                          <span className="flex items-center gap-1.5 text-neutral-605 dark:text-slate-300">
+                          <span className="flex items-center gap-1.5 text-neutral-600 dark:text-slate-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                             {asset.m_status?.name || 'Aktif'}
                           </span>
@@ -777,14 +777,14 @@ export default function GaAssetsPage() {
                             )}
                             <button 
                               onClick={() => setSelectedAsset(asset)}
-                              className="p-1 text-neutral-400 hover:text-indigo-550 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
                               title="View Details"
                             >
                               <Maximize2 className="w-4 h-4" />
                             </button>
                             <button 
                               onClick={() => openEditAsset(asset)}
-                              className="p-1 text-neutral-400 hover:text-indigo-550 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
                               title="Edit Aset"
                             >
                               <Edit3 className="w-4 h-4" />

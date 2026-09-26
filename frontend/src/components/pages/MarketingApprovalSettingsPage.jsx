@@ -316,11 +316,11 @@ export default function MarketingApprovalSettingsPage() {
                                   value={editEmail}
                                   onChange={(e) => setEditEmail(e.target.value)}
                                   autoFocus
-                                  className="bg-neutral-50 dark:bg-neutral-955 border border-blue-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-850 dark:text-white focus:outline-none w-56 focus:ring-2 focus:ring-blue-550/20"
+                                  className="bg-neutral-50 dark:bg-neutral-950 border border-blue-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-900 dark:text-white focus:outline-none w-56 focus:ring-2 focus:ring-blue-500/20"
                                 />
                               </div>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 text-neutral-850 dark:text-neutral-200 font-bold">
+                              <span className="inline-flex items-center gap-1.5 text-neutral-900 dark:text-neutral-200 font-bold">
                                 <Mail className="w-3.5 h-3.5 text-neutral-400" />
                                 {contact.email}
                               </span>
@@ -381,7 +381,7 @@ export default function MarketingApprovalSettingsPage() {
                   >
                     {holdingOverrides.length === 0 ? (
                       <motion.tr variants={rowVariants}>
-                        <td colSpan={4} className="px-5 py-12 text-center text-neutral-450 font-normal">
+                        <td colSpan={4} className="px-5 py-12 text-center text-neutral-400 font-normal">
                           Belum ada override khusus per Holding. Semua PT pakai default global di atas.
                         </td>
                       </motion.tr>
@@ -410,11 +410,11 @@ export default function MarketingApprovalSettingsPage() {
                                     value={editEmail}
                                     onChange={(e) => setEditEmail(e.target.value)}
                                     autoFocus
-                                    className="bg-neutral-50 dark:bg-neutral-955 border border-blue-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-850 dark:text-white focus:outline-none w-56 focus:ring-2 focus:ring-blue-500/20"
+                                    className="bg-neutral-50 dark:bg-neutral-950 border border-blue-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-900 dark:text-white focus:outline-none w-56 focus:ring-2 focus:ring-blue-500/20"
                                   />
                                 </div>
                               ) : (
-                                <span className="inline-flex items-center gap-1.5 text-neutral-850 dark:text-neutral-200 font-bold">
+                                <span className="inline-flex items-center gap-1.5 text-neutral-900 dark:text-neutral-200 font-bold">
                                   <Mail className="w-3.5 h-3.5 text-neutral-400" />
                                   {contact.email}
                                 </span>
@@ -469,7 +469,7 @@ export default function MarketingApprovalSettingsPage() {
               className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-md z-55 overflow-hidden"
             >
               <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
-                <h3 className="text-md font-black text-neutral-850 dark:text-white">Tambah Override Holding Group</h3>
+                <h3 className="text-md font-black text-neutral-900 dark:text-white">Tambah Override Holding Group</h3>
                 <button onClick={() => setIsAddOpen(false)} className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white">
                   <X className="w-4 h-4" />
                 </button>
@@ -477,7 +477,7 @@ export default function MarketingApprovalSettingsPage() {
 
               <div className="p-6 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-450 uppercase">Holding Group</label>
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Holding Group</label>
                   <select
                     value={newOverride.company_master_id}
                     onChange={(e) => setNewOverride(prev => ({ ...prev, company_master_id: e.target.value }))}
@@ -491,7 +491,7 @@ export default function MarketingApprovalSettingsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-450 uppercase">Role Approval</label>
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Role Approval</label>
                   <select
                     value={newOverride.role}
                     onChange={(e) => setNewOverride(prev => ({ ...prev, role: e.target.value }))}
@@ -504,7 +504,7 @@ export default function MarketingApprovalSettingsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-450 uppercase">Email Penerima</label>
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Email Penerima</label>
                   <input
                     type="email"
                     placeholder="nama@mraretail.co.id"
@@ -518,7 +518,7 @@ export default function MarketingApprovalSettingsPage() {
               <div className="px-6 py-4.5 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-end gap-2 bg-neutral-50/30 dark:bg-neutral-950/10">
                 <button
                   onClick={() => setIsAddOpen(false)}
-                  className="px-4 py-2 border border-neutral-250 dark:border-neutral-700/60 rounded-xl text-neutral-600 dark:text-neutral-450 hover:text-neutral-900 dark:hover:text-white text-xs font-bold cursor-pointer"
+                  className="px-4 py-2 border border-neutral-200 dark:border-neutral-700/60 rounded-xl text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white text-xs font-bold cursor-pointer"
                 >
                   Batal
                 </button>

@@ -42,7 +42,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none"
       >
-        <span className={selectedCompany ? 'text-neutral-850 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
+        <span className={selectedCompany ? 'text-neutral-900 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
           {selectedCompany ? selectedCompany.name : placeholder}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -932,7 +932,7 @@ export default function GaDeviceRentalsPage() {
                     Apakah Anda yakin ingin menghapus data sewa <span className="font-bold text-neutral-800 dark:text-slate-200 font-mono">{rentalToDelete.item_name}</span>? Tindakan ini bersifat permanen.
                   </p>
                 </div>
-                <div className="flex gap-3 mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-850">
+                <div className="flex gap-3 mt-6 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                   <button
                     onClick={() => setRentalToDelete(null)}
                     disabled={submitting}
@@ -943,7 +943,7 @@ export default function GaDeviceRentalsPage() {
                   <button
                     onClick={confirmDeleteRental}
                     disabled={submitting}
-                    className="flex-1 py-2.5 bg-red-650 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
+                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Ya, Hapus'}
                   </button>

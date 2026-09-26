@@ -871,7 +871,7 @@ export default function MarketingBudgetBulkUploadModal({
                   <h3 className="text-sm font-black text-neutral-900 dark:text-white tracking-tight">
                     Bulk Upload Alokasi Anggaran (Monthly Budget)
                   </h3>
-                  <p className="text-[10px] text-neutral-450 dark:text-neutral-500 mt-0.5">
+                  <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
                     Unggah file Excel (.xlsx) untuk mengisi rincian alokasi biaya bulanan secara massal.
                   </p>
                 </div>
@@ -912,7 +912,7 @@ export default function MarketingBudgetBulkUploadModal({
                       fiscalYear,
                       includeCurrentData: false
                     })}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-750 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Unduh Template (.xlsx)
@@ -1315,7 +1315,7 @@ export default function MarketingBudgetBulkUploadModal({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-955/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <span className="text-[11px] text-neutral-400 flex items-center gap-1.5">
                 <Info className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 Data yang diimpor dapat ditinjau dan disesuaikan kembali sebelum pengajuan final.
@@ -1325,7 +1325,7 @@ export default function MarketingBudgetBulkUploadModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 border border-neutral-200 dark:border-neutral-750 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                 >
                   Batal
                 </button>

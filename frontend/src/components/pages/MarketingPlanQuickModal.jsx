@@ -537,7 +537,7 @@ export default function MarketingPlanQuickModal({
                     <select
                       value={formData.branch_id}
                       onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
-                      className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs font-medium"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs font-medium"
                     >
                       <option value="">Global Sales (Semua Cabang)</option>
                       {(() => {
@@ -576,7 +576,7 @@ export default function MarketingPlanQuickModal({
                     placeholder="Rincian singkat kebutuhan..."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs"
+                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs"
                   />
                 </div>
 
@@ -635,13 +635,13 @@ export default function MarketingPlanQuickModal({
                         <Users className="w-3.5 h-3.5" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-neutral-850 dark:text-white flex items-center gap-1.5">
+                        <h4 className="text-xs font-bold text-neutral-900 dark:text-white flex items-center gap-1.5">
                           Tujuan Approval / Penandatangan
                           <span className="px-1.5 py-0.5 rounded-full text-[8.5px] font-black uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/30">
                             Berurutan
                           </span>
                         </h4>
-                        <p className="text-[10px] text-neutral-450 dark:text-neutral-500">
+                        <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
                           Proposal dikirim berjenjang ke penandatangan di bawah via Magic Link email
                         </p>
                       </div>
@@ -650,7 +650,7 @@ export default function MarketingPlanQuickModal({
                       <button
                         type="button"
                         onClick={() => setApprovers(getDefaultApproversForCompany(formData.company_id))}
-                        className="px-2.5 py-1 rounded-lg border border-neutral-250 dark:border-neutral-750 text-neutral-650 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-[10px] font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-[10px] font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all flex items-center gap-1 cursor-pointer"
                         title="Muat ulang penandatangan rekomendasi sistem untuk PT ini"
                       >
                         <RotateCcw className="w-3 h-3 text-blue-600 dark:text-blue-400" />

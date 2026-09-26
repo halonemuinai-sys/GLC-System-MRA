@@ -404,7 +404,7 @@ export default function GaAssetsImportModal({
                     <FileSpreadsheet className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">
+                    <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">
                       Import Data Excel - Asset Management
                     </h3>
                     <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
@@ -424,7 +424,7 @@ export default function GaAssetsImportModal({
                 {/* 1. Download Template Card */}
                 <div className="bg-neutral-50 dark:bg-neutral-950 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800/60 flex items-center justify-between gap-4">
                   <div className="flex-1">
-                    <h4 className="font-bold text-neutral-850 dark:text-neutral-250 mb-1">1. Unduh Template Resmi</h4>
+                    <h4 className="font-bold text-neutral-900 dark:text-neutral-200 mb-1">1. Unduh Template Resmi</h4>
                     <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
                       Format kolom telah disesuaikan agar proses import berjalan otomatis dan akurat.
                     </p>
@@ -441,7 +441,7 @@ export default function GaAssetsImportModal({
 
                 {/* 2. File Upload Dropzone */}
                 <div className="space-y-2">
-                  <h4 className="font-bold text-neutral-850 dark:text-neutral-250">2. Pilih File Excel (.xlsx)</h4>
+                  <h4 className="font-bold text-neutral-900 dark:text-neutral-200">2. Pilih File Excel (.xlsx)</h4>
                   <div className="border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 text-center hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors relative cursor-pointer flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950">
                     <input
                       type="file"
@@ -507,7 +507,7 @@ export default function GaAssetsImportModal({
                 {importPreview.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-neutral-850 dark:text-neutral-250 flex items-center gap-2">
+                      <h4 className="font-bold text-neutral-900 dark:text-neutral-200 flex items-center gap-2">
                         <span>Preview Data ({importPreview.length} baris)</span>
                         {importErrors.length === 0 && importWarnings.length === 0 && (
                           <span className="text-[10px] px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold rounded-full flex items-center gap-1">
@@ -546,7 +546,7 @@ export default function GaAssetsImportModal({
                                   ? 'bg-red-500/5 text-red-600 dark:text-red-400' 
                                   : row.hasWarning 
                                   ? 'bg-amber-500/5 hover:bg-amber-500/10' 
-                                  : 'hover:bg-neutral-50 dark:hover:bg-neutral-850/40 text-neutral-700 dark:text-neutral-300'
+                                  : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/40 text-neutral-700 dark:text-neutral-300'
                               }`}
                             >
                               <td className="p-2 text-center font-medium text-neutral-400">{row.rowNum}</td>

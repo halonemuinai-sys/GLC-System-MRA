@@ -44,9 +44,9 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
     <div className="relative w-full">
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-805 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none"
+        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none"
       >
-        <span className={selectedCompany ? 'text-neutral-850 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
+        <span className={selectedCompany ? 'text-neutral-900 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
           {selectedCompany ? selectedCompany.name : placeholder}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -675,7 +675,7 @@ export default function GaInsurancesPage() {
               </div>
               <div>
                 <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('gaInsurances_kpiExpiring')}</p>
-                <h3 className="text-xl font-black text-rose-600 dark:text-rose-450 mt-0.5">{summary.expiringCount}</h3>
+                <h3 className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">{summary.expiringCount}</h3>
               </div>
             </div>
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl flex items-center gap-4">
@@ -765,7 +765,7 @@ export default function GaInsurancesPage() {
                                   href={ins.doc_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="p-1 text-neutral-450 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                  className="p-1 text-neutral-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
                                   title="Open Policy File"
                                 >
                                   <ExternalLink className="w-4 h-4" />
@@ -773,14 +773,14 @@ export default function GaInsurancesPage() {
                               )}
                               <button 
                                 onClick={() => setSelectedInsurance(ins)}
-                                className="p-1 text-neutral-455 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                                className="p-1 text-neutral-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
                                 title="View Details"
                               >
                                 <Maximize2 className="w-4 h-4" />
                               </button>
                               <button 
                                 onClick={() => openEditInsurance(ins)}
-                                className="p-1 text-neutral-455 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
+                                className="p-1 text-neutral-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
                                 title="Edit Policy"
                               >
                                 <Edit3 className="w-4 h-4" />
@@ -790,7 +790,7 @@ export default function GaInsurancesPage() {
                                 onClick={() => handleDeleteInsurance(ins)}
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
-                                className="p-1 text-neutral-455 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                                className="p-1 text-neutral-500 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                                 title="Delete Policy"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -934,7 +934,7 @@ export default function GaInsurancesPage() {
                   {/* Broker Contacts */}
                   <div className="bg-neutral-50 dark:bg-neutral-950 p-3.5 rounded-xl border border-neutral-100 dark:border-neutral-800 text-xs">
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-2">Policy Administration</span>
-                    <p className="font-semibold text-neutral-850 dark:text-slate-200">PIC Internal: {selectedInsurance.pic || '-'}</p>
+                    <p className="font-semibold text-neutral-900 dark:text-slate-200">PIC Internal: {selectedInsurance.pic || '-'}</p>
                     <p className="text-neutral-400 mt-1">Contact: {selectedInsurance.contact_person || 'Generic Agent'}</p>
                   </div>
 
@@ -1084,7 +1084,7 @@ export default function GaInsurancesPage() {
                       <select
                         value={formData.vehicle_id}
                         onChange={(e) => setFormData({...formData, vehicle_id: e.target.value})}
-                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-505 focus:outline-none"
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none"
                       >
                         <option value="">-- Non-Vehicle / Unlinked --</option>
                         {vehicles.map(v => (
@@ -1310,7 +1310,7 @@ export default function GaInsurancesPage() {
                   </div>
                 </div>
                 
-                <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Konfirmasi Hapus Polis Asuransi</h3>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Konfirmasi Hapus Polis Asuransi</h3>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
                   Apakah Anda yakin ingin menghapus polis asuransi <strong className="text-red-500 dark:text-red-400 font-bold">"{insuranceToDelete.policy_number}"</strong>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
                 </p>
@@ -1329,7 +1329,7 @@ export default function GaInsurancesPage() {
                     type="button"
                     onClick={confirmDeleteInsurance}
                     disabled={submitting}
-                    className="flex-1 py-2 bg-red-650 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50"
+                    className="flex-1 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50"
                   >
                     {submitting ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />

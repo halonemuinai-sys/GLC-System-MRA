@@ -119,7 +119,7 @@ function PremiumDatePicker({ value, onChange, placeholder = 'Select Date' }) {
         onClick={toggleOpen}
         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none text-xs"
       >
-        <span className={value ? 'text-neutral-850 dark:text-neutral-200 font-medium' : 'text-neutral-400'}>
+        <span className={value ? 'text-neutral-900 dark:text-neutral-200 font-medium' : 'text-neutral-400'}>
           {formatDisplayDate(value)}
         </span>
         <Calendar className="w-4 h-4 text-neutral-400 flex-shrink-0" />
@@ -181,7 +181,7 @@ function PremiumDatePicker({ value, onChange, placeholder = 'Select Date' }) {
                           : selected 
                             ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' 
                             : today
-                              ? 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-650 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50'
+                              ? 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/50'
                               : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60'
                       }`}
                     >
@@ -191,7 +191,7 @@ function PremiumDatePicker({ value, onChange, placeholder = 'Select Date' }) {
                 })}
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-neutral-850 pt-2.5 flex justify-between items-center text-[10px]">
+              <div className="border-t border-neutral-100 dark:border-neutral-800 pt-2.5 flex justify-between items-center text-[10px]">
                 <button
                   type="button"
                   onClick={() => {
@@ -201,7 +201,7 @@ function PremiumDatePicker({ value, onChange, placeholder = 'Select Date' }) {
                     onChange(`${today.getFullYear()}-${formattedMonth}-${formattedDay}`);
                     setIsOpen(false);
                   }}
-                  className="font-bold text-indigo-650 dark:text-indigo-400 hover:underline"
+                  className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                 >
                   Hari Ini
                 </button>
@@ -243,7 +243,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
         onClick={() => setIsOpen(!isOpen)}
         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none"
       >
-        <span className={selectedCompany ? 'text-neutral-850 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
+        <span className={selectedCompany ? 'text-neutral-900 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
           {selectedCompany ? selectedCompany.name : placeholder}
         </span>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -312,8 +312,8 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
                         setSearchQuery('');
                         setIsOpen(false);
                       }}
-                      className={`w-full text-left px-2.5 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-605 dark:hover:text-indigo-400 transition-colors font-medium ${
-                        String(c.id) === String(value) ? 'bg-indigo-500/10 text-indigo-650 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'
+                      className={`w-full text-left px-2.5 py-2 text-xs rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors font-medium ${
+                        String(c.id) === String(value) ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-neutral-700 dark:text-neutral-300'
                       }`}
                     >
                       {c.name}

@@ -38,7 +38,7 @@ export default function GaAssetsDeleteModal({ assetToDelete, setAssetToDelete, c
                 </div>
               </div>
               
-              <h3 className="text-sm font-bold text-neutral-850 dark:text-neutral-100">Konfirmasi Hapus Aset</h3>
+              <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Konfirmasi Hapus Aset</h3>
               <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
                 Apakah Anda yakin ingin menghapus aset <strong className="text-red-500 dark:text-red-400 font-bold">"{assetToDelete.asset_name}"</strong>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
               </p>
@@ -57,7 +57,7 @@ export default function GaAssetsDeleteModal({ assetToDelete, setAssetToDelete, c
                   type="button"
                   onClick={confirmDeleteAsset}
                   disabled={submitting}
-                  className="flex-1 py-2 bg-red-650 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50"
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50"
                 >
                   {submitting ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

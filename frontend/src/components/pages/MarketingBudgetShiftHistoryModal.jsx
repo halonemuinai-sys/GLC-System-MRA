@@ -119,7 +119,7 @@ export default function MarketingBudgetShiftHistoryModal({
                   <h2 className="text-sm font-black text-neutral-900 dark:text-white">
                     Riwayat & Otorisasi Pergeseran Anggaran
                   </h2>
-                  <p className="text-[11px] text-neutral-450 dark:text-neutral-500">
+                  <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
                     Daftar pengajuan relokasi dana antar bulan, rantai penandatangan, dan audit trail.
                   </p>
                 </div>
@@ -219,7 +219,7 @@ export default function MarketingBudgetShiftHistoryModal({
                                 </button>
                                 <button
                                   onClick={() => handleOpenDecision(s, 'REJECT')}
-                                  className="px-2.5 py-1 bg-red-600 hover:bg-red-750 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-xs shadow-red-600/20"
+                                  className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-xs shadow-red-600/20"
                                 >
                                   Tolak
                                 </button>
@@ -356,7 +356,7 @@ export default function MarketingBudgetShiftHistoryModal({
                         className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md ${
                           decisionAction === 'APPROVE'
                             ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/15'
-                            : 'bg-red-600 hover:bg-red-750 shadow-red-500/15'
+                            : 'bg-red-600 hover:bg-red-700 shadow-red-500/15'
                         }`}
                       >
                         {submitting ? (

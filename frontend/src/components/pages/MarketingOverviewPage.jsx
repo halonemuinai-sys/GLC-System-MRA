@@ -239,28 +239,28 @@ export default function MarketingOverviewPage() {
       border: 'border-blue-500/20 dark:border-blue-500/10',
       indicator: 'bg-blue-600',
       iconBg: 'bg-gradient-to-br from-blue-500/15 to-blue-500/5 border-blue-500/20',
-      iconText: 'text-blue-600 dark:text-blue-455',
+      iconText: 'text-blue-600 dark:text-blue-500',
       glow: 'bg-blue-500/10 dark:bg-blue-500/5'
     },
     emerald: {
       border: 'border-emerald-500/20 dark:border-emerald-500/10',
       indicator: 'bg-emerald-600',
       iconBg: 'bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border-emerald-500/20',
-      iconText: 'text-emerald-600 dark:text-emerald-455',
+      iconText: 'text-emerald-600 dark:text-emerald-500',
       glow: 'bg-emerald-500/10 dark:bg-emerald-500/5'
     },
     amber: {
       border: 'border-amber-500/20 dark:border-amber-500/10',
       indicator: 'bg-amber-600',
       iconBg: 'bg-gradient-to-br from-amber-500/15 to-amber-500/5 border-amber-500/20',
-      iconText: 'text-amber-600 dark:text-amber-455',
+      iconText: 'text-amber-600 dark:text-amber-500',
       glow: 'bg-amber-500/10 dark:bg-amber-500/5'
     },
     slate: {
       border: 'border-rose-500/20 dark:border-rose-500/10',
       indicator: 'bg-rose-500',
       iconBg: 'bg-gradient-to-br from-rose-500/15 to-rose-500/5 border-rose-500/20',
-      iconText: 'text-rose-500 dark:text-rose-455',
+      iconText: 'text-rose-500 dark:text-rose-500',
       glow: 'bg-rose-500/10 dark:bg-rose-500/5'
     }
   };
@@ -277,7 +277,7 @@ export default function MarketingOverviewPage() {
             <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
               {t('marketing_overview_title')}
             </h1>
-            <p className="text-neutral-500 dark:text-neutral-450 text-xs mt-0.5">
+            <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
               Visualisasi timeline campaign — ringkasan anggaran dan realisasi per periode.
             </p>
           </div>
@@ -292,7 +292,7 @@ export default function MarketingOverviewPage() {
           <select
             value={fiscalYear}
             onChange={e => setFiscalYear(e.target.value)}
-            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-455 focus:outline-none shadow-sm font-semibold"
+            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-500 focus:outline-none shadow-sm font-semibold"
           >
             {FISCAL_YEAR_OPTIONS.map(y => (
               <option key={y} value={y}>Tahun {y}</option>
@@ -316,7 +316,7 @@ export default function MarketingOverviewPage() {
       {loading ? (
         <div className="py-32 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
           <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <span className="text-xs text-neutral-455 font-bold">{t('loading')}</span>
+          <span className="text-xs text-neutral-500 font-bold">{t('loading')}</span>
         </div>
       ) : (
         <>
@@ -376,12 +376,12 @@ export default function MarketingOverviewPage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                       {kpis.pending} pending
                     </span>
-                    <span className="mx-0.5 text-neutral-350 dark:text-neutral-600">·</span>
+                    <span className="mx-0.5 text-neutral-300 dark:text-neutral-600">·</span>
                     <span className="inline-flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-600 shrink-0" />
                       {kpis.rejected} ditolak
                     </span>
-                    <span className="mx-0.5 text-neutral-350 dark:text-neutral-600">·</span>
+                    <span className="mx-0.5 text-neutral-300 dark:text-neutral-600">·</span>
                     <span className="inline-flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#64748b] shrink-0" />
                       {kpis.draft} draft
@@ -412,12 +412,12 @@ export default function MarketingOverviewPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center">
-                        <p className="text-[10px] text-neutral-450 dark:text-neutral-500 font-extrabold uppercase tracking-wider leading-none truncate">{label}</p>
+                        <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider leading-none truncate">{label}</p>
                         {tooltip && <InfoTooltip content={tooltip} position="top" />}
                       </div>
                       <h3 className="text-lg font-black text-neutral-900 dark:text-white truncate mt-1.5 leading-none">{value}</h3>
                       {typeof sub === 'string' ? (
-                        <p className="text-[10px] text-neutral-455 dark:text-neutral-500 mt-2 font-semibold truncate leading-none">{sub}</p>
+                        <p className="text-[10px] text-neutral-500 dark:text-neutral-500 mt-2 font-semibold truncate leading-none">{sub}</p>
                       ) : (
                         <div className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-2 font-bold flex items-center flex-wrap gap-1 leading-none mb-3">
                           {sub}
@@ -464,13 +464,13 @@ export default function MarketingOverviewPage() {
                   {/* Progress Bar for Status Campaign card */}
                   {showProgress && (
                     <div className="absolute bottom-4 left-5 right-5 flex items-center gap-3">
-                      <div className="flex-1 h-1.5 bg-neutral-150 dark:bg-neutral-800 rounded-full overflow-hidden">
+                      <div className="flex-1 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
                         <div 
                           className="h-full rounded-full bg-rose-500 transition-all duration-500"
                           style={{ width: `${approvedPercentage}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-black text-neutral-500 dark:text-neutral-450 shrink-0 leading-none">
+                      <span className="text-[10px] font-black text-neutral-500 dark:text-neutral-400 shrink-0 leading-none">
                         {approvedPercentage}%
                       </span>
                     </div>

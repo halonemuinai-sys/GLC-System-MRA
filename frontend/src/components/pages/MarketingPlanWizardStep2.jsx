@@ -119,7 +119,7 @@ export default function MarketingPlanWizardStep2({
               fiscalYear: wizardHeader.fiscal_year,
               includeCurrentData: wizardItems.some(it => it.coa_id || (it.unit_price && it.unit_price !== '0'))
             })}
-            className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-[11px] font-bold border border-neutral-200 dark:border-neutral-750 px-3 py-1.5 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-[11px] font-bold border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all cursor-pointer shadow-sm"
             title="Download Excel Template"
           >
             <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -147,7 +147,7 @@ export default function MarketingPlanWizardStep2({
         <div className="overflow-x-auto scrollbar-thin">
           <table className="w-full text-left text-[10px] border-collapse table-fixed">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
+              <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
                 <th className="px-1 py-2 text-center w-[4%]">No</th>
                 <th className="px-1 py-2 w-[11%]">Month *</th>
                 <th className="px-1 py-2 w-[22%]">CoA Account *</th>
@@ -159,11 +159,11 @@ export default function MarketingPlanWizardStep2({
                 <th className="px-1 py-2 text-center w-[3%]"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-855 text-neutral-700 dark:text-neutral-300">
+            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-900 text-neutral-700 dark:text-neutral-300">
               {wizardItems.map((item, idx) => {
                 const subTotal = Number(item.qty || 1) * Number(item.unit_price || 0);
                 return (
-                  <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-neutral-955/10 transition-colors">
+                  <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-neutral-950/10 transition-colors">
                     <td className="px-1 py-1.5 text-center text-neutral-400 font-bold">
                       {idx + 1}
                     </td>
@@ -173,7 +173,7 @@ export default function MarketingPlanWizardStep2({
                       <select
                         value={item.period_month}
                         onChange={(e) => handleItemChange(idx, 'period_month', e.target.value)}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-805 dark:text-white"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
                       >
                         <option value="">{t('monthWord')}</option>
                         {availableMonths.map((m) => (
@@ -248,7 +248,7 @@ export default function MarketingPlanWizardStep2({
                         placeholder="1"
                         value={item.qty || '1'}
                         onChange={(e) => handleItemChange(idx, 'qty', e.target.value.replace(/\D/g, ''))}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-850 dark:text-white text-center"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-900 dark:text-white text-center"
                         required
                       />
                     </td>
@@ -261,7 +261,7 @@ export default function MarketingPlanWizardStep2({
                         placeholder="0"
                         value={formatThousands(item.unit_price || '')}
                         onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value.replace(/\D/g, ''))}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-neutral-850 dark:text-white text-right pr-2"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-neutral-900 dark:text-white text-right pr-2"
                         required
                       />
                     </td>
@@ -278,7 +278,7 @@ export default function MarketingPlanWizardStep2({
                         placeholder="Activity notes..."
                         value={item.description}
                         onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-855 dark:text-white"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-900 dark:text-white"
                       />
                     </td>
 
@@ -300,8 +300,8 @@ export default function MarketingPlanWizardStep2({
               })}
               
               {/* Total Row */}
-              <tr className="bg-neutral-50/70 dark:bg-neutral-955/60 border-t border-neutral-200 dark:border-neutral-800 font-bold">
-                <td colSpan="6" className="px-3 py-2.5 text-right text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-455">
+              <tr className="bg-neutral-50/70 dark:bg-neutral-950/60 border-t border-neutral-200 dark:border-neutral-800 font-bold">
+                <td colSpan="6" className="px-3 py-2.5 text-right text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                   {t('totalPlannedBudgetRow')}
                 </td>
                 <td className="px-1 py-2.5 text-right text-xs text-blue-600 dark:text-blue-400 pr-2 font-black">
@@ -321,12 +321,12 @@ export default function MarketingPlanWizardStep2({
             <AlertTriangle className="w-4 h-4" />
             <span>{t('overBudgetTitle2')}</span>
           </div>
-          <p className="text-[10px] text-neutral-500 dark:text-neutral-450 leading-relaxed font-semibold">
+          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-semibold">
             {t('overBudgetDesc2')}
           </p>
           <div className="space-y-1">
             {overBudgetMonths.map(ob => (
-              <div key={ob.month} className="text-[10px] text-neutral-655 dark:text-neutral-400 font-medium">
+              <div key={ob.month} className="text-[10px] text-neutral-700 dark:text-neutral-400 font-medium">
                 • {t('monthWord')} <strong>{getMonthName(ob.month, lang)}</strong>: {t('ceilingWord')} Rp {ob.limit.toLocaleString('id-ID')}, {t('usedWord')} Rp {ob.committed.toLocaleString('id-ID')}, {t('newRequestWord')} Rp {ob.proposed.toLocaleString('id-ID')} ({t('overByWord')} Rp {ob.excess.toLocaleString('id-ID')})
               </div>
             ))}

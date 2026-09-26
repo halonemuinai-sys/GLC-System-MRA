@@ -36,7 +36,7 @@ function GanttTooltip({ plan, position }) {
     >
       <div>
         <p className="text-[11px] font-black text-neutral-900 dark:text-white leading-tight line-clamp-2">{plan.title}</p>
-        {plan.company?.name && <p className="text-[10px] text-neutral-450 mt-0.5">{plan.company.name}</p>}
+        {plan.company?.name && <p className="text-[10px] text-neutral-400 mt-0.5">{plan.company.name}</p>}
       </div>
       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
         <StatusIcon className="w-2.5 h-2.5" />{cfg.label}
@@ -148,7 +148,7 @@ export default function MarketingGanttChart({ plans, fiscalYear }) {
               {displayed.map(plan => (
                 <div key={plan.id} className="h-10 flex items-center px-3 border-b border-neutral-100/60 dark:border-neutral-800/40 gap-2 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors">
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: GANTT_BAR_COLORS[plan.status] || GANTT_BAR_COLORS.DRAFT }} />
-                  <p className="text-[11px] font-bold text-neutral-850 dark:text-neutral-200 truncate leading-tight">{plan.title}</p>
+                  <p className="text-[11px] font-bold text-neutral-900 dark:text-neutral-200 truncate leading-tight">{plan.title}</p>
                 </div>
               ))}
               {remaining > 0 && (
@@ -170,7 +170,7 @@ export default function MarketingGanttChart({ plans, fiscalYear }) {
                   {MONTHS_SHORT.map((m, i) => {
                     const isCur = Number(fiscalYear) === CURRENT_YEAR_N && (i + 1) === CURRENT_MONTH_N;
                     return (
-                      <div key={m} className={`flex items-center justify-center text-[9px] font-extrabold uppercase tracking-wide border-r border-neutral-100/60 dark:border-neutral-800/50 last:border-r-0 ${isCur ? 'text-indigo-500' : 'text-neutral-400 dark:text-neutral-505'}`}>
+                      <div key={m} className={`flex items-center justify-center text-[9px] font-extrabold uppercase tracking-wide border-r border-neutral-100/60 dark:border-neutral-800/50 last:border-r-0 ${isCur ? 'text-indigo-500' : 'text-neutral-400 dark:text-neutral-500'}`}>
                         {m}{isCur && <span className="ml-0.5 w-1 h-1 rounded-full bg-indigo-500 inline-block" />}
                       </div>
                     );

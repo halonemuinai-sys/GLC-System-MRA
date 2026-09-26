@@ -169,7 +169,7 @@ export default function MasterLobPage() {
           </div>
           <div>
             <h1 className="text-xl font-black text-neutral-900 dark:text-white tracking-wide">{t('masterLob_title')}</h1>
-            <p className="text-xs text-neutral-455 dark:text-neutral-500 font-semibold mt-1">
+            <p className="text-xs text-neutral-500 dark:text-neutral-500 font-semibold mt-1">
               Kelola kategori Line of Business (LOB) / lini usaha untuk pemetaan detail transaksi budget program marketing.
             </p>
           </div>
@@ -183,7 +183,7 @@ export default function MasterLobPage() {
       </div>
 
       {/* 2. Filter Bar */}
-      <form onSubmit={handleSearchSubmit} className="bg-neutral-50 dark:bg-neutral-955 p-4.5 rounded-2xl border border-neutral-200/60 dark:border-neutral-850/80 flex flex-col md:flex-row gap-4 items-center">
+      <form onSubmit={handleSearchSubmit} className="bg-neutral-50 dark:bg-neutral-950 p-4.5 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/80 flex flex-col md:flex-row gap-4 items-center">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
           <input
@@ -191,12 +191,12 @@ export default function MasterLobPage() {
             placeholder="Cari LOB berdasarkan nama..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
+            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
           />
         </div>
         <button
           type="submit"
-          className="w-full md:w-auto bg-neutral-900 dark:bg-white hover:bg-neutral-850 dark:hover:bg-neutral-100 text-white dark:text-neutral-955 text-xs font-extrabold px-6 py-2.5 rounded-xl transition-all cursor-pointer"
+          className="w-full md:w-auto bg-neutral-900 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-neutral-950 text-xs font-extrabold px-6 py-2.5 rounded-xl transition-all cursor-pointer"
         >
           {t('processData')}
         </button>
@@ -225,25 +225,25 @@ export default function MasterLobPage() {
           </button>
         </div>
       ) : data.length === 0 ? (
-        <div className="bg-white dark:bg-neutral-900/30 border border-neutral-200/60 dark:border-neutral-850/60 p-20 rounded-2xl text-center space-y-2">
-          <ClipboardList className="w-10 h-10 text-neutral-350 dark:text-neutral-600 mx-auto" />
+        <div className="bg-white dark:bg-neutral-900/30 border border-neutral-200/60 dark:border-neutral-800/60 p-20 rounded-2xl text-center space-y-2">
+          <ClipboardList className="w-10 h-10 text-neutral-300 dark:text-neutral-600 mx-auto" />
           <h4 className="text-sm font-black text-neutral-700 dark:text-neutral-300">{t('masterLob_empty')}</h4>
           <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-sm mx-auto">Silakan tambahkan data master lini usaha baru untuk melengkapi kebutuhan budget pemasaran.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-neutral-850/80 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-neutral-800/80 rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-neutral-50 dark:bg-neutral-955 border-b border-neutral-200 dark:border-neutral-850 text-neutral-450 dark:text-neutral-500 font-black uppercase tracking-wider">
+                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-black uppercase tracking-wider">
                   <th className="px-6 py-3.5 w-16 text-center">ID</th>
                   <th className="px-6 py-3.5">{t('masterLob_colName')}</th>
                   <th className="px-6 py-3.5 w-32 text-center">{t('masterLob_colAction')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-855 text-neutral-750 dark:text-neutral-300">
+              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-900 text-neutral-700 dark:text-neutral-300">
                 {data.map((item) => (
-                  <tr key={item.id} className="hover:bg-neutral-50/40 dark:hover:bg-neutral-955/25 transition-colors font-medium">
+                  <tr key={item.id} className="hover:bg-neutral-50/40 dark:hover:bg-neutral-950/25 transition-colors font-medium">
                     <td className="px-6 py-3.5 text-center text-neutral-400 font-bold">{item.id}</td>
                     <td className="px-6 py-3.5 font-bold text-neutral-800 dark:text-white">{item.name}</td>
                     <td className="px-6 py-3.5 text-center">
@@ -272,7 +272,7 @@ export default function MasterLobPage() {
 
           {/* Pagination */}
           {meta.totalPages > 1 && (
-            <div className="px-6 py-4.5 bg-neutral-50 dark:bg-neutral-955/50 border-t border-neutral-100 dark:border-neutral-855 flex items-center justify-between">
+            <div className="px-6 py-4.5 bg-neutral-50 dark:bg-neutral-950/50 border-t border-neutral-100 dark:border-neutral-900 flex items-center justify-between">
               <span className="text-xs text-neutral-400 dark:text-neutral-500 font-bold">
                 Menampilkan Halaman {meta.page} dari {meta.totalPages} ({meta.total} LOB)
               </span>
@@ -324,7 +324,7 @@ export default function MasterLobPage() {
                     {editingItem ? 'Perbarui data master lini bisnis' : 'Masukkan informasi lini bisnis baru'}
                   </p>
                 </div>
-                <button onClick={() => setShowDrawer(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-850 rounded-xl text-neutral-400 cursor-pointer">
+                <button onClick={() => setShowDrawer(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-neutral-400 cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -338,7 +338,7 @@ export default function MasterLobPage() {
                   )}
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-555 uppercase tracking-wider block">
+                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-600 uppercase tracking-wider block">
                       Nama Line of Business (LOB) *
                     </label>
                     <input
@@ -347,16 +347,16 @@ export default function MasterLobPage() {
                       value={formData.name}
                       onChange={(e) => setFormData({ name: e.target.value })}
                       placeholder="Masukkan nama LOB..."
-                      className="w-full bg-neutral-50 dark:bg-neutral-955 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-850 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
                     />
                   </div>
                 </div>
 
-                <div className="p-6 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-955/50 flex items-center justify-end gap-3">
+                <div className="p-6 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/50 flex items-center justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setShowDrawer(false)}
-                    className="text-neutral-500 hover:text-neutral-755 dark:hover:text-white text-xs font-extrabold px-5 py-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-850 transition-all cursor-pointer"
+                    className="text-neutral-500 hover:text-neutral-800 dark:hover:text-white text-xs font-extrabold px-5 py-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer"
                   >
                     Batal
                   </button>
@@ -407,7 +407,7 @@ export default function MasterLobPage() {
                   <button
                     type="button"
                     onClick={() => setDeleteTarget(null)}
-                    className="flex-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-white text-xs font-extrabold py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-850 transition-all cursor-pointer"
+                    className="flex-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-white text-xs font-extrabold py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all cursor-pointer"
                   >
                     Batal
                   </button>

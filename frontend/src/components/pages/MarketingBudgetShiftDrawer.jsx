@@ -179,7 +179,7 @@ export default function MarketingBudgetShiftDrawer({
                   </span>
                   Ajukan Pergeseran Anggaran
                 </h2>
-                <p className="text-xs text-neutral-450 dark:text-neutral-500 mt-1">
+                <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
                   Relokasi alokasi dana antar bulan sesuai matriks otorisasi COO.
                 </p>
               </div>
@@ -332,14 +332,14 @@ export default function MarketingBudgetShiftDrawer({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-750 text-neutral-700 dark:text-neutral-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  className="flex-1 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={submitting || availableSourceMonths.length === 0}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer disabled:opacity-50"
                 >
                   {submitting ? (
                     <>

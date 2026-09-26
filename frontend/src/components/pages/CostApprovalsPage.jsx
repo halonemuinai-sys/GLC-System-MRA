@@ -246,7 +246,7 @@ export default function CostApprovalsPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('costApprovals_kpiPending')}</p>
-              <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5">{kpis.pendingCount}</h3>
+              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5">{kpis.pendingCount}</h3>
             </div>
           </div>
         </div>
@@ -260,7 +260,7 @@ export default function CostApprovalsPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('costApprovals_kpiValue')}</p>
-              <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalPendingValue)}</h3>
+              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalPendingValue)}</h3>
             </div>
           </div>
         </div>
@@ -274,7 +274,7 @@ export default function CostApprovalsPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('costApprovals_kpiOverbudget')}</p>
-              <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5">{kpis.overbudgetCount}</h3>
+              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5">{kpis.overbudgetCount}</h3>
             </div>
           </div>
         </div>
@@ -288,7 +288,7 @@ export default function CostApprovalsPage() {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('costApprovals_kpiApproved')}</p>
-              <h3 className="text-lg font-black text-neutral-850 dark:text-white mt-0.5">{kpis.approvedCount} <span className="text-xs font-normal text-neutral-400">/ {kpis.rejectedCount} ditolak</span></h3>
+              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5">{kpis.approvedCount} <span className="text-xs font-normal text-neutral-400">/ {kpis.rejectedCount} ditolak</span></h3>
             </div>
           </div>
         </div>
@@ -322,7 +322,7 @@ export default function CostApprovalsPage() {
           className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'pending'
               ? 'bg-neutral-100 dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-neutral-500 hover:text-neutral-850 dark:hover:text-white'
+              : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-white'
           }`}
         >
           <Clock className="w-4 h-4" />
@@ -333,7 +333,7 @@ export default function CostApprovalsPage() {
           className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
             activeTab === 'history'
               ? 'bg-neutral-100 dark:bg-neutral-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
-              : 'text-neutral-500 hover:text-neutral-850 dark:hover:text-white'
+              : 'text-neutral-500 hover:text-neutral-800 dark:hover:text-white'
           }`}
         >
           <Check className="w-4 h-4" />
@@ -350,7 +350,7 @@ export default function CostApprovalsPage() {
         /* Pending list Table */
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
           {tasks.length === 0 ? (
-            <div className="py-20 text-center text-xs text-neutral-450 font-medium flex flex-col items-center justify-center gap-2">
+            <div className="py-20 text-center text-xs text-neutral-400 font-medium flex flex-col items-center justify-center gap-2">
               <CheckCircle className="w-10 h-10 text-emerald-500/80 mb-2" />
               <span>Hebat! Tidak ada tugas pending yang memerlukan persetujuan Anda saat ini.</span>
             </div>
@@ -392,7 +392,7 @@ export default function CostApprovalsPage() {
                           <p className="text-[10px] text-neutral-400 font-normal mt-0.5">PIC: {creatorName || 'N/A'}</p>
                         </td>
                         <td className="px-5 py-4 text-neutral-900 dark:text-neutral-200">{compName}</td>
-                        <td className="px-5 py-4 text-right font-black text-neutral-850 dark:text-white">
+                        <td className="px-5 py-4 text-right font-black text-neutral-900 dark:text-white">
                           {formatIDR(amount)}
                         </td>
                         <td className="px-5 py-4 text-center">
@@ -401,7 +401,7 @@ export default function CostApprovalsPage() {
                               OVERBUDGET WARN
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide inline-block bg-neutral-100 text-neutral-500 dark:bg-neutral-850">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide inline-block bg-neutral-100 text-neutral-500 dark:bg-neutral-800">
                               Normal
                             </span>
                           )}
@@ -449,21 +449,21 @@ export default function CostApprovalsPage() {
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium">
                 {historyList.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-5 py-12 text-center text-neutral-450 font-normal">
+                    <td colSpan={7} className="px-5 py-12 text-center text-neutral-400 font-normal">
                       Belum ada riwayat keputusan approval.
                     </td>
                   </tr>
                 ) : historyList.map(hist => (
                   <tr key={hist.id} className={`border-l-[3px] ${hist.action === 'REJECTED' ? 'border-l-transparent hover:border-l-red-400' : 'border-l-transparent hover:border-l-emerald-400'} hover:bg-neutral-50/30 dark:hover:bg-neutral-800/5 text-neutral-700 dark:text-neutral-300 transition-colors`}>
                     <td className="px-5 py-4">
-                      <span className="font-bold text-neutral-850 dark:text-neutral-250">{hist.type}</span>
+                      <span className="font-bold text-neutral-900 dark:text-neutral-200">{hist.type}</span>
                     </td>
                     <td className="px-5 py-4">
                       <span className="font-bold text-neutral-900 dark:text-white text-xs">{hist.title}</span>
-                      <p className="text-[10px] text-neutral-450 font-normal mt-0.5">Pengaju: {hist.creatorName}</p>
+                      <p className="text-[10px] text-neutral-400 font-normal mt-0.5">Pengaju: {hist.creatorName}</p>
                     </td>
                     <td className="px-5 py-4 text-neutral-900 dark:text-neutral-200">{hist.companyName}</td>
-                    <td className="px-5 py-4 text-right font-bold text-neutral-850 dark:text-white">{formatIDR(hist.amount)}</td>
+                    <td className="px-5 py-4 text-right font-bold text-neutral-900 dark:text-white">{formatIDR(hist.amount)}</td>
                     <td className="px-5 py-4 text-center">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-black inline-block border ${
                         hist.action === 'REJECTED'
@@ -508,8 +508,8 @@ export default function CostApprovalsPage() {
               {/* Modal Header */}
               <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
                 <div>
-                  <h3 className="text-md font-black text-neutral-850 dark:text-white">Proses Otorisasi Dokumen</h3>
-                  <p className="text-[10px] text-neutral-450 mt-0.5">
+                  <h3 className="text-md font-black text-neutral-900 dark:text-white">Proses Otorisasi Dokumen</h3>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">
                     Modul: {activeTask.marketing_plan_id ? 'Marketing Plan' : 'Payment Request'} (Step {activeTask.step_number})
                   </p>
                 </div>
@@ -531,17 +531,17 @@ export default function CostApprovalsPage() {
                 )}
 
                 {/* Main details */}
-                <div className="bg-neutral-50 dark:bg-neutral-950 p-4.5 rounded-2xl border border-neutral-250 dark:border-neutral-800/80 space-y-3">
+                <div className="bg-neutral-50 dark:bg-neutral-950 p-4.5 rounded-2xl border border-neutral-200 dark:border-neutral-800/80 space-y-3">
                   <h4 className="text-xs font-black text-indigo-500 uppercase tracking-wider">Detail Pengajuan Dokumen</h4>
                   
                   {activeTask.marketing_plan_id ? (
                     /* Detail Marketing Plan */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs font-bold text-neutral-700 dark:text-neutral-350">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs font-bold text-neutral-700 dark:text-neutral-300">
                       <div>Judul: <span className="font-normal text-neutral-900 dark:text-white">{activeTask.marketing_plan.title}</span></div>
                       <div>Tahun Fiscal: <span className="font-normal text-neutral-900 dark:text-white">{activeTask.marketing_plan.fiscal_year}</span></div>
                       <div>PT: <span className="font-normal text-neutral-900 dark:text-white">{activeTask.marketing_plan.company?.name || ''}</span></div>
                       <div>Diajukan Oleh: <span className="font-normal text-neutral-900 dark:text-white">{activeTask.marketing_plan.creator?.name || ''}</span></div>
-                      <div className="sm:col-span-2">Deskripsi: <span className="font-normal text-neutral-550 dark:text-neutral-400">{activeTask.marketing_plan.description || '-'}</span></div>
+                      <div className="sm:col-span-2">Deskripsi: <span className="font-normal text-neutral-500 dark:text-neutral-400">{activeTask.marketing_plan.description || '-'}</span></div>
                       {activeTask.marketing_plan.doc_url && (
                         <div className="sm:col-span-2">
                           Proposal Acuan: 
@@ -562,7 +562,7 @@ export default function CostApprovalsPage() {
                     </div>
                   ) : (
                     /* Detail Payment Request */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs font-bold text-neutral-700 dark:text-neutral-350">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs font-bold text-neutral-700 dark:text-neutral-300">
                       <div>Judul Pembayaran: <span className="font-normal text-neutral-900 dark:text-white">{activeTask.payment_request.title}</span></div>
                       <div>Campaign Induk: <span className="font-normal text-neutral-900 dark:text-white">{activeTask.payment_request.marketing_plan_item?.marketing_plan?.title}</span></div>
                       <div>PT: <span className="font-normal text-neutral-900 dark:text-white">{activeTask.payment_request.marketing_plan_item?.marketing_plan?.company?.name || ''}</span></div>
@@ -580,7 +580,7 @@ export default function CostApprovalsPage() {
                           </a>
                         </div>
                       )}
-                      {activeTask.payment_request.notes && <div className="sm:col-span-2">Catatan: <span className="font-normal text-neutral-550 dark:text-neutral-400">{activeTask.payment_request.notes}</span></div>}
+                      {activeTask.payment_request.notes && <div className="sm:col-span-2">Catatan: <span className="font-normal text-neutral-500 dark:text-neutral-400">{activeTask.payment_request.notes}</span></div>}
                       
                       <div className="sm:col-span-2 pt-2 border-t border-neutral-200 dark:border-neutral-800 flex justify-between items-center text-xs">
                         <span>Nominal Realisasi Biaya:</span>
@@ -597,7 +597,7 @@ export default function CostApprovalsPage() {
                       <AlertTriangle className="w-4.5 h-4.5 flex-shrink-0" />
                       <span>PERINGATAN OVERBUDGET (DILUAR ANGGARAN)</span>
                     </div>
-                    <p className="font-normal text-[11px] leading-relaxed text-red-650 dark:text-red-350">
+                    <p className="font-normal text-[11px] leading-relaxed text-red-600 dark:text-red-300">
                       Realisasi biaya ini bernilai <strong className="font-bold">{formatIDR(activeTask.payment_request.amount)}</strong> sedangkan sisa anggaran bulanan untuk CoA ini hanya tinggal <strong className="font-bold">{formatIDR(Number(activeTask.payment_request.marketing_plan_item?.budget_amount) - Number(activeTask.payment_request.marketing_plan_item?.actual_amount))}</strong>. Menyetujui pengajuan ini akan melampaui alokasi budget dan membutuhkan persetujuan CFO/CEO.
                     </p>
                   </div>
@@ -606,18 +606,18 @@ export default function CostApprovalsPage() {
                 {/* LOB / CoA item breakdown for plans */}
                 {activeTask.marketing_plan_id && (
                   <div className="space-y-2">
-                    <h5 className="text-[11px] font-bold text-neutral-450 uppercase">Rincian Anggaran Campaign</h5>
-                    <div className="border border-neutral-200 dark:border-neutral-850 rounded-2xl overflow-hidden text-xs max-h-48 overflow-y-auto">
+                    <h5 className="text-[11px] font-bold text-neutral-400 uppercase">Rincian Anggaran Campaign</h5>
+                    <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden text-xs max-h-48 overflow-y-auto">
                       <table className="w-full text-left">
                         <thead>
-                          <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-850 text-neutral-400 font-bold uppercase">
+                          <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 font-bold uppercase">
                             <th className="px-4 py-2">Bulan</th>
                             <th className="px-4 py-2">CoA Account</th>
                             <th className="px-4 py-2">Brand / LOB</th>
                             <th className="px-4 py-2 text-right">Budget (IDR)</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-neutral-150 dark:divide-neutral-850 text-neutral-700 dark:text-neutral-300 font-medium">
+                        <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-neutral-700 dark:text-neutral-300 font-medium">
                           {activeTask.marketing_plan.items?.map(item => (
                             <tr key={item.id}>
                               <td className="px-4 py-2">Bulan {item.period_month}</td>
@@ -634,7 +634,7 @@ export default function CostApprovalsPage() {
 
                 {/* Input Comment */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-neutral-450 uppercase flex items-center gap-1">
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase flex items-center gap-1">
                     <Edit3 className="w-3.5 h-3.5 text-indigo-500" />
                     Komentar / Catatan Approval
                   </label>
@@ -643,7 +643,7 @@ export default function CostApprovalsPage() {
                     placeholder="Masukkan alasan jika menolak (REJECT), atau catatan pendukung untuk persetujuan (APPROVE)..."
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-2xl px-3.5 py-3 text-xs text-neutral-850 dark:text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-2xl px-3.5 py-3 text-xs text-neutral-900 dark:text-white focus:outline-none focus:border-indigo-500"
                   />
                   <p className="text-[10px] text-neutral-400 font-normal">Komentar wajib diisi jika Anda menolak pengajuan.</p>
                 </div>
@@ -653,7 +653,7 @@ export default function CostApprovalsPage() {
               <div className="px-6 py-4.5 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/30 dark:bg-neutral-950/10">
                 <button
                   onClick={() => setIsProcessOpen(false)}
-                  className="px-4 py-2 border border-neutral-250 dark:border-neutral-700/60 rounded-xl text-neutral-600 dark:text-neutral-450 hover:text-neutral-900 dark:hover:text-white text-xs font-bold cursor-pointer"
+                  className="px-4 py-2 border border-neutral-200 dark:border-neutral-700/60 rounded-xl text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white text-xs font-bold cursor-pointer"
                 >
                   Batal
                 </button>

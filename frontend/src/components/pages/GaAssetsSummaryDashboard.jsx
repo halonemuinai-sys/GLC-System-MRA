@@ -34,7 +34,7 @@ const CustomTooltip = ({ active, payload, mode, formatIDR, globalHidePrices }) =
     const displayCount = globalHidePrices ? '••••' : data.count;
     return (
       <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-2.5 rounded-xl shadow-xl text-xs">
-        <p className="font-bold text-neutral-850 dark:text-neutral-200 capitalize mb-1">{data.name}</p>
+        <p className="font-bold text-neutral-900 dark:text-neutral-200 capitalize mb-1">{data.name}</p>
         <p className="text-indigo-500 font-semibold font-mono">
           {mode === 'count' ? `Jumlah: ${displayCount} unit` : `Nilai: ${formatIDR(data.value)}`}
         </p>
@@ -74,7 +74,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                       onClick={() => setChartMode('count')}
                       className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all cursor-pointer ${
                         chartMode === 'count' 
-                          ? 'bg-white dark:bg-neutral-950 text-indigo-650 dark:text-indigo-400 shadow-sm' 
+                          ? 'bg-white dark:bg-neutral-950 text-indigo-600 dark:text-indigo-400 shadow-sm' 
                           : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
                       }`}
                     >
@@ -85,7 +85,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                       onClick={() => setChartMode('value')}
                       className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all cursor-pointer ${
                         chartMode === 'value' 
-                          ? 'bg-white dark:bg-neutral-950 text-indigo-650 dark:text-indigo-400 shadow-sm' 
+                          ? 'bg-white dark:bg-neutral-950 text-indigo-600 dark:text-indigo-400 shadow-sm' 
                           : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
                       }`}
                     >
@@ -134,7 +134,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                       style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
                     />
                     <span className="text-neutral-500 dark:text-neutral-400 capitalize truncate font-medium">{entry.name}</span>
-                    <span className="font-bold text-neutral-700 dark:text-neutral-350 ml-auto font-mono text-[9px]">
+                    <span className="font-bold text-neutral-700 dark:text-neutral-300 ml-auto font-mono text-[9px]">
                       {maskNum(entry.count)} unit ({formatIDR(entry.value)})
                     </span>
                   </div>
@@ -159,7 +159,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                   </div>
                 </div>
                 <div className="text-right hidden sm:block">
-                  <span className="text-[10px] bg-indigo-500/10 text-indigo-650 dark:text-indigo-400 px-2.5 py-1 rounded-full font-bold">
+                  <span className="text-[10px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-1 rounded-full font-bold">
                     Acquisition Cost
                   </span>
                 </div>
