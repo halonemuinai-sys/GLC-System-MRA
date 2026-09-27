@@ -212,7 +212,7 @@ export default function MarketingApprovalSettingsPage() {
     <div className="space-y-6 pb-12">
       {/* Header */}
       <div className="flex items-center gap-3.5">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-600/20 shrink-0">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-600/20 shrink-0">
           <Settings className="w-6 h-6 text-white" />
         </div>
         <div>

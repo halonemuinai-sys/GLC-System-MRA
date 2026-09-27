@@ -21,10 +21,10 @@ const formatIDR = (val) => {
 
 const STATUS_CONFIG = {
   PENDING:        { label: 'Pending',        color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10',   icon: Clock },
-  OVERBUDGET_WARN:{ label: 'Overbudget',     color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10', icon: AlertCircle },
+  OVERBUDGET_WARN:{ label: 'Overbudget',     color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-500/10',   icon: AlertCircle },
   APPROVED:       { label: 'Approved',       color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10', icon: CheckCircle },
   PAID:           { label: 'Paid',           color: 'text-blue-600 dark:text-blue-400',     bg: 'bg-blue-50 dark:bg-blue-500/10',     icon: Banknote },
-  REJECTED:       { label: 'Rejected',       color: 'text-red-600 dark:text-red-400',       bg: 'bg-red-50 dark:bg-red-500/10',       icon: XCircle },
+  REJECTED:       { label: 'Rejected',       color: 'text-rose-600 dark:text-rose-400',     bg: 'bg-rose-50 dark:bg-rose-500/10',     icon: XCircle },
 };
 
 function StatusBadge({ status }) {
@@ -43,7 +43,7 @@ function KpiCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
     blue:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
     emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
     amber:   'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
-    red:     'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
+    rose:    'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400',
   };
   return (
     <motion.div

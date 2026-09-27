@@ -318,7 +318,7 @@ export default function MarketingPlanWizardStep3({
         )}
       </div>
 
-      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-5 rounded-2xl text-white shadow-xl shadow-blue-600/10 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5 rounded-2xl text-white shadow-xl shadow-blue-600/10 flex items-center justify-between">
         <div className="space-y-0.5">
           <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-100">Estimated Total Budget</span>
           <p className="text-[10px] text-blue-200">Calculated sum of monthly expense breakdowns</p>

@@ -524,7 +524,7 @@ export default function MarketingPlanWizardModal({
                     <div className="absolute left-6 right-6 top-4.5 h-0.5 bg-neutral-200 dark:bg-neutral-800 -z-10 rounded-full" />
                     
                     <motion.div 
-                      className="absolute left-6 top-4.5 h-0.5 bg-gradient-to-r from-blue-600 to-cyan-500 -z-10 rounded-full"
+                      className="absolute left-6 top-4.5 h-0.5 bg-gradient-to-r from-blue-600 to-blue-400 -z-10 rounded-full"
                       initial={{ width: '0%' }}
                       animate={{ width: wizardStep === 1 ? '0%' : wizardStep === 2 ? '50%' : '100%' }}
                       transition={{ type: 'spring', stiffness: 100, damping: 18 }}

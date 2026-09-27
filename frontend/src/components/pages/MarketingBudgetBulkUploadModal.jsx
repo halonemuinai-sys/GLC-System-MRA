@@ -1210,7 +1210,7 @@ export default function MarketingBudgetBulkUploadModal({
                                         <span className="truncate font-medium">{r.coa_name}</span>
                                       </div>
                                       {r.warnings?.some(w => w.toLowerCase().includes('dicocokkan') && w.toLowerCase().includes('akun')) && (
-                                        <span className="text-[8px] text-sky-600 dark:text-sky-400 font-medium">
+                                        <span className="text-[8px] text-blue-600 dark:text-blue-400 font-medium">
                                           Cocok otomatis
                                         </span>
                                       )}
@@ -1224,7 +1224,7 @@ export default function MarketingBudgetBulkUploadModal({
                                     <span className="truncate font-medium">{r.vendor_name || '-'}</span>
                                     {r.vendor_match_type && r.vendor_match_type !== 'exact' && r.vendor_match_type !== 'new' && r.vendor_match_type !== 'empty' && (
                                       <span
-                                        className="shrink-0 text-[8px] font-black bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-800/60 px-1 py-0.5 rounded cursor-help"
+                                        className="shrink-0 text-[8px] font-black bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60 px-1 py-0.5 rounded cursor-help"
                                         title={`Fuzzy matched dari: "${r.raw_vendor}" (Kemiripan ${Math.round(r.vendor_match_score * 100)}%)`}
                                       >
                                         Fuzzy {Math.round(r.vendor_match_score * 100)}%

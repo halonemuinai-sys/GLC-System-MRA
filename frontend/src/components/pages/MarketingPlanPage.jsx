@@ -396,7 +396,7 @@ export default function MarketingPlanPage() {
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-600/25 shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-600/25 shrink-0">
             <BarChart3 className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -507,10 +507,10 @@ export default function MarketingPlanPage() {
 
         {/* KPI 4 */}
         <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-4.5 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group">
-          <div className="absolute -right-4 -top-4 w-20 h-20 bg-violet-500/10 rounded-full blur-2xl group-hover:bg-violet-500/20 transition-colors duration-300" />
-          <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-violet-500 transition-all duration-300 group-hover:top-[12%] group-hover:bottom-[12%]" />
+          <div className="absolute -right-4 -top-4 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-colors duration-300" />
+          <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-amber-500 transition-all duration-300 group-hover:top-[12%] group-hover:bottom-[12%]" />
           <div className="flex items-center gap-4.5 relative z-10">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500/15 to-violet-500/5 border border-violet-500/20 flex items-center justify-center text-violet-500 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
               <Layers className="w-5.5 h-5.5" />
             </div>
             <div className="min-w-0">

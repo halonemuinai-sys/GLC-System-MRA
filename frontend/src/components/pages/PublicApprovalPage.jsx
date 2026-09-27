@@ -136,7 +136,7 @@ export default function PublicApprovalPage({ token }) {
       <div className="w-full max-w-2xl space-y-5">
         {/* Brand Header */}
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-600/25 shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-600/25 shrink-0">
             <ShieldCheck className="w-5.5 h-5.5 text-white" />
           </div>
           <div>

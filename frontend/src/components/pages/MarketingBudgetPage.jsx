@@ -65,7 +65,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0, tooltip
     blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
     emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
     amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
-    cyan: 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+    rose: 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'
   };
 
   return (
@@ -614,7 +614,7 @@ export default function MarketingBudgetPage() {
           label="Realisasi (Actual)"
           value={formatRupiah(totalRealized)}
           icon={TrendingUp}
-          color="cyan"
+          color="rose"
           delay={0.15}
           tooltip="Total pengeluaran riil aktual yang telah dicatatkan/terbayarkan dari pelaksanaan kampanye marketing yang sedang atau telah selesai berjalan."
         />
