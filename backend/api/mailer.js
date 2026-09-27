@@ -108,6 +108,34 @@ async function sendPaymentStatusEmail({ to, requesterName, docTitle, amount, sta
   return sendMail({ to, subject, html });
 }
 
+async function sendPlanStatusEmail({ to, requesterName, docTitle, totalBudget, status, comment, companyName }) {
+  const isApproved = status === 'APPROVED';
+  const subject = `[${isApproved ? 'Disetujui' : 'Ditolak'}] Marketing Plan: ${docTitle}`;
+  const statusColor = isApproved ? '#059669' : '#dc2626';
+  const statusLabel = isApproved ? 'DISETUJUI' : 'DITOLAK';
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1f2937;">
+      <h2 style="color: ${statusColor}; margin-bottom: 4px;">Marketing Plan ${statusLabel}</h2>
+      <p>Halo ${requesterName || 'Tim Marketing'},</p>
+      <p>Rencana anggaran marketing Anda telah <strong style="color: ${statusColor};">${statusLabel}</strong> oleh tim approver.</p>
+      <table style="width: 100%; font-size: 13px; margin: 16px 0; border-collapse: collapse;">
+        <tr><td style="padding: 4px 0; color: #6b7280;">Judul Plan</td><td style="padding: 4px 0; font-weight: bold;">${docTitle}</td></tr>
+        <tr><td style="padding: 4px 0; color: #6b7280;">PT / Entitas</td><td style="padding: 4px 0; font-weight: bold;">${companyName || '-'}</td></tr>
+        <tr><td style="padding: 4px 0; color: #6b7280;">Total Anggaran</td><td style="padding: 4px 0; font-weight: bold;">Rp ${Number(totalBudget).toLocaleString('id-ID')}</td></tr>
+        <tr><td style="padding: 4px 0; color: #6b7280;">Status</td><td style="padding: 4px 0; font-weight: bold; color: ${statusColor};">${statusLabel}</td></tr>
+        ${comment ? `<tr><td style="padding: 4px 0; color: #6b7280; vertical-align: top;">Komentar</td><td style="padding: 4px 0;">${comment}</td></tr>` : ''}
+      </table>
+      ${isApproved
+        ? '<p>Plan Anda sudah bisa dijalankan sesuai rencana. Anda bisa mulai mengajukan Payment Request untuk realisasi biaya.</p>'
+        : '<p>Silakan buka menu Marketing Plan untuk merevisi dan mengajukan ulang. Kalau ada pertanyaan soal penolakan ini, hubungi tim approver atau admin sistem.</p>'
+      }
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+      <p style="font-size: 11px; color: #9ca3af;">Email otomatis dari sistem GLC Apps - MRA Group. Jangan membalas email ini.</p>
+    </div>
+  `;
+  return sendMail({ to, subject, html });
+}
+
 async function sendAmendmentNotifEmail({ to, recipientLabel, docTitle, planTitle, justification, action, reviewComment, frontendUrl }) {
   const isReview = !!action; // action = 'APPROVED' | 'REJECTED' means reviewer result
   const subject = isReview
@@ -140,4 +168,4 @@ async function sendAmendmentNotifEmail({ to, recipientLabel, docTitle, planTitle
   return sendMail({ to, subject, html });
 }
 
-module.exports = { sendMail, sendPasswordResetEmail, sendApprovalMagicLinkEmail, sendPaymentStatusEmail, sendAmendmentNotifEmail, getTransporter };
+module.exports = { sendMail, sendPasswordResetEmail, sendApprovalMagicLinkEmail, sendPaymentStatusEmail, sendPlanStatusEmail, sendAmendmentNotifEmail, getTransporter };

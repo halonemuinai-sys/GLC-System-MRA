@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Check, Save, Loader2, AlertTriangle, Info, Plus, Users
+  X, Check, Save, Loader2, AlertTriangle, Info, Plus, Users, FileText, Wallet, ClipboardCheck
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
@@ -187,7 +187,7 @@ export default function MarketingPlanWizardModal({
       setWizardItems([
         { period_month: '1', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }
       ]);
-      setWizardApprovers(getDefaultApproversForCompany(defaultCompId));
+      setWizardApprovers([]);
       setBudgetAvailability(null);
       return;
     }
@@ -254,7 +254,7 @@ export default function MarketingPlanWizardModal({
             approver_role: a.approver_role || ''
           })));
         } else {
-          setWizardApprovers(getDefaultApproversForCompany(plan.company_id));
+          setWizardApprovers([]);
         }
 
         setWizardStep(1);
@@ -429,6 +429,14 @@ export default function MarketingPlanWizardModal({
       return;
     }
 
+    if (!wizardHeader.target_notes?.trim()) {
+      onError(lang === 'id'
+        ? 'Catatan Target / Indikator Lain wajib diisi pada bagian KPI Targets.'
+        : 'Target Notes / Other Indicators is required in the KPI Targets section.');
+      setSubmitting(false);
+      return;
+    }
+
     // Validate DocHub-style signers
     const validApprovers = wizardApprovers.filter(a => a.approver_name?.trim() && a.approver_email?.trim());
     if (validApprovers.length === 0) {
@@ -522,53 +530,91 @@ export default function MarketingPlanWizardModal({
                 <div className="px-8 py-6 bg-neutral-50/50 dark:bg-neutral-950/20 border-b border-neutral-100 dark:border-neutral-800 select-none">
                   <div className="flex items-center justify-between max-w-2xl mx-auto relative px-4">
                     <div className="absolute left-6 right-6 top-4.5 h-0.5 bg-neutral-200 dark:bg-neutral-800 -z-10 rounded-full" />
-                    
-                    <motion.div 
+
+                    {/* Biru: progres sejauh ini (termasuk step yang sedang berjalan) */}
+                    <motion.div
                       className="absolute left-6 top-4.5 h-0.5 bg-gradient-to-r from-blue-600 to-blue-400 -z-10 rounded-full"
                       initial={{ width: '0%' }}
                       animate={{ width: wizardStep === 1 ? '0%' : wizardStep === 2 ? '50%' : '100%' }}
                       transition={{ type: 'spring', stiffness: 100, damping: 18 }}
                     />
 
+                    {/* Emerald: segmen yang sudah benar-benar selesai, digambar menutupi ujung biru */}
+                    <motion.div
+                      className="absolute left-6 top-4.5 h-0.5 bg-emerald-500 -z-10 rounded-full"
+                      initial={{ width: '0%' }}
+                      animate={{ width: wizardStep >= 3 ? '50%' : '0%' }}
+                      transition={{ type: 'spring', stiffness: 100, damping: 18, delay: wizardStep >= 3 ? 0.15 : 0 }}
+                    />
+
                     {[
-                      { num: 1, label: t('stepGeneralInfo') },
-                      { num: 2, label: t('stepMonthlyBudget') },
-                      { num: 3, label: 'Review & Submit' }
-                    ].map((s) => (
-                      <div key={s.num} className="flex flex-col items-center relative">
-                        <motion.span 
-                          layout
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-black border-2 z-10 select-none bg-white dark:bg-neutral-900"
-                          animate={{
-                            scale: wizardStep === s.num ? 1.15 : 1.0,
-                            backgroundColor: wizardStep > s.num ? 'rgb(37, 99, 235)' : wizardStep === s.num ? 'rgb(37, 99, 235)' : 'rgb(255, 255, 255)',
-                            borderColor: wizardStep >= s.num ? 'rgb(37, 99, 235)' : 'rgb(229, 229, 229)',
-                            color: wizardStep >= s.num ? 'rgb(255, 255, 255)' : 'rgb(163, 163, 163)',
-                            boxShadow: wizardStep === s.num ? '0 10px 15px -3px rgba(37, 99, 235, 0.25)' : 'none'
-                          }}
-                          transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                        >
-                          {wizardStep > s.num ? (
-                            <motion.span 
-                              initial={{ scale: 0 }} 
-                              animate={{ scale: 1 }} 
-                              transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                      { num: 1, label: t('stepGeneralInfo'), icon: FileText },
+                      { num: 2, label: t('stepMonthlyBudget'), icon: Wallet },
+                      { num: 3, label: 'Review & Submit', icon: ClipboardCheck }
+                    ].map((s) => {
+                      const isDone = wizardStep > s.num;
+                      const isActive = wizardStep === s.num;
+                      const StepIcon = s.icon;
+                      return (
+                        <div key={s.num} className="flex flex-col items-center relative">
+                          <div className="relative">
+                            {isActive && (
+                              <motion.span
+                                className="absolute inset-0 rounded-full bg-blue-500"
+                                initial={{ opacity: 0.45, scale: 1 }}
+                                animate={{ opacity: 0, scale: 1.9 }}
+                                transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
+                              />
+                            )}
+                            <motion.span
+                              layout
+                              className="relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-black border-2 z-10 select-none"
+                              animate={{
+                                scale: isActive ? 1.15 : 1.0,
+                                backgroundColor: isDone ? 'rgb(5, 150, 105)' : isActive ? 'rgb(37, 99, 235)' : 'rgba(115, 115, 115, 0.08)',
+                                borderColor: isDone ? 'rgb(5, 150, 105)' : isActive ? 'rgb(37, 99, 235)' : 'rgba(115, 115, 115, 0.35)',
+                                color: (isDone || isActive) ? 'rgb(255, 255, 255)' : 'rgb(163, 163, 163)',
+                                boxShadow: isActive ? '0 10px 15px -3px rgba(37, 99, 235, 0.3)' : isDone ? '0 6px 12px -4px rgba(5, 150, 105, 0.3)' : 'none'
+                              }}
+                              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
                             >
-                              <Check className="w-4 h-4 font-black" />
+                              <AnimatePresence mode="wait">
+                                {isDone ? (
+                                  <motion.span
+                                    key="check"
+                                    initial={{ scale: 0, rotate: -45 }}
+                                    animate={{ scale: 1, rotate: 0 }}
+                                    exit={{ scale: 0 }}
+                                    transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                                  >
+                                    <Check className="w-4 h-4" strokeWidth={3} />
+                                  </motion.span>
+                                ) : (
+                                  <motion.span
+                                    key="icon"
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    exit={{ scale: 0 }}
+                                    transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+                                  >
+                                    <StepIcon className="w-4 h-4" strokeWidth={2.25} />
+                                  </motion.span>
+                                )}
+                              </AnimatePresence>
                             </motion.span>
-                          ) : s.num}
-                        </motion.span>
-                        <motion.span 
-                          className="text-[10px] font-bold mt-2 whitespace-nowrap"
-                          animate={{
-                            color: wizardStep >= s.num ? 'rgb(37, 99, 235)' : 'rgb(163, 163, 163)',
-                          }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          {s.label}
-                        </motion.span>
-                      </div>
-                    ))}
+                          </div>
+                          <motion.span
+                            className="text-[10px] font-bold mt-2 whitespace-nowrap"
+                            animate={{
+                              color: isDone ? 'rgb(5, 150, 105)' : isActive ? 'rgb(37, 99, 235)' : 'rgb(163, 163, 163)',
+                            }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            {s.label}
+                          </motion.span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

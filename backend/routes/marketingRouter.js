@@ -65,6 +65,12 @@ router.put('/approval-contacts/:id', verifyToken, checkRole(['admin']), settings
 router.post('/approval-contacts', verifyToken, checkRole(['admin']), settingsController.createApprovalContact);
 router.delete('/approval-contacts/:id', verifyToken, checkRole(['admin']), settingsController.deleteApprovalContact);
 
+// Approval Signers — master data approver (Admin only)
+router.get('/approval-signers', verifyToken, checkRole(['admin']), settingsController.getSigners);
+router.post('/approval-signers', verifyToken, checkRole(['admin']), settingsController.createSigner);
+router.put('/approval-signers/:id', verifyToken, checkRole(['admin']), settingsController.updateSigner);
+router.delete('/approval-signers/:id', verifyToken, checkRole(['admin']), settingsController.deleteSigner);
+
 // File Uploads
 router.post('/upload', verifyToken, upload.single('file'), settingsController.uploadAttachment);
 router.get('/attachments/:id', settingsController.serveAttachment);

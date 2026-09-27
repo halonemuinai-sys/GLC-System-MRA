@@ -152,7 +152,7 @@ export default function PublicApprovalPage({ token }) {
           </div>
         ) : loadError ? (
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl py-16 px-6 flex flex-col items-center justify-center gap-3 text-center shadow-sm">
-            <AlertTriangle className="w-10 h-10 text-red-500" />
+            <AlertTriangle className="w-10 h-10 text-rose-500" />
             <h3 className="text-sm font-black text-neutral-900 dark:text-white">Link Tidak Bisa Diakses</h3>
             <p className="text-xs text-neutral-400 max-w-sm">{loadError}</p>
           </div>
@@ -163,7 +163,7 @@ export default function PublicApprovalPage({ token }) {
             className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl py-16 px-6 flex flex-col items-center justify-center gap-3 text-center shadow-sm"
           >
             {result.action === 'REJECT' ? (
-              <XCircle className="w-12 h-12 text-red-500" />
+              <XCircle className="w-12 h-12 text-rose-500" />
             ) : (
               <CheckCircle className="w-12 h-12 text-emerald-500" />
             )}
@@ -221,12 +221,12 @@ export default function PublicApprovalPage({ token }) {
                 </div>
 
                 {isOverbudget && (
-                  <div className="bg-red-500/10 border border-red-300 text-red-700 dark:text-red-400 text-xs font-bold p-4 rounded-2xl space-y-1">
+                  <div className="bg-amber-500/10 border border-amber-300 text-amber-700 dark:text-amber-400 text-xs font-bold p-4 rounded-2xl space-y-1">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="w-4 h-4 shrink-0" />
                       <span>PERINGATAN OVERBUDGET</span>
                     </div>
-                    <p className="font-normal text-[11px] leading-relaxed text-red-600 dark:text-red-300">
+                    <p className="font-normal text-[11px] leading-relaxed text-amber-600 dark:text-amber-300">
                       Realisasi biaya ini melampaui sisa anggaran bulanan pos terkait dan membutuhkan persetujuan level akhir.
                     </p>
                   </div>
@@ -263,7 +263,7 @@ export default function PublicApprovalPage({ token }) {
             {/* Decision Form */}
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-sm p-6 space-y-6">
               {actionError && (
-                <div className="bg-red-500/10 border border-red-200 text-red-600 dark:text-red-400 text-xs font-semibold px-4 py-2.5 rounded-2xl flex items-center gap-2">
+                <div className="bg-rose-500/10 border border-rose-200 text-rose-600 dark:text-rose-400 text-xs font-semibold px-4 py-2.5 rounded-2xl flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" /> {actionError}
                 </div>
               )}              <div className="space-y-2">
@@ -283,7 +283,7 @@ export default function PublicApprovalPage({ token }) {
                 <button
                   onClick={() => handleDecision('REJECT')}
                   disabled={submitting}
-                  className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-500/10 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-500/10 cursor-pointer disabled:opacity-50"
                 >
                   Tolak (Reject)
                 </button>

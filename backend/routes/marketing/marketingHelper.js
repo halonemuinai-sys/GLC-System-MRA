@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const prisma = require('../../api/db');
-const { sendApprovalMagicLinkEmail, sendPaymentStatusEmail } = require('../../api/mailer');
+const { sendApprovalMagicLinkEmail, sendPaymentStatusEmail, sendPlanStatusEmail } = require('../../api/mailer');
 
 const MAGIC_LINK_EXPIRY_DAYS = 7;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
@@ -23,18 +23,22 @@ async function resolveEmployee(email) {
   });
 }
 
-// Resolve email penerima untuk 1 role
-async function resolveApproverContact(tx, role, companyMasterId) {
-  if (companyMasterId) {
-    const override = await tx.approval_role_contacts.findFirst({ where: { role, company_master_id: companyMasterId } });
-    if (override) return override;
+// Resolve email penerima untuk 1 role — 3 tingkat: PT spesifik > Holding Group > default global
+async function resolveApproverContact(tx, role, companyId, companyMasterId) {
+  if (companyId) {
+    const ptOverride = await tx.approval_role_contacts.findFirst({ where: { role, company_id: companyId } });
+    if (ptOverride) return ptOverride;
   }
-  return tx.approval_role_contacts.findFirst({ where: { role, company_master_id: null } });
+  if (companyMasterId) {
+    const holdingOverride = await tx.approval_role_contacts.findFirst({ where: { role, company_master_id: companyMasterId, company_id: null } });
+    if (holdingOverride) return holdingOverride;
+  }
+  return tx.approval_role_contacts.findFirst({ where: { role, company_master_id: null, company_id: null } });
 }
 
 // Buat token magic-link untuk 1 step approval_history di dalam transaction, lalu catat ke queue
-async function queueMagicLink(tx, queue, { approvalHistoryId, role, stepNumber, companyMasterId }) {
-  const contact = await resolveApproverContact(tx, role, companyMasterId);
+async function queueMagicLink(tx, queue, { approvalHistoryId, role, stepNumber, companyId, companyMasterId }) {
+  const contact = await resolveApproverContact(tx, role, companyId, companyMasterId);
   if (!contact) return; 
   const email = contact.email;
   const token = crypto.randomBytes(32).toString('hex');
@@ -84,6 +88,13 @@ async function getDocContextForTask(task) {
     companyName: payment.marketing_plan_item?.marketing_plan?.company?.name,
     requesterName: payment.creator?.name
   };
+}
+
+// Ambil PT (company_id) dari sebuah approval_history task
+function getCompanyIdForTask(task) {
+  const isPlan = !!task.marketing_plan_id;
+  if (isPlan) return task.marketing_plan?.company?.id || null;
+  return task.payment_request?.marketing_plan_item?.marketing_plan?.company?.id || null;
 }
 
 // Ambil Holding Group (company_master_id) dari sebuah approval_history task
@@ -230,8 +241,9 @@ async function executeApprovalDecision({ task, action, comment, signature, actin
         }
       });
       const nextRole = nextRule ? nextRule.approver_role : 'CFO_CEO';
+      const companyId = getCompanyIdForTask(task);
       const companyMasterId = getCompanyMasterIdForTask(task);
-      await queueMagicLink(tx, magicLinkQueue, { approvalHistoryId: nextHistory.id, role: nextRole, stepNumber: nextStep, companyMasterId });
+      await queueMagicLink(tx, magicLinkQueue, { approvalHistoryId: nextHistory.id, role: nextRole, stepNumber: nextStep, companyId, companyMasterId });
       return { message: 'Approved. Forwarded to the next step approval chain.', action };
     } else {
       if (isPlan) {
@@ -276,6 +288,36 @@ async function dispatchPaymentStatusEmail(result, task) {
   }
 }
 
+// Kirim email notifikasi ke pembuat plan saat marketing plan final APPROVED / REJECTED
+async function dispatchPlanStatusEmail(result, task, comment) {
+  if (!result || result.isPlan !== true) return; // hanya untuk marketing_plan
+  const finalStatus = result.finalStatus;
+  if (!['APPROVED', 'REJECTED'].includes(finalStatus)) return;
+
+  try {
+    const plan = await prisma.marketing_plans.findUnique({
+      where: { id: task.marketing_plan_id },
+      include: {
+        creator: { select: { name: true, email: true } },
+        company: { select: { name: true } }
+      }
+    });
+    if (!plan || !plan.creator?.email) return;
+
+    await sendPlanStatusEmail({
+      to: plan.creator.email,
+      requesterName: plan.creator.name,
+      docTitle: plan.title,
+      totalBudget: plan.total_budget,
+      status: finalStatus,
+      comment: comment || null,
+      companyName: plan.company?.name || null
+    });
+  } catch (e) {
+    console.error('Plan status email failed:', e.message);
+  }
+}
+
 module.exports = {
   applyCompanyScope,
   resolveEmployee,
@@ -283,7 +325,9 @@ module.exports = {
   queueMagicLink,
   dispatchMagicLinkEmails,
   dispatchPaymentStatusEmail,
+  dispatchPlanStatusEmail,
   getDocContextForTask,
+  getCompanyIdForTask,
   getCompanyMasterIdForTask,
   executeApprovalDecision,
   FRONTEND_URL

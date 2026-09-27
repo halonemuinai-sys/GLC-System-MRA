@@ -76,36 +76,53 @@ async function getMetadata(req, res, next) {
 // GET /approval-contacts
 async function getApprovalContacts(req, res, next) {
   try {
-    const [contacts, holdings] = await Promise.all([
+    const [contacts, holdings, companies, signers] = await Promise.all([
       prisma.approval_role_contacts.findMany({
-        include: { m_company_master: { select: { id: true, name: true } } },
-        orderBy: [{ role: 'asc' }, { company_master_id: 'asc' }]
+        include: {
+          m_company_master: { select: { id: true, name: true } },
+          m_company: { select: { id: true, name: true } },
+          signer: { select: { id: true, name: true, email: true, position: true } }
+        },
+        orderBy: [{ role: 'asc' }, { company_master_id: 'asc' }, { company_id: 'asc' }]
       }),
-      prisma.m_company_master.findMany({ orderBy: { name: 'asc' } })
+      prisma.m_company_master.findMany({ orderBy: { name: 'asc' } }),
+      prisma.m_company.findMany({ where: { is_active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true, company_master_id: true } }),
+      prisma.m_approval_signer.findMany({ where: { is_active: true }, orderBy: { name: 'asc' } })
     ]);
-    res.json({ contacts, holdings });
+    res.json({ contacts, holdings, companies, signers });
   } catch (err) {
     next(err);
   }
+}
+
+// Resolve { email, label } dari body: prioritas signer_id (ambil dari master signer), fallback email/label manual
+async function resolveContactEmailLabel(body) {
+  const { signer_id, email, label } = body;
+  if (signer_id) {
+    const signer = await prisma.m_approval_signer.findUnique({ where: { id: parseInt(signer_id, 10) } });
+    if (!signer) throw Object.assign(new Error('Signer tidak ditemukan.'), { status: 400 });
+    return { email: signer.email, label: signer.name, signer_id: signer.id };
+  }
+  if (!email || !EMAIL_REGEX.test(email)) {
+    throw Object.assign(new Error('Pilih signer atau isi email tujuan yang valid.'), { status: 400 });
+  }
+  return { email, label: label || null, signer_id: null };
 }
 
 // PUT /approval-contacts/:id
 async function updateApprovalContact(req, res, next) {
   try {
     const { id } = req.params;
-    const { email, label } = req.body;
-
-    if (!email || !EMAIL_REGEX.test(email)) {
-      return res.status(400).json({ error: 'Email tujuan tidak valid.' });
-    }
+    const resolved = await resolveContactEmailLabel(req.body);
 
     const updated = await prisma.approval_role_contacts.update({
       where: { id: parseInt(id, 10) },
-      data: { email, label, updated_at: new Date() }
+      data: { ...resolved, updated_at: new Date() }
     });
 
     res.json(updated);
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
   }
 }
@@ -113,23 +130,31 @@ async function updateApprovalContact(req, res, next) {
 // POST /approval-contacts
 async function createApprovalContact(req, res, next) {
   try {
-    const { role, email, label, company_master_id } = req.body;
+    const { role, company_master_id, company_id } = req.body;
 
-    if (!role || !email || !EMAIL_REGEX.test(email)) {
-      return res.status(400).json({ error: 'Role dan email tujuan wajib diisi dengan benar.' });
+    if (!role) {
+      return res.status(400).json({ error: 'Role wajib diisi.' });
     }
-    if (!company_master_id) {
-      return res.status(400).json({ error: 'Override wajib menentukan Holding Group. Untuk default global, ubah baris yang sudah ada.' });
+    if (!company_master_id && !company_id) {
+      return res.status(400).json({ error: 'Override wajib menentukan PT atau Holding Group. Untuk default global, ubah baris yang sudah ada.' });
     }
+
+    const resolved = await resolveContactEmailLabel(req.body);
 
     const created = await prisma.approval_role_contacts.create({
-      data: { role, email, label, company_master_id: parseInt(company_master_id, 10) }
+      data: {
+        role,
+        ...resolved,
+        company_id: company_id ? parseInt(company_id, 10) : null,
+        company_master_id: company_id ? null : parseInt(company_master_id, 10)
+      }
     });
 
     res.status(201).json(created);
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     if (err.code === 'P2002') {
-      return res.status(400).json({ error: 'Override untuk role dan Holding Group ini sudah ada.' });
+      return res.status(400).json({ error: 'Override untuk role dan PT/Holding Group ini sudah ada.' });
     }
     next(err);
   }
@@ -144,13 +169,78 @@ async function deleteApprovalContact(req, res, next) {
     if (!contact) {
       return res.status(404).json({ error: 'Konfigurasi tidak ditemukan.' });
     }
-    if (!contact.company_master_id) {
+    if (!contact.company_master_id && !contact.company_id) {
       return res.status(400).json({ error: 'Baris default global tidak bisa dihapus, hanya bisa diubah.' });
     }
 
     await prisma.approval_role_contacts.delete({ where: { id: parseInt(id, 10) } });
     res.json({ message: 'Override berhasil dihapus.' });
   } catch (err) {
+    next(err);
+  }
+}
+
+// ── Master Data Signer/Approver ─────────────────────────────────────────────
+
+// GET /approval-signers
+async function getSigners(req, res, next) {
+  try {
+    const signers = await prisma.m_approval_signer.findMany({ orderBy: { name: 'asc' } });
+    res.json(signers);
+  } catch (err) { next(err); }
+}
+
+// POST /approval-signers
+async function createSigner(req, res, next) {
+  try {
+    const { name, email, position } = req.body;
+    if (!name || !email || !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: 'Nama dan email signer wajib diisi dengan benar.' });
+    }
+    const created = await prisma.m_approval_signer.create({
+      data: { name: name.trim(), email: email.trim(), position: position?.trim() || null }
+    });
+    res.status(201).json(created);
+  } catch (err) {
+    if (err.code === 'P2002') return res.status(400).json({ error: 'Email signer ini sudah terdaftar.' });
+    next(err);
+  }
+}
+
+// PUT /approval-signers/:id
+async function updateSigner(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { name, email, position, is_active } = req.body;
+    if (email && !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: 'Email tidak valid.' });
+    }
+    const updated = await prisma.m_approval_signer.update({
+      where: { id: parseInt(id, 10) },
+      data: {
+        name: name !== undefined ? name.trim() : undefined,
+        email: email !== undefined ? email.trim() : undefined,
+        position: position !== undefined ? (position?.trim() || null) : undefined,
+        is_active: is_active !== undefined ? is_active : undefined
+      }
+    });
+    res.json(updated);
+  } catch (err) {
+    if (err.code === 'P2002') return res.status(400).json({ error: 'Email signer ini sudah terdaftar.' });
+    next(err);
+  }
+}
+
+// DELETE /approval-signers/:id
+async function deleteSigner(req, res, next) {
+  try {
+    const { id } = req.params;
+    await prisma.m_approval_signer.delete({ where: { id: parseInt(id, 10) } });
+    res.json({ message: 'Signer berhasil dihapus.' });
+  } catch (err) {
+    if (err.code === 'P2003') {
+      return res.status(400).json({ error: 'Signer ini masih dipakai di konfigurasi approval — hapus/ubah override yang memakainya dulu.' });
+    }
     next(err);
   }
 }
@@ -1239,6 +1329,10 @@ module.exports = {
   updateApprovalContact,
   createApprovalContact,
   deleteApprovalContact,
+  getSigners,
+  createSigner,
+  updateSigner,
+  deleteSigner,
   uploadAttachment,
   serveAttachment,
   getBranches,

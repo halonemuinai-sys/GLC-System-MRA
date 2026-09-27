@@ -531,6 +531,7 @@ model m_company {
   m_brands          m_brand[]
   m_company_master  m_company_master? @relation(fields: [company_master_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
   user_access       m_user_company_access[]
+  approval_role_contacts approval_role_contacts[]
 
   @@schema("glc_mra")
 }
@@ -1121,11 +1122,31 @@ model approval_role_contacts {
   email             String             @db.VarChar(150)
   label             String?            @db.VarChar(100)
   company_master_id Int?
+  company_id        Int?
+  signer_id         Int?
   updated_at        DateTime           @default(now()) @db.Timestamp(6)
 
   m_company_master  m_company_master?  @relation(fields: [company_master_id], references: [id], onDelete: Cascade)
+  m_company         m_company?         @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  signer            m_approval_signer? @relation(fields: [signer_id], references: [id], onDelete: SetNull)
 
-  @@unique([role, company_master_id])
+  @@unique([role, company_master_id, company_id])
+  @@schema("marketing_budget")
+}
+
+// Master data "siapa saja yang bisa jadi approver/signer" - terpisah dari akun login (m_user)
+// maupun tabel karyawan (helpdesk_user), khusus dipakai untuk mengisi email penerima
+// magic-link approval di approval_role_contacts.
+model m_approval_signer {
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @db.VarChar(150)
+  email                  String                   @unique @db.VarChar(150)
+  position               String?                  @db.VarChar(100)
+  is_active              Boolean                  @default(true)
+  created_at             DateTime                 @default(now()) @db.Timestamp(6)
+
+  approval_role_contacts approval_role_contacts[]
+
   @@schema("marketing_budget")
 }
 

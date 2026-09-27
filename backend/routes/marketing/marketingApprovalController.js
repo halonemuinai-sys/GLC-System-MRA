@@ -5,6 +5,7 @@ const {
   getDocContextForTask,
   dispatchMagicLinkEmails,
   dispatchPaymentStatusEmail,
+  dispatchPlanStatusEmail,
   applyCompanyScope
 } = require('./marketingHelper');
 
@@ -142,6 +143,7 @@ async function processApproval(req, res, next) {
       await dispatchMagicLinkEmails(magicLinkQueue, docContext);
     }
     await dispatchPaymentStatusEmail(result, task);
+    await dispatchPlanStatusEmail(result, task, comment);
 
     res.json(result);
   } catch (err) {
@@ -294,6 +296,7 @@ async function processMagicLink(req, res, next) {
       await dispatchMagicLinkEmails(magicLinkQueue, docContext);
     }
     await dispatchPaymentStatusEmail(result, task);
+    await dispatchPlanStatusEmail(result, task, comment);
 
     res.json(result);
   } catch (err) {

@@ -241,6 +241,7 @@ async function createPlan(req, res, next) {
               approvalHistoryId: history.id,
               role: rule.approver_role,
               stepNumber: rule.step_number,
+              companyId: plan.company_id,
               companyMasterId: planCompany?.company_master_id
             });
           }
@@ -478,7 +479,7 @@ async function submitPlan(req, res, next) {
           });
           await queueMagicLink(tx, magicLinkQueue, {
             approvalHistoryId: history.id, role: rule.approver_role, stepNumber: rule.step_number,
-            companyMasterId: planCompany?.company_master_id
+            companyId: existingPlan.company_id, companyMasterId: planCompany?.company_master_id
           });
         }
       }
@@ -780,7 +781,7 @@ async function revisePlan(req, res, next) {
           });
           await queueMagicLink(tx, magicLinkQueue, {
             approvalHistoryId: history.id, role: rule.approver_role, stepNumber: rule.step_number,
-            companyMasterId: planCompany?.company_master_id
+            companyId: parseInt(company_id, 10), companyMasterId: planCompany?.company_master_id
           });
         }
       }

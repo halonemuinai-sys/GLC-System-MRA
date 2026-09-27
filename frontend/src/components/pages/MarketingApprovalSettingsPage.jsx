@@ -16,7 +16,9 @@ import {
   Plus,
   Trash2,
   ListFilter,
-  ArrowUpDown
+  ArrowUpDown,
+  Users,
+  UserCog
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -39,16 +41,25 @@ export default function MarketingApprovalSettingsPage() {
 
   const [contacts, setContacts] = useState([]);
   const [holdings, setHoldings] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [signers, setSigners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
   const [editingId, setEditingId] = useState(null);
-  const [editEmail, setEditEmail] = useState('');
+  const [editSignerId, setEditSignerId] = useState('');
   const [saving, setSaving] = useState(false);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [newOverride, setNewOverride] = useState({ role: ROLE_OPTIONS[0], company_master_id: '', email: '' });
+  const [newOverride, setNewOverride] = useState({ role: ROLE_OPTIONS[0], level: 'holding', company_master_id: '', company_id: '', signer_id: '' });
+
+  // Signer master data state
+  const [signerEditingId, setSignerEditingId] = useState(null);
+  const [signerForm, setSignerForm] = useState({ name: '', email: '', position: '' });
+  const [isAddSignerOpen, setIsAddSignerOpen] = useState(false);
+  const [signerSaving, setSignerSaving] = useState(false);
+  const [signerError, setSignerError] = useState(null);
 
   // Approval Rules state
   const [rules, setRules] = useState([]);
@@ -67,6 +78,8 @@ export default function MarketingApprovalSettingsPage() {
       const res = await apiClient.get('/api/marketing/approval-contacts');
       setContacts(res.contacts || []);
       setHoldings(res.holdings || []);
+      setCompanies(res.companies || []);
+      setSigners(res.signers || []);
     } catch (err) {
       setError(err.message || 'Gagal memuat konfigurasi approval.');
     } finally {
@@ -120,8 +133,8 @@ export default function MarketingApprovalSettingsPage() {
     }
   };
 
-  const globalDefaults = useMemo(() => contacts.filter(c => !c.company_master_id), [contacts]);
-  const holdingOverrides = useMemo(() => contacts.filter(c => c.company_master_id), [contacts]);
+  const globalDefaults = useMemo(() => contacts.filter(c => !c.company_master_id && !c.company_id), [contacts]);
+  const holdingOverrides = useMemo(() => contacts.filter(c => c.company_master_id || c.company_id), [contacts]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -138,26 +151,25 @@ export default function MarketingApprovalSettingsPage() {
 
   const startEdit = (contact) => {
     setEditingId(contact.id);
-    setEditEmail(contact.email);
+    setEditSignerId(contact.signer_id ? String(contact.signer_id) : '');
     setError(null);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setEditEmail('');
+    setEditSignerId('');
   };
 
   const saveEdit = async (contact) => {
-    if (!editEmail.trim()) {
-      setError('Email tujuan wajib diisi.');
+    if (!editSignerId) {
+      setError('Pilih signer terlebih dahulu.');
       return;
     }
     setSaving(true);
     setError(null);
     try {
       await apiClient.put(`/api/marketing/approval-contacts/${contact.id}`, {
-        email: editEmail.trim(),
-        label: contact.label
+        signer_id: editSignerId
       });
       setSuccessMsg(`Email approver ${contact.label || contact.role} berhasil diperbarui.`);
       setEditingId(null);
@@ -171,8 +183,9 @@ export default function MarketingApprovalSettingsPage() {
   };
 
   const handleAddOverride = async () => {
-    if (!newOverride.company_master_id || !newOverride.email.trim()) {
-      setError('Holding Group dan email tujuan wajib diisi.');
+    const targetId = newOverride.level === 'pt' ? newOverride.company_id : newOverride.company_master_id;
+    if (!targetId || !newOverride.signer_id) {
+      setError(newOverride.level === 'pt' ? 'PT dan signer wajib diisi.' : 'Holding Group dan signer wajib diisi.');
       return;
     }
     setSaving(true);
@@ -180,12 +193,13 @@ export default function MarketingApprovalSettingsPage() {
     try {
       await apiClient.post('/api/marketing/approval-contacts', {
         role: newOverride.role,
-        company_master_id: newOverride.company_master_id,
-        email: newOverride.email.trim()
+        company_id: newOverride.level === 'pt' ? newOverride.company_id : undefined,
+        company_master_id: newOverride.level === 'holding' ? newOverride.company_master_id : undefined,
+        signer_id: newOverride.signer_id
       });
-      setSuccessMsg('Override Holding Group berhasil ditambahkan.');
+      setSuccessMsg('Override berhasil ditambahkan.');
       setIsAddOpen(false);
-      setNewOverride({ role: ROLE_OPTIONS[0], company_master_id: '', email: '' });
+      setNewOverride({ role: ROLE_OPTIONS[0], level: 'holding', company_master_id: '', company_id: '', signer_id: '' });
       loadContacts();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err) {
@@ -196,7 +210,8 @@ export default function MarketingApprovalSettingsPage() {
   };
 
   const handleDeleteOverride = async (contact) => {
-    if (!confirm(`Hapus override ${contact.role} untuk ${contact.m_company_master?.name}? Approval akan kembali pakai default global.`)) return;
+    const targetName = contact.m_company?.name || contact.m_company_master?.name;
+    if (!confirm(`Hapus override ${contact.role} untuk ${targetName}? Approval akan kembali pakai default global.`)) return;
     setError(null);
     try {
       await apiClient.delete(`/api/marketing/approval-contacts/${contact.id}`);
@@ -205,6 +220,62 @@ export default function MarketingApprovalSettingsPage() {
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err) {
       setError(err.message || 'Gagal menghapus override.');
+    }
+  };
+
+  // ── Signer master data handlers ──────────────────────────────────────────
+  const handleOpenAddSigner = () => {
+    setSignerEditingId(null);
+    setSignerForm({ name: '', email: '', position: '' });
+    setSignerError(null);
+    setIsAddSignerOpen(true);
+  };
+
+  const handleOpenEditSigner = (signer) => {
+    setSignerEditingId(signer.id);
+    setSignerForm({ name: signer.name, email: signer.email, position: signer.position || '' });
+    setSignerError(null);
+    setIsAddSignerOpen(true);
+  };
+
+  const handleSaveSigner = async () => {
+    if (!signerForm.name.trim() || !signerForm.email.trim()) {
+      setSignerError('Nama dan email wajib diisi.');
+      return;
+    }
+    setSignerSaving(true);
+    setSignerError(null);
+    try {
+      if (signerEditingId) {
+        await apiClient.put(`/api/marketing/approval-signers/${signerEditingId}`, signerForm);
+      } else {
+        await apiClient.post('/api/marketing/approval-signers', signerForm);
+      }
+      setIsAddSignerOpen(false);
+      loadContacts();
+    } catch (err) {
+      setSignerError(err.message || 'Gagal menyimpan signer.');
+    } finally {
+      setSignerSaving(false);
+    }
+  };
+
+  const handleToggleSignerActive = async (signer) => {
+    try {
+      await apiClient.put(`/api/marketing/approval-signers/${signer.id}`, { is_active: !signer.is_active });
+      loadContacts();
+    } catch (err) {
+      setSignerError(err.message || 'Gagal mengubah status signer.');
+    }
+  };
+
+  const handleDeleteSigner = async (signer) => {
+    if (!confirm(`Hapus signer "${signer.name}"? Override yang masih memakai signer ini akan tetap jalan pakai email tersimpan, tapi tidak lagi terhubung ke master data ini.`)) return;
+    try {
+      await apiClient.delete(`/api/marketing/approval-signers/${signer.id}`);
+      loadContacts();
+    } catch (err) {
+      setSignerError(err.message || 'Gagal menghapus signer.');
     }
   };
 
@@ -220,7 +291,7 @@ export default function MarketingApprovalSettingsPage() {
             {t('marketing_approvalSettings_title')}
           </h1>
           <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
-            Atur email penerima link approval untuk setiap role. Project tetap per PT, tapi approver tier VP/BU/COO bisa di-override per Holding Group.
+            Atur email penerima link approval untuk setiap role. Default berlaku global, bisa di-override per Holding Group, atau per PT individual untuk yang lebih spesifik.
           </p>
         </div>
       </div>
@@ -230,6 +301,10 @@ export default function MarketingApprovalSettingsPage() {
         <button onClick={() => setActiveTab('contacts')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'contacts' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'}`}>
           <Mail className="w-3.5 h-3.5" /> Email Approver
+        </button>
+        <button onClick={() => setActiveTab('signers')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'signers' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'}`}>
+          <Users className="w-3.5 h-3.5" /> Master Signer
         </button>
         <button onClick={() => setActiveTab('rules')}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'rules' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200'}`}>
@@ -265,7 +340,7 @@ export default function MarketingApprovalSettingsPage() {
         </motion.div>
       )}
 
-      {activeTab === 'contacts' && loading ? (
+      {(activeTab === 'contacts' || activeTab === 'signers') && loading ? (
         <div className="py-24 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
           <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           <span className="text-xs text-neutral-400 font-medium">Memuat konfigurasi...</span>
@@ -311,13 +386,17 @@ export default function MarketingApprovalSettingsPage() {
                             {isEditing ? (
                               <div className="flex items-center gap-1.5">
                                 <Mail className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                                <input
-                                  type="email"
-                                  value={editEmail}
-                                  onChange={(e) => setEditEmail(e.target.value)}
+                                <select
+                                  value={editSignerId}
+                                  onChange={(e) => setEditSignerId(e.target.value)}
                                   autoFocus
                                   className="bg-neutral-50 dark:bg-neutral-950 border border-blue-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-900 dark:text-white focus:outline-none w-56 focus:ring-2 focus:ring-blue-500/20"
-                                />
+                                >
+                                  <option value="">-- Pilih Signer --</option>
+                                  {signers.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
+                                  ))}
+                                </select>
                               </div>
                             ) : (
                               <span className="inline-flex items-center gap-1.5 text-neutral-900 dark:text-neutral-200 font-bold">
@@ -367,7 +446,7 @@ export default function MarketingApprovalSettingsPage() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/50 dark:bg-neutral-950/20 text-neutral-400 font-bold uppercase tracking-wider">
-                      <th className="px-5 py-4">Holding Group</th>
+                      <th className="px-5 py-4">PT / Holding Group</th>
                       <th className="px-5 py-4">Role Approval</th>
                       <th className="px-5 py-4">Email Penerima</th>
                       <th className="px-5 py-4 text-center">Aksi</th>
@@ -382,7 +461,7 @@ export default function MarketingApprovalSettingsPage() {
                     {holdingOverrides.length === 0 ? (
                       <motion.tr variants={rowVariants}>
                         <td colSpan={4} className="px-5 py-12 text-center text-neutral-400 font-normal">
-                          Belum ada override khusus per Holding. Semua PT pakai default global di atas.
+                          Belum ada override khusus per PT/Holding. Semua PT pakai default global di atas.
                         </td>
                       </motion.tr>
                     ) : (
@@ -397,7 +476,13 @@ export default function MarketingApprovalSettingsPage() {
                             <td className="px-5 py-4">
                               <span className="inline-flex items-center gap-1.5 font-bold text-neutral-900 dark:text-white">
                                 <Building2 className="w-3.5 h-3.5 text-blue-500" />
-                                {contact.m_company_master?.name || '-'}
+                                {contact.m_company?.name || contact.m_company_master?.name || '-'}
+                                {contact.m_company && (
+                                  <span className="text-[9px] font-black uppercase text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded">PT</span>
+                                )}
+                                {!contact.m_company && contact.m_company_master && (
+                                  <span className="text-[9px] font-black uppercase text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">Holding</span>
+                                )}
                               </span>
                             </td>
                             <td className="px-5 py-4 font-mono text-neutral-500">{contact.role}</td>
@@ -405,13 +490,17 @@ export default function MarketingApprovalSettingsPage() {
                               {isEditing ? (
                                 <div className="flex items-center gap-1.5">
                                   <Mail className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                                  <input
-                                    type="email"
-                                    value={editEmail}
-                                    onChange={(e) => setEditEmail(e.target.value)}
+                                  <select
+                                    value={editSignerId}
+                                    onChange={(e) => setEditSignerId(e.target.value)}
                                     autoFocus
                                     className="bg-neutral-50 dark:bg-neutral-950 border border-blue-400 rounded-lg px-2.5 py-1.5 text-xs text-neutral-900 dark:text-white focus:outline-none w-56 focus:ring-2 focus:ring-blue-500/20"
-                                  />
+                                  >
+                                    <option value="">-- Pilih Signer --</option>
+                                    {signers.map(s => (
+                                      <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
+                                    ))}
+                                  </select>
                                 </div>
                               ) : (
                                 <span className="inline-flex items-center gap-1.5 text-neutral-900 dark:text-neutral-200 font-bold">
@@ -469,7 +558,7 @@ export default function MarketingApprovalSettingsPage() {
               className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-md z-55 overflow-hidden"
             >
               <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
-                <h3 className="text-md font-black text-neutral-900 dark:text-white">Tambah Override Holding Group</h3>
+                <h3 className="text-md font-black text-neutral-900 dark:text-white">Tambah Override Approval</h3>
                 <button onClick={() => setIsAddOpen(false)} className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white">
                   <X className="w-4 h-4" />
                 </button>
@@ -477,18 +566,54 @@ export default function MarketingApprovalSettingsPage() {
 
               <div className="p-6 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Holding Group</label>
-                  <select
-                    value={newOverride.company_master_id}
-                    onChange={(e) => setNewOverride(prev => ({ ...prev, company_master_id: e.target.value }))}
-                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none"
-                  >
-                    <option value="">Pilih Holding Group...</option>
-                    {holdings.map(h => (
-                      <option key={h.id} value={h.id}>{h.name}</option>
-                    ))}
-                  </select>
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Level Override</label>
+                  <div className="flex items-center gap-1 bg-neutral-100 dark:bg-neutral-800 rounded-xl p-1">
+                    <button
+                      type="button"
+                      onClick={() => setNewOverride(prev => ({ ...prev, level: 'holding', company_id: '' }))}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${newOverride.level === 'holding' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400'}`}
+                    >
+                      Holding Group
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewOverride(prev => ({ ...prev, level: 'pt', company_master_id: '' }))}
+                      className={`flex-1 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${newOverride.level === 'pt' ? 'bg-white dark:bg-neutral-700 text-neutral-900 dark:text-white shadow-sm' : 'text-neutral-500 dark:text-neutral-400'}`}
+                    >
+                      PT Spesifik
+                    </button>
+                  </div>
                 </div>
+
+                {newOverride.level === 'holding' ? (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">Holding Group</label>
+                    <select
+                      value={newOverride.company_master_id}
+                      onChange={(e) => setNewOverride(prev => ({ ...prev, company_master_id: e.target.value }))}
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none"
+                    >
+                      <option value="">Pilih Holding Group...</option>
+                      {holdings.map(h => (
+                        <option key={h.id} value={h.id}>{h.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-neutral-400 uppercase">PT</label>
+                    <select
+                      value={newOverride.company_id}
+                      onChange={(e) => setNewOverride(prev => ({ ...prev, company_id: e.target.value }))}
+                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none"
+                    >
+                      <option value="">Pilih PT...</option>
+                      {companies.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-neutral-400 uppercase">Role Approval</label>
@@ -504,14 +629,18 @@ export default function MarketingApprovalSettingsPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Email Penerima</label>
-                  <input
-                    type="email"
-                    placeholder="nama@mraretail.co.id"
-                    value={newOverride.email}
-                    onChange={(e) => setNewOverride(prev => ({ ...prev, email: e.target.value }))}
+                  <label className="text-[10px] font-bold text-neutral-400 uppercase">Signer (Email Penerima)</label>
+                  <select
+                    value={newOverride.signer_id}
+                    onChange={(e) => setNewOverride(prev => ({ ...prev, signer_id: e.target.value }))}
                     className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-                  />
+                  >
+                    <option value="">-- Pilih Signer --</option>
+                    {signers.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-neutral-400">Belum ada di daftar? Tambahkan dulu di tab "Master Signer".</p>
                 </div>
               </div>
 
@@ -536,6 +665,158 @@ export default function MarketingApprovalSettingsPage() {
         )}
       </AnimatePresence>
         </>
+      ) : activeTab === 'signers' ? (
+        /* ── Tab: Master Signer ──────────────────────────────────────── */
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-2xl">
+              Daftar orang yang bisa dipilih sebagai penerima link approval. Tambahkan signer di sini dulu sebelum bisa dipasangkan ke role/PT/Holding Group di tab "Email Approver".
+            </p>
+            <button onClick={handleOpenAddSigner}
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-xl text-[11px] font-bold shadow-md shadow-blue-600/10 transition-all cursor-pointer shrink-0 ml-4">
+              <Plus className="w-3.5 h-3.5" /> Tambah Signer
+            </button>
+          </div>
+
+          {signerError && (
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold px-4 py-3 rounded-2xl flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" /> {signerError}
+            </div>
+          )}
+
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/50 dark:bg-neutral-950/20 text-neutral-400 font-bold uppercase tracking-wider">
+                    <th className="px-5 py-4">Nama</th>
+                    <th className="px-5 py-4">Email</th>
+                    <th className="px-5 py-4">Jabatan</th>
+                    <th className="px-5 py-4 text-center">Status</th>
+                    <th className="px-5 py-4 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium">
+                  {signers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-5 py-12 text-center text-neutral-400 font-normal">
+                        Belum ada signer terdaftar. Klik "Tambah Signer" untuk memulai.
+                      </td>
+                    </tr>
+                  ) : signers.map(signer => (
+                    <tr key={signer.id} className="hover:bg-neutral-50/30 dark:hover:bg-neutral-800/5 text-neutral-700 dark:text-neutral-300 transition-colors">
+                      <td className="px-5 py-4 font-bold text-neutral-900 dark:text-white">{signer.name}</td>
+                      <td className="px-5 py-4 font-mono text-neutral-500">{signer.email}</td>
+                      <td className="px-5 py-4 text-neutral-500">{signer.position || '-'}</td>
+                      <td className="px-5 py-4 text-center">
+                        <button
+                          onClick={() => handleToggleSignerActive(signer)}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold cursor-pointer ${signer.is_active ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400'}`}
+                        >
+                          {signer.is_active ? 'Aktif' : 'Nonaktif'}
+                        </button>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button onClick={() => handleOpenEditSigner(signer)} className="p-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-lg hover:text-blue-500 hover:border-blue-500 cursor-pointer" title="Ubah">
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDeleteSigner(signer)} className="p-1.5 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/60 rounded-lg hover:text-rose-500 hover:border-rose-400 cursor-pointer" title="Hapus">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Add/Edit Signer Modal */}
+          <AnimatePresence>
+            {isAddSignerOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                  onClick={() => setIsAddSignerOpen(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                  className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-md z-55 overflow-hidden"
+                >
+                  <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
+                    <h3 className="text-md font-black text-neutral-900 dark:text-white">{signerEditingId ? 'Ubah Signer' : 'Tambah Signer'}</h3>
+                    <button onClick={() => setIsAddSignerOpen(false)} className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="p-6 space-y-4">
+                    {signerError && (
+                      <div className="bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold px-3 py-2.5 rounded-xl flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 shrink-0" /> {signerError}
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Budi Santoso"
+                        value={signerForm.name}
+                        onChange={(e) => setSignerForm(prev => ({ ...prev, name: e.target.value }))}
+                        autoFocus
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase">Email</label>
+                      <input
+                        type="email"
+                        placeholder="nama@mraretail.co.id"
+                        value={signerForm.email}
+                        onChange={(e) => setSignerForm(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-neutral-400 uppercase">Jabatan (opsional)</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Finance Controller"
+                        value={signerForm.position}
+                        onChange={(e) => setSignerForm(prev => ({ ...prev, position: e.target.value }))}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="px-6 py-4.5 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-end gap-2 bg-neutral-50/30 dark:bg-neutral-950/10">
+                    <button
+                      onClick={() => setIsAddSignerOpen(false)}
+                      className="px-4 py-2 border border-neutral-200 dark:border-neutral-700/60 rounded-xl text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white text-xs font-bold cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      onClick={handleSaveSigner}
+                      disabled={signerSaving}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {signerSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                      Simpan Signer
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
       ) : (
         /* ── Tab: Aturan Approval (DOA) ──────────────────────────────── */
         <div className="space-y-4">

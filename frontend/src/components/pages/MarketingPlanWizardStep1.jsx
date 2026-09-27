@@ -46,10 +46,8 @@ export function FormLabel({ label, tooltip }) {
 }
 
 export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
-  const [open, setOpen] = useState(
-    !!(wizardHeader.target_sales || wizardHeader.target_leads || wizardHeader.target_reach ||
-       wizardHeader.target_impressions || wizardHeader.target_roi_pct || wizardHeader.target_notes)
-  );
+  // Selalu terbuka default karena Catatan Target / Indikator Lain sekarang wajib diisi.
+  const [open, setOpen] = useState(true);
 
   return (
     <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden mt-2">
@@ -138,13 +136,16 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">{t('targetNotesLabel')}</label>
+            <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider block">
+              {t('targetNotesLabel')} <span className="text-rose-500">*</span>
+            </label>
             <textarea
+              required
               rows={2}
               placeholder={t('targetNotesPlaceholder')}
               value={wizardHeader.target_notes || ''}
               onChange={(e) => setWizardHeader(p => ({ ...p, target_notes: e.target.value }))}
-              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none"
+              className={`w-full bg-neutral-50 dark:bg-neutral-950 border rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none ${!wizardHeader.target_notes?.trim() ? 'border-rose-300 dark:border-rose-900/50' : 'border-neutral-200 dark:border-neutral-800'}`}
             />
           </div>
         </div>

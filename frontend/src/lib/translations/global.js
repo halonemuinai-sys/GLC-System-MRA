@@ -249,7 +249,7 @@ const g = {
     marketing_approvalSettings_colEmail: 'Recipient Email',
     marketing_approvalSettings_colAction: 'Action',
     marketing_approvalSettings_sectionDefault: 'Default Global (Fallback)',
-    marketing_approvalSettings_sectionOverride: 'Override per Holding Group',
+    marketing_approvalSettings_sectionOverride: 'Override per PT / Holding Group',
     marketing_approvalSettings_addOverride: 'Add Override',
     marketing_approvalSettings_editBtn: 'Edit',
 
@@ -568,7 +568,7 @@ const g = {
     marketing_approvalSettings_colEmail: 'Email Penerima',
     marketing_approvalSettings_colAction: 'Aksi',
     marketing_approvalSettings_sectionDefault: 'Default Global (Fallback)',
-    marketing_approvalSettings_sectionOverride: 'Override per Holding Group',
+    marketing_approvalSettings_sectionOverride: 'Override per PT / Holding Group',
     marketing_approvalSettings_addOverride: 'Tambah Override',
     marketing_approvalSettings_editBtn: 'Ubah',
 

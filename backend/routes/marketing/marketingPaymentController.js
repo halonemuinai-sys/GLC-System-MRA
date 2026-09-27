@@ -89,7 +89,8 @@ async function createPaymentRequest(req, res, next) {
         });
         await queueMagicLink(tx, magicLinkQueue, {
           approvalHistoryId: history.id, role: approvalRules[0].approver_role,
-          stepNumber: stepNum, companyMasterId: planItem.marketing_plan.company?.company_master_id
+          stepNumber: stepNum, companyId: planItem.marketing_plan.company?.id,
+          companyMasterId: planItem.marketing_plan.company?.company_master_id
         });
       }
 
@@ -104,7 +105,8 @@ async function createPaymentRequest(req, res, next) {
         });
         await queueMagicLink(tx, magicLinkQueue, {
           approvalHistoryId: escHistory.id, role: 'CFO_CEO',
-          stepNumber: lastStep + 1, companyMasterId: planItem.marketing_plan.company?.company_master_id
+          stepNumber: lastStep + 1, companyId: planItem.marketing_plan.company?.id,
+          companyMasterId: planItem.marketing_plan.company?.company_master_id
         });
       }
       return payment;
