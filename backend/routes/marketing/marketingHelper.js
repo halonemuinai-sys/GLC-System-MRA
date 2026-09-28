@@ -14,12 +14,13 @@ function applyCompanyScope(where, scope, field = 'company_id') {
   return where;
 }
 
-// Helper: Resolve NIK from JWT req.user.email
+// Helper: resolve identitas pengaju (creator) maupun penyetuju (approver) dari email login
+// (req.user.email) lewat direktori Master Signer (m_approval_signer) — satu direktori orang
+// dipakai untuk keduanya, menggantikan tabel karyawan helpdesk_user yang sebelumnya dipakai.
 async function resolveEmployee(email) {
   if (!email) return null;
-  return prisma.helpdesk_user.findUnique({
-    where: { email: email.toLowerCase().trim() },
-    include: { company: true }
+  return prisma.m_approval_signer.findUnique({
+    where: { email: email.toLowerCase().trim() }
   });
 }
 

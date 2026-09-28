@@ -67,7 +67,7 @@ async function createPlan(req, res, next) {
   try {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
-      return res.status(403).json({ error: 'User email not registered in employee database.' });
+      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
     }
 
     const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason, save_as_draft,
@@ -284,7 +284,7 @@ async function updatePlan(req, res, next) {
   try {
     const planId = parseInt(req.params.id, 10);
     const employee = await resolveEmployee(req.user.email);
-    if (!employee) return res.status(403).json({ error: 'User email not registered in employee database.' });
+    if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
 
     const existingPlan = await prisma.marketing_plans.findUnique({ where: { id: planId } });
     if (!existingPlan) return res.status(404).json({ error: 'Marketing Plan not found.' });
@@ -401,7 +401,7 @@ async function submitPlan(req, res, next) {
   try {
     const planId = parseInt(req.params.id, 10);
     const employee = await resolveEmployee(req.user.email);
-    if (!employee) return res.status(403).json({ error: 'User email not registered in employee database.' });
+    if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
 
     const existingPlan = await prisma.marketing_plans.findUnique({
       where: { id: planId },
@@ -511,7 +511,7 @@ async function recallPlan(req, res, next) {
   try {
     const planId = parseInt(req.params.id, 10);
     const employee = await resolveEmployee(req.user.email);
-    if (!employee) return res.status(403).json({ error: 'User email not registered in employee database.' });
+    if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
 
     const existingPlan = await prisma.marketing_plans.findUnique({
       where: { id: planId },
@@ -569,7 +569,7 @@ async function updatePlanActuals(req, res, next) {
   try {
     const planId = parseInt(req.params.id, 10);
     const employee = await resolveEmployee(req.user.email);
-    if (!employee) return res.status(403).json({ error: 'User email not registered in employee database.' });
+    if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
 
     const existingPlan = await prisma.marketing_plans.findUnique({ where: { id: planId } });
     if (!existingPlan) return res.status(404).json({ error: 'Marketing Plan not found.' });
@@ -587,7 +587,7 @@ async function updatePlanActuals(req, res, next) {
         actual_roi_pct: actual_roi_pct !== undefined && actual_roi_pct !== null && actual_roi_pct !== '' ? parseFloat(actual_roi_pct) : null,
         actual_notes: actual_notes || null,
         actuals_filled_at: new Date(),
-        actuals_filled_by: employee.id,
+        actuals_filled_by: String(employee.id),
         updated_at: new Date()
       }
     });
@@ -604,7 +604,7 @@ async function revisePlan(req, res, next) {
     const planId = parseInt(req.params.id, 10);
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
-      return res.status(403).json({ error: 'User email not registered in employee database.' });
+      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
     }
 
     const existingPlan = await prisma.marketing_plans.findUnique({ where: { id: planId } });
@@ -1137,7 +1137,7 @@ async function duplicatePlan(req, res, next) {
   try {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
-      return res.status(403).json({ error: 'User email not registered in employee database.' });
+      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
     }
 
     const { id } = req.params;

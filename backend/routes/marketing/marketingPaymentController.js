@@ -16,7 +16,7 @@ const PAYMENT_INCLUDE = {
 async function createPaymentRequest(req, res, next) {
   try {
     const employee = await resolveEmployee(req.user.email);
-    if (!employee) return res.status(403).json({ error: 'User email not registered in employee database.' });
+    if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
 
     const { marketing_plan_item_id, title, amount, notes, doc_url } = req.body;
     if (!marketing_plan_item_id || !title || !amount) {

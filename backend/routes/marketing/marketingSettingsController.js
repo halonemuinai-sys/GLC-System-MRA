@@ -1080,16 +1080,12 @@ async function createBudgetShift(req, res, next) {
     const headEmail = headContact?.email || 'head.marketing@mra.co.id';
     const headName = headContact?.label || 'Head of Marketing';
 
-    // Resolve creator ID in helpdesk_user
-    let creatorId = null;
-    if (req.user?.email) {
-      const emp = await resolveEmployee(req.user.email);
-      if (emp) creatorId = emp.id;
+    // Resolve creator ID dari Master Signer (m_approval_signer)
+    const signer = req.user?.email ? await resolveEmployee(req.user.email) : null;
+    if (!signer) {
+      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
     }
-    if (!creatorId) {
-      const fallbackUser = await prisma.helpdesk_user.findFirst();
-      creatorId = fallbackUser ? fallbackUser.id : (req.user?.id ? String(req.user.id) : 'system');
-    }
+    const creatorId = signer.id;
 
     // Create Shift Record & Sequential Approvers in transaction
     const newShift = await prisma.$transaction(async (tx) => {

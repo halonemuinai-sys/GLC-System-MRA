@@ -12,7 +12,7 @@ async function createAmendment(req, res, next) {
   try {
     const planId = parseInt(req.params.id, 10);
     const employee = await resolveEmployee(req.user.email);
-    if (!employee) return res.status(403).json({ error: 'User email not registered in employee database.' });
+    if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
 
     const plan = await prisma.marketing_plans.findUnique({ where: { id: planId } });
     if (!plan) return res.status(404).json({ error: 'Marketing Plan not found.' });
@@ -188,11 +188,11 @@ async function reviewAmendment(req, res, next) {
     if (action === 'REJECT') {
       const updated = await prisma.marketing_plan_amendments.update({
         where: { id },
-        data: { status: 'REJECTED', reviewed_by: employee.id, reviewed_at: new Date(), review_comment, updated_at: new Date() },
+        data: { status: 'REJECTED', reviewed_by: String(employee.id), reviewed_at: new Date(), review_comment, updated_at: new Date() },
         include: { ...AMENDMENT_INCLUDE, marketing_plan: { select: { title: true } } }
       });
       try {
-        const creator = await prisma.helpdesk_user.findUnique({ where: { id: amendment.creator_id }, select: { email: true, name: true } });
+        const creator = await prisma.m_approval_signer.findUnique({ where: { id: amendment.creator_id }, select: { email: true, name: true } });
         if (creator?.email) {
           await sendAmendmentNotifEmail({
             to: creator.email, recipientLabel: creator.name || 'Tim Marketing',
@@ -269,13 +269,13 @@ async function reviewAmendment(req, res, next) {
 
       return tx.marketing_plan_amendments.update({
         where: { id },
-        data: { status: 'APPROVED', reviewed_by: employee.id, reviewed_at: new Date(), review_comment: review_comment || null, updated_at: new Date() },
+        data: { status: 'APPROVED', reviewed_by: String(employee.id), reviewed_at: new Date(), review_comment: review_comment || null, updated_at: new Date() },
         include: { ...AMENDMENT_INCLUDE, marketing_plan: { select: { title: true } } }
       });
     });
 
     try {
-      const creator = await prisma.helpdesk_user.findUnique({ where: { id: amendment.creator_id }, select: { email: true, name: true } });
+      const creator = await prisma.m_approval_signer.findUnique({ where: { id: amendment.creator_id }, select: { email: true, name: true } });
       if (creator?.email) {
         await sendAmendmentNotifEmail({
           to: creator.email, recipientLabel: creator.name || 'Tim Marketing',

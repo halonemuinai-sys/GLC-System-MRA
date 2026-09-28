@@ -26,7 +26,7 @@ async function getPendingTasks(req, res, next) {
   try {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
-      return res.status(403).json({ error: 'User email not registered in employee database.' });
+      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
     }
 
     const userRole = req.user.role.toUpperCase();
@@ -94,7 +94,7 @@ async function processApproval(req, res, next) {
   try {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
-      return res.status(403).json({ error: 'User email not registered in employee database.' });
+      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
     }
 
     const { id } = req.params;

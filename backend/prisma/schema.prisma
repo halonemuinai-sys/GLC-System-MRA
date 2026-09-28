@@ -806,12 +806,6 @@ model helpdesk_user {
   tickets_requested helpdesk_ticket[] @relation("ticket_requester")
   tickets_assigned  helpdesk_ticket[] @relation("ticket_assignee")
   company   helpdesk_company   @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  
-  marketing_plans              marketing_plans[]
-  payment_requests             payment_requests[]
-  approval_history             approval_history[]
-  marketing_plan_amendments    marketing_plan_amendments[]
-  marketing_budget_shifts      m_marketing_budget_shift[]
 
   @@map("User")
   @@schema("helpdesk")
@@ -882,7 +876,7 @@ model marketing_plans {
   cta_end_date      DateTime?               @db.Date
   total_budget      Decimal                 @default(0) @db.Decimal(18, 2)
   status            String                  @default("DRAFT") @db.VarChar(20) // DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, COMPLETED
-  creator_id        String                  @db.VarChar(50)
+  creator_id        Int
   created_at        DateTime                @default(now()) @db.Timestamp(6)
   updated_at        DateTime                @default(now()) @db.Timestamp(6)
   doc_url              String?
@@ -904,7 +898,7 @@ model marketing_plans {
   actuals_filled_by    String?                 @db.VarChar(50)
 
   company           m_company               @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  creator           helpdesk_user           @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator           m_approval_signer       @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   items             marketing_plan_items[]
   approval_history  approval_history[]
@@ -995,12 +989,12 @@ model payment_requests {
   paid_at                DateTime?              @db.Timestamp(6)
   po_number              String?                @db.VarChar(100) // PO number dari GA
   po_issued_at           DateTime?              @db.Timestamp(6)
-  creator_id             String                 @db.VarChar(50)
+  creator_id             Int
   created_at             DateTime               @default(now()) @db.Timestamp(6)
   updated_at             DateTime               @default(now()) @db.Timestamp(6)
-  
+
   marketing_plan_item    marketing_plan_items   @relation(fields: [marketing_plan_item_id], references: [id], onDelete: NoAction)
-  creator                helpdesk_user          @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator                m_approval_signer      @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   approval_history       approval_history[]
 
   @@schema("marketing_budget")
@@ -1012,15 +1006,15 @@ model marketing_plan_amendments {
   title             String   @db.VarChar(200)
   justification     String
   status            String   @default("DRAFT") @db.VarChar(20) // DRAFT, PENDING_REVIEW, APPROVED, REJECTED
-  creator_id        String   @db.VarChar(50)
+  creator_id        Int
   reviewed_by       String?  @db.VarChar(50)
   reviewed_at       DateTime? @db.Timestamp(6)
   review_comment    String?
   created_at        DateTime @default(now()) @db.Timestamp(6)
   updated_at        DateTime @default(now()) @db.Timestamp(6)
 
-  marketing_plan marketing_plans @relation(fields: [marketing_plan_id], references: [id], onDelete: Cascade)
-  creator        helpdesk_user   @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  marketing_plan marketing_plans   @relation(fields: [marketing_plan_id], references: [id], onDelete: Cascade)
+  creator        m_approval_signer @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   change_items   marketing_plan_amendment_items[]
 
   @@schema("marketing_budget")
@@ -1077,17 +1071,17 @@ model approval_history {
   id                 Int                    @id @default(autoincrement())
   marketing_plan_id  Int?
   payment_request_id Int?
-  approver_id        String                 @db.VarChar(50)
+  approver_id        Int
   step_number        Int                    @db.SmallInt
   status             String                 @db.VarChar(20) // PENDING, APPROVED, REJECTED
   comment            String?
   signature_url      String?
   action_at          DateTime?              @db.Timestamp(6)
   created_at         DateTime               @default(now()) @db.Timestamp(6)
-  
+
   marketing_plan     marketing_plans?       @relation(fields: [marketing_plan_id], references: [id], onDelete: Cascade)
   payment_request    payment_requests?      @relation(fields: [payment_request_id], references: [id], onDelete: Cascade)
-  approver           helpdesk_user          @relation(fields: [approver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  approver           m_approval_signer      @relation(fields: [approver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   magic_links        approval_magic_links[]
 
   @@schema("marketing_budget")
@@ -1146,6 +1140,11 @@ model m_approval_signer {
   created_at             DateTime                 @default(now()) @db.Timestamp(6)
 
   approval_role_contacts approval_role_contacts[]
+  marketing_plans        marketing_plans[]
+  payment_requests       payment_requests[]
+  marketing_plan_amendments marketing_plan_amendments[]
+  approval_history       approval_history[]
+  marketing_budget_shifts m_marketing_budget_shift[]
 
   @@schema("marketing_budget")
 }
@@ -1202,14 +1201,14 @@ model m_marketing_budget_shift {
   status              String                               @default("PENDING") @db.VarChar(20) // PENDING, APPROVED, REJECTED, CANCELLED
   current_step        Int                                  @default(1) @db.SmallInt
   total_steps         Int                                  @default(1) @db.SmallInt
-  creator_id          String                               @db.VarChar(50)
+  creator_id          Int
   created_at          DateTime                             @default(now()) @db.Timestamp(6)
   updated_at          DateTime                             @default(now()) @db.Timestamp(6)
 
   marketing_budget    m_marketing_budget                   @relation(fields: [marketing_budget_id], references: [id], onDelete: Cascade)
   from_monthly        m_marketing_budget_monthly           @relation("ShiftFromMonth", fields: [from_monthly_id], references: [id], onDelete: Cascade)
   to_monthly          m_marketing_budget_monthly           @relation("ShiftToMonth", fields: [to_monthly_id], references: [id], onDelete: Cascade)
-  creator             helpdesk_user                        @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  creator             m_approval_signer                    @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   approvers           m_marketing_budget_shift_approver[]
 
   @@index([marketing_budget_id], map: "idx_shift_budget_id")
