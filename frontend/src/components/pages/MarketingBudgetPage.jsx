@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 import MarketingBudgetShiftDrawer from './MarketingBudgetShiftDrawer';
 import MarketingBudgetShiftHistoryModal from './MarketingBudgetShiftHistoryModal';
 
@@ -60,7 +61,7 @@ function InfoTooltip({ content, position = 'top' }) {
 }
 
 // ─── Stat Card Component ────────────────────────────────────────────────────────
-function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0, tooltip = '' }) {
+function StatCard({ label, value, sub = '', icon: Icon, color = 'blue', delay = 0, tooltip = '' }) {
   const colors = {
     blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
     emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
@@ -82,6 +83,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0, tooltip
             {tooltip && <InfoTooltip content={tooltip} position="top" />}
           </div>
           <p className="text-xl font-black text-neutral-900 dark:text-white mt-1">{value}</p>
+          {sub && <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 mt-0.5">{sub}</p>}
         </div>
         <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${colors[color]}`}>
           <Icon className="w-5 h-5" />
@@ -321,6 +323,10 @@ export default function MarketingBudgetPage() {
   // Create Budget Form Submit
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.company_id || !formData.brand_id || !formData.lob_id) {
+      setFormError('Perusahaan, Brand, dan Line of Business wajib dipilih.');
+      return;
+    }
     try {
       setSubmitting(true);
       setFormError(null);
@@ -368,6 +374,8 @@ export default function MarketingBudgetPage() {
   const totalRealized = displayedMonthly.reduce((sum, m) => sum + (m.actual || 0), 0);
   const totalAvailable = displayedMonthly.reduce((sum, m) => sum + m.available, 0);
 
+  const pctOfLimit = (val) => totalLimit > 0 ? `${((val / totalLimit) * 100).toFixed(1)}% dari plafon` : '';
+
   const getMonthName = (num) => {
     const names = [
       'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -407,7 +415,7 @@ export default function MarketingBudgetPage() {
               {t('marketing_budget_title')}
             </h1>
             {activeBudget && (
-              <span className={`ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider flex items-center gap-1 ${activeBudget.is_locked ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+              <span className={`ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider flex items-center gap-1 ${activeBudget.is_locked ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                 {activeBudget.is_locked ? (
                   <>
                     <Lock className="w-2.5 h-2.5" />
@@ -431,18 +439,37 @@ export default function MarketingBudgetPage() {
           {activeBudget ? (
             <>
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setShowShiftHistoryModal(true)}
                 title="Buka riwayat pergeseran anggaran antar-bulan, alur persetujuan berjenjang, dan audit trail"
-                className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="relative flex items-center justify-center p-2.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-all cursor-pointer"
               >
-                <History className="w-3.5 h-3.5 text-neutral-500" />
-                Riwayat Pergeseran
+                <History className="w-4 h-4" />
                 {shifts.length > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 text-[9px] font-extrabold rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center text-[9px] font-extrabold rounded-full bg-blue-600 text-white">
                     {shifts.length}
                   </span>
+                )}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleToggleLock}
+                title={activeBudget.is_locked ? 'Buka kunci untuk mengizinkan perubahan limit alokasi bulanan' : 'Kunci anggaran untuk melindungi limit alokasi dari perubahan tidak sah'}
+                className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${activeBudget.is_locked ? 'border-emerald-200 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10' : 'border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10'}`}
+              >
+                {activeBudget.is_locked ? (
+                  <>
+                    <Unlock className="w-3.5 h-3.5" />
+                    Buka Kunci
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-3.5 h-3.5" />
+                    Kunci Budget
+                  </>
                 )}
               </motion.button>
 
@@ -456,26 +483,6 @@ export default function MarketingBudgetPage() {
               >
                 <ArrowRightLeft className="w-3.5 h-3.5" />
                 Ajukan Pergeseran
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleToggleLock}
-                title={activeBudget.is_locked ? 'Buka kunci untuk mengizinkan perubahan limit alokasi bulanan' : 'Kunci anggaran untuk melindungi limit alokasi dari perubahan tidak sah'}
-                className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer ${activeBudget.is_locked ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/15' : 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/15'}`}
-              >
-                {activeBudget.is_locked ? (
-                  <>
-                    <Unlock className="w-3.5 h-3.5" />
-                    Buka Kunci (Unlock)
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-3.5 h-3.5" />
-                    Kunci Budget (Lock)
-                  </>
-                )}
               </motion.button>
             </>
           ) : (
@@ -494,37 +501,37 @@ export default function MarketingBudgetPage() {
 
       {/* ── Filter Bar ── */}
       <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl p-4 flex flex-wrap gap-4 items-center shadow-sm">
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-48">
           <label className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">Company</label>
-          <select
+          <SearchableSelect
             value={filter.company_id}
-            onChange={(e) => setFilter(prev => ({ ...prev, company_id: e.target.value }))}
-            className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            {metadata.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+            onChange={(val) => setFilter(prev => ({ ...prev, company_id: val }))}
+            options={metadata.companies}
+            placeholder="Pilih Company..."
+            searchPlaceholder="Cari PT..."
+          />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-44">
           <label className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">Brand</label>
-          <select
+          <SearchableSelect
             value={filter.brand_id}
-            onChange={(e) => setFilter(prev => ({ ...prev, brand_id: e.target.value }))}
-            className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            {metadata.brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+            onChange={(val) => setFilter(prev => ({ ...prev, brand_id: val }))}
+            options={metadata.brands}
+            placeholder="Pilih Brand..."
+            searchPlaceholder="Cari Brand..."
+          />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1 w-full sm:w-44">
           <label className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">Line of Business</label>
-          <select
+          <SearchableSelect
             value={filter.lob_id}
-            onChange={(e) => setFilter(prev => ({ ...prev, lob_id: e.target.value }))}
-            className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            {metadata.lobs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+            onChange={(val) => setFilter(prev => ({ ...prev, lob_id: val }))}
+            options={metadata.lobs}
+            placeholder="Pilih LOB..."
+            searchPlaceholder="Cari LOB..."
+          />
         </div>
 
         <div className="space-y-1">
@@ -605,6 +612,7 @@ export default function MarketingBudgetPage() {
         <StatCard
           label="Committed (Plan)"
           value={formatRupiah(totalCommitted)}
+          sub={pctOfLimit(totalCommitted)}
           icon={Clock}
           color="amber"
           delay={0.1}
@@ -613,6 +621,7 @@ export default function MarketingBudgetPage() {
         <StatCard
           label="Realisasi (Actual)"
           value={formatRupiah(totalRealized)}
+          sub={pctOfLimit(totalRealized)}
           icon={TrendingUp}
           color="rose"
           delay={0.15}
@@ -621,6 +630,7 @@ export default function MarketingBudgetPage() {
         <StatCard
           label="Sisa Kuota (Available)"
           value={formatRupiah(totalAvailable)}
+          sub={pctOfLimit(totalAvailable)}
           icon={Sparkles}
           color="emerald"
           delay={0.2}
@@ -668,26 +678,26 @@ export default function MarketingBudgetPage() {
                     <InfoTooltip content="Status pembukuan bulan. 'Tutup Buku' mengunci alokasi dan menahan sisa anggaran di holding pool (tidak otomatis rollover per aturan COO)." position="bottom" />
                   </span>
                 </th>
-                <th className="px-5 py-3.5">
-                  <span className="inline-flex items-center">
+                <th className="px-5 py-3.5 text-right">
+                  <span className="inline-flex items-center justify-end">
                     Limit Anggaran
                     <InfoTooltip content="Plafon maksimal alokasi belanja untuk bulan bersangkutan. Dapat disunting jika status master budget belum terkunci." position="bottom" />
                   </span>
                 </th>
-                <th className="px-5 py-3.5">
-                  <span className="inline-flex items-center">
+                <th className="px-5 py-3.5 text-right">
+                  <span className="inline-flex items-center justify-end">
                     Committed
                     <InfoTooltip content="Akumulasi anggaran dari rencana kampanye (Marketing Plans) yang aktif pada bulan ini." position="bottom" />
                   </span>
                 </th>
-                <th className="px-5 py-3.5">
-                  <span className="inline-flex items-center">
+                <th className="px-5 py-3.5 text-right">
+                  <span className="inline-flex items-center justify-end">
                     Realisasi
                     <InfoTooltip content="Pengeluaran riil aktual yang sudah dibayarkan/dieksekusi pada bulan ini." position="bottom" />
                   </span>
                 </th>
-                <th className="px-5 py-3.5">
-                  <span className="inline-flex items-center">
+                <th className="px-5 py-3.5 text-right">
+                  <span className="inline-flex items-center justify-end">
                     Sisa Kuota
                     <InfoTooltip content="Kapasitas sisa pagu belanja (Limit - Committed). Pada bulan yang ditutup buku, sisa ditahan di pool korporat." position="bottom" />
                   </span>
@@ -716,7 +726,7 @@ export default function MarketingBudgetPage() {
               ) : (
                 displayedMonthly.map((item) => {
                   const usagePct = item.limit > 0 ? ((item.actual || 0) / item.limit) * 100 : 0;
-                  const barColor = usagePct > 100 ? 'bg-red-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-emerald-500';
+                  const barColor = usagePct > 100 ? 'bg-rose-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-emerald-500';
 
                   return (
                     <tr key={item.month} className="hover:bg-neutral-500/5 dark:hover:bg-neutral-950/10 transition-colors">
@@ -748,32 +758,32 @@ export default function MarketingBudgetPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-3.5 text-right">
                         {activeBudget?.is_locked || item.is_closed ? (
                           <span className="font-mono font-bold text-neutral-800 dark:text-white">
                             {formatRupiah(item.limit)}
                           </span>
                         ) : (
-                          <div className="relative max-w-[150px]">
+                          <div className="relative max-w-[150px] ml-auto">
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">Rp</span>
                             <input
                               type="text"
                               value={item.limit.toLocaleString('id-ID')}
                               onChange={(e) => handleLimitChange(item.month, e.target.value)}
-                              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-8 pr-2.5 py-1.5 font-mono text-[11px] font-bold text-neutral-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-8 pr-2.5 py-1.5 font-mono text-[11px] font-bold text-neutral-800 dark:text-white text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
                           </div>
                         )}
                       </td>
-                      <td className="px-5 py-3.5 font-mono text-neutral-500 dark:text-neutral-400">
+                      <td className="px-5 py-3.5 text-right font-mono text-neutral-500 dark:text-neutral-400">
                         {formatRupiah(item.committed)}
                       </td>
-                      <td className="px-5 py-3.5 font-mono text-neutral-500 dark:text-neutral-400">
+                      <td className="px-5 py-3.5 text-right font-mono text-neutral-500 dark:text-neutral-400">
                         {formatRupiah(item.actual || 0)}
                       </td>
-                      <td className="px-5 py-3.5 font-mono font-bold">
+                      <td className="px-5 py-3.5 text-right font-mono font-bold">
                         {item.is_closed ? (
-                          <div className="flex flex-col">
+                          <div className="flex flex-col items-end">
                             <span className="text-neutral-400 text-xs">Rp 0</span>
                             {item.unspent > 0 && (
                               <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">
@@ -782,14 +792,14 @@ export default function MarketingBudgetPage() {
                             )}
                           </div>
                         ) : (
-                          <span className={item.available < 0 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}>
+                          <span className={item.available < 0 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}>
                             {formatRupiah(item.available)}
                           </span>
                         )}
                       </td>
                       <td className="px-5 py-3.5">
-                        <div className="flex flex-col gap-1 min-w-[90px]">
-                          <span className={`text-[10px] font-extrabold ${usagePct > 100 ? 'text-red-500' : usagePct > 80 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                        <div className="flex flex-col gap-1 items-end min-w-[90px] ml-auto">
+                          <span className={`text-[10px] font-extrabold ${usagePct > 100 ? 'text-rose-500' : usagePct > 80 ? 'text-amber-500' : 'text-emerald-500'}`}>
                             {usagePct.toFixed(1)}%
                           </span>
                           <div className="w-full h-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
@@ -815,7 +825,7 @@ export default function MarketingBudgetPage() {
                               type="button"
                               onClick={() => handleCloseMonth(item.month)}
                               disabled={processing}
-                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-neutral-100 hover:bg-red-50 hover:text-red-600 dark:bg-neutral-800 dark:hover:bg-red-500/10 text-neutral-600 dark:text-neutral-300 dark:hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-neutral-100 hover:bg-rose-50 hover:text-rose-600 dark:bg-neutral-800 dark:hover:bg-rose-500/10 text-neutral-600 dark:text-neutral-300 dark:hover:text-rose-400 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
                               title="Tutup buku bulan ini per kebijakan COO"
                             >
                               <Lock className="w-3 h-3" />
@@ -868,7 +878,7 @@ export default function MarketingBudgetPage() {
                     DRAFT: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500',
                     PENDING_APPROVAL: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
                     APPROVED: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-                    REJECTED: 'bg-red-500/10 text-red-500',
+                    REJECTED: 'bg-rose-500/10 text-rose-500',
                     COMPLETED: 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                   };
                   const statusLabels = {
@@ -945,41 +955,35 @@ export default function MarketingBudgetPage() {
                 <form onSubmit={handleCreateSubmit} className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">PT / Company</label>
-                    <select
+                    <SearchableSelect
                       value={formData.company_id}
-                      onChange={(e) => setFormData(prev => ({ ...prev, company_id: e.target.value }))}
-                      className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white"
-                      required
-                    >
-                      <option value="">Pilih Perusahaan</option>
-                      {metadata.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
+                      onChange={(val) => setFormData(prev => ({ ...prev, company_id: val }))}
+                      options={metadata.companies}
+                      placeholder="Pilih Perusahaan..."
+                      searchPlaceholder="Cari PT..."
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">Brand</label>
-                    <select
+                    <SearchableSelect
                       value={formData.brand_id}
-                      onChange={(e) => setFormData(prev => ({ ...prev, brand_id: e.target.value }))}
-                      className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white"
-                      required
-                    >
-                      <option value="">Pilih Brand</option>
-                      {metadata.brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    </select>
+                      onChange={(val) => setFormData(prev => ({ ...prev, brand_id: val }))}
+                      options={metadata.brands}
+                      placeholder="Pilih Brand..."
+                      searchPlaceholder="Cari Brand..."
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">Line of Business</label>
-                    <select
+                    <SearchableSelect
                       value={formData.lob_id}
-                      onChange={(e) => setFormData(prev => ({ ...prev, lob_id: e.target.value }))}
-                      className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white"
-                      required
-                    >
-                      <option value="">Pilih LOB</option>
-                      {metadata.lobs.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                    </select>
+                      onChange={(val) => setFormData(prev => ({ ...prev, lob_id: val }))}
+                      options={metadata.lobs}
+                      placeholder="Pilih LOB..."
+                      searchPlaceholder="Cari LOB..."
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -1013,7 +1017,7 @@ export default function MarketingBudgetPage() {
                   </div>
 
                   {formError && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-500 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/25 text-rose-500 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5" />
                       <span>{formError}</span>
                     </div>

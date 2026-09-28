@@ -9,6 +9,18 @@ const {
   applyCompanyScope
 } = require('./marketingHelper');
 
+// Versi in-memory dari resolveApproverContact (marketingHelper.js) — dipakai untuk PREVIEW
+// "siapa penerima approval" di getApprovalsOverview, jalan terhadap array approval_role_contacts
+// yang sudah di-batch-fetch sekali (hindari N+1 query per step per plan). Harus tetap sinkron
+// dengan urutan tingkatan resolusi asli: PT spesifik > Holding Group > Default Global.
+function resolveContactPreview(allContacts, role, companyId, companyMasterId) {
+  const ptMatch = allContacts.find(c => c.role === role && c.company_id === companyId);
+  if (ptMatch) return ptMatch;
+  const holdingMatch = allContacts.find(c => c.role === role && c.company_id === null && c.company_master_id === companyMasterId);
+  if (holdingMatch) return holdingMatch;
+  return allContacts.find(c => c.role === role && c.company_id === null && c.company_master_id === null) || null;
+}
+
 // GET /tasks
 async function getPendingTasks(req, res, next) {
   try {
@@ -373,12 +385,10 @@ async function getApprovalsOverview(req, res, next) {
         const historyRecord = plan.approval_history.find(h => h.step_number === rule.step_number && h.status === 'PENDING')
           || plan.approval_history.find(h => h.step_number === rule.step_number);
 
-        // Filter contacts di JS — hindari N+1 per rule
-        const contacts = allContacts.filter(c =>
-          c.role === rule.approver_role &&
-          (c.company_master_id === null || c.company_master_id === plan.company.company_master_id)
-        );
-        const recipientEmails = contacts.map(c => c.email);
+        // Resolusi kontak sesuai tingkatan asli (PT > Holding > Global) — konsisten dengan
+        // resolveApproverContact yang benar-benar dipakai saat mengirim magic link.
+        const resolvedContact = resolveContactPreview(allContacts, rule.approver_role, plan.company_id, plan.company.company_master_id);
+        const recipientEmails = resolvedContact ? [resolvedContact.email] : [];
 
         const magicLinks = historyRecord ? historyRecord.magic_links.map(ml => ({
           email: ml.recipient_email,
@@ -414,7 +424,7 @@ async function getApprovalsOverview(req, res, next) {
         status: plan.status,
         is_over_budget: plan.is_over_budget,
         over_budget_reason: plan.over_budget_reason,
-        creator_name: plan.creator.name,
+        creator_name: plan.creator?.name || 'Tidak diketahui',
         created_at: plan.created_at,
         current_active_step: currentActiveStep,
         steps

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,7 +28,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 
 const FISCAL_YEAR_OPTIONS = ['2024', '2025', '2026', '2027'];
 
-// ─── Floating Tooltip Component ───────────────────────────────────────────────
+// â”€â”€â”€ Floating Tooltip Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function InfoTooltip({ content, position = 'top' }) {
   if (!content) return null;
   return (
@@ -53,7 +53,7 @@ function InfoTooltip({ content, position = 'top' }) {
   );
 }
 
-// ─── Stat Card Component ────────────────────────────────────────────────────────
+// â”€â”€â”€ Stat Card Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0, tooltip = '' }) {
   const colors = {
     blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
@@ -85,7 +85,7 @@ function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0, tooltip
   );
 }
 
-// ─── Horizontal Stepper Component ───────────────────────────────────────────────
+// â”€â”€â”€ Horizontal Stepper Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function HorizontalStepper({ steps }) {
   if (!steps || steps.length === 0) return <span className="text-[10px] text-neutral-400">-</span>;
 
@@ -101,7 +101,7 @@ function HorizontalStepper({ steps }) {
         } else if (step.status === 'PENDING') {
           dotClass = 'bg-amber-500 text-white animate-pulse';
         } else if (step.status === 'REJECTED') {
-          dotClass = 'bg-red-500 text-white';
+          dotClass = 'bg-rose-500 text-white';
         }
 
         return (
@@ -152,15 +152,6 @@ export default function MarketingApprovalOverviewPage() {
         setMetadata({
           companies: res.companies || []
         });
-
-        // Set default filter company
-        if (res.companies.length > 0) {
-          const mogems = res.companies.find(c => c.name.toLowerCase().includes('mogems'));
-          setFilter(prev => ({
-            ...prev,
-            company_id: mogems ? String(mogems.id) : String(res.companies[0].id)
-          }));
-        }
       }
     } catch (err) {
       setError(err.message || 'Gagal memuat metadata.');
@@ -173,9 +164,9 @@ export default function MarketingApprovalOverviewPage() {
     fetchMetadata();
   }, [fetchMetadata]);
 
-  // Load Approval Overview List
+  // Load Approval Overview List â€” company_id kosong berarti "Semua PT" yang bisa diakses user
   const handleProses = async () => {
-    if (!filter.company_id || !filter.fiscal_year) {
+    if (!filter.fiscal_year) {
       return;
     }
 
@@ -184,7 +175,7 @@ export default function MarketingApprovalOverviewPage() {
       setError(null);
       const res = await apiClient.get('/api/marketing/approvals-overview', {
         params: {
-          company_id: filter.company_id,
+          company_id: filter.company_id || undefined,
           fiscal_year: filter.fiscal_year,
           status: filter.status || undefined
         }
@@ -198,9 +189,7 @@ export default function MarketingApprovalOverviewPage() {
   };
 
   useEffect(() => {
-    if (filter.company_id) {
-      handleProses();
-    }
+    handleProses();
   }, [filter.company_id, filter.fiscal_year, filter.status]);
 
   // Filtering on client side for Search query
@@ -233,14 +222,14 @@ export default function MarketingApprovalOverviewPage() {
       DRAFT: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400',
       PENDING_APPROVAL: 'bg-amber-500/10 text-amber-500 border border-amber-500/20',
       APPROVED: 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20',
-      REJECTED: 'bg-red-500/10 text-red-500 border border-red-500/20'
+      REJECTED: 'bg-rose-500/10 text-rose-500 border border-rose-500/20'
     };
     return maps[status] || 'bg-neutral-100 text-neutral-500';
   };
 
   const getStepStatusIcon = (status) => {
     if (status === 'APPROVED') return <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />;
-    if (status === 'REJECTED') return <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />;
+    if (status === 'REJECTED') return <XCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />;
     if (status === 'PENDING') return <Clock className="w-4 h-4 text-amber-500 animate-pulse flex-shrink-0" />;
     return <Clock className="w-4 h-4 text-neutral-300 dark:text-neutral-700 flex-shrink-0" />;
   };
@@ -256,7 +245,7 @@ export default function MarketingApprovalOverviewPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ── */}
+      {/* â”€â”€ Header â”€â”€ */}
       <div>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
@@ -271,7 +260,7 @@ export default function MarketingApprovalOverviewPage() {
         </p>
       </div>
 
-      {/* ── Filter Bar ── */}
+      {/* â”€â”€ Filter Bar â”€â”€ */}
       <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl p-4 flex flex-wrap gap-4 items-center shadow-sm">
         <div className="space-y-1">
           <label className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">Company</label>
@@ -280,6 +269,7 @@ export default function MarketingApprovalOverviewPage() {
             onChange={(e) => setFilter(prev => ({ ...prev, company_id: e.target.value }))}
             className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 text-neutral-800 dark:text-white"
           >
+            <option value="">Semua PT</option>
             {metadata.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
@@ -334,7 +324,7 @@ export default function MarketingApprovalOverviewPage() {
         </button>
       </div>
 
-      {/* ── Summary Stats Cards ── */}
+      {/* â”€â”€ Summary Stats Cards â”€â”€ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label={t('marketing_approval_kpiTotal')}
@@ -370,7 +360,7 @@ export default function MarketingApprovalOverviewPage() {
         />
       </div>
 
-      {/* ── Monitoring Table ── */}
+      {/* â”€â”€ Monitoring Table â”€â”€ */}
       <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
@@ -447,7 +437,7 @@ export default function MarketingApprovalOverviewPage() {
         </div>
       </div>
 
-      {/* ── Audit Trail Detail Drawer ── */}
+      {/* â”€â”€ Audit Trail Detail Drawer â”€â”€ */}
       <AnimatePresence>
         {showDrawer && selectedPlan && (
           <>
@@ -513,7 +503,7 @@ export default function MarketingApprovalOverviewPage() {
                           {/* Dot Icon */}
                           <div className={`absolute -left-[13px] top-0.5 w-6 h-6 rounded-full flex items-center justify-center border-2 bg-white dark:bg-neutral-950 transition-all ${
                             step.status === 'APPROVED' ? 'border-emerald-500' :
-                            step.status === 'REJECTED' ? 'border-red-500' :
+                            step.status === 'REJECTED' ? 'border-rose-500' :
                             isActive ? 'border-amber-500' : 'border-neutral-200 dark:border-neutral-800'
                           }`}>
                             {getStepStatusIcon(step.status)}
@@ -526,7 +516,7 @@ export default function MarketingApprovalOverviewPage() {
                               </span>
                               <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold ${
                                 step.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-500' :
-                                step.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' :
+                                step.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-500' :
                                 step.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400'
                               }`}>
                                 {step.status}
@@ -546,7 +536,7 @@ export default function MarketingApprovalOverviewPage() {
                                 <div>Ditolak oleh: <span className="font-bold text-neutral-700 dark:text-neutral-300">{step.approver_name}</span></div>
                                 <div>Waktu: <span>{new Date(step.action_at).toLocaleString('id-ID')}</span></div>
                                 {step.comment && (
-                                  <div className="bg-red-500/5 border border-red-500/10 p-2 rounded-lg italic text-red-500/90 font-medium">
+                                  <div className="bg-rose-500/5 border border-rose-500/10 p-2 rounded-lg italic text-rose-500/90 font-medium">
                                     "{step.comment}"
                                   </div>
                                 )}
