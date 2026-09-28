@@ -78,32 +78,30 @@ export default function MarketingPlanQuickModal({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
 
-  // Helper to load default recommended approvers for a given company
+  // Helper to load default recommended approvers for a given company.
+  // Resolusi tingkat kontak sama seperti backend: PT spesifik > Holding Group > Global.
   const getDefaultApproversForCompany = useCallback((companyId) => {
     if (metadata.defaultApproverContacts && metadata.defaultApproverContacts.length > 0) {
       const selectedCompany = (metadata.companies || []).find(c => String(c.id) === String(companyId));
       const masterId = selectedCompany?.m_company_master?.id || selectedCompany?.company_master_id;
+      const allContacts = metadata.defaultApproverContacts;
 
-      let contacts = metadata.defaultApproverContacts;
-      if (masterId) {
-        const matching = contacts.filter(c => c.company_master_id === masterId);
-        if (matching.length > 0) contacts = matching;
-        else contacts = contacts.filter(c => !c.company_master_id);
-      } else {
-        contacts = contacts.filter(c => !c.company_master_id);
-      }
+      const roles = [...new Set(allContacts.map(c => c.role))];
+      const contacts = roles.map(role => {
+        const ptMatch = allContacts.find(c => c.role === role && c.company_id && String(c.company_id) === String(companyId));
+        if (ptMatch) return ptMatch;
+        const holdingMatch = allContacts.find(c => c.role === role && !c.company_id && masterId && c.company_master_id === masterId);
+        if (holdingMatch) return holdingMatch;
+        return allContacts.find(c => c.role === role && !c.company_id && !c.company_master_id) || null;
+      }).filter(Boolean);
 
       if (contacts.length > 0) {
-        return contacts.map((c, idx) => {
-          const email = c.email || c.contact_email || '';
-          const matchedUser = (metadata.users || []).find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
-          return {
-            step_number: idx + 1,
-            approver_name: matchedUser ? matchedUser.full_name : (c.contact_name || c.label || ''),
-            approver_email: email,
-            approver_role: c.label || c.role?.replace(/_/g, ' ') || 'Approver'
-          };
-        });
+        return contacts.map((c, idx) => ({
+          step_number: idx + 1,
+          approver_name: c.signer?.name || c.label || '',
+          approver_email: c.signer?.email || c.email || '',
+          approver_role: c.label || c.role?.replace(/_/g, ' ') || 'Approver'
+        }));
       }
     }
 
@@ -112,7 +110,7 @@ export default function MarketingPlanQuickModal({
       { step_number: 2, approver_name: '', approver_email: '', approver_role: 'General Manager' },
       { step_number: 3, approver_name: '', approver_email: '', approver_role: 'Finance Controller' }
     ];
-  }, [metadata.defaultApproverContacts, metadata.companies, metadata.users]);
+  }, [metadata.defaultApproverContacts, metadata.companies]);
 
   const handleAddApprover = () => {
     setApprovers(prev => [
@@ -155,15 +153,15 @@ export default function MarketingPlanQuickModal({
   };
 
   const handleApproverUserSelect = (index, val) => {
-    const matched = (metadata.users || []).find(u => u.full_name === val);
+    const matched = (metadata.signers || []).find(s => s.name === val);
     if (matched) {
       setApprovers(prev => {
         const updated = [...prev];
         updated[index] = {
           ...updated[index],
-          approver_name: matched.full_name,
+          approver_name: matched.name,
           approver_email: matched.email || updated[index].approver_email,
-          approver_role: matched.position || matched.department || matched.role || updated[index].approver_role
+          approver_role: matched.position || updated[index].approver_role
         };
         return updated;
       });
@@ -231,7 +229,7 @@ export default function MarketingPlanQuickModal({
       setApprovers(getDefaultApproversForCompany(initCompanyId));
       setErrMessage(null);
     }
-  }, [isOpen, metadata.companies, metadata.coas, metadata.brands, metadata.defaultApproverContacts, metadata.users, getDefaultApproversForCompany]);
+  }, [isOpen, metadata.companies, metadata.coas, metadata.brands, metadata.defaultApproverContacts, metadata.signers, getDefaultApproversForCompany]);
 
   if (!isOpen) return null;
 
@@ -715,9 +713,9 @@ export default function MarketingPlanQuickModal({
                               className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
                             />
                             <datalist id={`quick-users-datalist-${idx}`}>
-                              {(metadata.users || []).map(u => (
-                                <option key={u.id} value={u.full_name}>
-                                  {u.position ? `${u.position} · ${u.email}` : u.email}
+                              {(metadata.signers || []).map(s => (
+                                <option key={s.id} value={s.name}>
+                                  {s.position ? `${s.position} · ${s.email}` : s.email}
                                 </option>
                               ))}
                             </datalist>

@@ -28,7 +28,7 @@ const getMonthName = (monthNum, lang = 'en') => {
   return months[monthNum - 1] || '';
 };
 
-export function WizardApproversSection({ wizardApprovers, setWizardApprovers, users = [], onUseDefaults, lang }) {
+export function WizardApproversSection({ wizardApprovers, setWizardApprovers, signers = [], onUseDefaults, lang }) {
   const addApprover = () => {
     setWizardApprovers(prev => [
       ...prev,
@@ -70,15 +70,15 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, us
   };
 
   const handleUserSelect = (index, val) => {
-    const matched = users.find(u => u.full_name === val);
+    const matched = signers.find(s => s.name === val);
     if (matched) {
       setWizardApprovers(prev => {
         const updated = [...prev];
         updated[index] = {
           ...updated[index],
-          approver_name: matched.full_name,
+          approver_name: matched.name,
           approver_email: matched.email || updated[index].approver_email,
-          approver_role: matched.position || matched.department || matched.role || updated[index].approver_role
+          approver_role: matched.position || updated[index].approver_role
         };
         return updated;
       });
@@ -183,9 +183,9 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, us
                   className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
                 />
                 <datalist id={`users-datalist-${idx}`}>
-                  {users.map(u => (
-                    <option key={u.id} value={u.full_name}>
-                      {u.position ? `${u.position} · ${u.email}` : u.email}
+                  {signers.map(s => (
+                    <option key={s.id} value={s.name}>
+                      {s.position ? `${s.position} · ${s.email}` : s.email}
                     </option>
                   ))}
                 </datalist>
@@ -412,7 +412,7 @@ export default function MarketingPlanWizardStep3({
       <WizardApproversSection
         wizardApprovers={wizardApprovers}
         setWizardApprovers={setWizardApprovers}
-        users={metadata.users || []}
+        signers={metadata.signers || []}
         onUseDefaults={onUseDefaults}
         lang={lang}
       />

@@ -91,33 +91,32 @@ export default function MarketingPlanWizardModal({
   const [budgetAvailability, setBudgetAvailability] = useState(null);
   const [checkingBudget, setCheckingBudget] = useState(false);
 
-  // Helper to load default recommended approvers from metadata or fallback
+  // Helper to load default recommended approvers from metadata or fallback.
+  // Resolusi tingkat kontak sama seperti backend: PT spesifik > Holding Group > Global.
   const getDefaultApproversForCompany = useCallback((companyId) => {
     const targetCid = companyId || wizardHeader.company_id;
     if (metadata.defaultApproverContacts && metadata.defaultApproverContacts.length > 0) {
       const selectedCompany = (metadata.companies || []).find(c => String(c.id) === String(targetCid));
       const masterId = selectedCompany?.m_company_master?.id || selectedCompany?.company_master_id;
+      const allContacts = metadata.defaultApproverContacts;
 
-      let contacts = metadata.defaultApproverContacts;
-      if (masterId) {
-        const matching = contacts.filter(c => c.company_master_id === masterId);
-        if (matching.length > 0) contacts = matching;
-        else contacts = contacts.filter(c => !c.company_master_id);
-      } else {
-        contacts = contacts.filter(c => !c.company_master_id);
-      }
+      // Kumpulkan role unik, lalu resolve masing-masing lewat tingkatan PT > Holding > Global
+      const roles = [...new Set(allContacts.map(c => c.role))];
+      const contacts = roles.map(role => {
+        const ptMatch = allContacts.find(c => c.role === role && c.company_id && String(c.company_id) === String(targetCid));
+        if (ptMatch) return ptMatch;
+        const holdingMatch = allContacts.find(c => c.role === role && !c.company_id && masterId && c.company_master_id === masterId);
+        if (holdingMatch) return holdingMatch;
+        return allContacts.find(c => c.role === role && !c.company_id && !c.company_master_id) || null;
+      }).filter(Boolean);
 
       if (contacts.length > 0) {
-        return contacts.map((c, idx) => {
-          const email = c.email || c.contact_email || '';
-          const matchedUser = (metadata.users || []).find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
-          return {
-            step_number: idx + 1,
-            approver_name: matchedUser ? matchedUser.full_name : (c.contact_name || c.label || ''),
-            approver_email: email,
-            approver_role: c.label || c.role?.replace(/_/g, ' ') || 'Approver'
-          };
-        });
+        return contacts.map((c, idx) => ({
+          step_number: idx + 1,
+          approver_name: c.signer?.name || c.label || '',
+          approver_email: c.signer?.email || c.email || '',
+          approver_role: c.label || c.role?.replace(/_/g, ' ') || 'Approver'
+        }));
       }
     }
 
@@ -126,7 +125,7 @@ export default function MarketingPlanWizardModal({
       { step_number: 2, approver_name: '', approver_email: '', approver_role: 'General Manager' },
       { step_number: 3, approver_name: '', approver_email: '', approver_role: 'Finance Controller' }
     ];
-  }, [metadata.defaultApproverContacts, metadata.companies, metadata.users]);
+  }, [metadata.defaultApproverContacts, metadata.companies]);
 
   const getDefaultApprovers = useCallback((companyId) => {
     return getDefaultApproversForCompany(companyId);
