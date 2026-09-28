@@ -140,7 +140,7 @@ export default function PublicApprovalPage({ token }) {
             <ShieldCheck className="w-5.5 h-5.5 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-black text-neutral-900 dark:text-white tracking-tight">GLC Apps - Persetujuan via Email</h1>
+            <h1 className="text-base font-black text-neutral-900 dark:text-white tracking-tight">MRA Hub - Persetujuan via Email</h1>
             <p className="text-[11px] text-neutral-400">MRA Group · Marketing Budget Approval</p>
           </div>
         </div>

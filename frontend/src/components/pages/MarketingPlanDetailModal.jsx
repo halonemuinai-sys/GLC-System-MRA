@@ -1078,10 +1078,11 @@ export default function MarketingPlanDetailModal({
                             <div className="space-y-1.5">
                               <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">{t('actualSalesLabel')}</label>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 placeholder="0"
-                                value={actualsForm.actual_sales}
-                                onChange={(e) => setActualsForm(p => ({ ...p, actual_sales: e.target.value }))}
+                                value={formatThousands(actualsForm.actual_sales)}
+                                onChange={(e) => setActualsForm(p => ({ ...p, actual_sales: e.target.value.replace(/\D/g, '') }))}
                                 className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-indigo-500 font-semibold"
                               />
                             </div>
