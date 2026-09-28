@@ -95,25 +95,30 @@ async function getApprovalContacts(req, res, next) {
   }
 }
 
-// Resolve { email, label } dari body: prioritas signer_id (ambil dari master signer), fallback email/label manual
-async function resolveContactEmailLabel(body) {
+// Resolve { email, label, signer_id } dari body: prioritas signer_id (ambil dari master signer),
+// fallback email/label manual. `label` adalah nama tampilan ROLE (mis. "VP Director"), BUKAN nama
+// signer yang dipilih — jadi label lama dipertahankan (existingLabel) kecuali dikirim eksplisit.
+async function resolveContactEmailLabel(body, existingLabel = null) {
   const { signer_id, email, label } = body;
   if (signer_id) {
     const signer = await prisma.m_approval_signer.findUnique({ where: { id: parseInt(signer_id, 10) } });
     if (!signer) throw Object.assign(new Error('Signer tidak ditemukan.'), { status: 400 });
-    return { email: signer.email, label: signer.name, signer_id: signer.id };
+    return { email: signer.email, label: label !== undefined ? label : existingLabel, signer_id: signer.id };
   }
   if (!email || !EMAIL_REGEX.test(email)) {
     throw Object.assign(new Error('Pilih signer atau isi email tujuan yang valid.'), { status: 400 });
   }
-  return { email, label: label || null, signer_id: null };
+  return { email, label: label !== undefined ? label : existingLabel, signer_id: null };
 }
 
 // PUT /approval-contacts/:id
 async function updateApprovalContact(req, res, next) {
   try {
     const { id } = req.params;
-    const resolved = await resolveContactEmailLabel(req.body);
+    const existing = await prisma.approval_role_contacts.findUnique({ where: { id: parseInt(id, 10) } });
+    if (!existing) return res.status(404).json({ error: 'Konfigurasi tidak ditemukan.' });
+
+    const resolved = await resolveContactEmailLabel(req.body, existing.label);
 
     const updated = await prisma.approval_role_contacts.update({
       where: { id: parseInt(id, 10) },
