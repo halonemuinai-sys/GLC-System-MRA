@@ -425,7 +425,7 @@ const g = {
     ga_searchMaintenance: 'Cari berdasarkan nama aset, detail perbaikan, PIC...',
 
     // GA Assets
-    gaAssets_title: 'Manajemen Aset',
+    gaAssets_title: 'Asset Management',
     gaAssets_unitView: 'Unit',
     gaAssets_valueView: 'Nilai',
 
@@ -436,7 +436,7 @@ const g = {
     gaVendors_kpiPartners: 'Mitra',
 
     // GA Vehicles
-    gaVehicles_title: 'Armada Kendaraan',
+    gaVehicles_title: 'Vehicles Fleet',
 
     // GA Insurances
     gaInsurances_title: 'Polis Asuransi',
@@ -455,10 +455,10 @@ const g = {
     gaDeviceRentals_empty: 'Tidak ada data rental perangkat yang sesuai filter.',
 
     // GA IT Rentals
-    gaItRentals_title: 'Rental IT',
+    gaItRentals_title: 'IT Rentals',
 
     // GA Maintenances
-    gaMaintenances_title: 'Tugas Perawatan',
+    gaMaintenances_title: 'Maintenance Tasks',
 
     // GA Documents
     gaDocuments_title: 'Dokumen Legal',

@@ -38,9 +38,9 @@ export default function GaAssetsDeleteModal({ assetToDelete, setAssetToDelete, c
                 </div>
               </div>
               
-              <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Konfirmasi Hapus Aset</h3>
+              <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Confirm Delete Asset</h3>
               <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
-                Apakah Anda yakin ingin menghapus aset <strong className="text-red-500 dark:text-red-400 font-bold">"{assetToDelete.asset_name}"</strong>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+                Are you sure you want to delete the asset <strong className="text-red-500 dark:text-red-400 font-bold">"{assetToDelete.asset_name}"</strong>? This action is permanent and cannot be undone.
               </p>
 
               {/* Actions */}
@@ -51,7 +51,7 @@ export default function GaAssetsDeleteModal({ assetToDelete, setAssetToDelete, c
                   disabled={submitting}
                   className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center disabled:opacity-50"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -64,7 +64,7 @@ export default function GaAssetsDeleteModal({ assetToDelete, setAssetToDelete, c
                   ) : (
                     <Trash2 className="w-3.5 h-3.5" />
                   )}
-                  Ya, Hapus
+                  Yes, Delete
                 </button>
               </div>
             </motion.div>

@@ -29,6 +29,13 @@ import {
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
 
+// Display label mappings for raw Indonesian status/service_type values stored in the database.
+// The underlying stored values (used for filtering, payloads, and color-matching) must stay untouched.
+const STATUS_LABELS = { 'Pending': 'Pending', 'Proses': 'In Progress', 'Selesai': 'Completed' };
+const statusLabel = (s) => STATUS_LABELS[s] || s || 'Pending';
+const SERVICE_TYPE_LABELS = { 'Perbaikan': 'Repair', 'Maintenance Rutin': 'Routine Maintenance', 'Renovasi': 'Renovation', 'Servis Berkala': 'Periodic Service' };
+const serviceTypeLabel = (t) => SERVICE_TYPE_LABELS[t] || t || '-';
+
 // Searchable Dropdown for Companies (PT)
 function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)' }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -451,7 +458,7 @@ export default function GaMaintenancesPage() {
             <Wrench className="w-6 h-6 text-indigo-500" />
             {t('gaMaintenances_title')}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Pemeliharaan AC, perbaikan kendaraan, servis laptop, dan renovasi kantor GLC MRA.</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">AC maintenance, vehicle repairs, laptop servicing, and office renovations for GLC MRA.</p>
         </div>
         <button
           onClick={() => setShowAddDrawer(true)}
@@ -494,8 +501,8 @@ export default function GaMaintenancesPage() {
             >
               <option value="">{t('allStatuses')}</option>
               <option value="Pending">Pending</option>
-              <option value="Proses">Proses</option>
-              <option value="Selesai">Selesai</option>
+              <option value="Proses">In Progress</option>
+              <option value="Selesai">Completed</option>
             </select>
           </div>
 
@@ -562,16 +569,16 @@ export default function GaMaintenancesPage() {
             transition={{ delay: 0.15, duration: 0.4 }}
             className="text-lg font-black text-neutral-800 dark:text-white relative z-10"
           >
-            Filter & Proses Tugas Pemeliharaan
+            Filter & Process Maintenance Tasks
           </motion.h3>
-          
-          <motion.p 
+
+          <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28, duration: 0.4 }}
             className="text-neutral-500 dark:text-neutral-400 text-xs max-w-sm mt-3 leading-relaxed relative z-10"
           >
-            Pilih kriteria pencarian dan filter di atas, lalu klik tombol <strong className="text-indigo-500 font-bold">"Proses Data"</strong> untuk memuat tiket pemeliharaan dan total biaya.
+            Select your search criteria and filters above, then click the <strong className="text-indigo-500 font-bold">"Process Data"</strong> button to load maintenance tickets and total costs.
           </motion.p>
         </motion.div>
       ) : (
@@ -669,7 +676,7 @@ export default function GaMaintenancesPage() {
                         <td className="p-4 font-semibold text-neutral-800 dark:text-slate-200">
                           {maint.asset_name || maint.assets?.asset_name || '-'}
                         </td>
-                        <td className="p-4 text-neutral-500">{maint.service_type || 'Perbaikan'}</td>
+                        <td className="p-4 text-neutral-500">{serviceTypeLabel(maint.service_type || 'Perbaikan')}</td>
                         <td className="p-4 text-neutral-500">{maint.vendors?.vendor_name || '-'}</td>
                         <td className="p-4 font-bold text-emerald-600 dark:text-emerald-400">{formatIDR(maint.total_cost)}</td>
                         <td className="p-4 text-neutral-500">
@@ -683,7 +690,7 @@ export default function GaMaintenancesPage() {
                               ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
                               : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                           }`}>
-                            {maint.status || 'Pending'}
+                            {statusLabel(maint.status || 'Pending')}
                           </span>
                         </td>
                         <td className="p-4 text-center">
@@ -800,7 +807,7 @@ export default function GaMaintenancesPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Service Type</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-semibold">{selectedMaint.service_type || '-'}</span>
+                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-semibold">{serviceTypeLabel(selectedMaint.service_type)}</span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Quantity</span>
@@ -822,7 +829,7 @@ export default function GaMaintenancesPage() {
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Status</span>
-                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedMaint.status || 'Pending'}</span>
+                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{statusLabel(selectedMaint.status)}</span>
                     </div>
                   </div>
 
@@ -934,7 +941,7 @@ export default function GaMaintenancesPage() {
                       required
                       disabled={!!formData.asset_id}
                       type="text"
-                      placeholder="e.g. AC Split Daikin Lantai 2"
+                      placeholder="e.g. Daikin Split AC Floor 2"
                       value={formData.asset_name}
                       onChange={(e) => setFormData({...formData, asset_name: e.target.value})}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none disabled:opacity-50"
@@ -950,10 +957,10 @@ export default function GaMaintenancesPage() {
                         onChange={(e) => setFormData({...formData, service_type: e.target.value})}
                         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none"
                       >
-                        <option value="Perbaikan">Perbaikan (Repair)</option>
-                        <option value="Maintenance Rutin">Maintenance Rutin</option>
-                        <option value="Renovasi">Renovasi</option>
-                        <option value="Servis Berkala">Servis Berkala</option>
+                        <option value="Perbaikan">Repair</option>
+                        <option value="Maintenance Rutin">Routine Maintenance</option>
+                        <option value="Renovasi">Renovation</option>
+                        <option value="Servis Berkala">Periodic Service</option>
                       </select>
                     </div>
                     <div>
@@ -1055,8 +1062,8 @@ export default function GaMaintenancesPage() {
                         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none"
                       >
                         <option value="Pending">Pending</option>
-                        <option value="Proses">Proses</option>
-                        <option value="Selesai">Selesai</option>
+                        <option value="Proses">In Progress</option>
+                        <option value="Selesai">Completed</option>
                       </select>
                     </div>
                     <div>
@@ -1075,7 +1082,7 @@ export default function GaMaintenancesPage() {
                     <textarea
                       required
                       rows={2}
-                      placeholder="e.g. AC bocor air dan tidak dingin..."
+                      placeholder="e.g. AC is leaking water and not cooling..."
                       value={formData.detail}
                       onChange={(e) => setFormData({...formData, detail: e.target.value})}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
@@ -1152,9 +1159,9 @@ export default function GaMaintenancesPage() {
                   </div>
                 </div>
                 
-                <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Konfirmasi Hapus Maintenance</h3>
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">Confirm Delete Maintenance</h3>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
-                  Apakah Anda yakin ingin menghapus tiket maintenance <strong className="text-red-500 dark:text-red-400 font-bold">"{maintenanceToDelete.asset_name || maintenanceToDelete.assets?.asset_name || `#${maintenanceToDelete.id}`}"</strong>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+                  Are you sure you want to delete the maintenance ticket <strong className="text-red-500 dark:text-red-400 font-bold">"{maintenanceToDelete.asset_name || maintenanceToDelete.assets?.asset_name || `#${maintenanceToDelete.id}`}"</strong>? This action is permanent and cannot be undone.
                 </p>
 
                 {/* Actions */}
@@ -1165,7 +1172,7 @@ export default function GaMaintenancesPage() {
                     disabled={submitting}
                     className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center disabled:opacity-50"
                   >
-                    Batal
+                    Cancel
                   </button>
                   <button
                     type="button"
@@ -1178,7 +1185,7 @@ export default function GaMaintenancesPage() {
                     ) : (
                       <Trash2 className="w-3.5 h-3.5" />
                     )}
-                    Ya, Hapus
+                    Yes, Delete
                   </button>
                 </div>
               </motion.div>

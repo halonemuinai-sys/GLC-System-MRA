@@ -1,5 +1,9 @@
 import { apiClient } from '@/lib/apiClient';
 
+// Display labels for the stored vehicle status values (DB values stay in Indonesian)
+const STATUS_LABELS = { 'Aktif': 'Active', 'Perbaikan': 'Under Repair', 'Sewa': 'Rental' };
+const statusLabel = (s) => STATUS_LABELS[s] || s || 'Active';
+
 export const handleExportCSV = async (search, statusFilter, companyId, setExporting) => {
   setExporting(true);
   try {
@@ -13,17 +17,17 @@ export const handleExportCSV = async (search, statusFilter, companyId, setExport
     });
     const rows = res.data || [];
     const headers = [
-      'Nomor Polisi (Plate Number)',
+      'Plate Number',
       'Brand / Model',
-      'Tahun Pembuatan',
-      'Warna',
-      'Nomor Rangka (Chassis Number)',
-      'Entitas Perusahaan',
-      'Departemen Pengguna',
-      'Biaya Pajak (PKB)',
-      'Jatuh Tempo Pajak',
-      'Status Operasional',
-      'Keterangan Tambahan'
+      'Manufacturing Year',
+      'Color',
+      'Chassis Number',
+      'Company Entity',
+      'User Department',
+      'Tax Cost (PKB)',
+      'Tax Due Date',
+      'Operational Status',
+      'Additional Notes'
     ];
     
     const escapeCSV = (val) => {
@@ -54,7 +58,7 @@ export const handleExportCSV = async (search, statusFilter, companyId, setExport
         r.department || '-',
         formatIDRCurrency(r.last_km),
         formatDate(r.tax_date),
-        r.status || 'Aktif',
+        statusLabel(r.status),
         r.information || '-'
       ].map(escapeCSV).join(','))
     ];
@@ -63,13 +67,13 @@ export const handleExportCSV = async (search, statusFilter, companyId, setExport
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Laporan_Vehicle_Fleet_MRA_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `Vehicle_Fleet_Report_MRA_${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   } catch (err) {
-    alert(err.message || 'Gagal mengekspor data');
+    alert(err.message || 'Failed to export data');
   } finally {
     setExporting(false);
   }

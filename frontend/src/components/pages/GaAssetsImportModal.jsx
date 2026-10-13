@@ -41,7 +41,7 @@ export default function GaAssetsImportModal({
   const handleDownloadTemplate = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet('Template Import Asset');
+      const sheet = workbook.addWorksheet('Asset Import Template');
 
       // Styles
       const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
@@ -55,11 +55,11 @@ export default function GaAssetsImportModal({
       };
 
       const headers = [
-        'Nama Aset *', 'Kode Aset', 'Kategori Aset', 'Tipe Aset',
-        'Lokasi', 'Ruangan', 'PIC', 'Tanggal Perolehan (YYYY-MM-DD)',
-        'Harga Perolehan (IDR)', 'Masa Manfaat (Bulan)', 'Kondisi *',
-        'Status *', 'Nama Perusahaan (PT) *', 'Deskripsi / Spesifikasi',
-        'Informasi Tambahan', 'Link Referensi'
+        'Asset Name *', 'Asset Code', 'Asset Category', 'Asset Type',
+        'Location', 'Room', 'PIC', 'Acquisition Date (YYYY-MM-DD)',
+        'Acquisition Cost (IDR)', 'Useful Life (Months)', 'Condition *',
+        'Status *', 'Company Name (PT) *', 'Description / Specification',
+        'Additional Information', 'Reference Link'
       ];
 
       const headerRow = sheet.getRow(1);
@@ -77,13 +77,13 @@ export default function GaAssetsImportModal({
       const sampleRow = sheet.getRow(2);
       sampleRow.values = [
         'Laptop ThinkPad L13', 'AST-2026-001',
-        categories[0]?.name || 'Elektronik', 'Laptop',
+        categories[0]?.name || 'Electronics', 'Laptop',
         locations[0]?.name || locations[0]?.full_name || 'MRA Head Office',
-        'Lantai 5 - GA', 'Mia Agustien', '2026-01-15',
-        15000000, 36, conditions[0]?.name || 'Baik',
-        statuses[0]?.name || 'Aktif', companies[0]?.name || 'PT MRA',
+        'Floor 5 - GA', 'Mia Agustien', '2026-01-15',
+        15000000, 36, conditions[0]?.name || 'Good',
+        statuses[0]?.name || 'Active', companies[0]?.name || 'PT MRA',
         'ThinkPad L13 Gen 2, Intel i5, 16GB RAM, 512GB SSD',
-        'Aset untuk staff baru GA', 'https://drive.google.com/drive/folders/example'
+        'Asset for new GA staff', 'https://drive.google.com/drive/folders/example'
       ];
       sampleRow.height = 20;
       sampleRow.eachCell(cell => {
@@ -98,38 +98,38 @@ export default function GaAssetsImportModal({
         { width: 25 }, { width: 35 }, { width: 25 }, { width: 25 }
       ];
 
-      const refSheet = workbook.addWorksheet('Panduan & Referensi');
+      const refSheet = workbook.addWorksheet('Guide & Reference');
       refSheet.getColumn(1).width = 30;
       refSheet.getColumn(2).width = 30;
       refSheet.getColumn(3).width = 30;
       refSheet.getColumn(4).width = 30;
       refSheet.getColumn(5).width = 30;
 
-      refSheet.getCell('A1').value = 'DAFTAR PERUSAHAAN (PT) *';
+      refSheet.getCell('A1').value = 'COMPANY (PT) LIST *';
       refSheet.getCell('A1').font = { bold: true };
       companies.forEach((comp, index) => {
         refSheet.getCell(`A${index + 2}`).value = comp.name;
       });
 
-      refSheet.getCell('B1').value = 'KATEGORI ASET';
+      refSheet.getCell('B1').value = 'ASSET CATEGORY';
       refSheet.getCell('B1').font = { bold: true };
       categories.forEach((cat, index) => {
         refSheet.getCell(`B${index + 2}`).value = cat.name;
       });
 
-      refSheet.getCell('C1').value = 'LOKASI';
+      refSheet.getCell('C1').value = 'LOCATION';
       refSheet.getCell('C1').font = { bold: true };
       locations.forEach((loc, index) => {
         refSheet.getCell(`C${index + 2}`).value = loc.name || loc.full_name;
       });
 
-      refSheet.getCell('D1').value = 'KONDISI ASET *';
+      refSheet.getCell('D1').value = 'ASSET CONDITION *';
       refSheet.getCell('D1').font = { bold: true };
       conditions.forEach((cond, index) => {
         refSheet.getCell(`D${index + 2}`).value = cond.name;
       });
 
-      refSheet.getCell('E1').value = 'STATUS ASET *';
+      refSheet.getCell('E1').value = 'ASSET STATUS *';
       refSheet.getCell('E1').font = { bold: true };
       statuses.forEach((stat, index) => {
         refSheet.getCell(`E${index + 2}`).value = stat.name;
@@ -140,13 +140,13 @@ export default function GaAssetsImportModal({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Template_Import_Asset.xlsx`;
+      link.download = `Asset_Import_Template.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Gagal mendownload template: ' + err.message);
+      alert('Failed to download template: ' + err.message);
     }
   };
 
@@ -178,11 +178,11 @@ export default function GaAssetsImportModal({
       });
 
       const expectedHeaders = [
-        'Nama Aset *', 'Kode Aset', 'Kategori Aset', 'Tipe Aset',
-        'Lokasi', 'Ruangan', 'PIC', 'Tanggal Perolehan (YYYY-MM-DD)',
-        'Harga Perolehan (IDR)', 'Masa Manfaat (Bulan)', 'Kondisi *',
-        'Status *', 'Nama Perusahaan (PT) *', 'Deskripsi / Spesifikasi',
-        'Informasi Tambahan', 'Link Referensi'
+        'Asset Name *', 'Asset Code', 'Asset Category', 'Asset Type',
+        'Location', 'Room', 'PIC', 'Acquisition Date (YYYY-MM-DD)',
+        'Acquisition Cost (IDR)', 'Useful Life (Months)', 'Condition *',
+        'Status *', 'Company Name (PT) *', 'Description / Specification',
+        'Additional Information', 'Reference Link'
       ];
 
       const firstRow = sheet.getRow(1);
@@ -197,7 +197,7 @@ export default function GaAssetsImportModal({
       });
 
       if (missingHeaders.length > 8) {
-        validationErrors.push('Struktur header Excel tidak sesuai template. Pastikan Anda mengunduh dan menggunakan template yang benar.');
+        validationErrors.push('Excel header structure does not match the template. Please make sure you downloaded and are using the correct template.');
         setImportErrors(validationErrors);
         setImportingFile(false);
         return;
@@ -259,13 +259,13 @@ export default function GaAssetsImportModal({
 
         // 1. Critical Required Validations
         if (!asset_name) {
-          errorsInRow.push('Nama Aset wajib diisi.');
+          errorsInRow.push('Asset Name is required.');
         } else if (asset_name.length < 3) {
-          warningsInRow.push(`Nama Aset "${asset_name}" sangat pendek.`);
+          warningsInRow.push(`Asset Name "${asset_name}" is very short.`);
         }
 
         if (!company_name) {
-          errorsInRow.push('Nama Perusahaan (PT) wajib diisi.');
+          errorsInRow.push('Company Name (PT) is required.');
         } else {
           const compNorm = normalize(company_name);
           const cleanComp = compNorm.replace(/^pt\.?\s*/i, '').trim();
@@ -275,12 +275,12 @@ export default function GaAssetsImportModal({
             return cNorm === compNorm || cClean === cleanComp || cNorm.includes(cleanComp) || cleanComp.includes(cClean);
           });
           if (!matchedCompany) {
-            errorsInRow.push(`Perusahaan "${company_name}" tidak terdaftar di sistem.`);
+            errorsInRow.push(`Company "${company_name}" is not registered in the system.`);
           }
         }
 
         if (acquisition_date && isNaN(Date.parse(acquisition_date))) {
-          errorsInRow.push('Format Tanggal Perolehan tidak valid (harus YYYY-MM-DD).');
+          errorsInRow.push('Invalid Acquisition Date format (must be YYYY-MM-DD).');
         }
 
         // 2. Anomaly & Duplicate Detection
@@ -289,7 +289,7 @@ export default function GaAssetsImportModal({
           const codeKey = normalize(asset_code);
           if (seenCodes.has(codeKey)) {
             const prevRows = seenCodes.get(codeKey);
-            warningsInRow.push(`Kode Aset "${asset_code}" sama dengan Baris ${prevRows.join(', ')}.`);
+            warningsInRow.push(`Asset Code "${asset_code}" is the same as Row ${prevRows.join(', ')}.`);
             seenCodes.set(codeKey, [...prevRows, r]);
           } else {
             seenCodes.set(codeKey, [r]);
@@ -301,7 +301,7 @@ export default function GaAssetsImportModal({
           const itemKey = `${normalize(company_name)}||${normalize(asset_name)}||${normalize(room || '')}`;
           if (seenNames.has(itemKey)) {
             const prevRows = seenNames.get(itemKey);
-            warningsInRow.push(`Nama Aset & Lokasi sama dengan Baris ${prevRows.join(', ')}.`);
+            warningsInRow.push(`Asset Name & Location is the same as Row ${prevRows.join(', ')}.`);
             seenNames.set(itemKey, [...prevRows, r]);
           } else {
             seenNames.set(itemKey, [r]);
@@ -310,30 +310,30 @@ export default function GaAssetsImportModal({
 
         // c. Cost / Price Anomaly
         if (acquisition_cost <= 0) {
-          warningsInRow.push('Harga Perolehan Rp 0 (Aset tanpa nominal biaya).');
+          warningsInRow.push('Acquisition Cost Rp 0 (Asset with no cost amount).');
         }
 
         // d. Date Anomaly (Future date / Extremely old)
         if (acquisition_date) {
           const parsedD = new Date(acquisition_date);
           if (parsedD > today) {
-            warningsInRow.push(`Tanggal (${acquisition_date}) adalah tanggal masa depan.`);
+            warningsInRow.push(`Date (${acquisition_date}) is a future date.`);
           } else if (parsedD.getFullYear() < 1990) {
-            warningsInRow.push(`Tahun perolehan (${parsedD.getFullYear()}) tampak terlalu lampau.`);
+            warningsInRow.push(`Acquisition year (${parsedD.getFullYear()}) appears too far in the past.`);
           }
         }
 
         // e. Useful Life Anomaly
         if (useful_life_months && (useful_life_months <= 0 || useful_life_months > 600)) {
-          warningsInRow.push(`Masa Manfaat (${useful_life_months} bulan) tidak wajar.`);
+          warningsInRow.push(`Useful Life (${useful_life_months} months) seems unreasonable.`);
         }
 
         if (errorsInRow.length > 0) {
-          validationErrors.push(`Baris ${r}: ${errorsInRow.join(' ')}`);
+          validationErrors.push(`Row ${r}: ${errorsInRow.join(' ')}`);
         }
 
         if (warningsInRow.length > 0) {
-          validationWarnings.push(`Baris ${r}: ${warningsInRow.join(' ')}`);
+          validationWarnings.push(`Row ${r}: ${warningsInRow.join(' ')}`);
         }
 
         parsedData.push({
@@ -364,7 +364,7 @@ export default function GaAssetsImportModal({
       setImportErrors(validationErrors);
       setImportWarnings(validationWarnings);
     } catch (err) {
-      setImportErrors(['Gagal memproses file: ' + err.message]);
+      setImportErrors(['Failed to process file: ' + err.message]);
     } finally {
       setImportingFile(false);
     }
@@ -408,7 +408,7 @@ export default function GaAssetsImportModal({
                       Import Data Excel - Asset Management
                     </h3>
                     <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
-                      Unggah dan validasi file master data aset kantor
+                      Upload and validate the office asset master data file
                     </p>
                   </div>
                 </div>
@@ -424,9 +424,9 @@ export default function GaAssetsImportModal({
                 {/* 1. Download Template Card */}
                 <div className="bg-neutral-50 dark:bg-neutral-950 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800/60 flex items-center justify-between gap-4">
                   <div className="flex-1">
-                    <h4 className="font-bold text-neutral-900 dark:text-neutral-200 mb-1">1. Unduh Template Resmi</h4>
+                    <h4 className="font-bold text-neutral-900 dark:text-neutral-200 mb-1">1. Download Official Template</h4>
                     <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                      Format kolom telah disesuaikan agar proses import berjalan otomatis dan akurat.
+                      The column format has been set up so the import process runs automatically and accurately.
                     </p>
                   </div>
                   <button
@@ -435,13 +435,13 @@ export default function GaAssetsImportModal({
                     className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-[11px] font-bold rounded-xl transition-colors cursor-pointer whitespace-nowrap shadow-md shadow-indigo-600/20"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    Unduh Template
+                    Download Template
                   </button>
                 </div>
 
                 {/* 2. File Upload Dropzone */}
                 <div className="space-y-2">
-                  <h4 className="font-bold text-neutral-900 dark:text-neutral-200">2. Pilih File Excel (.xlsx)</h4>
+                  <h4 className="font-bold text-neutral-900 dark:text-neutral-200">2. Select Excel File (.xlsx)</h4>
                   <div className="border-2 border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 text-center hover:border-indigo-500 dark:hover:border-indigo-500 transition-colors relative cursor-pointer flex flex-col items-center justify-center bg-neutral-50 dark:bg-neutral-950">
                     <input
                       type="file"
@@ -451,16 +451,16 @@ export default function GaAssetsImportModal({
                     />
                     <Upload className="w-7 h-7 text-indigo-500 mb-1.5" />
                     <p className="font-medium text-neutral-700 dark:text-neutral-300 text-xs">
-                      Klik atau seret file Excel ke sini
+                      Click or drag an Excel file here
                     </p>
-                    <p className="text-neutral-400 text-[10px] mt-0.5">Format file yang didukung: .xlsx</p>
+                    <p className="text-neutral-400 text-[10px] mt-0.5">Supported file format: .xlsx</p>
                   </div>
                 </div>
 
                 {importingFile && (
                   <div className="flex items-center justify-center py-4 gap-2 text-neutral-500">
                     <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-                    <span className="text-xs">Membaca dan memvalidasi file Excel...</span>
+                    <span className="text-xs">Reading and validating Excel file...</span>
                   </div>
                 )}
 
@@ -469,10 +469,10 @@ export default function GaAssetsImportModal({
                   <div className="bg-red-500/10 border border-red-500/25 text-red-600 dark:text-red-400 p-4 rounded-2xl space-y-1.5">
                     <h5 className="font-bold flex items-center gap-1.5 text-xs">
                       <AlertTriangle className="w-4 h-4 flex-shrink-0 text-red-500" />
-                      Ditemukan Kesalahan Kritis ({importErrors.length} baris):
+                      Critical Errors Found ({importErrors.length} rows):
                     </h5>
                     <p className="text-[11px] text-red-500/80">
-                      Harap perbaiki kesalahan berikut di file Excel sebelum melanjutkan:
+                      Please fix the following errors in the Excel file before proceeding:
                     </p>
                     <div className="max-h-32 overflow-y-auto divide-y divide-red-500/10 text-[11px] space-y-1 pt-1">
                       {importErrors.map((err, i) => (
@@ -487,10 +487,10 @@ export default function GaAssetsImportModal({
                   <div className="bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 p-4 rounded-2xl space-y-1.5">
                     <h5 className="font-bold flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                       <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-500" />
-                      Peringatan Anomali & Duplikasi Terdeteksi ({importWarnings.length} catatan):
+                      Anomaly & Duplicate Warnings Detected ({importWarnings.length} notes):
                     </h5>
                     <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80">
-                      Data tetap dapat diimpor (kode aset duplikat akan otomatis di-update), namun harap perhatikan catatan berikut:
+                      The data can still be imported (duplicate asset codes will be updated automatically), but please review the following notes:
                     </p>
                     <div className="max-h-32 overflow-y-auto divide-y divide-amber-500/15 text-[11px] space-y-1 pt-1">
                       {importWarnings.map((warn, i) => (
@@ -508,17 +508,17 @@ export default function GaAssetsImportModal({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <h4 className="font-bold text-neutral-900 dark:text-neutral-200 flex items-center gap-2">
-                        <span>Preview Data ({importPreview.length} baris)</span>
+                        <span>Data Preview ({importPreview.length} rows)</span>
                         {importErrors.length === 0 && importWarnings.length === 0 && (
                           <span className="text-[10px] px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold rounded-full flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3" />
-                            Semua data valid sempurna
+                            All data is fully valid
                           </span>
                         )}
                         {importErrors.length === 0 && importWarnings.length > 0 && (
                           <span className="text-[10px] px-2.5 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold rounded-full flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
-                            {importWarnings.length} Peringatan Anomali
+                            {importWarnings.length} Anomaly Warnings
                           </span>
                         )}
                       </h4>
@@ -529,12 +529,12 @@ export default function GaAssetsImportModal({
                         <thead className="bg-neutral-50 dark:bg-neutral-950 text-neutral-500 font-bold uppercase border-b border-neutral-100 dark:border-neutral-800 sticky top-0">
                           <tr>
                             <th className="p-2 text-center w-8">No</th>
-                            <th className="p-2">Nama Aset</th>
-                            <th className="p-2">Kode Aset</th>
-                            <th className="p-2">Perusahaan (PT)</th>
-                            <th className="p-2">Harga Perolehan</th>
-                            <th className="p-2">Lokasi / Ruangan</th>
-                            <th className="p-2">Status & Anomali</th>
+                            <th className="p-2">Asset Name</th>
+                            <th className="p-2">Asset Code</th>
+                            <th className="p-2">Company (PT)</th>
+                            <th className="p-2">Acquisition Cost</th>
+                            <th className="p-2">Location / Room</th>
+                            <th className="p-2">Status & Anomalies</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 bg-white dark:bg-neutral-900">
@@ -593,7 +593,7 @@ export default function GaAssetsImportModal({
                   disabled={submitting}
                   className="flex-1 py-2.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center disabled:opacity-50"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="button"
@@ -604,12 +604,12 @@ export default function GaAssetsImportModal({
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Sedang Memproses...</span>
+                      <span>Processing...</span>
                     </>
                   ) : (
                     <>
                       <Upload className="w-4 h-4" />
-                      <span>Proses Import ({importPreview.length} Baris)</span>
+                      <span>Process Import ({importPreview.length} Rows)</span>
                     </>
                   )}
                 </button>

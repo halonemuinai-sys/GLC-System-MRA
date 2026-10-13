@@ -35,7 +35,7 @@ export default function GaAssetsPurgeModal({
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const TARGET_PHRASE = 'HAPUS SEMUA ASET';
+  const TARGET_PHRASE = 'DELETE ALL ASSETS';
 
   // Initialize scope based on active filter if present
   useEffect(() => {
@@ -88,7 +88,7 @@ export default function GaAssetsPurgeModal({
       }
       onClose();
     } catch (err) {
-      setErrorMessage(err.message || 'Gagal melakukan pembersihan data aset. Pastikan password Anda benar.');
+      setErrorMessage(err.message || 'Failed to clean up asset data. Please make sure your password is correct.');
     } finally {
       setSubmitting(false);
     }
@@ -133,13 +133,13 @@ export default function GaAssetsPurgeModal({
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-                      Pembersihan Data Aset
+                      Asset Data Cleanup
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/40">
                         Admin Only
                       </span>
                     </h3>
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                      Reset & hapus data aset secara permanen dengan aman
+                      Safely reset and permanently delete asset data
                     </p>
                   </div>
                 </div>
@@ -167,7 +167,7 @@ export default function GaAssetsPurgeModal({
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1.5 flex items-center gap-1.5">
                     <Building2 className="w-3.5 h-3.5 text-neutral-500" />
-                    Pilih Lingkup Pembersihan (Scope)
+                    Select Cleanup Scope
                   </label>
                   <select
                     value={selectedScope}
@@ -175,10 +175,10 @@ export default function GaAssetsPurgeModal({
                     disabled={submitting}
                     className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   >
-                    <option value="ALL">🔴 Semua Perusahaan (Global Reset - Seluruh Tabel Aset)</option>
+                    <option value="ALL">🔴 All Companies (Global Reset - Entire Asset Table)</option>
                     {companies.map(c => (
                       <option key={c.id} value={String(c.id)}>
-                        🏢 Hanya Perusahaan: {c.name}
+                        🏢 Company Only: {c.name}
                       </option>
                     ))}
                   </select>
@@ -189,10 +189,10 @@ export default function GaAssetsPurgeModal({
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-red-500" />
-                      Target Pembersihan:
+                      Cleanup Target:
                     </span>
                     <span className="font-bold text-red-600 dark:text-red-400">
-                      {selectedScope === 'ALL' ? 'Seluruh Data Aset' : (selectedCompanyObj?.name || `PT ID ${selectedScope}`)}
+                      {selectedScope === 'ALL' ? 'All Asset Data' : (selectedCompanyObj?.name || `Company ID ${selectedScope}`)}
                     </span>
                   </div>
 
@@ -200,7 +200,7 @@ export default function GaAssetsPurgeModal({
                     <div className="flex items-center justify-between text-xs pt-2 border-t border-red-500/10">
                       <span className="text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
                         <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
-                        Total Nilai Perolehan:
+                        Total Acquisition Value:
                       </span>
                       <span className="font-semibold text-neutral-800 dark:text-neutral-200">
                         {formatIDR ? formatIDR(totalAcquisitionCost) : `Rp ${Number(totalAcquisitionCost).toLocaleString('id-ID')}`}
@@ -209,23 +209,23 @@ export default function GaAssetsPurgeModal({
                   )}
 
                   <div className="pt-2 border-t border-red-500/10 text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                    <span className="font-bold text-neutral-700 dark:text-neutral-300">Catatan Keamanan:</span> Master Data (PT, Kategori, Lokasi, PIC) serta modul lain (Kendaraan, Vendor, Marketing, Legal) <strong>100% AMAN</strong> dan tidak dihapus.
+                    <span className="font-bold text-neutral-700 dark:text-neutral-300">Security Note:</span> Master Data (Company, Category, Location, PIC) and other modules (Vehicle, Vendor, Marketing, Legal) are <strong>100% SAFE</strong> and will not be deleted.
                   </div>
                 </div>
 
                 {/* Strict Phrase Input */}
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1">
-                    Konfirmasi Frasa <span className="text-red-500">*</span>
+                    Confirmation Phrase <span className="text-red-500">*</span>
                   </label>
                   <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-1.5">
-                    Ketik persis <strong className="text-red-600 dark:text-red-400 select-all font-mono">HAPUS SEMUA ASET</strong> di bawah ini:
+                    Type exactly <strong className="text-red-600 dark:text-red-400 select-all font-mono">DELETE ALL ASSETS</strong> below:
                   </p>
                   <input
                     type="text"
                     value={confirmationPhrase}
                     onChange={(e) => setConfirmationPhrase(e.target.value)}
-                    placeholder="HAPUS SEMUA ASET"
+                    placeholder="DELETE ALL ASSETS"
                     disabled={submitting}
                     className={`w-full bg-neutral-50 dark:bg-neutral-950 border rounded-xl px-3 py-2 text-xs font-medium focus:outline-none transition-colors ${
                       isPhraseValid 
@@ -240,16 +240,16 @@ export default function GaAssetsPurgeModal({
                   <label className="block text-xs font-bold text-neutral-700 dark:text-neutral-300 mb-1 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <Lock className="w-3.5 h-3.5 text-neutral-500" />
-                      Password Login Anda <span className="text-red-500">*</span>
+                      Your Login Password <span className="text-red-500">*</span>
                     </span>
-                    <span className="text-[10px] font-normal text-neutral-400">Verifikasi otorisasi akun</span>
+                    <span className="text-[10px] font-normal text-neutral-400">Account authorization verification</span>
                   </label>
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Masukkan password akun login Anda..."
+                      placeholder="Enter your login account password..."
                       disabled={submitting}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-3 pr-9 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                     />
@@ -271,7 +271,7 @@ export default function GaAssetsPurgeModal({
                     disabled={submitting}
                     className="flex-1 py-2.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 text-center"
                   >
-                    Batal
+                    Cancel
                   </button>
 
                   <button
@@ -286,17 +286,17 @@ export default function GaAssetsPurgeModal({
                     {submitting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Membersihkan Data...</span>
+                        <span>Cleaning Up Data...</span>
                       </>
                     ) : countdown > 0 ? (
                       <>
                         <Lock className="w-3.5 h-3.5" />
-                        <span>Mohon Tunggu ({countdown}s)</span>
+                        <span>Please Wait ({countdown}s)</span>
                       </>
                     ) : (
                       <>
                         <Trash2 className="w-4 h-4" />
-                        <span>Ya, Bersihkan Data Aset</span>
+                        <span>Yes, Clean Up Asset Data</span>
                       </>
                     )}
                   </button>

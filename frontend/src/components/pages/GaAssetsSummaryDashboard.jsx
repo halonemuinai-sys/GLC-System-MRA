@@ -36,7 +36,7 @@ const CustomTooltip = ({ active, payload, mode, formatIDR, globalHidePrices }) =
       <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-2.5 rounded-xl shadow-xl text-xs">
         <p className="font-bold text-neutral-900 dark:text-neutral-200 capitalize mb-1">{data.name}</p>
         <p className="text-indigo-500 font-semibold font-mono">
-          {mode === 'count' ? `Jumlah: ${displayCount} unit` : `Nilai: ${formatIDR(data.value)}`}
+          {mode === 'count' ? `Count: ${displayCount} units` : `Value: ${formatIDR(data.value)}`}
         </p>
       </div>
     );
@@ -66,7 +66,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold text-neutral-800 dark:text-slate-200 flex items-center gap-2">
                     <Activity className="w-4 h-4 text-indigo-500" />
-                    Breakdown Kategori
+                    Category Breakdown
                   </h3>
                   <div className="flex rounded-lg bg-neutral-100 dark:bg-neutral-800 p-0.5">
                     <button
@@ -93,7 +93,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                     </button>
                   </div>
                 </div>
-                <p className="text-[10px] text-neutral-400 mt-1">Distribusi aset berdasarkan pengelompokan kategori</p>
+                <p className="text-[10px] text-neutral-400 mt-1">Asset distribution grouped by category</p>
               </div>
               
               <div className="h-40 w-full my-3 flex items-center justify-center relative">
@@ -120,7 +120,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                 ) : (
                   <div className="text-xs text-neutral-400 flex flex-col items-center gap-1.5">
                     <Box className="w-8 h-8 text-neutral-300 dark:text-neutral-700 animate-pulse" />
-                    <span>Tidak ada data kategori</span>
+                    <span>No category data</span>
                   </div>
                 )}
               </div>
@@ -154,7 +154,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                     <DollarSign className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Value Aset</p>
+                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Asset Value</p>
                     <h3 className="text-xl sm:text-2xl font-black text-neutral-800 dark:text-white tracking-tight mt-0.5">{formatIDR(totalCost)}</h3>
                   </div>
                 </div>
@@ -171,7 +171,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                   <Box className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Aset</p>
+                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Assets</p>
                   <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(meta.total)}</h3>
                 </div>
               </div>
@@ -182,18 +182,18 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                   <Building className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Entitas (PT)</p>
+                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Entities (PT)</p>
                   <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(summary.uniqueCompaniesCount)}</h3>
                 </div>
               </div>
 
-              {/* Card 4: Kondisi Bagus */}
+              {/* Card 4: Good Condition */}
               <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4.5 rounded-2xl flex items-center gap-4">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Kondisi Bagus</p>
+                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Good Condition</p>
                   <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(summary.goodConditionCount)}</h3>
                 </div>
               </div>
@@ -204,7 +204,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                   <AlertTriangle className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Perlu Perbaikan</p>
+                  <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Needs Repair</p>
                   <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(summary.needRepairCount)}</h3>
                 </div>
               </div>

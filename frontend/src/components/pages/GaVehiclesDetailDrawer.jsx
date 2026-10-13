@@ -9,6 +9,14 @@ import {
   User
 } from 'lucide-react';
 
+// Display labels for the stored vehicle status values (DB values stay in Indonesian)
+const STATUS_LABELS = { 'Aktif': 'Active', 'Perbaikan': 'Under Repair', 'Sewa': 'Rental' };
+const statusLabel = (s) => STATUS_LABELS[s] || s || 'Active';
+
+// Display labels for the stored vehicle_type values (DB values stay in Indonesian)
+const TYPE_LABELS = { Motor: 'Motorcycle', Truk: 'Truck' };
+const typeLabel = (t) => TYPE_LABELS[t] || t || '-';
+
 export default function GaVehiclesDetailDrawer({
   selectedVehicle,
   setSelectedVehicle,
@@ -57,7 +65,7 @@ export default function GaVehiclesDetailDrawer({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Vehicle Type</span>
-                    <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium capitalize">{selectedVehicle.vehicle_type || '-'}</span>
+                    <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium capitalize">{typeLabel(selectedVehicle.vehicle_type)}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Manufacturing Year</span>
@@ -73,7 +81,7 @@ export default function GaVehiclesDetailDrawer({
                   </div>
                   <div>
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Status</span>
-                    <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedVehicle.status || 'Aktif'}</span>
+                    <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{statusLabel(selectedVehicle.status)}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Department</span>
@@ -98,7 +106,7 @@ export default function GaVehiclesDetailDrawer({
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Biaya Pajak (PKB)</span>
+                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Tax Cost (PKB)</span>
                     <span className="text-xs text-neutral-800 dark:text-slate-200 font-bold font-mono">
                       {formatIDR(selectedVehicle.last_km)}
                     </span>
@@ -126,7 +134,7 @@ export default function GaVehiclesDetailDrawer({
                       <div className="min-w-0">
                         <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block leading-none">Link STNK</span>
                         <span className="text-xs text-neutral-800 dark:text-slate-200 font-semibold truncate block mt-0.5">
-                          {selectedVehicle.stnk_url ? 'Dokumen STNK' : 'No link added'}
+                          {selectedVehicle.stnk_url ? 'STNK Document' : 'No link added'}
                         </span>
                       </div>
                     </div>
@@ -151,7 +159,7 @@ export default function GaVehiclesDetailDrawer({
                       <div className="min-w-0">
                         <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block leading-none">Link BPKB</span>
                         <span className="text-xs text-neutral-800 dark:text-slate-200 font-semibold truncate block mt-0.5">
-                          {selectedVehicle.bpkb_url ? 'Dokumen BPKB' : 'No link added'}
+                          {selectedVehicle.bpkb_url ? 'BPKB Document' : 'No link added'}
                         </span>
                       </div>
                     </div>
@@ -201,7 +209,7 @@ export default function GaVehiclesDetailDrawer({
                 onClick={() => handleDeleteVehicle(selectedVehicle)}
                 className="flex-1 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-red-200/50 dark:border-red-900/30"
               >
-                Hapus Kendaraan
+                Delete Vehicle
               </button>
               <button
                 onClick={() => setSelectedVehicle(null)}

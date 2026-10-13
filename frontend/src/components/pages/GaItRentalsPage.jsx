@@ -549,7 +549,7 @@ export default function GaItRentalsPage() {
             <Laptop className="w-6 h-6 text-indigo-500" />
             {t('gaItRentals_title')}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Pengelolaan sewa infrastruktur IT (Laptop, PC Desktop, Server, Printer IT).</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Management of leased IT infrastructure (Laptop, PC Desktop, Server, IT Printer).</p>
         </div>
         <div className="flex items-center gap-2.5">
           {hasProcessed && (
@@ -560,12 +560,12 @@ export default function GaItRentalsPage() {
               {showDashboard ? (
                 <>
                   <EyeOff className="w-4 h-4 text-neutral-500" />
-                  Sembunyikan Grafik
+                  Hide Chart
                 </>
               ) : (
                 <>
                   <Eye className="w-4 h-4 text-neutral-500" />
-                  Tampilkan Grafik
+                  Show Chart
                 </>
               )}
             </button>
@@ -697,9 +697,9 @@ export default function GaItRentalsPage() {
 
           <div className="relative z-10 flex flex-col items-center max-w-sm mx-auto">
             <SearchingRadarAnimation />
-            <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 mt-4">Database Sewa IT Siap Dipindai</h3>
+            <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 mt-4">IT Rental Database Ready to Scan</h3>
             <p className="text-neutral-500 dark:text-neutral-400 text-[11px] mt-1.5 leading-relaxed">
-              Tentukan filter pencarian, tipe perangkat IT, atau entitas perusahaan di atas, lalu klik <strong>Proses Data</strong> untuk memulai pemindaian database real-time.
+              Set the search filter, IT device type, or company entity above, then click <strong>Process Data</strong> to start a real-time database scan.
             </p>
           </div>
         </motion.div>
@@ -721,9 +721,9 @@ export default function GaItRentalsPage() {
                   <div>
                     <h3 className="text-xs font-bold text-neutral-800 dark:text-slate-200 flex items-center gap-2">
                       <Activity className="w-4 h-4 text-indigo-500" />
-                      Jenis Perangkat
+                      Device Type
                     </h3>
-                    <p className="text-[10px] text-neutral-400 mt-1">Breakdown tipe infrastruktur IT</p>
+                    <p className="text-[10px] text-neutral-400 mt-1">Breakdown of IT infrastructure type</p>
                   </div>
                   
                   <div className="h-44 w-full my-3 flex items-center justify-center relative">
@@ -750,7 +750,7 @@ export default function GaItRentalsPage() {
                     ) : (
                       <div className="text-xs text-neutral-400 flex flex-col items-center gap-1.5">
                         <Laptop className="w-8 h-8 text-neutral-300 dark:text-neutral-700 animate-pulse" />
-                        <span>Tidak ada data jenis perangkat</span>
+                        <span>No device type data available</span>
                       </div>
                     )}
                   </div>
@@ -779,26 +779,26 @@ export default function GaItRentalsPage() {
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total IT Leased</p>
-                      <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(filteredRentals.length)} Perangkat</h3>
+                      <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(filteredRentals.length)} Devices</h3>
                       <p className="text-[9px] text-neutral-400 dark:text-neutral-500 mt-1 font-medium">
-                        Infrastruktur IT aktif yang disewa perusahaan
+                        Active IT infrastructure leased by the company
                       </p>
                     </div>
                   </div>
 
-                  {/* Card 2: Alokasi Karyawan */}
+                  {/* Card 2: Employee Allocation */}
                   <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4.5 rounded-2xl flex items-start gap-4 shadow-sm">
                     <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 mt-0.5 flex-shrink-0">
                       <User className="w-5 h-5" />
                     </div>
                     <div className="flex-1 overflow-hidden">
-                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Alokasi Karyawan</p>
+                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Employee Allocation</p>
                       <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">
                         {maskNum(assignedCount + pendingCount)} / {maskNum(filteredRentals.length)}
                       </h3>
                       <div className="text-[9px] text-neutral-400 mt-1.5 flex flex-wrap gap-x-1.5 gap-y-0.5 font-bold">
                         <span className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded">
-                          {maskNum(assignedCount)} Aktif
+                          {maskNum(assignedCount)} Active
                         </span>
                         {pendingCount > 0 && (
                           <span className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded">
@@ -807,7 +807,7 @@ export default function GaItRentalsPage() {
                         )}
                         {unassignedCount > 0 && (
                           <span className="bg-neutral-100 dark:bg-neutral-800/80 text-neutral-600 dark:text-neutral-400 px-1.5 py-0.5 rounded">
-                            {maskNum(unassignedCount)} Kosong
+                            {maskNum(unassignedCount)} Unassigned
                           </span>
                         )}
                       </div>
@@ -823,27 +823,27 @@ export default function GaItRentalsPage() {
                       <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Monthly Cost</p>
                       <h3 className="text-md font-black text-neutral-800 dark:text-white mt-1 truncate">{formatIDR(totalMonthlyCost)}</h3>
                       <p className="text-[9px] text-neutral-400 mt-1.5 font-semibold">
-                        Rata-rata: <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded font-mono">{formatIDR(avgCost)}</span>
+                        Average: <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded font-mono">{formatIDR(avgCost)}</span>
                       </p>
                     </div>
                   </div>
 
-                  {/* Card 4: Kontrak Kedaluwarsa */}
+                  {/* Card 4: Expiring Contracts */}
                   <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4.5 rounded-2xl flex items-start gap-4 shadow-sm">
                     <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500 mt-0.5 flex-shrink-0">
                       <ShieldAlert className="w-5 h-5" />
                     </div>
                     <div className="flex-1 overflow-hidden">
-                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Kontrak Kedaluwarsa</p>
-                      <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(expiringCount)} Kontrak</h3>
+                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Expiring Contracts</p>
+                      <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(expiringCount)} Contracts</h3>
                       <div className="text-[9px] text-neutral-400 mt-1.5 font-bold">
                         {expiringCount > 0 ? (
                           <span className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded">
-                            Perlu Perpanjangan (≤ 30 hari)
+                            Renewal Needed (≤ 30 days)
                           </span>
                         ) : (
                           <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
-                            Semua Kontrak Aman
+                            All Contracts Secure
                           </span>
                         )}
                       </div>

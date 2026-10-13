@@ -311,7 +311,7 @@ export default function GaAssetsPage() {
   const handleUploadImport = async () => {
     if (importPreview.length === 0) return;
     if (importErrors.length > 0) {
-      alert('Silakan perbaiki error sebelum mengimpor.');
+      alert('Please fix the errors before importing.');
       return;
     }
 
@@ -320,7 +320,7 @@ export default function GaAssetsPage() {
       const res = await apiClient.post('/api/ga/assets/bulk-import', {
         assets: importPreview
       });
-      alert(res.message || `Berhasil mengimpor ${importPreview.length} aset.`);
+      alert(res.message || `Successfully imported ${importPreview.length} assets.`);
       setShowImportModal(false);
       setImportPreview([]);
       setImportErrors([]);
@@ -332,7 +332,7 @@ export default function GaAssetsPage() {
       } else if (err.message && err.message.includes('\n')) {
         setImportErrors(err.message.split('\n'));
       } else {
-        alert(err.message || 'Gagal mengimpor data.');
+        alert(err.message || 'Failed to import data.');
       }
     } finally {
       setSubmitting(false);
@@ -466,7 +466,7 @@ export default function GaAssetsPage() {
             <Box className="w-6 h-6 text-indigo-500" />
             {t('gaAssets_title')}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Pengelolaan aset dan inventaris kantor di GLC MRA.</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Management of office assets and inventory at GLC MRA.</p>
         </div>
         <div className="flex items-center gap-2.5">
           {hasProcessed && (
@@ -477,12 +477,12 @@ export default function GaAssetsPage() {
               {showDashboard ? (
                 <>
                   <EyeOff className="w-4 h-4 text-neutral-500" />
-                  Sembunyikan Grafik
+                  Hide Chart
                 </>
               ) : (
                 <>
                   <Eye className="w-4 h-4 text-neutral-500" />
-                  Tampilkan Grafik
+                  Show Chart
                 </>
               )}
             </button>
@@ -562,10 +562,10 @@ export default function GaAssetsPage() {
             <button
               onClick={() => setShowPurgeModal(true)}
               className="flex items-center gap-2 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm w-fit"
-              title="Pembersihan & Reset Data Aset (Admin Only)"
+              title="Asset Data Cleanup & Reset (Admin Only)"
             >
               <Trash2 className="w-4 h-4 text-rose-500" />
-              Pembersihan Data
+              Data Cleanup
             </button>
           )}
         </div>
@@ -680,11 +680,11 @@ export default function GaAssetsPage() {
           <SearchingRadarAnimation />
 
           <h3 className="text-lg font-black text-neutral-800 dark:text-white relative z-10">
-            Filter & Proses Data Aset
+            Filter & Process Asset Data
           </h3>
-          
+
           <p className="text-neutral-500 dark:text-neutral-400 text-xs max-w-sm mt-3 leading-relaxed relative z-10">
-            Pilih kriteria pencarian dan filter di atas, lalu klik tombol <strong className="text-indigo-500 font-bold">"Proses Data"</strong> untuk memuat data aset dan statistik ringkas.
+            Select your search criteria and filters above, then click the <strong className="text-indigo-500 font-bold">"Process Data"</strong> button to load the asset data and summary statistics.
           </p>
         </motion.div>
       ) : (
@@ -753,13 +753,13 @@ export default function GaAssetsPage() {
                               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
                               : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                           }`}>
-                            {asset.m_condition?.name || 'Bagus'}
+                            {asset.m_condition?.name || 'Good'}
                           </span>
                         </td>
                         <td className="p-4">
                           <span className="flex items-center gap-1.5 text-neutral-600 dark:text-slate-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                            {asset.m_status?.name || 'Aktif'}
+                            {asset.m_status?.name || 'Active'}
                           </span>
                         </td>
                         <td className="p-4 text-center">
@@ -785,7 +785,7 @@ export default function GaAssetsPage() {
                             <button 
                               onClick={() => openEditAsset(asset)}
                               className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
-                              title="Edit Aset"
+                              title="Edit Asset"
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
@@ -793,7 +793,7 @@ export default function GaAssetsPage() {
                               type="button"
                               onClick={() => handleDeleteAsset(asset)}
                               className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                              title="Hapus Aset"
+                              title="Delete Asset"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>

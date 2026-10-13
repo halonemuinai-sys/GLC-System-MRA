@@ -33,6 +33,14 @@ import GaVehiclesFormDrawer from './GaVehiclesFormDrawer';
 import GaVehiclesDeleteModal from './GaVehiclesDeleteModal';
 import { handleExportCSV } from './GaVehiclesExports';
 
+// Display labels for the stored vehicle status values (DB values stay in Indonesian)
+const STATUS_LABELS = { 'Aktif': 'Active', 'Perbaikan': 'Under Repair', 'Sewa': 'Rental' };
+const statusLabel = (s) => STATUS_LABELS[s] || s || 'Active';
+
+// Display labels for the stored vehicle_type values (DB values stay in Indonesian)
+const TYPE_LABELS = { Motor: 'Motorcycle', Truk: 'Truck' };
+const typeLabel = (t) => TYPE_LABELS[t] || t || '-';
+
 // Searchable Dropdown for Companies (PT)
 function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)' }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -466,7 +474,7 @@ export default function GaVehiclesPage() {
             <Truck className="w-6 h-6 text-indigo-500" />
             {t('gaVehicles_title')}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Daftar kendaraan operasional dan logistik perusahaan GLC MRA.</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Operational and logistics vehicle fleet list for GLC MRA companies.</p>
         </div>
         <button
           onClick={() => {
@@ -529,9 +537,9 @@ export default function GaVehiclesPage() {
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
               <option value="">{t('allStatuses')}</option>
-              <option value="Aktif">Aktif</option>
-              <option value="Perbaikan">Perbaikan</option>
-              <option value="Sewa">Sewa</option>
+              <option value="Aktif">Active</option>
+              <option value="Perbaikan">Under Repair</option>
+              <option value="Sewa">Rental</option>
             </select>
           </div>
 
@@ -613,16 +621,16 @@ export default function GaVehiclesPage() {
             transition={{ delay: 0.15, duration: 0.4 }}
             className="text-lg font-black text-neutral-800 dark:text-white relative z-10"
           >
-            Filter & Proses Data Armada Kendaraan
+            Filter & Process Vehicle Fleet Data
           </motion.h3>
-          
-          <motion.p 
+
+          <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28, duration: 0.4 }}
             className="text-neutral-500 dark:text-neutral-400 text-xs max-w-sm mt-3 leading-relaxed relative z-10"
           >
-            Pilih kriteria pencarian dan filter di atas, lalu klik tombol <strong className="text-indigo-500 font-bold">"Proses Data"</strong> untuk memuat data armada dan statistik ringkas.
+            Select your search criteria and filters above, then click the <strong className="text-indigo-500 font-bold">"Process Data"</strong> button to load fleet data and summary statistics.
           </motion.p>
         </motion.div>
       ) : (
@@ -660,7 +668,7 @@ export default function GaVehiclesPage() {
                       <th className="p-4">Brand / Model</th>
                       <th className="p-4">Company</th>
                       <th className="p-4">Type</th>
-                      <th className="p-4">Biaya Pajak (PKB)</th>
+                      <th className="p-4">Tax Cost (PKB)</th>
                       <th className="p-4">Tax Payment Date</th>
                       <th className="p-4">Status</th>
                       <th className="p-4 text-center">Action</th>
@@ -683,7 +691,7 @@ export default function GaVehiclesPage() {
                             {vehicle.year && <span className="text-[10px] text-neutral-400 ml-1.5 font-normal">({vehicle.year})</span>}
                           </td>
                           <td className="p-4 text-neutral-600 dark:text-neutral-400 font-medium">{vehicle.m_company?.name || '-'}</td>
-                          <td className="p-4 text-neutral-500 capitalize">{vehicle.vehicle_type || '-'}</td>
+                          <td className="p-4 text-neutral-500 capitalize">{typeLabel(vehicle.vehicle_type)}</td>
                           <td className="p-4 font-mono font-bold text-slate-700 dark:text-slate-300">
                             {formatIDR(vehicle.last_km)}
                           </td>
@@ -700,7 +708,7 @@ export default function GaVehiclesPage() {
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
                                 : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
                             }`}>
-                              {vehicle.status || 'Aktif'}
+                              {statusLabel(vehicle.status)}
                             </span>
                           </td>
                           <td className="p-4 text-center">
@@ -747,7 +755,7 @@ export default function GaVehiclesPage() {
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
                                 className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                                title="Hapus Kendaraan"
+                                title="Delete Vehicle"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </motion.button>

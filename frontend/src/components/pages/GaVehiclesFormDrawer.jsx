@@ -184,12 +184,12 @@ export default function GaVehiclesFormDrawer({
                     >
                       <option value="">Select Type</option>
                       <option value="Minibus">Minibus</option>
-                      <option value="Motor">Motor</option>
+                      <option value="Motor">Motorcycle</option>
                       <option value="Blind Van">Blind Van</option>
                       <option value="Box">Box</option>
                       <option value="Pickup Box">Pickup Box</option>
                       <option value="Pick Up">Pick Up</option>
-                      <option value="Truk">Truk</option>
+                      <option value="Truk">Truck</option>
                     </select>
                   </div>
                 </div>
@@ -221,7 +221,7 @@ export default function GaVehiclesFormDrawer({
                     <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Color</label>
                     <input
                       type="text"
-                      placeholder="e.g. Hitam Metalik"
+                      placeholder="e.g. Metallic Black"
                       value={formData.color}
                       onChange={(e) => setFormData({...formData, color: e.target.value})}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
@@ -259,7 +259,7 @@ export default function GaVehiclesFormDrawer({
                       required
                       value={formData.tax_date}
                       onChange={(val) => setFormData({...formData, tax_date: val})}
-                      placeholder="Pilih tanggal pajak"
+                      placeholder="Select tax date"
                     />
                   </div>
                   <div>
@@ -276,7 +276,7 @@ export default function GaVehiclesFormDrawer({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Biaya Pajak (PKB)</label>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Tax Cost (PKB)</label>
                     <input
                       type="number"
                       placeholder="e.g. 1500000"
@@ -290,7 +290,7 @@ export default function GaVehiclesFormDrawer({
                     <DatePicker
                       value={formData.last_service_date}
                       onChange={(val) => setFormData({...formData, last_service_date: val})}
-                      placeholder="Pilih tanggal service"
+                      placeholder="Select service date"
                     />
                   </div>
                 </div>
@@ -304,9 +304,9 @@ export default function GaVehiclesFormDrawer({
                       onChange={(e) => setFormData({...formData, status: e.target.value})}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-500 focus:outline-none"
                     >
-                      <option value="Aktif">Aktif</option>
-                      <option value="Perbaikan">Perbaikan</option>
-                      <option value="Sewa">Sewa</option>
+                      <option value="Aktif">Active</option>
+                      <option value="Perbaikan">Under Repair</option>
+                      <option value="Sewa">Rental</option>
                     </select>
                   </div>
                   <div>

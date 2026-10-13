@@ -18,6 +18,11 @@ import {
   Tooltip
 } from 'recharts';
 
+// Display-only label map — underlying stored vehicle_type values (e.g. 'Motor', 'Truk')
+// stay as-is since they're grouped by raw value in backend controllers.
+const TYPE_LABELS = { Motor: 'Motorcycle', Truk: 'Truck' };
+const typeLabel = (t) => TYPE_LABELS[t] || t || '-';
+
 const CHART_COLORS = [
   '#4f46e5', // Indigo
   '#10b981', // Emerald
@@ -33,8 +38,8 @@ const CustomTooltip = ({ active, payload }) => {
     const data = payload[0].payload;
     return (
       <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-2.5 rounded-xl shadow-xl text-xs">
-        <p className="font-bold text-neutral-900 dark:text-neutral-200 capitalize mb-1">{data.type}</p>
-        <p className="text-indigo-500 font-semibold font-mono">Jumlah: {data.count} kendaraan</p>
+        <p className="font-bold text-neutral-900 dark:text-neutral-200 capitalize mb-1">{typeLabel(data.type)}</p>
+        <p className="text-indigo-500 font-semibold font-mono">Count: {data.count} vehicles</p>
       </div>
     );
   }
@@ -59,9 +64,9 @@ export default function GaVehiclesSummaryDashboard({ showDashboard, summary, met
               <div>
                 <h3 className="text-xs font-bold text-neutral-800 dark:text-slate-200 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-indigo-500" />
-                  Jenis Kendaraan
+                  Vehicle Type
                 </h3>
-                <p className="text-[10px] text-neutral-400 mt-1">Breakdown tipe armada kendaraan operasional</p>
+                <p className="text-[10px] text-neutral-400 mt-1">Breakdown of operational vehicle fleet types</p>
               </div>
               
               <div className="h-44 w-full my-3 flex items-center justify-center relative">
@@ -88,7 +93,7 @@ export default function GaVehiclesSummaryDashboard({ showDashboard, summary, met
                 ) : (
                   <div className="text-xs text-neutral-400 flex flex-col items-center gap-1.5">
                     <Car className="w-8 h-8 text-neutral-300 dark:text-neutral-700 animate-pulse" />
-                    <span>Tidak ada data jenis kendaraan</span>
+                    <span>No vehicle type data available</span>
                   </div>
                 )}
               </div>
@@ -101,7 +106,7 @@ export default function GaVehiclesSummaryDashboard({ showDashboard, summary, met
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
                     />
-                    <span className="text-neutral-500 dark:text-neutral-400 capitalize truncate">{entry.type}</span>
+                    <span className="text-neutral-500 dark:text-neutral-400 capitalize truncate">{typeLabel(entry.type)}</span>
                     <span className="font-bold text-neutral-700 dark:text-neutral-300 ml-auto font-mono">{entry.count}</span>
                   </div>
                 ))}
@@ -120,7 +125,7 @@ export default function GaVehiclesSummaryDashboard({ showDashboard, summary, met
                     <Truck className="w-6 h-6" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Fleet Armada</p>
+                    <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Fleet</p>
                     <h3 className="text-2xl font-black text-neutral-800 dark:text-white tracking-tight mt-0.5">{meta.total}</h3>
                   </div>
                 </div>

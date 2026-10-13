@@ -170,10 +170,10 @@ export async function handleExportPDF({ search, categoryId, locationId, statusId
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
     
-    doc.text(`\u2022 Berdasarkan data terfilter, total aset yang tercatat adalah sebanyak ${maskNum(allAssets.length)} unit dengan total nilai buku ${formatIDR(totalCostVal)}.`, 18, analysisY + 10);
-    doc.text(`\u2022 Kuantitas aset terbanyak didominasi oleh kategori "${topCatByCount.name}" dengan total ${maskNum(topCatByCount.count)} unit.`, 18, analysisY + 15);
-    doc.text(`\u2022 Nilai investasi (acquisition cost) tertinggi berada pada kategori "${topCatByValue.name}" dengan total nilai buku ${formatIDR(topCatByValue.value)}.`, 18, analysisY + 20);
-    doc.text(`\u2022 Dari aspek kondisi fisik, mayoritas aset dalam keadaan Bagus (${maskNum(goodPct)}%), sedangkan ${maskNum(repairCount)} unit (${maskNum(repairPct)}%) aset memerlukan perbaikan/pemeliharaan segera.`, 18, analysisY + 25);
+    doc.text(`\u2022 Based on the filtered data, the total recorded assets amount to ${maskNum(allAssets.length)} units with a total book value of ${formatIDR(totalCostVal)}.`, 18, analysisY + 10);
+    doc.text(`\u2022 The largest asset quantity is dominated by the "${topCatByCount.name}" category with a total of ${maskNum(topCatByCount.count)} units.`, 18, analysisY + 15);
+    doc.text(`\u2022 The highest investment value (acquisition cost) is in the "${topCatByValue.name}" category with a total book value of ${formatIDR(topCatByValue.value)}.`, 18, analysisY + 20);
+    doc.text(`\u2022 In terms of physical condition, the majority of assets are in Good condition (${maskNum(goodPct)}%), while ${maskNum(repairCount)} units (${maskNum(repairPct)}%) of assets require immediate repair/maintenance.`, 18, analysisY + 25);
     
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
@@ -211,7 +211,7 @@ export async function handleExportExcel({ search, categoryId, locationId, status
     const allAssets = res.data || [];
     const totalCostVal = res.summary?.totalAcquisitionCost || 0;
     const selectedCompanyObj = companies.find(c => String(c.id) === String(companyId));
-    const companyName = selectedCompanyObj ? selectedCompanyObj.name : 'Semua Perusahaan (PT)';
+    const companyName = selectedCompanyObj ? selectedCompanyObj.name : 'All Companies (PT)';
 
     const HEADER_DARK = 'FF1F2937';
     const HEADER_DARK_LIGHT = 'FF374151';
@@ -230,30 +230,30 @@ export async function handleExportExcel({ search, categoryId, locationId, status
     workbook.creator = 'GLC MRA Integrated GA Management Suite';
     workbook.created = new Date();
 
-    const sheet = workbook.addWorksheet('Data Aset', {
+    const sheet = workbook.addWorksheet('Asset Data', {
       views: [{ state: 'frozen', ySplit: 4 }],
       pageSetup: { orientation: 'landscape', fitToPage: true }
     });
 
     const columns = [
-      { header: 'Kode Aset', key: 'asset_code', width: 16 },
-      { header: 'Nama Aset', key: 'asset_name', width: 30 },
-      { header: 'Kategori', key: 'category', width: 22 },
-      { header: 'Tipe', key: 'type', width: 18 },
-      { header: 'Perusahaan', key: 'company', width: 26 },
-      { header: 'Lokasi', key: 'location', width: 20 },
+      { header: 'Asset Code', key: 'asset_code', width: 16 },
+      { header: 'Asset Name', key: 'asset_name', width: 30 },
+      { header: 'Category', key: 'category', width: 22 },
+      { header: 'Type', key: 'type', width: 18 },
+      { header: 'Company', key: 'company', width: 26 },
+      { header: 'Location', key: 'location', width: 20 },
       { header: 'PIC', key: 'pic', width: 20 },
-      { header: 'Tgl Akuisisi', key: 'acquisition_date', width: 14 },
-      { header: 'Nilai Akuisisi (Rp)', key: 'acquisition_cost', width: 18 },
-      { header: 'Kondisi', key: 'condition', width: 14 },
+      { header: 'Acquisition Date', key: 'acquisition_date', width: 14 },
+      { header: 'Acquisition Value (Rp)', key: 'acquisition_cost', width: 18 },
+      { header: 'Condition', key: 'condition', width: 14 },
       { header: 'Status', key: 'status', width: 14 },
-      { header: 'Catatan', key: 'information', width: 30 }
+      { header: 'Notes', key: 'information', width: 30 }
     ];
     sheet.columns = columns;
 
     sheet.mergeCells(1, 1, 1, columns.length);
     const titleCell = sheet.getCell('A1');
-    titleCell.value = 'LAPORAN DATA ASET \u2014 MRA GROUP';
+    titleCell.value = 'ASSET DATA REPORT \u2014 MRA GROUP';
     titleCell.font = { bold: true, size: 15, color: { argb: 'FFFFFFFF' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     sheet.getRow(1).height = 26;
@@ -261,7 +261,7 @@ export async function handleExportExcel({ search, categoryId, locationId, status
 
     sheet.mergeCells(2, 1, 2, columns.length);
     const subtitleCell = sheet.getCell('A2');
-    subtitleCell.value = `Perusahaan: ${companyName}   |   Total Unit: ${allAssets.length}   |   Total Nilai Buku: Rp ${Number(totalCostVal).toLocaleString('id-ID')}   |   Dicetak: ${new Date().toLocaleString('id-ID')}`;
+    subtitleCell.value = `Company: ${companyName}   |   Total Units: ${allAssets.length}   |   Total Book Value: Rp ${Number(totalCostVal).toLocaleString('id-ID')}   |   Printed: ${new Date().toLocaleString('id-ID')}`;
     subtitleCell.font = { italic: true, size: 9.5, color: { argb: 'FFFFFFFF' } };
     subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     sheet.getRow(2).height = 20;
@@ -314,7 +314,7 @@ export async function handleExportExcel({ search, categoryId, locationId, status
     const totalRow = sheet.getRow(lastDataRow + 1);
     sheet.mergeCells(lastDataRow + 1, 1, lastDataRow + 1, 8);
     const totalLabelCell = sheet.getCell(lastDataRow + 1, 1);
-    totalLabelCell.value = `TOTAL (${allAssets.length} unit aset)`;
+    totalLabelCell.value = `TOTAL (${allAssets.length} asset units)`;
     totalLabelCell.font = { bold: true, size: 10 };
     totalLabelCell.alignment = { horizontal: 'right', vertical: 'middle' };
     const totalValueCell = sheet.getCell(lastDataRow + 1, 9);
@@ -327,10 +327,10 @@ export async function handleExportExcel({ search, categoryId, locationId, status
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: TOTAL_BG } };
     });
 
-    const summarySheet = workbook.addWorksheet('Ringkasan');
+    const summarySheet = workbook.addWorksheet('Summary');
     summarySheet.mergeCells('A1:D1');
     const sumTitle = summarySheet.getCell('A1');
-    sumTitle.value = 'RINGKASAN DISTRIBUSI ASET';
+    sumTitle.value = 'ASSET DISTRIBUTION SUMMARY';
     sumTitle.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
     sumTitle.alignment = { horizontal: 'center', vertical: 'middle' };
     summarySheet.getRow(1).height = 24;
@@ -351,11 +351,11 @@ export async function handleExportExcel({ search, categoryId, locationId, status
       conditionMap[condName] = (conditionMap[condName] || 0) + 1;
     });
 
-    summarySheet.getCell('A3').value = 'Distribusi per Kategori';
+    summarySheet.getCell('A3').value = 'Distribution by Category';
     summarySheet.getCell('A3').font = { bold: true, size: 11 };
     summarySheet.columns = [{ width: 28 }, { width: 14 }, { width: 18 }, { width: 14 }];
     const catHeaderRow = summarySheet.getRow(4);
-    catHeaderRow.values = ['Kategori', 'Jumlah Unit', 'Total Nilai (Rp)', 'Persentase'];
+    catHeaderRow.values = ['Category', 'Unit Count', 'Total Value (Rp)', 'Percentage'];
     catHeaderRow.eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_DARK_LIGHT } };
@@ -374,11 +374,11 @@ export async function handleExportExcel({ search, categoryId, locationId, status
     });
 
     r += 1;
-    summarySheet.getCell(`A${r}`).value = 'Distribusi per Status & Kondisi';
+    summarySheet.getCell(`A${r}`).value = 'Distribution by Status & Condition';
     summarySheet.getCell(`A${r}`).font = { bold: true, size: 11 };
     r += 1;
     const statHeaderRow = summarySheet.getRow(r);
-    statHeaderRow.values = ['Status Operasional', 'Jumlah Unit', 'Kondisi Fisik', 'Jumlah Unit'];
+    statHeaderRow.values = ['Operational Status', 'Unit Count', 'Physical Condition', 'Unit Count'];
     statHeaderRow.eachCell(cell => {
       cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_DARK_LIGHT } };
@@ -403,7 +403,7 @@ export async function handleExportExcel({ search, categoryId, locationId, status
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Laporan_Data_Aset_MRA_${new Date().toISOString().split('T')[0]}.xlsx`;
+    link.download = `Asset_Data_Report_MRA_${new Date().toISOString().split('T')[0]}.xlsx`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

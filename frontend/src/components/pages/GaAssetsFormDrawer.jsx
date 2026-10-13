@@ -27,8 +27,8 @@ function PremiumDatePicker({ value, onChange, placeholder = 'Select Date' }) {
   const toggleOpen = () => setIsOpen(!isOpen);
 
   const months = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
@@ -96,7 +96,7 @@ function PremiumDatePicker({ value, onChange, placeholder = 'Select Date' }) {
     if (!dateStr) return placeholder;
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return placeholder;
-    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
   const isSelected = (dayObj) => {
@@ -157,13 +157,13 @@ function PremiumDatePicker({ value, onChange, placeholder = 'Select Date' }) {
               </div>
 
               <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-neutral-400 select-none">
-                <span>Min</span>
-                <span>Sen</span>
-                <span>Sel</span>
-                <span>Rab</span>
-                <span>Kam</span>
-                <span>Jum</span>
-                <span>Sab</span>
+                <span>Sun</span>
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
               </div>
 
               <div className="grid grid-cols-7 gap-1">
@@ -203,7 +203,7 @@ function PremiumDatePicker({ value, onChange, placeholder = 'Select Date' }) {
                   }}
                   className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                 >
-                  Hari Ini
+                  Today
                 </button>
                 {value && (
                   <button
@@ -457,7 +457,7 @@ export default function GaAssetsFormDrawer({
                     <PremiumDatePicker
                       value={formData.acquisition_date}
                       onChange={(val) => setFormData({...formData, acquisition_date: val})}
-                      placeholder="Pilih Tanggal Pembelian"
+                      placeholder="Select Purchase Date"
                     />
                   </div>
                 </div>

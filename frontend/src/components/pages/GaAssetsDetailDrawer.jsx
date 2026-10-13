@@ -63,11 +63,11 @@ export default function GaAssetsDetailDrawer({ selectedAsset, setSelectedAsset, 
                   </div>
                   <div>
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Condition</span>
-                    <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedAsset.m_condition?.name || 'Bagus'}</span>
+                    <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedAsset.m_condition?.name || 'Good'}</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Status</span>
-                    <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedAsset.m_status?.name || 'Aktif'}</span>
+                    <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">{selectedAsset.m_status?.name || 'Active'}</span>
                   </div>
                 </div>
 
@@ -157,14 +157,14 @@ export default function GaAssetsDetailDrawer({ selectedAsset, setSelectedAsset, 
                 }}
                 className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-indigo-200/50 dark:border-indigo-900/30"
               >
-                Edit Aset
+                Edit Asset
               </button>
               <button
                 type="button"
                 onClick={() => handleDeleteAsset(selectedAsset)}
                 className="flex-1 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl transition-all cursor-pointer text-center border border-red-200/50 dark:border-red-900/30"
               >
-                Hapus Aset
+                Delete Asset
               </button>
               <button
                 onClick={() => setSelectedAsset(null)}
