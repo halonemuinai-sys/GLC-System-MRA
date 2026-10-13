@@ -133,7 +133,8 @@ async function createVehicle(req, res, next) {
         last_service_date: data.last_service_date ? new Date(data.last_service_date) : null,
         status: data.status || 'Aktif',
         information: data.information || null,
-        doc_url: data.doc_url || null
+        stnk_url: data.stnk_url || null,
+        bpkb_url: data.bpkb_url || null
       }
     });
     res.status(201).json(newVehicle);
@@ -163,7 +164,8 @@ async function updateVehicle(req, res, next) {
         last_service_date: data.last_service_date !== undefined ? (data.last_service_date ? new Date(data.last_service_date) : null) : undefined,
         status: data.status !== undefined ? data.status : undefined,
         information: data.information !== undefined ? data.information : undefined,
-        doc_url: data.doc_url !== undefined ? data.doc_url : undefined
+        stnk_url: data.stnk_url !== undefined ? data.stnk_url : undefined,
+        bpkb_url: data.bpkb_url !== undefined ? data.bpkb_url : undefined
       }
     });
     res.json(updated);

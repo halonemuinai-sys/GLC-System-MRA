@@ -20,7 +20,8 @@ import {
   Pencil,
   Trash2,
   ExternalLink,
-  Download
+  Download,
+  FileText
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -270,7 +271,8 @@ export default function GaVehiclesPage() {
     last_service_date: '',
     status: 'Aktif',
     information: '',
-    doc_url: ''
+    stnk_url: '',
+    bpkb_url: ''
   });
 
   useEffect(() => {
@@ -366,7 +368,8 @@ export default function GaVehiclesPage() {
       last_service_date: vehicle.last_service_date ? new Date(vehicle.last_service_date).toISOString().split('T')[0] : '',
       status: vehicle.status || 'Aktif',
       information: vehicle.information || '',
-      doc_url: vehicle.doc_url || ''
+      stnk_url: vehicle.stnk_url || '',
+      bpkb_url: vehicle.bpkb_url || ''
     });
     setShowAddDrawer(true);
   };
@@ -412,7 +415,8 @@ export default function GaVehiclesPage() {
         last_service_date: '',
         status: 'Aktif',
         information: '',
-        doc_url: ''
+        stnk_url: '',
+    bpkb_url: ''
       });
       fetchData();
     } catch (err) {
@@ -482,7 +486,8 @@ export default function GaVehiclesPage() {
               last_service_date: '',
               status: 'Aktif',
               information: '',
-              doc_url: ''
+              stnk_url: '',
+    bpkb_url: ''
             });
             setShowAddDrawer(true);
           }}
@@ -700,15 +705,26 @@ export default function GaVehiclesPage() {
                           </td>
                           <td className="p-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
-                              {vehicle.doc_url && (
+                              {vehicle.stnk_url && (
                                 <a
-                                  href={vehicle.doc_url}
+                                  href={vehicle.stnk_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="p-1 text-neutral-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
-                                  title="Open Document Link"
+                                  title="Open Link STNK"
                                 >
                                   <ExternalLink className="w-4 h-4" />
+                                </a>
+                              )}
+                              {vehicle.bpkb_url && (
+                                <a
+                                  href={vehicle.bpkb_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 text-neutral-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
+                                  title="Open Link BPKB"
+                                >
+                                  <FileText className="w-4 h-4" />
                                 </a>
                               )}
                               <button

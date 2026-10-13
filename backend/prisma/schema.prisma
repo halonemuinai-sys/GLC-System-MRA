@@ -735,7 +735,8 @@ model vehicles {
   status            String?      @default("Aktif") @db.VarChar(20)
   information       String?
   created_at        DateTime?    @default(now()) @db.Timestamp(6)
-  doc_url           String?
+  stnk_url          String?
+  bpkb_url          String?
   insurances        insurances[]
   m_company         m_company    @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 

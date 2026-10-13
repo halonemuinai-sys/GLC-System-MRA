@@ -331,17 +331,32 @@ export default function GaVehiclesFormDrawer({
                   />
                 </div>
 
-                <div>
-                  <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Document Link (e.g. Google Drive)</label>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
-                    <input
-                      type="url"
-                      placeholder="https://drive.google.com/..."
-                      value={formData.doc_url}
-                      onChange={(e) => setFormData({...formData, doc_url: e.target.value})}
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-8 pr-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
-                    />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Link STNK</label>
+                    <div className="relative">
+                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
+                      <input
+                        type="url"
+                        placeholder="https://drive.google.com/..."
+                        value={formData.stnk_url}
+                        onChange={(e) => setFormData({...formData, stnk_url: e.target.value})}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-8 pr-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Link BPKB</label>
+                    <div className="relative">
+                      <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none" />
+                      <input
+                        type="url"
+                        placeholder="https://drive.google.com/..."
+                        value={formData.bpkb_url}
+                        onChange={(e) => setFormData({...formData, bpkb_url: e.target.value})}
+                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-8 pr-3 py-2 text-neutral-800 dark:text-white focus:outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
 
