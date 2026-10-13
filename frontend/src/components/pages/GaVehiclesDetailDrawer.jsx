@@ -117,17 +117,19 @@ export default function GaVehiclesDetailDrawer({
                   <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1 leading-relaxed">{selectedVehicle.information || 'No info provided.'}</p>
                 </div>
 
-                {selectedVehicle.doc_url && (
-                  <div className="bg-blue-50/50 dark:bg-blue-950/10 p-3 rounded-xl border border-blue-100/30 dark:border-blue-900/20 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
-                        <FileText className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block leading-none">Document Reference</span>
-                        <span className="text-xs text-neutral-800 dark:text-slate-200 font-semibold truncate block mt-0.5">Vehicle Document</span>
-                      </div>
+                <div className="bg-blue-50/50 dark:bg-blue-950/10 p-3 rounded-xl border border-blue-100/30 dark:border-blue-900/20 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                      <FileText className="w-4 h-4" />
                     </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block leading-none">Document Reference</span>
+                      <span className="text-xs text-neutral-800 dark:text-slate-200 font-semibold truncate block mt-0.5">
+                        {selectedVehicle.doc_url ? 'Vehicle Document' : 'No link added'}
+                      </span>
+                    </div>
+                  </div>
+                  {selectedVehicle.doc_url && (
                     <a
                       href={selectedVehicle.doc_url}
                       target="_blank"
@@ -137,8 +139,8 @@ export default function GaVehiclesDetailDrawer({
                       <ExternalLink className="w-3.5 h-3.5" />
                       Open Link
                     </a>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Driver Info */}
                 <div className="bg-neutral-50 dark:bg-neutral-950 p-3.5 rounded-xl border border-neutral-100 dark:border-neutral-800">
