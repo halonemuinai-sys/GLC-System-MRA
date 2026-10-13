@@ -161,7 +161,7 @@ export default function MasterLobPage() {
   return (
     <div className="space-y-6">
       
-      {/* 1. Header dengan icon + judul + deskripsi */}
+      {/* 1. Header with icon + title + description */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
@@ -170,7 +170,7 @@ export default function MasterLobPage() {
           <div>
             <h1 className="text-xl font-black text-neutral-900 dark:text-white tracking-wide">{t('masterLob_title')}</h1>
             <p className="text-xs text-neutral-500 dark:text-neutral-500 font-semibold mt-1">
-              Kelola kategori Line of Business (LOB) / lini usaha untuk pemetaan detail transaksi budget program marketing.
+              Manage Line of Business (LOB) categories for mapping marketing program budget transaction details.
             </p>
           </div>
         </div>
@@ -188,7 +188,7 @@ export default function MasterLobPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
           <input
             type="text"
-            placeholder="Cari LOB berdasarkan nama..."
+            placeholder="Search LOB by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
@@ -214,21 +214,21 @@ export default function MasterLobPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <span className="text-xs text-neutral-400 font-bold">Memuat daftar LOB...</span>
+          <span className="text-xs text-neutral-400 font-bold">Loading LOB list...</span>
         </div>
       ) : error ? (
         <div className="bg-red-50 dark:bg-red-500/10 border border-red-200/60 dark:border-red-500/20 p-5 rounded-2xl text-center">
           <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2" />
           <p className="text-xs font-bold text-red-600 dark:text-red-400">{error}</p>
           <button onClick={fetchData} className="mt-3 text-xs font-extrabold text-blue-600 flex items-center gap-1.5 mx-auto hover:underline">
-            <RefreshCw className="w-3.5 h-3.5" /> Ulangi Saja
+            <RefreshCw className="w-3.5 h-3.5" /> Try Again
           </button>
         </div>
       ) : data.length === 0 ? (
         <div className="bg-white dark:bg-neutral-900/30 border border-neutral-200/60 dark:border-neutral-800/60 p-20 rounded-2xl text-center space-y-2">
           <ClipboardList className="w-10 h-10 text-neutral-300 dark:text-neutral-600 mx-auto" />
           <h4 className="text-sm font-black text-neutral-700 dark:text-neutral-300">{t('masterLob_empty')}</h4>
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-sm mx-auto">Silakan tambahkan data master lini usaha baru untuk melengkapi kebutuhan budget pemasaran.</p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-sm mx-auto">Please add new line of business master data to complete your marketing budget needs.</p>
         </div>
       ) : (
         <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-neutral-800/80 rounded-2xl overflow-hidden shadow-sm">
@@ -251,14 +251,14 @@ export default function MasterLobPage() {
                         <button
                           onClick={() => handleEdit(item)}
                           className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-all cursor-pointer"
-                          title="Ubah LOB"
+                          title="Edit LOB"
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setDeleteTarget(item)}
                           className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
-                          title="Hapus LOB"
+                          title="Delete LOB"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -274,7 +274,7 @@ export default function MasterLobPage() {
           {meta.totalPages > 1 && (
             <div className="px-6 py-4.5 bg-neutral-50 dark:bg-neutral-950/50 border-t border-neutral-100 dark:border-neutral-900 flex items-center justify-between">
               <span className="text-xs text-neutral-400 dark:text-neutral-500 font-bold">
-                Menampilkan Halaman {meta.page} dari {meta.totalPages} ({meta.total} LOB)
+                Showing Page {meta.page} of {meta.totalPages} ({meta.total} LOB)
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -318,10 +318,10 @@ export default function MasterLobPage() {
               <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider">
-                    {editingItem ? 'Edit LOB' : 'Tambah LOB Baru'}
+                    {editingItem ? 'Edit LOB' : 'Add New LOB'}
                   </h3>
                   <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold mt-0.5">
-                    {editingItem ? 'Perbarui data master lini bisnis' : 'Masukkan informasi lini bisnis baru'}
+                    {editingItem ? 'Update the line of business master data' : 'Enter new line of business information'}
                   </p>
                 </div>
                 <button onClick={() => setShowDrawer(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-neutral-400 cursor-pointer">
@@ -339,14 +339,14 @@ export default function MasterLobPage() {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-600 uppercase tracking-wider block">
-                      Nama Line of Business (LOB) *
+                      Line of Business (LOB) Name *
                     </label>
                     <input
                       type="text"
                       required
                       value={formData.name}
                       onChange={(e) => setFormData({ name: e.target.value })}
-                      placeholder="Masukkan nama LOB..."
+                      placeholder="Enter LOB name..."
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
                     />
                   </div>
@@ -358,7 +358,7 @@ export default function MasterLobPage() {
                     onClick={() => setShowDrawer(false)}
                     className="text-neutral-500 hover:text-neutral-800 dark:hover:text-white text-xs font-extrabold px-5 py-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer"
                   >
-                    Batal
+                    Cancel
                   </button>
                   <button
                     type="submit"
@@ -366,7 +366,7 @@ export default function MasterLobPage() {
                     className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-extrabold px-6 py-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-blue-600/10 flex items-center gap-2"
                   >
                     {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    Simpan LOB
+                    Save LOB
                   </button>
                 </div>
               </form>
@@ -398,9 +398,9 @@ export default function MasterLobPage() {
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider">Konfirmasi Hapus</h4>
+                  <h4 className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider">Confirm Deletion</h4>
                   <p className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold mt-1">
-                    Apakah Anda yakin ingin menghapus LOB <span className="font-bold text-neutral-700 dark:text-neutral-200 font-bold">"{deleteTarget.name}"</span>? Tindakan ini tidak dapat dibatalkan.
+                    Are you sure you want to delete LOB <span className="font-bold text-neutral-700 dark:text-neutral-200 font-bold">"{deleteTarget.name}"</span>? This action cannot be undone.
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -409,7 +409,7 @@ export default function MasterLobPage() {
                     onClick={() => setDeleteTarget(null)}
                     className="flex-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-white text-xs font-extrabold py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all cursor-pointer"
                   >
-                    Batal
+                    Cancel
                   </button>
                   <button
                     type="button"
@@ -418,7 +418,7 @@ export default function MasterLobPage() {
                     className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-xs font-extrabold py-3 rounded-xl transition-all cursor-pointer shadow-lg shadow-red-500/10 flex items-center justify-center gap-1.5"
                   >
                     {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    Ya, Hapus
+                    Yes, Delete
                   </button>
                 </div>
               </motion.div>

@@ -64,12 +64,12 @@ export default function MasterCompanyTables({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-100 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 bg-neutral-50/20 dark:bg-neutral-950/20 text-[10px] font-bold uppercase tracking-wider">
-                <th className="text-left px-5 py-3.5">Kode</th>
-                <th className="text-left px-5 py-3.5">Nama Perusahaan</th>
+                <th className="text-left px-5 py-3.5">Code</th>
+                <th className="text-left px-5 py-3.5">Company Name</th>
                 <th className="text-left px-5 py-3.5 hidden md:table-cell">NPWP</th>
-                <th className="text-left px-5 py-3.5 hidden lg:table-cell">Alamat</th>
+                <th className="text-left px-5 py-3.5 hidden lg:table-cell">Address</th>
                 <th className="text-center px-5 py-3.5">Status</th>
-                <th className="text-center px-5 py-3.5">Aksi</th>
+                <th className="text-center px-5 py-3.5">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -77,7 +77,7 @@ export default function MasterCompanyTables({
                 <tr>
                   <td colSpan="6" className="text-center py-16 text-neutral-400 dark:text-neutral-500">
                     <Building2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Belum ada data perusahaan utama</p>
+                    <p className="text-sm">No main company data yet</p>
                   </td>
                 </tr>
               ) : (
@@ -107,11 +107,11 @@ export default function MasterCompanyTables({
                     <td className="px-5 py-3.5 text-center">
                       {company.is_active ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                          <CheckCircle className="w-3 h-3" /> Aktif
+                          <CheckCircle className="w-3 h-3" /> Active
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2.5 py-1 rounded-full">
-                          <XCircle className="w-3 h-3" /> Nonaktif
+                          <XCircle className="w-3 h-3" /> Inactive
                         </span>
                       )}
                     </td>
@@ -129,7 +129,7 @@ export default function MasterCompanyTables({
                         </motion.button>
                         <motion.button
                           type="button"
-                          title={company.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                          title={company.is_active ? 'Deactivate' : 'Activate'}
                           onClick={() => handleToggleActiveCompany(company)}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -143,7 +143,7 @@ export default function MasterCompanyTables({
                         </motion.button>
                         <motion.button
                           type="button"
-                          title="Hapus"
+                          title="Delete"
                           onClick={() => handleCompanyDelete(company)}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -162,9 +162,9 @@ export default function MasterCompanyTables({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-100 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 bg-neutral-50/20 dark:bg-neutral-950/20 text-[10px] font-bold uppercase tracking-wider">
-                <th className="text-left px-5 py-3.5">Nama Entitas Induk</th>
-                <th className="text-left px-5 py-3.5">Sektor/Grup MRA</th>
-                <th className="text-center px-5 py-3.5">Aksi</th>
+                <th className="text-left px-5 py-3.5">Parent Entity Name</th>
+                <th className="text-left px-5 py-3.5">Sector/MRA Group</th>
+                <th className="text-center px-5 py-3.5">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -172,7 +172,7 @@ export default function MasterCompanyTables({
                 <tr>
                   <td colSpan="3" className="text-center py-16 text-neutral-400 dark:text-neutral-500">
                     <FolderKanban className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Belum ada data grup entitas induk</p>
+                    <p className="text-sm">No parent entity group data yet</p>
                   </td>
                 </tr>
               ) : (
@@ -204,7 +204,7 @@ export default function MasterCompanyTables({
                         </motion.button>
                         <motion.button
                           type="button"
-                          title="Hapus"
+                          title="Delete"
                           onClick={() => handleMasterDelete(master)}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -223,12 +223,12 @@ export default function MasterCompanyTables({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-100 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 bg-neutral-50/20 dark:bg-neutral-950/20 text-[10px] font-bold uppercase tracking-wider">
-                <th className="text-left px-5 py-3.5">Nama Perusahaan</th>
-                <th className="text-left px-5 py-3.5">Lokasi / Cabang</th>
-                <th className="text-left px-5 py-3.5">Sektor/Grup</th>
-                <th className="text-left px-5 py-3.5 hidden lg:table-cell">Entitas Induk</th>
+                <th className="text-left px-5 py-3.5">Company Name</th>
+                <th className="text-left px-5 py-3.5">Location / Branch</th>
+                <th className="text-left px-5 py-3.5">Sector/Group</th>
+                <th className="text-left px-5 py-3.5 hidden lg:table-cell">Parent Entity</th>
                 <th className="text-center px-5 py-3.5">Status</th>
-                <th className="text-center px-5 py-3.5">Aksi</th>
+                <th className="text-center px-5 py-3.5">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -236,7 +236,7 @@ export default function MasterCompanyTables({
                 <tr>
                   <td colSpan="6" className="text-center py-16 text-neutral-400 dark:text-neutral-500">
                     <Building2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">Belum ada data cabang operasional</p>
+                    <p className="text-sm">No operational branch data yet</p>
                   </td>
                 </tr>
               ) : (
@@ -266,11 +266,11 @@ export default function MasterCompanyTables({
                     <td className="px-5 py-3.5 text-center">
                       {branch.is_active !== false ? (
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-1 rounded-full">
-                          <CheckCircle className="w-3 h-3" /> Aktif
+                          <CheckCircle className="w-3 h-3" /> Active
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2.5 py-1 rounded-full">
-                          <XCircle className="w-3 h-3" /> Nonaktif
+                          <XCircle className="w-3 h-3" /> Inactive
                         </span>
                       )}
                     </td>
@@ -288,7 +288,7 @@ export default function MasterCompanyTables({
                         </motion.button>
                         <motion.button
                           type="button"
-                          title={branch.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                          title={branch.is_active ? 'Deactivate' : 'Activate'}
                           onClick={() => handleToggleActiveBranch(branch)}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -302,7 +302,7 @@ export default function MasterCompanyTables({
                         </motion.button>
                         <motion.button
                           type="button"
-                          title="Hapus"
+                          title="Delete"
                           onClick={() => handleBranchDelete(branch)}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -324,7 +324,7 @@ export default function MasterCompanyTables({
       {activeTab === 'companies' && meta.totalPages > 1 && (
         <div className="flex items-center justify-between px-5 py-3.5 border-t border-neutral-100 dark:border-neutral-800 select-none">
           <p className="text-xs text-neutral-400 dark:text-neutral-500">
-            Halaman {meta.page} dari {meta.totalPages} • {meta.total} perusahaan
+            Page {meta.page} of {meta.totalPages} • {meta.total} companies
           </p>
           <div className="flex items-center gap-1.5">
             <button

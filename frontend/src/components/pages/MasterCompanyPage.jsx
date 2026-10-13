@@ -252,7 +252,7 @@ export default function MasterCompanyPage() {
   };
 
   const handleCompanyDelete = async (company) => {
-    if (!confirm(`Hapus perusahaan "${company.name}"?\n\nJika memiliki data relasi, perusahaan akan di-nonaktifkan saja.`)) return;
+    if (!confirm(`Delete company "${company.name}"?\n\nIf it has related data, the company will only be deactivated.`)) return;
 
     try {
       await apiClient.delete(`/api/master/companies/${company.id}`);
@@ -305,7 +305,7 @@ export default function MasterCompanyPage() {
   };
 
   const handleMasterDelete = async (master) => {
-    if (!confirm(`Hapus Grup Entitas Induk "${master.name}"?`)) return;
+    if (!confirm(`Delete Parent Entity Group "${master.name}"?`)) return;
 
     try {
       await apiClient.delete(`/api/master/companies/master/${master.id}`);
@@ -346,7 +346,7 @@ export default function MasterCompanyPage() {
     setBranchFormError(null);
 
     if (!String(branchFormData.name || '').trim() || !String(branchFormData.location || '').trim()) {
-      setBranchFormError('Nama Perusahaan dan Lokasi / Cabang Fisik wajib diisi.');
+      setBranchFormError('Company Name and Location / Physical Branch are required.');
       return;
     }
 
@@ -367,7 +367,7 @@ export default function MasterCompanyPage() {
       fetchBranchesList();
     } catch (err) {
       console.error('Branch save failed:', err);
-      setBranchFormError(err.message || 'Gagal menyimpan data cabang.');
+      setBranchFormError(err.message || 'Failed to save branch data.');
     } finally {
       setSubmitting(false);
     }
@@ -385,7 +385,7 @@ export default function MasterCompanyPage() {
   };
 
   const handleBranchDelete = async (branch) => {
-    if (!confirm(`Hapus cabang "${branch.name} (${branch.location})"?`)) return;
+    if (!confirm(`Delete branch "${branch.name} (${branch.location})"?`)) return;
 
     try {
       await apiClient.delete(`/api/master/companies/branch/${branch.id}`);
@@ -405,7 +405,7 @@ export default function MasterCompanyPage() {
             {t('masterCompany_title')}
           </h1>
           <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
-            Manajemen legalitas perusahaan induk, pengelompokan grup usaha, dan pemetaan lokasi cabang fisik.
+            Management of parent company legal entities, business group clustering, and physical branch location mapping.
           </p>
         </div>
 
@@ -448,7 +448,7 @@ export default function MasterCompanyPage() {
               : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
           }`}
         >
-          Data Master Perusahaan ({companiesList.length || totalCount})
+          Company Master Data ({companiesList.length || totalCount})
           {activeTab === 'companies' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
           )}
@@ -461,7 +461,7 @@ export default function MasterCompanyPage() {
               : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
           }`}
         >
-          Grup Entitas Induk ({masters.length})
+          Parent Entity Group ({masters.length})
           {activeTab === 'masters' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
           )}
@@ -474,7 +474,7 @@ export default function MasterCompanyPage() {
               : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
           }`}
         >
-          Cabang & Lokasi Fisik ({branchesCount})
+          Branches & Physical Locations ({branchesCount})
           {activeTab === 'branches' && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
           )}

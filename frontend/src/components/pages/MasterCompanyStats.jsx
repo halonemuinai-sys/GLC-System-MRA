@@ -40,18 +40,18 @@ function StatCard({ label, value, icon: Icon, color = 'indigo', delay = 0 }) {
 export default function MasterCompanyStats({ activeTab, totalCount, activeCount, inactiveCount }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <StatCard 
+      <StatCard
         label={
-          activeTab === 'companies' ? "Total Perusahaan Utama" :
-          activeTab === 'masters' ? "Total Master Company" : "Total Cabang & Lokasi"
-        } 
-        value={totalCount} 
-        icon={activeTab === 'masters' ? FolderKanban : Building2} 
-        color="indigo" 
-        delay={0.05} 
+          activeTab === 'companies' ? "Total Main Companies" :
+          activeTab === 'masters' ? "Total Master Company" : "Total Branches & Locations"
+        }
+        value={totalCount}
+        icon={activeTab === 'masters' ? FolderKanban : Building2}
+        color="indigo"
+        delay={0.05}
       />
-      <StatCard label="Aktif" value={activeCount} icon={CheckCircle} color="emerald" delay={0.1} />
-      <StatCard label="Nonaktif" value={inactiveCount} icon={XCircle} color="rose" delay={0.15} />
+      <StatCard label="Active" value={activeCount} icon={CheckCircle} color="emerald" delay={0.1} />
+      <StatCard label="Inactive" value={inactiveCount} icon={XCircle} color="rose" delay={0.15} />
     </div>
   );
 }

@@ -83,7 +83,7 @@ export default function MasterCompanyFormDrawers({
             >
               <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-neutral-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-xl">
                 <h2 className="font-bold text-neutral-900 dark:text-white">
-                  {editingCompany ? 'Edit Perusahaan' : 'Tambah Perusahaan'}
+                  {editingCompany ? 'Edit Company' : 'Add Company'}
                 </h2>
                 <button 
                   onClick={() => {
@@ -98,13 +98,13 @@ export default function MasterCompanyFormDrawers({
 
               <form onSubmit={handleCompanySubmit} className="p-5 space-y-4">
                 <FormField
-                  label="Kode Perusahaan"
+                  label="Company Code"
                   placeholder="MRA"
                   value={companyFormData.code}
                   onChange={v => setCompanyFormData(d => ({ ...d, code: v }))}
                 />
                 <FormField
-                  label="Nama Perusahaan *"
+                  label="Company Name *"
                   placeholder="PT Mugi Rekso Abadi"
                   value={companyFormData.name}
                   onChange={v => setCompanyFormData(d => ({ ...d, name: v }))}
@@ -118,14 +118,14 @@ export default function MasterCompanyFormDrawers({
                 />
                 <div>
                   <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-                    Grup Entitas Induk (Master Company)
+                    Parent Entity Group (Master Company)
                   </label>
                   <select
                     value={companyFormData.company_master_id}
                     onChange={e => setCompanyFormData(d => ({ ...d, company_master_id: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 text-sm text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40 cursor-pointer"
                   >
-                    <option value="">-- Tanpa Relasi Induk --</option>
+                    <option value="">-- No Parent Relation --</option>
                     {masters.map(m => (
                       <option key={m.id} value={m.id}>{m.name} ({m.sector})</option>
                     ))}
@@ -133,7 +133,7 @@ export default function MasterCompanyFormDrawers({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-                    Alamat
+                    Address
                   </label>
                   <textarea
                     value={companyFormData.address}
@@ -153,7 +153,7 @@ export default function MasterCompanyFormDrawers({
                     }}
                     className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 font-semibold text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
                   >
-                    Batal
+                    Cancel
                   </button>
                   <button
                     type="submit"
@@ -161,7 +161,7 @@ export default function MasterCompanyFormDrawers({
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-800 transition-colors cursor-pointer"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    {editingCompany ? 'Simpan' : 'Tambah'}
+                    {editingCompany ? 'Save' : 'Add'}
                   </button>
                 </div>
               </form>
@@ -193,7 +193,7 @@ export default function MasterCompanyFormDrawers({
             >
               <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-neutral-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-xl">
                 <h2 className="font-bold text-neutral-900 dark:text-white">
-                  {editingMaster ? 'Edit Master Company' : 'Tambah Master Company'}
+                  {editingMaster ? 'Edit Master Company' : 'Add Master Company'}
                 </h2>
                 <button 
                   onClick={() => {
@@ -208,8 +208,8 @@ export default function MasterCompanyFormDrawers({
 
               <form onSubmit={handleMasterSubmit} className="p-5 space-y-4">
                 <FormField
-                  label="Nama Master Company (Grup MRA) *"
-                  placeholder="Contoh: PT Media Insani Abadi"
+                  label="Master Company Name (MRA Group) *"
+                  placeholder="e.g. PT Media Insani Abadi"
                   value={masterFormData.name}
                   onChange={v => setMasterFormData(d => ({ ...d, name: v }))}
                   required
@@ -217,7 +217,7 @@ export default function MasterCompanyFormDrawers({
 
                 <div>
                   <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-                    Sektor / Grup Bisnis MRA *
+                    Sector / MRA Business Group *
                   </label>
                   <select
                     value={masterFormData.sector}
@@ -239,7 +239,7 @@ export default function MasterCompanyFormDrawers({
                     }}
                     className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 font-semibold text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
                   >
-                    Batal
+                    Cancel
                   </button>
                   <button
                     type="submit"
@@ -247,7 +247,7 @@ export default function MasterCompanyFormDrawers({
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-800 transition-colors cursor-pointer"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    {editingMaster ? 'Simpan' : 'Tambah'}
+                    {editingMaster ? 'Save' : 'Add'}
                   </button>
                 </div>
               </form>
@@ -279,7 +279,7 @@ export default function MasterCompanyFormDrawers({
             >
               <div className="sticky top-0 z-10 flex items-center justify-between p-5 border-b border-neutral-100 dark:border-neutral-800 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-xl">
                 <h2 className="font-bold text-neutral-900 dark:text-white">
-                  {editingBranch ? 'Edit Cabang' : 'Tambah Cabang'}
+                  {editingBranch ? 'Edit Branch' : 'Add Branch'}
                 </h2>
                 <button 
                   onClick={() => {
@@ -301,12 +301,12 @@ export default function MasterCompanyFormDrawers({
                 )}
                 <div>
                   <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-                    Nama Perusahaan *
+                    Company Name *
                   </label>
                   <input
                     type="text"
                     list="company-names-list"
-                    placeholder="Contoh: PT Hourlogy Indah Perkasa"
+                    placeholder="e.g. PT Hourlogy Indah Perkasa"
                     value={branchFormData.name}
                     onChange={e => setBranchFormData(d => ({ ...d, name: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 text-sm text-neutral-800 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all"
@@ -320,8 +320,8 @@ export default function MasterCompanyFormDrawers({
                 </div>
 
                 <FormField
-                  label="Lokasi / Cabang Fisik *"
-                  placeholder="Contoh: Butik OMEGA Plaza Indonesia atau HQ"
+                  label="Location / Physical Branch *"
+                  placeholder="e.g. OMEGA Boutique Plaza Indonesia or HQ"
                   value={branchFormData.location}
                   onChange={v => setBranchFormData(d => ({ ...d, location: v }))}
                   required
@@ -329,7 +329,7 @@ export default function MasterCompanyFormDrawers({
 
                 <div>
                   <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-                    Sektor / Grup MRA *
+                    Sector / MRA Group *
                   </label>
                   <select
                     value={branchFormData.sector}
@@ -344,14 +344,14 @@ export default function MasterCompanyFormDrawers({
 
                 <div>
                   <label className="block text-xs font-semibold text-neutral-600 dark:text-neutral-400 mb-1.5">
-                    Legalitas Induk (Master Company)
+                    Parent Legal Entity (Master Company)
                   </label>
                   <select
                     value={branchFormData.company_master_id}
                     onChange={e => setBranchFormData(d => ({ ...d, company_master_id: e.target.value }))}
                     className="w-full px-4 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 text-sm text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/40 cursor-pointer"
                   >
-                    <option value="">-- Tanpa Relasi Induk --</option>
+                    <option value="">-- No Parent Relation --</option>
                     {masters.map(m => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
@@ -367,7 +367,7 @@ export default function MasterCompanyFormDrawers({
                     }}
                     className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 font-semibold text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
                   >
-                    Batal
+                    Cancel
                   </button>
                   <button
                     type="submit"
@@ -375,7 +375,7 @@ export default function MasterCompanyFormDrawers({
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-800 transition-colors cursor-pointer"
                   >
                     {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    {editingBranch ? 'Simpan' : 'Tambah'}
+                    {editingBranch ? 'Save' : 'Add'}
                   </button>
                 </div>
               </form>

@@ -337,7 +337,7 @@ export default function DashboardPage() {
                       <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
-                      Total unit dan nominal aset fisik yang terdaftar di dalam sistem.
+                      Total units and value of physical assets registered in the system.
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -385,7 +385,7 @@ export default function DashboardPage() {
                       <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
-                      Jumlah polis asuransi aktif dan nilai premi tahunan perlindungan aset.
+                      Number of active insurance policies and the annual premium value protecting assets.
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -433,7 +433,7 @@ export default function DashboardPage() {
                       <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
-                      Total armada kendaraan operasional dan logistik terdaftar beserta status perawatannya.
+                      Total registered operational and logistics vehicle fleet along with their maintenance status.
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -481,7 +481,7 @@ export default function DashboardPage() {
                       <HelpCircle className="w-3 h-3" />
                     </TooltipTrigger>
                     <TooltipContent side="top" align="center" className="max-w-[200px]">
-                      Daftar rekanan, penyedia jasa pemeliharaan, sewa, dan pengadaan di dalam sistem.
+                      List of partners, maintenance service providers, rentals, and procurement in the system.
                     </TooltipContent>
                   </Tooltip>
                 </div>
