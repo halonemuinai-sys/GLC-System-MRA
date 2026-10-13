@@ -14,7 +14,7 @@ const CHECK_STATUS_BADGE = {
   Pending: 'bg-neutral-200/60 text-neutral-600 dark:bg-neutral-700/40 dark:text-neutral-300'
 };
 
-const CHECK_STATUS_LABEL = { Found: 'Ditemukan', Missing: 'Hilang', Pending: 'Pending' };
+const CHECK_STATUS_LABEL = { Found: 'Found', Missing: 'Missing', Pending: 'Pending' };
 
 const defaultForm = { session_name: '', description: '', company_id: '', category_id: '' };
 
@@ -66,7 +66,7 @@ export default function StockOpnamePage() {
 
   const handleCreate = async () => {
     setFormErr('');
-    if (!form.session_name.trim()) { setFormErr('Nama sesi wajib diisi.'); return; }
+    if (!form.session_name.trim()) { setFormErr('Session name is required.'); return; }
     setSaving(true);
     try {
       await apiClient.post('/api/ga/stock-opname', form);
@@ -74,7 +74,7 @@ export default function StockOpnamePage() {
       setForm({ ...defaultForm });
       loadSessions();
     } catch (err) {
-      setFormErr(err.message || 'Gagal membuat sesi.');
+      setFormErr(err.message || 'Failed to create session.');
     } finally {
       setSaving(false);
     }
@@ -101,7 +101,7 @@ export default function StockOpnamePage() {
       setSessionToDelete(null);
       loadSessions();
     } catch (err) {
-      alert(err.message || 'Gagal menghapus sesi.');
+      alert(err.message || 'Failed to delete session.');
     } finally {
       setDeleting(false);
     }
@@ -112,17 +112,17 @@ export default function StockOpnamePage() {
     const code = scanInput.trim();
     if (!code || !activeSession) return;
     setScanInput('');
-    setScanMsg({ text: 'Memproses...', type: 'info' });
+    setScanMsg({ text: 'Processing...', type: 'info' });
     try {
       const res = await apiClient.post('/api/ga/stock-opname/scan', { session_id: activeSession.id, asset_code: code, check_status: 'Found' });
       const wasPending = checks.find(c => c.asset_code === code)?.check_status === 'Pending';
-      setScanMsg({ text: `Ditemukan: ${res.asset.asset_name}`, type: 'success' });
+      setScanMsg({ text: `Found: ${res.asset.asset_name}`, type: 'success' });
       setChecks(checks.map(c => c.asset_code === code ? { ...c, check_status: 'Found' } : c));
       if (wasPending) {
         setActiveSession(prev => ({ ...prev, checked_count: prev.checked_count + 1, found_count: prev.found_count + 1 }));
       }
     } catch (err) {
-      setScanMsg({ text: err.message || 'Gagal memproses scan.', type: 'error' });
+      setScanMsg({ text: err.message || 'Failed to process scan.', type: 'error' });
     }
     scanInputRef.current?.focus();
   };
@@ -143,10 +143,10 @@ export default function StockOpnamePage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <button type="button" onClick={() => setActiveSession(null)} className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:underline mb-2 cursor-pointer">
-              <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Daftar Sesi
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Session List
             </button>
             <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">{activeSession.session_name}</h1>
-            <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Total {activeSession.total_assets} aset dalam sesi ini.</p>
+            <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Total {activeSession.total_assets} assets in this session.</p>
           </div>
           <button type="button" onClick={() => { setScanMsg({ text: '', type: '' }); setScanMode(true); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit">
             <QrCode className="w-4 h-4" /> {t('stockOpname_scanMode')}
@@ -156,19 +156,19 @@ export default function StockOpnamePage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl">
-            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mb-1">Total Aset</p>
+            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mb-1">Total Assets</p>
             <p className="text-xl font-black text-neutral-800 dark:text-white">{activeSession.total_assets}</p>
           </div>
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl">
-            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mb-1">Sudah Dicek</p>
+            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mb-1">Checked</p>
             <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">{activeSession.checked_count}</p>
           </div>
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl">
-            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mb-1">Ditemukan</p>
+            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mb-1">Found</p>
             <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{activeSession.found_count}</p>
           </div>
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 p-4 rounded-2xl">
-            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mb-1">Sisa (Pending)</p>
+            <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider mb-1">Remaining (Pending)</p>
             <p className="text-xl font-black text-amber-600 dark:text-amber-400">{pending}</p>
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function StockOpnamePage() {
         {/* Progress bar */}
         <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Progress Pengecekan</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Check Progress</span>
             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">{pct}%</span>
           </div>
           <ProgressBar progress={pct} />
@@ -187,7 +187,7 @@ export default function StockOpnamePage() {
           {detailLoading ? (
             <div className="py-20 flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-              <span className="text-xs text-neutral-400">Memuat data pengecekan...</span>
+              <span className="text-xs text-neutral-400">Loading check data...</span>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -195,10 +195,10 @@ export default function StockOpnamePage() {
                 <thead>
                   <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-950/20 text-neutral-400 text-[10px] font-bold uppercase tracking-wider">
                     <th className="p-4">Status</th>
-                    <th className="p-4">Kode Aset</th>
-                    <th className="p-4">Nama Aset</th>
-                    <th className="p-4">Kategori</th>
-                    <th className="p-4">Perusahaan</th>
+                    <th className="p-4">Asset Code</th>
+                    <th className="p-4">Asset Name</th>
+                    <th className="p-4">Category</th>
+                    <th className="p-4">Company</th>
                     <th className="p-4">{t('stockOpname_colLocation')}</th>
                     <th className="p-4">{t('stockOpname_colCondition')}</th>
                   </tr>
@@ -237,8 +237,8 @@ export default function StockOpnamePage() {
                   <h3 className="text-sm font-bold text-neutral-800 dark:text-white mb-3">{t('stockOpname_scanMode')}</h3>
                   <QrCode className="w-12 h-12 text-indigo-400 opacity-50 mb-3" />
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed mb-4">
-                    Scan barcode aset atau <strong>ketik kode aset</strong> secara manual, lalu tekan <strong>Enter</strong>.<br />
-                    Aset otomatis tersimpan sebagai <strong>Ditemukan</strong>.
+                    Scan the asset barcode or <strong>type the asset code</strong> manually, then press <strong>Enter</strong>.<br />
+                    The asset is automatically saved as <strong>Found</strong>.
                   </p>
 
                   {scanMsg.text && (
@@ -264,7 +264,7 @@ export default function StockOpnamePage() {
                   </form>
 
                   <button type="button" onClick={() => setScanMode(false)} className="w-full mt-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer">
-                    Selesai Scan
+                    Finish Scan
                   </button>
                 </motion.div>
               </div>
@@ -284,7 +284,7 @@ export default function StockOpnamePage() {
             <ClipboardCheck className="w-6 h-6 text-indigo-500" />
             {t('stockOpname_title')}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Verifikasi fisik aset menggunakan barcode scanner.</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Physical asset verification using a barcode scanner.</p>
         </div>
         <button type="button" onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit">
           <Plus className="w-4 h-4" /> {t('stockOpname_newSession')}
@@ -295,25 +295,25 @@ export default function StockOpnamePage() {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3">
             <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-            <span className="text-xs text-neutral-400">Memuat sesi...</span>
+            <span className="text-xs text-neutral-400">Loading sessions...</span>
           </div>
         ) : sessions.length === 0 ? (
           <div className="py-20 text-center text-neutral-400 text-xs">
             <ClipboardCheck className="w-8 h-8 mx-auto mb-2 text-neutral-300" />
-            <p className="font-bold text-neutral-600 dark:text-neutral-300 mb-1">Belum ada sesi Stock Opname</p>
-            Buat sesi baru untuk memulai verifikasi fisik aset.
+            <p className="font-bold text-neutral-600 dark:text-neutral-300 mb-1">No Stock Opname sessions yet</p>
+            Create a new session to start physical asset verification.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-950/20 text-neutral-400 text-[10px] font-bold uppercase tracking-wider">
-                  <th className="p-4">Nama Sesi</th>
-                  <th className="p-4">Deskripsi</th>
-                  <th className="p-4">Tanggal Mulai</th>
+                  <th className="p-4">Session Name</th>
+                  <th className="p-4">Description</th>
+                  <th className="p-4">Start Date</th>
                   <th className="p-4">Status</th>
                   <th className="p-4">Progress</th>
-                  <th className="p-4 text-center">Aksi</th>
+                  <th className="p-4 text-center">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-xs">
@@ -336,11 +336,11 @@ export default function StockOpnamePage() {
                       </td>
                       <td className="p-4 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          <button onClick={() => setSessionToDelete(s)} className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer" title="Hapus Sesi">
+                          <button onClick={() => setSessionToDelete(s)} className="p-1 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer" title="Delete Session">
                             <Trash2 className="w-4 h-4" />
                           </button>
                           <button onClick={() => openSession(s)} className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer">
-                            Buka
+                            Open
                           </button>
                         </div>
                       </td>
@@ -362,46 +362,46 @@ export default function StockOpnamePage() {
               <motion.div initial={{ opacity: 0, scale: 0.9, y: 15 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 15 }} transition={{ type: 'spring', duration: 0.35 }}
                 className="w-full max-w-md bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl pointer-events-auto relative">
                 <button onClick={() => setShowCreate(false)} className="absolute top-4 right-4 p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400"><X className="w-4 h-4" /></button>
-                <h3 className="text-sm font-bold text-neutral-800 dark:text-white mb-4">Buat Sesi Stock Opname Baru</h3>
+                <h3 className="text-sm font-bold text-neutral-800 dark:text-white mb-4">Create New Stock Opname Session</h3>
 
                 {formErr && <div className="bg-red-500/10 text-red-600 dark:text-red-400 text-[11px] font-semibold px-3 py-2 rounded-xl mb-3">{formErr}</div>}
 
                 <div className="space-y-3 text-xs">
                   <div>
-                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Nama Sesi *</label>
-                    <input className={inputCls} placeholder="Contoh: Audit Q2 2026 — MRA Group" value={form.session_name} onChange={e => setForm({ ...form, session_name: e.target.value })} />
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Session Name *</label>
+                    <input className={inputCls} placeholder="e.g. Q2 2026 Audit — MRA Group" value={form.session_name} onChange={e => setForm({ ...form, session_name: e.target.value })} />
                   </div>
                   <div>
-                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Deskripsi</label>
-                    <textarea rows={2} className={inputCls} placeholder="Catatan tambahan tentang sesi ini..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+                    <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Description</label>
+                    <textarea rows={2} className={inputCls} placeholder="Additional notes about this session..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Filter Perusahaan</label>
+                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Company Filter</label>
                       <select className={inputCls} value={form.company_id} onChange={e => setForm({ ...form, company_id: e.target.value })}>
-                        <option value="">— Semua Perusahaan —</option>
+                        <option value="">— All Companies —</option>
                         {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Filter Kategori</label>
+                      <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1.5">Category Filter</label>
                       <select className={inputCls} value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })}>
-                        <option value="">— Semua Kategori —</option>
+                        <option value="">— All Categories —</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                       </select>
                     </div>
                   </div>
                   <p className="text-[11px] text-indigo-600 dark:text-indigo-400 bg-indigo-500/5 border border-indigo-500/20 rounded-xl px-3 py-2">
-                    Sistem akan mengambil <strong>semua aset aktif</strong> sesuai filter ke dalam daftar pengecekan.
+                    The system will pull <strong>all active assets</strong> matching the filter into the check list.
                   </p>
                 </div>
 
                 <div className="flex gap-3 mt-5 pt-4 border-t border-neutral-100 dark:border-neutral-800">
                   <button type="button" onClick={() => setShowCreate(false)} disabled={saving} className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50">
-                    Batal
+                    Cancel
                   </button>
                   <button type="button" onClick={handleCreate} disabled={saving} className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50">
-                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Mulai Sesi'}
+                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Start Session'}
                   </button>
                 </div>
               </motion.div>
@@ -422,17 +422,17 @@ export default function StockOpnamePage() {
                   <motion.div className="absolute inset-0 rounded-full bg-red-500/10 dark:bg-red-500/20 blur-sm" animate={{ scale: [1, 1.25, 1] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }} />
                   <div className="relative w-12 h-12 rounded-full bg-red-500/10 dark:bg-red-500/20 text-red-500 dark:text-red-400 flex items-center justify-center"><AlertTriangle className="w-6 h-6 animate-pulse" /></div>
                 </div>
-                <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-100">Konfirmasi Hapus Sesi</h3>
+                <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-100">Confirm Delete Session</h3>
                 <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-2 leading-relaxed">
-                  Apakah Anda yakin ingin menghapus sesi <strong className="text-red-500 dark:text-red-400 font-bold">"{sessionToDelete.session_name}"</strong>? Semua data pengecekan akan hilang.
+                  Are you sure you want to delete the session <strong className="text-red-500 dark:text-red-400 font-bold">"{sessionToDelete.session_name}"</strong>? All check data will be lost.
                 </p>
                 <div className="flex items-center gap-2.5 w-full mt-6">
                   <button type="button" onClick={() => setSessionToDelete(null)} disabled={deleting} className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 text-neutral-700 dark:text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center disabled:opacity-50">
-                    Batal
+                    Cancel
                   </button>
                   <button type="button" onClick={confirmDeleteSession} disabled={deleting} className="flex-1 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-red-600/25 disabled:opacity-50">
                     {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    Ya, Hapus
+                    Yes, Delete
                   </button>
                 </div>
               </motion.div>

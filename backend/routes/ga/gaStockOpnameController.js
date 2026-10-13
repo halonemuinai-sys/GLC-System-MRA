@@ -45,7 +45,7 @@ async function createStockOpnameSession(req, res, next) {
   try {
     const { session_name, description, company_id, category_id } = req.body;
     if (!session_name || !session_name.trim()) {
-      return res.status(400).json({ error: 'Nama sesi wajib diisi.' });
+      return res.status(400).json({ error: 'Session name is required.' });
     }
 
     const session = await prisma.stock_opname_sessions.create({
@@ -94,7 +94,7 @@ async function scanInventoryCheck(req, res, next) {
   try {
     const { session_id, asset_code, check_status, condition_note, location_found, notes } = req.body;
     if (!session_id || !asset_code) {
-      return res.status(400).json({ error: 'Session ID dan kode aset wajib diisi.' });
+      return res.status(400).json({ error: 'Session ID and asset code are required.' });
     }
 
     const check = await prisma.inventory_checks.findFirst({
@@ -105,7 +105,7 @@ async function scanInventoryCheck(req, res, next) {
     });
 
     if (!check) {
-      return res.status(404).json({ error: 'Kode aset tidak ditemukan dalam sesi ini.', asset_code });
+      return res.status(404).json({ error: 'Asset code not found in this session.', asset_code });
     }
 
     await prisma.inventory_checks.update({

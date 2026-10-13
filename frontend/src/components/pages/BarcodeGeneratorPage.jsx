@@ -20,11 +20,11 @@ const FORMAT_OPTIONS = [
 ];
 
 const PRESETS = [
-  { bg: '#ffffff', line: '#000000', label: 'Hitam & Putih', id: 'bw' },
+  { bg: '#ffffff', line: '#000000', label: 'Black & White', id: 'bw' },
   { bg: '#0f172a', line: '#60a5fa', label: 'Dark Blue', id: 'dark-blue' },
-  { bg: '#f0fdf4', line: '#15803d', label: 'Hijau', id: 'green' },
-  { bg: '#fff7ed', line: '#c2410c', label: 'Oranye', id: 'orange' },
-  { bg: '#fdf4ff', line: '#7e22ce', label: 'Ungu', id: 'purple' }
+  { bg: '#f0fdf4', line: '#15803d', label: 'Green', id: 'green' },
+  { bg: '#fff7ed', line: '#c2410c', label: 'Orange', id: 'orange' },
+  { bg: '#fdf4ff', line: '#7e22ce', label: 'Purple', id: 'purple' }
 ];
 
 const defaultConfig = {
@@ -65,7 +65,7 @@ function BarcodePreview({ item, config }) {
           lineColor: config.lineColor,
           displayValue: config.showText,
           text: config.showText ? (item.label || item.text) : undefined,
-          valid: (v) => { if (!v) setErr('Teks tidak valid untuk format ini'); }
+          valid: (v) => { if (!v) setErr('Text is not valid for this format'); }
         });
       } catch (e) {
         setErr(e.message || 'Error');
@@ -243,7 +243,7 @@ export default function BarcodeGeneratorPage() {
           <Barcode className="w-6 h-6 text-indigo-500" />
           {t('barcode_title')}
         </h1>
-        <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Generate &amp; cetak barcode / QR Code untuk aset, dokumen, dan label kustom.</p>
+        <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Generate &amp; print barcodes / QR codes for assets, documents, and custom labels.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-5">
@@ -318,19 +318,19 @@ export default function BarcodeGeneratorPage() {
 
               {config.type === 'barcode' && (
                 <div className="space-y-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Ukuran</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Size</p>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                     <div>
-                      <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-neutral-400">Lebar</span><span className="text-[10px] font-bold text-indigo-500">{config.width}px</span></div>
-                      <input type="range" min={1} max={5} step={0.5} value={config.width} title="Lebar Garis" onChange={e => cfg('width', parseFloat(e.target.value))} className="w-full accent-indigo-600 mt-1" />
+                      <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-neutral-400">Width</span><span className="text-[10px] font-bold text-indigo-500">{config.width}px</span></div>
+                      <input type="range" min={1} max={5} step={0.5} value={config.width} title="Line Width" onChange={e => cfg('width', parseFloat(e.target.value))} className="w-full accent-indigo-600 mt-1" />
                     </div>
                     <div>
-                      <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-neutral-400">Tinggi</span><span className="text-[10px] font-bold text-indigo-500">{config.height}px</span></div>
-                      <input type="range" min={40} max={160} step={5} value={config.height} title="Tinggi Barcode" onChange={e => cfg('height', parseInt(e.target.value))} className="w-full accent-indigo-600 mt-1" />
+                      <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-neutral-400">Height</span><span className="text-[10px] font-bold text-indigo-500">{config.height}px</span></div>
+                      <input type="range" min={40} max={160} step={5} value={config.height} title="Barcode Height" onChange={e => cfg('height', parseInt(e.target.value))} className="w-full accent-indigo-600 mt-1" />
                     </div>
                     <div>
                       <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-neutral-400">Font</span><span className="text-[10px] font-bold text-indigo-500">{config.fontSize}px</span></div>
-                      <input type="range" min={8} max={24} step={1} value={config.fontSize} title="Ukuran Font" onChange={e => cfg('fontSize', parseInt(e.target.value))} className="w-full accent-indigo-600 mt-1" />
+                      <input type="range" min={8} max={24} step={1} value={config.fontSize} title="Font Size" onChange={e => cfg('fontSize', parseInt(e.target.value))} className="w-full accent-indigo-600 mt-1" />
                     </div>
                     <div>
                       <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-neutral-400">Margin</span><span className="text-[10px] font-bold text-indigo-500">{config.margin}px</span></div>
@@ -339,7 +339,7 @@ export default function BarcodeGeneratorPage() {
                   </div>
                   <label className="flex items-center gap-2 mt-1 cursor-pointer select-none">
                     <input type="checkbox" checked={config.showText} onChange={e => cfg('showText', e.target.checked)} className="w-3.5 h-3.5 accent-indigo-600 rounded" />
-                    <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">Tampilkan teks label</span>
+                    <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-400">Show label text</span>
                   </label>
                 </div>
               )}
@@ -348,8 +348,8 @@ export default function BarcodeGeneratorPage() {
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">QR Settings</p>
                   <div>
-                    <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-neutral-400">Ukuran</span><span className="text-[10px] font-bold text-indigo-500">{config.qrSize}px</span></div>
-                    <input type="range" min={100} max={400} step={20} value={config.qrSize} title="Ukuran QR Code" onChange={e => cfg('qrSize', parseInt(e.target.value))} className="w-full accent-indigo-600 mt-1" />
+                    <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-neutral-400">Size</span><span className="text-[10px] font-bold text-indigo-500">{config.qrSize}px</span></div>
+                    <input type="range" min={100} max={400} step={20} value={config.qrSize} title="QR Code Size" onChange={e => cfg('qrSize', parseInt(e.target.value))} className="w-full accent-indigo-600 mt-1" />
                   </div>
                   <div>
                     <label className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block mb-1">Error Correction</label>
@@ -364,7 +364,7 @@ export default function BarcodeGeneratorPage() {
               )}
 
               <div className="space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5"><Palette className="w-3 h-3" /> Warna</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5"><Palette className="w-3 h-3" /> Color</p>
                 <div className="flex gap-1.5">
                   {PRESETS.map(p => (
                     <button
@@ -402,10 +402,10 @@ export default function BarcodeGeneratorPage() {
           {/* BULK TAB */}
           {tab === 'bulk' && (
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 space-y-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Import Massal</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Bulk Import</p>
               <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-3">
                 <p className="text-[11px] text-indigo-600 dark:text-indigo-400 leading-relaxed font-semibold">
-                  Satu baris = satu barcode.<br />
+                  One line = one barcode.<br />
                   Format: <code className="bg-white/60 dark:bg-black/20 px-1 rounded">KODE[Tab]LABEL</code>
                 </p>
               </div>
@@ -417,7 +417,7 @@ export default function BarcodeGeneratorPage() {
                 onChange={e => setBulkText(e.target.value)}
               />
               <button type="button" onClick={importBulk} className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer">
-                <Plus className="w-3.5 h-3.5" /> Import {bulkText.split('\n').filter(Boolean).length} Item
+                <Plus className="w-3.5 h-3.5" /> Import {bulkText.split('\n').filter(Boolean).length} Items
               </button>
             </div>
           )}
@@ -425,15 +425,15 @@ export default function BarcodeGeneratorPage() {
           {/* ASSETS TAB */}
           {tab === 'assets' && (
             <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 space-y-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Dari Data Aset</p>
-              <input className={inputCls} placeholder="Cari kode / nama aset..." value={assetSearch} onChange={e => setAssetSearch(e.target.value)} />
+              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">From Asset Data</p>
+              <input className={inputCls} placeholder="Search asset code / name..." value={assetSearch} onChange={e => setAssetSearch(e.target.value)} />
               <div className="grid grid-cols-2 gap-2">
-                <select className={`${inputCls} !py-1.5`} value={assetCompanyId} onChange={e => setAssetCompanyId(e.target.value)} title="Filter Perusahaan">
-                  <option value="">-- Perusahaan --</option>
+                <select className={`${inputCls} !py-1.5`} value={assetCompanyId} onChange={e => setAssetCompanyId(e.target.value)} title="Company Filter">
+                  <option value="">-- Company --</option>
                   {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <select className={`${inputCls} !py-1.5`} value={assetCategoryId} onChange={e => setAssetCategoryId(e.target.value)} title="Filter Kategori">
-                  <option value="">-- Kategori --</option>
+                <select className={`${inputCls} !py-1.5`} value={assetCategoryId} onChange={e => setAssetCategoryId(e.target.value)} title="Category Filter">
+                  <option value="">-- Category --</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
@@ -441,7 +441,7 @@ export default function BarcodeGeneratorPage() {
                 {assetsLoading ? (
                   <div className="py-10 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>
                 ) : filteredAssets.length === 0 ? (
-                  <div className="py-10 text-center text-[11px] text-neutral-400">Tidak ada aset ditemukan.</div>
+                  <div className="py-10 text-center text-[11px] text-neutral-400">No assets found.</div>
                 ) : (
                   filteredAssets.slice(0, 50).map(a => (
                     <button
@@ -470,7 +470,7 @@ export default function BarcodeGeneratorPage() {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex gap-2">
               <button type="button" onClick={addItem} className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer">
-                <Plus className="w-3.5 h-3.5" /> Tambah Item
+                <Plus className="w-3.5 h-3.5" /> Add Item
               </button>
               <button type="button" onClick={printAll} className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20">
                 <Printer className="w-3.5 h-3.5" /> Print ({items.length})
@@ -499,7 +499,7 @@ export default function BarcodeGeneratorPage() {
                   <button
                     type="button"
                     onClick={() => removeItem(item.id)}
-                    title="Hapus"
+                    title="Delete"
                     className={`px-1.5 py-1.5 rounded-r-lg border border-l-0 transition-all cursor-pointer ${activeId === item.id ? 'bg-indigo-600 border-indigo-600 text-white/70 hover:text-white' : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-400 hover:text-red-500'}`}
                   >
                     <Trash2 className="w-3 h-3" />
@@ -514,14 +514,14 @@ export default function BarcodeGeneratorPage() {
             <BarcodePreview item={activeItem} config={config} />
             <button type="button" onClick={() => copyText(activeItem.text)} className="flex items-center gap-1.5 mt-4 px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 text-[11px] font-bold rounded-xl transition-all cursor-pointer">
               {copied === activeItem.text ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-              {copied === activeItem.text ? 'Disalin!' : 'Salin Teks'}
+              {copied === activeItem.text ? 'Copied!' : 'Copy Text'}
             </button>
           </div>
 
           {/* Print preview grid */}
           <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Preview Print — {items.length} item</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Print Preview — {items.length} items</p>
               <button type="button" onClick={printAll} className="flex items-center gap-1 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer">
                 <Printer className="w-3 h-3" /> Print
               </button>
