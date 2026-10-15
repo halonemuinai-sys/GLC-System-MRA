@@ -491,16 +491,16 @@ export default function GaAssetsPage() {
             <button
               onClick={() => handleExportExcel({ search, categoryId, locationId, statusId, companyId, companies, formatIDR, maskNum, setExportingExcel })}
               disabled={exportingExcel}
-              className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 disabled:bg-teal-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-teal-600/20 w-fit"
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer border border-neutral-200 dark:border-neutral-800 shadow-sm w-fit"
             >
               {exportingExcel ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin text-teal-500" />
                   Generating Excel...
                 </>
               ) : (
                 <>
-                  <Activity className="w-4 h-4" />
+                  <Activity className="w-4 h-4 text-teal-500" />
                   {t('exportExcel')}
                 </>
               )}
@@ -510,16 +510,16 @@ export default function GaAssetsPage() {
             <button
               onClick={() => handleExportPDF({ search, categoryId, locationId, statusId, companyId, companies, categories, locations, statuses, formatIDR, maskNum, setExportingPDF })}
               disabled={exportingPDF}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-600/20 w-fit"
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer border border-neutral-200 dark:border-neutral-800 shadow-sm w-fit"
             >
               {exportingPDF ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin text-rose-500" />
                   Generating PDF...
                 </>
               ) : (
                 <>
-                  <Download className="w-4 h-4" />
+                  <Download className="w-4 h-4 text-rose-500" />
                   Export PDF
                 </>
               )}
@@ -549,24 +549,27 @@ export default function GaAssetsPage() {
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit"
           >
             <Plus className="w-4 h-4" />
-            {t('ga_addAsset')}
+            Add Asset
           </button>
           <button
             onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-emerald-600/20 w-fit"
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer border border-neutral-200 dark:border-neutral-800 shadow-sm w-fit"
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="w-4 h-4 text-indigo-500" />
             {t('importExcel')}
           </button>
           {isAdmin && (
-            <button
-              onClick={() => setShowPurgeModal(true)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm w-fit"
-              title="Asset Data Cleanup & Reset (Admin Only)"
-            >
-              <Trash2 className="w-4 h-4 text-rose-500" />
-              Data Cleanup
-            </button>
+            <>
+              <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-0.5" />
+              <button
+                onClick={() => setShowPurgeModal(true)}
+                className="flex items-center gap-2 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50 text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm w-fit"
+                title="Asset Data Cleanup & Reset (Admin Only)"
+              >
+                <Trash2 className="w-4 h-4 text-rose-500" />
+                Data Cleanup
+              </button>
+            </>
           )}
         </div>
       </div>
