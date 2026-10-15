@@ -169,6 +169,7 @@ export default function GaAssetsPage() {
   const [importErrors, setImportErrors] = useState([]);
   const [importWarnings, setImportWarnings] = useState([]);
   const [importPreview, setImportPreview] = useState([]);
+  const [importResult, setImportResult] = useState(null);
 
   // Active filters (passed to the API)
   const [search, setSearch] = useState('');
@@ -317,13 +318,13 @@ export default function GaAssetsPage() {
 
     try {
       setSubmitting(true);
+      setImportResult(null);
       const res = await apiClient.post('/api/ga/assets/bulk-import', {
         assets: importPreview
       });
-      alert(res.message || `Successfully imported ${importPreview.length} assets.`);
-      setShowImportModal(false);
-      setImportPreview([]);
-      setImportErrors([]);
+      // Keep the modal open with the per-row result (audit trail) instead of a
+      // generic alert — the user needs to see exactly which rows failed and why.
+      setImportResult(res);
       setPage(1);
       fetchData();
     } catch (err) {
@@ -459,16 +460,51 @@ export default function GaAssetsPage() {
 
   return (
     <div className="space-y-6 relative pb-10">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <Box className="w-6 h-6 text-indigo-500" />
-            {t('gaAssets_title')}
-          </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Management of office assets and inventory at GLC MRA.</p>
+      {/* Header Banner */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#13223a] to-[#1e293b] rounded-3xl px-6 py-7 sm:px-8 sm:py-8">
+        <Box className="absolute -right-6 -top-6 w-48 h-48 text-white/[0.04] pointer-events-none" strokeWidth={1} />
+        <div className="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-5">
+          <div>
+            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-blue-400">
+              <Box className="w-3.5 h-3.5" />
+              General Affairs / Assets
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-2">
+              {t('gaAssets_title')}
+            </h1>
+            <p className="text-slate-400 text-xs sm:text-sm mt-1.5 max-w-md">Management of office assets and inventory at MRA.</p>
+          </div>
+          <button
+            onClick={() => {
+              setEditingAsset(null);
+              setFormData({
+                company_id: '',
+                asset_name: '',
+                asset_code: '',
+                asset_category_id: '',
+                asset_type_id: '',
+                location_id: '',
+                room: '',
+                acquisition_date: '',
+                acquisition_cost: '',
+                useful_life_months: '',
+                condition_id: 1,
+                status_id: 1,
+                details: '',
+                information: ''
+              });
+              setShowAddDrawer(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-950/40 w-fit flex-shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            Add Asset
+          </button>
         </div>
-        <div className="flex items-center gap-2.5">
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-2.5 flex-wrap">
           {hasProcessed && (
             <button
               onClick={() => setShowDashboard(!showDashboard)}
@@ -526,32 +562,6 @@ export default function GaAssetsPage() {
             </button>
           )}
           <button
-            onClick={() => {
-              setEditingAsset(null);
-              setFormData({
-                company_id: '',
-                asset_name: '',
-                asset_code: '',
-                asset_category_id: '',
-                asset_type_id: '',
-                location_id: '',
-                room: '',
-                acquisition_date: '',
-                acquisition_cost: '',
-                useful_life_months: '',
-                condition_id: 1,
-                status_id: 1,
-                details: '',
-                information: ''
-              });
-              setShowAddDrawer(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-lg shadow-indigo-600/20 w-fit"
-          >
-            <Plus className="w-4 h-4" />
-            Add Asset
-          </button>
-          <button
             onClick={() => setShowImportModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer border border-neutral-200 dark:border-neutral-800 shadow-sm w-fit"
           >
@@ -571,7 +581,6 @@ export default function GaAssetsPage() {
               </button>
             </>
           )}
-        </div>
       </div>
 
       {/* Filter and Search Bar */}
@@ -887,6 +896,8 @@ export default function GaAssetsPage() {
         setImportWarnings={setImportWarnings}
         importingFile={importingFile}
         setImportingFile={setImportingFile}
+        importResult={importResult}
+        setImportResult={setImportResult}
       />
 
       {/* Purge / Reset All Data Modal */}

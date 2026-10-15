@@ -47,6 +47,8 @@ const CustomTooltip = ({ active, payload, mode, formatIDR, globalHidePrices }) =
 export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta, formatIDR, maskNum, globalHidePrices, t }) {
   const [chartMode, setChartMode] = useState('count');
   const totalCost = summary.totalAcquisitionCost || 0;
+  const categoryTotalCount = (summary.categoryBreakdown || []).reduce((acc, c) => acc + (c.count || 0), 0);
+  const categoryTotalValue = (summary.categoryBreakdown || []).reduce((acc, c) => acc + (c.value || 0), 0);
 
   return (
     <AnimatePresence initial={false}>
@@ -98,25 +100,37 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
               
               <div className="h-40 w-full my-3 flex items-center justify-center relative">
                 {summary.categoryBreakdown && summary.categoryBreakdown.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={summary.categoryBreakdown}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={48}
-                        outerRadius={65}
-                        paddingAngle={3}
-                        dataKey={chartMode === 'count' ? 'count' : 'value'}
-                        nameKey="name"
-                      >
-                        {summary.categoryBreakdown.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip mode={chartMode} formatIDR={formatIDR} globalHidePrices={globalHidePrices} />} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={summary.categoryBreakdown}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={48}
+                          outerRadius={65}
+                          paddingAngle={3}
+                          dataKey={chartMode === 'count' ? 'count' : 'value'}
+                          nameKey="name"
+                        >
+                          {summary.categoryBreakdown.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip mode={chartMode} formatIDR={formatIDR} globalHidePrices={globalHidePrices} />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+
+                    {/* Donut center label */}
+                    <div className="absolute flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-lg font-black text-neutral-800 dark:text-white font-mono leading-none">
+                        {chartMode === 'count' ? maskNum(categoryTotalCount) : formatIDR(categoryTotalValue)}
+                      </span>
+                      <span className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider mt-1.5 font-sans">
+                        {chartMode === 'count' ? 'Total Units' : 'Total Value'}
+                      </span>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-xs text-neutral-400 flex flex-col items-center gap-1.5">
                     <Box className="w-8 h-8 text-neutral-300 dark:text-neutral-700 animate-pulse" />
@@ -135,7 +149,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                     />
                     <span className="text-neutral-500 dark:text-neutral-400 capitalize truncate font-medium">{entry.name}</span>
                     <span className="font-bold text-neutral-700 dark:text-neutral-300 ml-auto font-mono text-[9px]">
-                      {maskNum(entry.count)} unit ({formatIDR(entry.value)})
+                      {maskNum(entry.count)} {entry.count === 1 ? 'unit' : 'units'} ({formatIDR(entry.value)})
                     </span>
                   </div>
                 ))}

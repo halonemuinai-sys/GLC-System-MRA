@@ -324,11 +324,11 @@ const g = {
 
   id: {
     // ─── Common UI ───────────────────────────────────────────────────────
-    loading: 'Memuat data...',
+    loading: 'Loading data...',
     connectingDb: 'Menghubungkan ke Database MRA...',
     retry: 'Coba Lagi',
     refreshData: 'Segarkan Data',
-    processData: 'Proses Data',
+    processData: 'Process Data',
     resetFilter: 'Reset Filter',
     addRecord: 'Tambah Record',
     save: 'Simpan',
@@ -377,10 +377,10 @@ const g = {
     targetLabel: 'Target:',
 
     // Filter dropdowns
-    allCompanies: 'Semua Perusahaan (PT)',
-    allStatuses: 'Semua Status',
+    allCompanies: 'All Companies (PT)',
+    allStatuses: 'All Statuses',
     allHoldingGroups: 'Semua Holding Group',
-    allCategories: 'Semua Kategori',
+    allCategories: 'All Categories',
     allLocations: 'Semua Lokasi',
     allDocStatus: 'Semua Status Dokumen',
     allClassifications: 'Semua Klasifikasi',
@@ -415,7 +415,7 @@ const g = {
     ga_addDeviceRental: 'Tambah Rental Perangkat',
     ga_addDocument: 'Tambah Dokumen',
     ga_requestService: 'Ajukan Servis',
-    ga_searchAssets: 'Cari aset berdasarkan kode, nama, ruangan...',
+    ga_searchAssets: 'Search assets by code, name, room...',
     ga_searchVendors: 'Cari vendor berdasarkan kode, nama, atau contact person...',
     ga_searchVehicles: 'Cari kendaraan berdasarkan plat nomor, model, merek, driver...',
     ga_searchInsurance: 'Cari berdasarkan nomor polis, perusahaan asuransi, broker...',
@@ -427,7 +427,7 @@ const g = {
     // GA Assets
     gaAssets_title: 'Asset Management',
     gaAssets_unitView: 'Unit',
-    gaAssets_valueView: 'Nilai',
+    gaAssets_valueView: 'Value',
 
     // GA Vendors
     gaVendors_title: 'Database Vendor',

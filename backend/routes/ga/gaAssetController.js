@@ -190,7 +190,7 @@ async function bulkImportAssets(req, res, next) {
   try {
     const { assets } = req.body;
     if (!Array.isArray(assets) || assets.length === 0) {
-      return res.status(400).json({ error: 'Data aset tidak boleh kosong.' });
+      return res.status(400).json({ error: 'Asset data cannot be empty.' });
     }
 
     const [companies, categories, types, branches, users, conditions, statuses] = await Promise.all([
@@ -242,42 +242,6 @@ async function bulkImportAssets(req, res, next) {
     const defaultConditionId = conditions.find(c => normalize(c.name).includes('baik'))?.id || conditions[0]?.id || 1;
     const defaultStatusId = statuses.find(s => normalize(s.name).includes('aktif'))?.id || statuses[0]?.id || 1;
 
-    const errors = [];
-
-    for (let i = 0; i < assets.length; i++) {
-      const item = assets[i];
-      const rowNum = item.rowNum || (i + 1);
-
-      if (!item.asset_name) {
-        errors.push(`Baris ${rowNum}: Nama Aset wajib diisi.`);
-        continue;
-      }
-
-      if (!item.company_name) {
-        errors.push(`Baris ${rowNum}: Perusahaan (PT) wajib diisi.`);
-        continue;
-      } else {
-        const compKey = normalize(item.company_name);
-        const cleanKey = compKey.replace(/^pt\.?\s*/i, '').trim();
-        if (!companyMap[compKey] && !companyMap[cleanKey]) {
-          const matched = companies.find(c => {
-            const cNorm = normalize(c.name);
-            const cClean = cNorm.replace(/^pt\.?\s*/i, '').trim();
-            return cNorm.includes(cleanKey) || cleanKey.includes(cClean);
-          });
-          if (matched) {
-            companyMap[compKey] = matched.id;
-          } else {
-            errors.push(`Baris ${rowNum}: Perusahaan "${item.company_name}" tidak ditemukan di master perusahaan.`);
-          }
-        }
-      }
-    }
-
-    if (errors.length > 0) {
-      return res.status(400).json({ errors });
-    }
-
     // Pre-fetch existing asset codes in one batch query to avoid per-row database round trips
     const payloadCodes = assets
       .map(a => a.asset_code && String(a.asset_code).trim())
@@ -293,158 +257,186 @@ async function bulkImportAssets(req, res, next) {
     const existingAssetMap = new Map();
     existingAssets.forEach(ea => existingAssetMap.set(ea.asset_code, ea.id));
 
-    // Import in chunks, each its own transaction — a single transaction spanning all
-    // rows can exceed Prisma's interactive-transaction timeout on large imports (one
-    // network round trip per row against the remote Supabase pooler adds up fast).
-    const IMPORT_CHUNK_SIZE = 25;
-    const createdAssets = [];
-    for (let chunkStart = 0; chunkStart < assets.length; chunkStart += IMPORT_CHUNK_SIZE) {
-      const chunk = assets.slice(chunkStart, chunkStart + IMPORT_CHUNK_SIZE);
-      const insertedChunk = await prisma.$transaction(async (tx) => {
-      const inserted = [];
-      for (const item of chunk) {
+    // Each row is processed and committed independently — one row's failure (bad
+    // reference data, a transient DB hiccup, a constraint violation, ...) must never
+    // roll back or block the rows around it. This is also what lets the response carry
+    // an accurate per-row audit trail (succeeded / failed + reason) back to the UI.
+    const succeeded = [];
+    const failed = [];
+
+    for (let i = 0; i < assets.length; i++) {
+      const item = assets[i];
+      const rowNum = item.rowNum || (i + 1);
+      const assetNameLabel = item.asset_name || '(no name)';
+
+      try {
+        if (!item.asset_name) {
+          throw new Error('Asset Name is required.');
+        }
+        if (!item.company_name) {
+          throw new Error('Company Name (PT) is required.');
+        }
+
         const compKey = normalize(item.company_name);
         const cleanCompKey = compKey.replace(/^pt\.?\s*/i, '').trim();
-        const compId = companyMap[compKey] || companyMap[cleanCompKey];
-
-        // 1. Category (Link or Auto-create)
-        let catId = null;
-        if (item.asset_category_name && item.asset_category_name.trim()) {
-          const catKey = normalize(item.asset_category_name);
-          if (categoryMap[catKey]) {
-            catId = categoryMap[catKey];
+        let compId = companyMap[compKey] || companyMap[cleanCompKey];
+        if (!compId) {
+          const matched = companies.find(c => {
+            const cNorm = normalize(c.name);
+            const cClean = cNorm.replace(/^pt\.?\s*/i, '').trim();
+            return cNorm.includes(cleanCompKey) || cleanCompKey.includes(cClean);
+          });
+          if (matched) {
+            compId = matched.id;
+            companyMap[compKey] = matched.id;
           } else {
-            try {
-              const newCat = await tx.m_asset_category.create({
-                data: { name: item.asset_category_name.trim() }
-              });
-              categoryMap[catKey] = newCat.id;
-              catId = newCat.id;
-            } catch (catErr) {
-              const existingCat = await tx.m_asset_category.findFirst({
-                where: { name: { equals: item.asset_category_name.trim(), mode: 'insensitive' } }
-              });
-              catId = existingCat ? existingCat.id : null;
-            }
+            throw new Error(`Company "${item.company_name}" is not registered in the system.`);
           }
-        }
-        
-        // 2. Type (Link or Auto-create)
-        let typeId = null;
-        if (item.asset_type_name && item.asset_type_name.trim()) {
-          const typeKey = normalize(item.asset_type_name);
-          const typeLookupKey = catId ? `${catId}_${typeKey}` : typeKey;
-          if (typeMap[typeLookupKey] || typeNameMap[typeKey]) {
-            typeId = typeMap[typeLookupKey] || typeNameMap[typeKey];
-          } else {
-            try {
-              const newType = await tx.m_asset_type.create({
-                data: {
-                  category_id: catId,
-                  name: item.asset_type_name.trim()
-                }
-              });
-              typeMap[typeLookupKey] = newType.id;
-              typeNameMap[typeKey] = newType.id;
-              typeId = newType.id;
-            } catch (typeErr) {
-              typeId = null;
-            }
-          }
-        }
-
-        // 3. Location / Branch (Link or Auto-create)
-        let locId = null;
-        if (item.location_name && item.location_name.trim()) {
-          const locKey = normalize(item.location_name);
-          if (branchMap[locKey]) {
-            locId = branchMap[locKey];
-          } else {
-            try {
-              const newBranch = await tx.m_company_branch.create({
-                data: {
-                  name: item.location_name.trim(),
-                  location: item.location_name.trim(),
-                  sector: 'Office',
-                  is_active: true
-                }
-              });
-              branchMap[locKey] = newBranch.id;
-              locId = newBranch.id;
-            } catch (branchErr) {
-              locId = null;
-            }
-          }
-        }
-
-        // 4. PIC / User (Optional)
-        let picId = null;
-        if (item.pic_name && item.pic_name.trim()) {
-          const picKey = normalize(item.pic_name);
-          if (userMap[picKey]) {
-            picId = userMap[picKey];
-          }
-        }
-
-        // 5. Condition & Status (Link or Fallback to Default)
-        const condKey = item.condition_name ? normalize(item.condition_name) : null;
-        const condId = condKey && conditionMap[condKey] ? conditionMap[condKey] : defaultConditionId;
-
-        const statKey = item.status_name ? normalize(item.status_name) : null;
-        const statId = statKey && statusMap[statKey] ? statusMap[statKey] : defaultStatusId;
-
-        let acqDate = null;
-        if (item.acquisition_date && !isNaN(Date.parse(item.acquisition_date))) {
-          acqDate = new Date(item.acquisition_date);
         }
 
         const cleanCode = item.asset_code && String(item.asset_code).trim() !== '' ? String(item.asset_code).trim() : null;
+        const isUpdate = !!(cleanCode && existingAssetMap.has(cleanCode));
 
-        const assetData = {
-          company_id: compId,
-          asset_code: cleanCode,
-          asset_category_id: catId,
-          asset_type_id: typeId,
-          asset_name: item.asset_name,
-          details: item.details || null,
-          location_id: locId,
-          room: item.room || null,
-          pic_id: picId,
-          acquisition_date: acqDate,
-          acquisition_cost: item.acquisition_cost ? parseFloat(item.acquisition_cost) : 0,
-          useful_life_months: item.useful_life_months ? parseInt(item.useful_life_months) : null,
-          condition_id: condId,
-          status_id: statId,
-          information: item.information || null,
-          reference_link: item.reference_link || null
-        };
-
-        let savedAsset;
-        if (cleanCode && existingAssetMap.has(cleanCode)) {
-          const existingId = existingAssetMap.get(cleanCode);
-          savedAsset = await tx.assets.update({
-            where: { id: existingId },
-            data: assetData
-          });
-        } else {
-          savedAsset = await tx.assets.create({
-            data: assetData
-          });
-          if (cleanCode) {
-            existingAssetMap.set(cleanCode, savedAsset.id);
+        const savedAsset = await prisma.$transaction(async (tx) => {
+          // 1. Category (Link or Auto-create)
+          let catId = null;
+          if (item.asset_category_name && item.asset_category_name.trim()) {
+            const catKey = normalize(item.asset_category_name);
+            if (categoryMap[catKey]) {
+              catId = categoryMap[catKey];
+            } else {
+              try {
+                const newCat = await tx.m_asset_category.create({
+                  data: { name: item.asset_category_name.trim() }
+                });
+                categoryMap[catKey] = newCat.id;
+                catId = newCat.id;
+              } catch (catErr) {
+                const existingCat = await tx.m_asset_category.findFirst({
+                  where: { name: { equals: item.asset_category_name.trim(), mode: 'insensitive' } }
+                });
+                catId = existingCat ? existingCat.id : null;
+                if (catId) categoryMap[catKey] = catId;
+              }
+            }
           }
-        }
 
-        inserted.push(savedAsset);
+          // 2. Type (Link or Auto-create)
+          let typeId = null;
+          if (item.asset_type_name && item.asset_type_name.trim()) {
+            const typeKey = normalize(item.asset_type_name);
+            const typeLookupKey = catId ? `${catId}_${typeKey}` : typeKey;
+            if (typeMap[typeLookupKey] || typeNameMap[typeKey]) {
+              typeId = typeMap[typeLookupKey] || typeNameMap[typeKey];
+            } else {
+              try {
+                const newType = await tx.m_asset_type.create({
+                  data: {
+                    category_id: catId,
+                    name: item.asset_type_name.trim()
+                  }
+                });
+                typeMap[typeLookupKey] = newType.id;
+                typeNameMap[typeKey] = newType.id;
+                typeId = newType.id;
+              } catch (typeErr) {
+                typeId = null;
+              }
+            }
+          }
+
+          // 3. Location / Branch (Link or Auto-create)
+          let locId = null;
+          if (item.location_name && item.location_name.trim()) {
+            const locKey = normalize(item.location_name);
+            if (branchMap[locKey]) {
+              locId = branchMap[locKey];
+            } else {
+              try {
+                const newBranch = await tx.m_company_branch.create({
+                  data: {
+                    name: item.location_name.trim(),
+                    location: item.location_name.trim(),
+                    sector: 'Office',
+                    is_active: true
+                  }
+                });
+                branchMap[locKey] = newBranch.id;
+                locId = newBranch.id;
+              } catch (branchErr) {
+                locId = null;
+              }
+            }
+          }
+
+          // 4. PIC / User (Optional)
+          let picId = null;
+          if (item.pic_name && item.pic_name.trim()) {
+            const picKey = normalize(item.pic_name);
+            if (userMap[picKey]) {
+              picId = userMap[picKey];
+            }
+          }
+
+          // 5. Condition & Status (Link or Fallback to Default)
+          const condKey = item.condition_name ? normalize(item.condition_name) : null;
+          const condId = condKey && conditionMap[condKey] ? conditionMap[condKey] : defaultConditionId;
+
+          const statKey = item.status_name ? normalize(item.status_name) : null;
+          const statId = statKey && statusMap[statKey] ? statusMap[statKey] : defaultStatusId;
+
+          let acqDate = null;
+          if (item.acquisition_date && !isNaN(Date.parse(item.acquisition_date))) {
+            acqDate = new Date(item.acquisition_date);
+          }
+
+          const assetData = {
+            company_id: compId,
+            asset_code: cleanCode,
+            asset_category_id: catId,
+            asset_type_id: typeId,
+            asset_name: item.asset_name,
+            details: item.details || null,
+            location_id: locId,
+            room: item.room || null,
+            pic_id: picId,
+            acquisition_date: acqDate,
+            acquisition_cost: item.acquisition_cost ? parseFloat(item.acquisition_cost) : 0,
+            useful_life_months: item.useful_life_months ? parseInt(item.useful_life_months) : null,
+            condition_id: condId,
+            status_id: statId,
+            information: item.information || null,
+            reference_link: item.reference_link || null
+          };
+
+          if (isUpdate) {
+            return tx.assets.update({
+              where: { id: existingAssetMap.get(cleanCode) },
+              data: assetData
+            });
+          }
+          const created = await tx.assets.create({ data: assetData });
+          if (cleanCode) existingAssetMap.set(cleanCode, created.id);
+          return created;
+        }, {
+          maxWait: 15000,
+          timeout: 20000
+        });
+
+        succeeded.push({ rowNum, assetName: item.asset_name, assetCode: item.asset_code || null, id: savedAsset.id, action: isUpdate ? 'updated' : 'created' });
+      } catch (err) {
+        failed.push({ rowNum, assetName: assetNameLabel, reason: err.message || 'Unknown error' });
       }
-      return inserted;
-      }, {
-        maxWait: 20000,
-        timeout: 60000
-      });
-      createdAssets.push(...insertedChunk);
     }
-    res.status(201).json({ message: `Berhasil mengimpor ${createdAssets.length} aset.`, data: createdAssets });
+
+    res.status(201).json({
+      message: `Imported ${succeeded.length} of ${assets.length} assets${failed.length ? `, ${failed.length} failed` : ''}.`,
+      total: assets.length,
+      successCount: succeeded.length,
+      failedCount: failed.length,
+      succeeded,
+      failed
+    });
   } catch (err) {
     next(err);
   }

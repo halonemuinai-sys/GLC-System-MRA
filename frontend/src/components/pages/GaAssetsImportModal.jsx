@@ -13,6 +13,7 @@ import {
   Loader2,
   FileSpreadsheet,
   CheckCircle2,
+  XCircle,
   DollarSign,
   Calendar
 } from 'lucide-react';
@@ -35,7 +36,9 @@ export default function GaAssetsImportModal({
   importWarnings = [],
   setImportWarnings = () => {},
   importingFile,
-  setImportingFile
+  setImportingFile,
+  importResult = null,
+  setImportResult = () => {}
 }) {
 
   const handleDownloadTemplate = async () => {
@@ -158,6 +161,7 @@ export default function GaAssetsImportModal({
     setImportErrors([]);
     setImportWarnings([]);
     setImportPreview([]);
+    setImportResult(null);
 
     try {
       const workbook = new ExcelJS.Workbook();
@@ -375,6 +379,59 @@ export default function GaAssetsImportModal({
     setImportPreview([]);
     setImportErrors([]);
     setImportWarnings([]);
+    setImportResult(null);
+  };
+
+  // Re-export just the failed rows, in the same template layout plus a Failure
+  // Reason column, so the user can fix and re-upload only what didn't go through.
+  const handleDownloadFailedRows = async () => {
+    if (!importResult?.failed?.length) return;
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Failed Rows');
+
+      const headers = [
+        'Asset Name *', 'Asset Code', 'Asset Category', 'Asset Type',
+        'Location', 'Room', 'PIC', 'Acquisition Date (YYYY-MM-DD)',
+        'Acquisition Cost (IDR)', 'Useful Life (Months)', 'Condition *',
+        'Status *', 'Company Name (PT) *', 'Description / Specification',
+        'Additional Information', 'Reference Link', 'Failure Reason'
+      ];
+      const headerRow = sheet.getRow(1);
+      headerRow.values = headers;
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+      headerRow.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } };
+      });
+
+      const byRowNum = new Map(importPreview.map(r => [r.rowNum, r]));
+      importResult.failed.forEach((f, idx) => {
+        const src = byRowNum.get(f.rowNum) || {};
+        const row = sheet.getRow(idx + 2);
+        row.values = [
+          src.asset_name || f.assetName || '', src.asset_code || '', src.asset_category_name || '',
+          src.asset_type_name || '', src.location_name || '', src.room || '', src.pic_name || '',
+          src.acquisition_date || '', src.acquisition_cost || '', src.useful_life_months || '',
+          src.condition_name || '', src.status_name || '', src.company_name || '',
+          src.details || '', src.information || '', src.reference_link || '', f.reason
+        ];
+      });
+
+      sheet.columns = headers.map(() => ({ width: 22 }));
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Asset_Import_Failed_Rows.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Failed to export failed rows: ' + err.message);
+    }
   };
 
   return (
@@ -421,6 +478,83 @@ export default function GaAssetsImportModal({
               </div>
 
               <div className="flex-1 overflow-y-auto py-4 space-y-4 pr-1 text-xs">
+              {importResult ? (
+                <>
+                  {/* Import Result — audit trail of what succeeded / failed and why */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 text-center">
+                      <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Rows</p>
+                      <p className="text-2xl font-black text-neutral-800 dark:text-white mt-1">{importResult.total}</p>
+                    </div>
+                    <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4 text-center">
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider">Succeeded</p>
+                      <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{importResult.successCount}</p>
+                    </div>
+                    <div className={`rounded-2xl p-4 text-center border ${importResult.failedCount > 0 ? 'bg-red-500/10 border-red-500/25' : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-200 dark:border-neutral-800'}`}>
+                      <p className={`text-[10px] font-bold uppercase tracking-wider ${importResult.failedCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-neutral-400'}`}>Failed</p>
+                      <p className={`text-2xl font-black mt-1 ${importResult.failedCount > 0 ? 'text-red-600 dark:text-red-400' : 'text-neutral-400'}`}>{importResult.failedCount}</p>
+                    </div>
+                  </div>
+
+                  {importResult.failedCount === 0 ? (
+                    <div className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-400 p-4 rounded-2xl flex items-center gap-2.5">
+                      <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                      <p className="text-[11px] leading-relaxed">All {importResult.successCount} rows were imported successfully — no failures to review.</p>
+                    </div>
+                  ) : (
+                    <div className="bg-red-500/10 border border-red-500/25 rounded-2xl overflow-hidden">
+                      <div className="p-4 pb-2 flex items-center justify-between gap-3 flex-wrap">
+                        <h5 className="font-bold flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+                          <XCircle className="w-4 h-4 flex-shrink-0" />
+                          Failed Rows — Audit Trail ({importResult.failedCount})
+                        </h5>
+                        <button
+                          type="button"
+                          onClick={handleDownloadFailedRows}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download Failed Rows
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-red-600/80 dark:text-red-400/80 px-4 pb-2">
+                        These rows were not imported. Fix the issue below for each, then re-upload — either the whole file again or just the downloaded failed-rows file.
+                      </p>
+                      <div className="max-h-56 overflow-y-auto divide-y divide-red-500/10">
+                        {importResult.failed.map((f, i) => (
+                          <div key={i} className="px-4 py-2.5 flex items-start gap-3">
+                            <span className="text-[10px] font-mono font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">
+                              Row {f.rowNum}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] font-bold text-neutral-800 dark:text-neutral-200 truncate">{f.assetName}</p>
+                              <p className="text-[10px] text-red-600 dark:text-red-400 mt-0.5">{f.reason}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {importResult.successCount > 0 && (
+                    <div className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800/60 rounded-2xl p-4">
+                      <h5 className="font-bold text-neutral-800 dark:text-neutral-200 text-xs mb-2">Imported Rows ({importResult.successCount})</h5>
+                      <div className="max-h-32 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800 text-[11px]">
+                        {importResult.succeeded.map((s, i) => (
+                          <div key={i} className="py-1.5 flex items-center gap-2">
+                            <span className="text-[9px] font-mono text-neutral-400 w-14 flex-shrink-0">Row {s.rowNum}</span>
+                            <span className="flex-1 truncate text-neutral-700 dark:text-neutral-300">{s.assetName}</span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${s.action === 'updated' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                              {s.action === 'updated' ? 'Updated' : 'Created'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
                 {/* 1. Download Template Card */}
                 <div className="bg-neutral-50 dark:bg-neutral-950 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800/60 flex items-center justify-between gap-4">
                   <div className="flex-1">
@@ -583,10 +717,22 @@ export default function GaAssetsImportModal({
                     </div>
                   </div>
                 )}
+                </>
+              )}
               </div>
 
               {/* Modal Footer Actions */}
               <div className="flex items-center gap-2.5 pt-4 border-t border-neutral-100 dark:border-neutral-800 mt-2">
+                {importResult ? (
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
+                  >
+                    Close
+                  </button>
+                ) : (
+                  <>
                 <button
                   type="button"
                   onClick={handleCloseModal}
@@ -613,6 +759,8 @@ export default function GaAssetsImportModal({
                     </>
                   )}
                 </button>
+                  </>
+                )}
               </div>
 
             </motion.div>

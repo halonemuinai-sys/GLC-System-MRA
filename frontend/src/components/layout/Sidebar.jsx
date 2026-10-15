@@ -50,84 +50,86 @@ import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
 
 // ─── Per-section accent color map ───────────────────────────────────────────────
+// Sidebar itself is a fixed dark-navy surface (independent of the app's light/dark
+// mode), so every accent is tuned to sit on navy rather than switching with `dark:`.
 const ACCENT = {
   amber: {
-    text:     'text-amber-600 dark:text-amber-400',
-    iconBg:   'bg-amber-100 dark:bg-amber-500/20',
-    navBg:    'bg-amber-50 dark:bg-amber-500/10',
+    text:     'text-amber-400',
+    iconBg:   'bg-amber-500/20',
+    navBg:    'bg-amber-500/15',
     bar:      'bg-amber-500',
-    subBg:    'bg-amber-50/50 dark:bg-amber-500/[0.06]',
-    badge:    'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400',
-    chevron:  'text-amber-400 dark:text-amber-500',
-    flyout:   'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10',
+    subBg:    'bg-amber-500/10',
+    badge:    'bg-amber-500/20 text-amber-400',
+    chevron:  'text-amber-400',
+    flyout:   'text-amber-400 bg-amber-500/15',
     label:    'from-amber-500 to-orange-500',
     dot:      'bg-gradient-to-br from-amber-400 to-orange-500',
-    border:   'border-amber-100 dark:border-amber-800/60'
+    border:   'border-amber-500/20'
   },
   emerald: {
-    text:     'text-emerald-600 dark:text-emerald-400',
-    iconBg:   'bg-emerald-100 dark:bg-emerald-500/20',
-    navBg:    'bg-emerald-50 dark:bg-emerald-500/10',
+    text:     'text-emerald-400',
+    iconBg:   'bg-emerald-500/20',
+    navBg:    'bg-emerald-500/15',
     bar:      'bg-emerald-500',
-    subBg:    'bg-emerald-50/50 dark:bg-emerald-500/[0.06]',
-    badge:    'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400',
-    chevron:  'text-emerald-400 dark:text-emerald-500',
-    flyout:   'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10',
+    subBg:    'bg-emerald-500/10',
+    badge:    'bg-emerald-500/20 text-emerald-400',
+    chevron:  'text-emerald-400',
+    flyout:   'text-emerald-400 bg-emerald-500/15',
     label:    'from-emerald-500 to-teal-500',
     dot:      'bg-gradient-to-br from-emerald-400 to-teal-500',
-    border:   'border-emerald-100 dark:border-emerald-800/60'
+    border:   'border-emerald-500/20'
   },
   blue: {
-    text:     'text-blue-600 dark:text-blue-400',
-    iconBg:   'bg-blue-100 dark:bg-blue-500/20',
-    navBg:    'bg-blue-50 dark:bg-blue-500/10',
+    text:     'text-blue-400',
+    iconBg:   'bg-blue-500/20',
+    navBg:    'bg-blue-500/15',
     bar:      'bg-blue-500',
-    subBg:    'bg-blue-50/50 dark:bg-blue-500/[0.06]',
-    badge:    'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
-    chevron:  'text-blue-400 dark:text-blue-500',
-    flyout:   'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10',
+    subBg:    'bg-blue-500/10',
+    badge:    'bg-blue-500/20 text-blue-400',
+    chevron:  'text-blue-400',
+    flyout:   'text-blue-400 bg-blue-500/15',
     label:    'from-blue-500 to-cyan-500',
     dot:      'bg-gradient-to-br from-blue-400 to-cyan-500',
-    border:   'border-blue-100 dark:border-blue-800/60'
+    border:   'border-blue-500/20'
   },
   violet: {
-    text:     'text-blue-600 dark:text-blue-400',
-    iconBg:   'bg-blue-100 dark:bg-blue-500/20',
-    navBg:    'bg-blue-50 dark:bg-blue-500/10',
+    text:     'text-blue-400',
+    iconBg:   'bg-blue-500/20',
+    navBg:    'bg-blue-500/15',
     bar:      'bg-blue-500',
-    subBg:    'bg-blue-50/50 dark:bg-blue-500/[0.06]',
-    badge:    'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
-    chevron:  'text-blue-400 dark:text-blue-500',
-    flyout:   'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10',
+    subBg:    'bg-blue-500/10',
+    badge:    'bg-blue-500/20 text-blue-400',
+    chevron:  'text-blue-400',
+    flyout:   'text-blue-400 bg-blue-500/15',
     label:    'from-blue-500 to-cyan-500',
     dot:      'bg-gradient-to-br from-blue-400 to-cyan-500',
-    border:   'border-blue-100 dark:border-blue-800/60'
+    border:   'border-blue-500/20'
   },
   rose: {
-    text:     'text-rose-600 dark:text-rose-400',
-    iconBg:   'bg-rose-100 dark:bg-rose-500/20',
-    navBg:    'bg-rose-50 dark:bg-rose-500/10',
+    text:     'text-rose-400',
+    iconBg:   'bg-rose-500/20',
+    navBg:    'bg-rose-500/15',
     bar:      'bg-rose-500',
-    subBg:    'bg-rose-50/50 dark:bg-rose-500/[0.06]',
-    badge:    'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400',
-    chevron:  'text-rose-400 dark:text-rose-500',
-    flyout:   'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10',
+    subBg:    'bg-rose-500/10',
+    badge:    'bg-rose-500/20 text-rose-400',
+    chevron:  'text-rose-400',
+    flyout:   'text-rose-400 bg-rose-500/15',
     label:    'from-rose-500 to-pink-500',
     dot:      'bg-gradient-to-br from-rose-400 to-pink-500',
-    border:   'border-rose-100 dark:border-rose-800/60'
+    border:   'border-rose-500/20'
   },
   indigo: {
-    text:     'text-indigo-600 dark:text-indigo-400',
-    iconBg:   'bg-indigo-100 dark:bg-indigo-500/20',
-    navBg:    'bg-indigo-50 dark:bg-indigo-500/10',
-    bar:      'bg-indigo-600 dark:bg-indigo-500',
-    subBg:    'bg-indigo-50/50 dark:bg-indigo-500/[0.06]',
-    badge:    'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400',
-    chevron:  'text-indigo-400 dark:text-indigo-500',
-    flyout:   'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10',
+    text:     'text-indigo-400',
+    iconBg:   'bg-indigo-500/20',
+    navBg:    'bg-indigo-500/15',
+    bar:      'bg-indigo-500',
+    subBg:    'bg-indigo-500/10',
+    badge:    'bg-indigo-500/20 text-indigo-400',
+    chevron:  'text-indigo-400',
+    flyout:   'text-indigo-400 bg-indigo-500/15',
     label:    'from-indigo-500 to-blue-500',
     dot:      'bg-gradient-to-br from-indigo-400 to-blue-500',
-    border:   'border-indigo-100 dark:border-indigo-800/60'
+    border:   'border-indigo-500/20'
   }
 };
 
@@ -167,7 +169,7 @@ function NavItem({
             isChild && !collapsed ? "pl-6 pr-3 py-2" : "px-3 py-2.5",
             isActive
               ? activeText
-              : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100/85 dark:hover:bg-neutral-800/60"
+              : "text-slate-400 hover:text-white hover:bg-white/[0.06]"
           )}
         >
           {/* Active background slider */}
@@ -197,13 +199,13 @@ function NavItem({
               isChild ? "w-5 h-5" : "w-8 h-8 rounded-lg",
               isActive
                 ? cn(isChild ? "" : activeIcon)
-                : cn(isChild ? "" : "group-hover:bg-neutral-200/70 dark:group-hover:bg-neutral-700/60")
+                : cn(isChild ? "" : "group-hover:bg-white/[0.08]")
             )}
           >
             <Icon className={cn(
               "transition-colors",
               isChild ? "w-3.5 h-3.5" : "w-4 h-4",
-              isActive ? activeColor : "text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+              isActive ? activeColor : "text-slate-500 group-hover:text-slate-300"
             )} />
           </motion.div>
 
@@ -231,7 +233,7 @@ function NavItem({
 
           {/* Tooltip for collapsed state */}
           {collapsed && (
-            <div className="absolute left-16 top-1/2 -translate-y-1/2 ml-2 px-2 py-1.5 bg-neutral-900 dark:bg-neutral-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg border border-neutral-800 dark:border-neutral-700">
+            <div className="absolute left-16 top-1/2 -translate-y-1/2 ml-2 px-2 py-1.5 bg-[#0f172a] text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg border border-white/10">
               {name}
               {badge > 0 && <span className="ml-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">{badge}</span>}
             </div>
@@ -302,7 +304,7 @@ function SubMenu({
           "w-full group relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer select-none",
           hasActiveChild
             ? c.text
-            : "text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100/85 dark:hover:bg-neutral-800/60"
+            : "text-slate-300 hover:text-white hover:bg-white/[0.06]"
         )}
       >
         {/* Subtle active background when child is active */}
@@ -320,14 +322,14 @@ function SubMenu({
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
           className={cn(
             "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
-            hasActiveChild ? c.iconBg : "group-hover:bg-neutral-200/70 dark:group-hover:bg-neutral-700/60"
+            hasActiveChild ? c.iconBg : "group-hover:bg-white/[0.08]"
           )}
         >
           <Icon className={cn(
             "w-4 h-4 transition-colors",
             hasActiveChild
               ? c.text
-              : "text-neutral-400 dark:text-neutral-500 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+              : "text-slate-500 group-hover:text-slate-300"
           )} />
         </motion.div>
 
@@ -347,7 +349,7 @@ function SubMenu({
           {/* Item count badge */}
           <span className={cn(
             "text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-colors mr-2.5 flex-shrink-0",
-            hasActiveChild ? c.badge : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500"
+            hasActiveChild ? c.badge : "bg-white/[0.06] text-slate-500"
           )}>
             {childCount}
           </span>
@@ -360,7 +362,7 @@ function SubMenu({
           >
             <ChevronDown className={cn(
               "w-3.5 h-3.5 transition-colors",
-              hasActiveChild ? c.chevron : "text-neutral-300 dark:text-neutral-600"
+              hasActiveChild ? c.chevron : "text-slate-600"
             )} />
           </motion.div>
         </motion.div>
@@ -409,12 +411,12 @@ function SubMenu({
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: -8, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute left-[calc(100%+8px)] top-0 z-50 min-w-[200px] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl shadow-black/10 dark:shadow-black/40 py-2 px-1.5"
+              className="absolute left-[calc(100%+8px)] top-0 z-50 min-w-[200px] bg-[#0f172a] border border-white/10 rounded-xl shadow-xl shadow-black/40 py-2 px-1.5"
             >
               {/* Header */}
-              <div className="px-2.5 pb-2 mb-1 border-b border-neutral-100 dark:border-neutral-800">
-                <p className="text-xs font-bold text-neutral-900 dark:text-white">{name}</p>
-                <p className="text-[10px] text-neutral-400 mt-0.5">{childCount} items</p>
+              <div className="px-2.5 pb-2 mb-1 border-b border-white/[0.06]">
+                <p className="text-xs font-bold text-white">{name}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">{childCount} items</p>
               </div>
 
               {/* Children */}
@@ -428,12 +430,12 @@ function SubMenu({
                       onClick={onChildClick}
                       className={cn(
                         "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] font-medium transition-all",
-                        isActive ? c.flyout : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100/85 dark:hover:bg-neutral-800/60"
+                        isActive ? c.flyout : "text-slate-400 hover:text-white hover:bg-white/[0.06]"
                       )}
                     >
                       <child.icon className={cn(
                         "w-3.5 h-3.5 flex-shrink-0",
-                        isActive ? c.text : "text-neutral-400 dark:text-neutral-500"
+                        isActive ? c.text : "text-slate-500"
                       )} />
                       <span className="whitespace-nowrap flex-1">{child.name}</span>
                       {child.badge > 0 && (
@@ -675,16 +677,16 @@ function SidebarContent({
   const isAdmin = role === 'admin';
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-white/[0.06] transition-colors overflow-hidden">
-      
+    <div className="flex flex-col h-full bg-[#0f172a] border-r border-white/[0.06] transition-colors overflow-hidden">
+
       {/* ── Brand ── */}
       <div className={cn(
-        "h-16 flex items-center justify-between border-b border-neutral-100 dark:border-white/[0.05] flex-shrink-0 transition-all duration-200",
+        "h-16 flex items-center justify-between border-b border-white/[0.06] flex-shrink-0 transition-all duration-200",
         collapsed ? "px-3 justify-center" : "px-4.5"
       )}>
         <div className="flex items-center gap-2.5 overflow-hidden">
           <Link href="/dashboard" className="flex items-center gap-2.5 select-none justify-center" onClick={onClose}>
-            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-lg bg-white/5">
               <img src="/mra_logo.png" alt="MRA Group Logo" className="max-w-full max-h-full object-contain" />
             </div>
             {!collapsed && (
@@ -695,8 +697,8 @@ function SidebarContent({
                 transition={{ duration: 0.15 }}
                 className="flex flex-col overflow-hidden whitespace-nowrap"
               >
-                <p className="font-bold text-sm text-neutral-900 dark:text-white leading-tight">MRA OpsSuite</p>
-                <p className="text-[10px] text-neutral-400 leading-tight mt-0.5">MRA Group Portal</p>
+                <p className="font-bold text-sm text-white leading-tight">MRA OpsSuite</p>
+                <p className="text-[10px] text-slate-500 leading-tight mt-0.5">MRA Group Portal</p>
               </motion.div>
             )}
           </Link>
@@ -707,7 +709,7 @@ function SidebarContent({
           <button
             type="button"
             onClick={toggleCollapse}
-            className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors hidden md:block cursor-pointer"
+            className="p-1 rounded-lg hover:bg-white/[0.08] text-slate-500 hover:text-slate-200 transition-colors hidden md:block cursor-pointer"
             title={collapsed ? "Expand menu" : "Collapse menu"}
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -716,11 +718,11 @@ function SidebarContent({
 
         {/* Mobile Close Button */}
         {onClose && (
-          <button 
-            type="button" 
-            onClick={onClose} 
+          <button
+            type="button"
+            onClick={onClose}
             title="Close"
-            className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 transition-colors md:hidden cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-white/[0.08] text-slate-500 transition-colors md:hidden cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -790,10 +792,7 @@ function SidebarContent({
               >
                 <div className="flex items-center gap-2 px-3">
                   <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", sc.dot)} />
-                  <p className={cn(
-                    "text-[9px] font-extrabold uppercase tracking-widest whitespace-nowrap",
-                    sc.text
-                  )}>
+                  <p className="text-[9px] font-extrabold uppercase tracking-widest whitespace-nowrap text-slate-500">
                     {section.label}
                   </p>
                 </div>
@@ -850,7 +849,7 @@ function SidebarContent({
                 <motion.div 
                   animate={{ opacity: collapsed ? 0 : 1 }}
                   transition={{ duration: 0.15 }}
-                  className="flex-1 h-px bg-neutral-100 dark:bg-white/[0.05]" 
+                  className="flex-1 h-px bg-white/[0.06]"
                 />
                 <motion.p
                   animate={{
@@ -859,14 +858,14 @@ function SidebarContent({
                     margin: collapsed ? 0 : '0 8px'
                   }}
                   transition={{ duration: 0.15 }}
-                  className="text-[9px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest whitespace-nowrap"
+                  className="text-[9px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap"
                 >
                   System
                 </motion.p>
-                <motion.div 
-                  animate={{ opacity: 1 }} 
+                <motion.div
+                  animate={{ opacity: 1 }}
                   transition={{ duration: 0.15 }}
-                  className="flex-1 h-px bg-neutral-100 dark:bg-white/[0.05]" 
+                  className="flex-1 h-px bg-white/[0.06]"
                 />
               </div>
             </div>
@@ -889,27 +888,27 @@ function SidebarContent({
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25, duration: 0.3 }}
-        className="border-t border-neutral-100 dark:border-white/[0.05] p-3 flex-shrink-0"
+        className="border-t border-white/[0.06] p-3 flex-shrink-0"
       >
         <div className={cn(
-          "flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors group relative",
+          "flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/[0.06] transition-colors group relative",
           collapsed ? "justify-center" : ""
         )}>
           <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
             {initials}
           </div>
-          
+
           <motion.div
-            animate={{ 
-              opacity: collapsed ? 0 : 1, 
-              width: collapsed ? 0 : 'auto' 
+            animate={{
+              opacity: collapsed ? 0 : 1,
+              width: collapsed ? 0 : 'auto'
             }}
             transition={{ duration: 0.15 }}
             className="flex-1 flex items-center justify-between overflow-hidden whitespace-nowrap"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-neutral-900 dark:text-white truncate leading-tight">{fullName}</p>
-              <p className="text-[10px] text-neutral-400 truncate leading-tight mt-0.5 uppercase">Role: {role}</p>
+              <p className="text-xs font-semibold text-white truncate leading-tight">{fullName}</p>
+              <p className="text-[10px] text-slate-500 truncate leading-tight mt-0.5 uppercase">Role: {role}</p>
             </div>
             <motion.button
               type="button"
@@ -918,7 +917,7 @@ function SidebarContent({
               whileHover={{ scale: 1.1, rotate: 10 }}
               whileTap={{ scale: 0.9 }}
               transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-              className="p-1.5 rounded-lg text-neutral-300 dark:text-neutral-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex-shrink-0 cursor-pointer ml-2"
+              className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0 cursor-pointer ml-2"
             >
               <LogOut className="w-3.5 h-3.5" />
             </motion.button>
@@ -926,12 +925,12 @@ function SidebarContent({
 
           {/* Popout tooltip on hover for collapsed state user menu */}
           {collapsed && (
-            <div className="absolute left-16 bottom-2 ml-2 p-3 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white text-xs rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto whitespace-nowrap z-50 shadow-xl border border-neutral-200 dark:border-neutral-800 flex flex-col gap-2 min-w-[140px]">
+            <div className="absolute left-16 bottom-2 ml-2 p-3 bg-[#0f172a] text-white text-xs rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto whitespace-nowrap z-50 shadow-xl border border-white/10 flex flex-col gap-2 min-w-[140px]">
               <div>
-                <p className="font-semibold text-neutral-900 dark:text-white leading-tight">{fullName}</p>
-                <p className="text-[10px] text-neutral-400 leading-tight uppercase mt-0.5">Role: {role}</p>
+                <p className="font-semibold text-white leading-tight">{fullName}</p>
+                <p className="text-[10px] text-slate-500 leading-tight uppercase mt-0.5">Role: {role}</p>
               </div>
-              <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
+              <div className="h-px bg-white/[0.06]" />
               <button
                 type="button"
                 onClick={handleLogout}
