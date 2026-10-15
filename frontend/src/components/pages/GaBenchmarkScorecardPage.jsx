@@ -120,13 +120,13 @@ const METRIC_ICON = {
 };
 
 const METRIC_CAPTION = {
-  assetUtilization: 'Proporsi aset berstatus Active terhadap total aset terdaftar.',
-  budgetAchievement: 'Realisasi belanja (Actual) terhadap pagu anggaran (Budget) tahun berjalan.',
-  vendorActiveRate: 'Proporsi vendor berstatus aktif terhadap seluruh vendor terdaftar.',
-  maintenanceHealth: 'Proporsi kontrak maintenance yang belum melewati tanggal kadaluarsa.',
-  insuranceCoverage: 'Proporsi kendaraan dengan minimal satu polis asuransi aktif & belum expired.',
-  vehicleTaxCompliance: 'Proporsi kendaraan dengan pajak (STNK) belum lewat jatuh tempo.',
-  stockOpnameAccuracy: 'Rasio aset "Ditemukan" terhadap total aset yang sudah dicek di seluruh sesi Stock Opname.'
+  assetUtilization: 'Proportion of assets with Active status out of total registered assets.',
+  budgetAchievement: 'Actual spending realization against the current year\'s budget ceiling.',
+  vendorActiveRate: 'Proportion of vendors with active status out of all registered vendors.',
+  maintenanceHealth: 'Proportion of maintenance contracts that have not passed their expiration date.',
+  insuranceCoverage: 'Proportion of vehicles with at least one active & not-yet-expired insurance policy.',
+  vehicleTaxCompliance: 'Proportion of vehicles whose tax (STNK) has not passed its due date.',
+  stockOpnameAccuracy: 'Ratio of "Found" assets to total assets checked across all Stock Opname sessions.'
 };
 
 const STATUS_COLOR = {
@@ -249,7 +249,7 @@ export default function GaBenchmarkScorecardPage() {
             <Award className="w-6 h-6 text-indigo-500" />
             {t('gaBenchmark_title')}
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Performance perusahaan keseluruhan GA — valuasi aset, anggaran, dan kepatuhan operasional.</p>
+          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Overall GA company performance — asset valuation, budget, and operational compliance.</p>
         </div>
         <button onClick={load} className="p-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-500 hover:text-indigo-500 shadow-sm transition-colors cursor-pointer w-fit" title="Muat Ulang">
           <RefreshCw className="w-4 h-4" />
@@ -300,7 +300,7 @@ export default function GaBenchmarkScorecardPage() {
               <p className="text-xl font-black text-amber-400 leading-none mt-1.5 truncate">{formatIDR(totalAssetValue)}</p>
             </div>
             <div className="border-l border-neutral-800 pl-4 sm:pl-6">
-              <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest">Total Unit Aset</p>
+              <p className="text-neutral-500 text-[9px] font-bold uppercase tracking-widest">Total Asset Units</p>
               <p className="text-xl font-black text-white leading-none mt-1.5">{totalAssetUnits.toLocaleString('id-ID')}</p>
             </div>
             <div className="border-l border-neutral-800 pl-4 sm:pl-6">
@@ -335,7 +335,7 @@ export default function GaBenchmarkScorecardPage() {
                     </p>
                     <GaugeBar actual={m.actual} target={m.target} status={m.status} lowerIsBetter={m.lowerIsBetter} />
                     <p className={`text-[10px] font-bold mt-1.5 ${s.text}`}>
-                      {m.actual !== null ? `Target: ${m.target}%` : 'Belum ada data'}
+                      {m.actual !== null ? `Target: ${m.target}%` : 'No data yet'}
                     </p>
                     <p className="text-[10px] text-neutral-400 font-medium mt-2 leading-relaxed">{METRIC_CAPTION[m.key]}</p>
                   </div>
@@ -347,12 +347,12 @@ export default function GaBenchmarkScorecardPage() {
           {/* Per-Company Breakdown */}
           <div>
             <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
-              <h2 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Breakdown Per Perusahaan ({filteredByCompany.length})</h2>
+              <h2 className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Breakdown Per Company ({filteredByCompany.length})</h2>
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
                 <input
                   type="text"
-                  placeholder="Cari perusahaan..."
+                  placeholder="Search company..."
                   value={companySearch}
                   onChange={(e) => setCompanySearch(e.target.value)}
                   className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-indigo-500 text-neutral-800 dark:text-white"
@@ -363,7 +363,7 @@ export default function GaBenchmarkScorecardPage() {
             {filteredByCompany.length === 0 ? (
               <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl py-16 text-center text-neutral-400 text-xs">
                 <Building2 className="w-8 h-8 mx-auto mb-2 text-neutral-300" />
-                Tidak ada data perusahaan ditemukan.
+                No company data found.
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -388,7 +388,7 @@ export default function GaBenchmarkScorecardPage() {
                           <p className="font-bold text-neutral-700 dark:text-neutral-300 truncate">{formatIDR(c.totalAssetValue)}</p>
                         </div>
                         <div>
-                          <p className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Unit Aset</p>
+                          <p className="text-[9px] text-neutral-400 font-bold uppercase tracking-wider">Asset Units</p>
                           <p className="font-bold text-neutral-700 dark:text-neutral-300">{c.totalAssetUnits}</p>
                         </div>
                         <div>
@@ -431,7 +431,7 @@ export default function GaBenchmarkScorecardPage() {
               className="fixed inset-y-0 right-0 w-full max-w-lg bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-800 shadow-2xl z-50 p-6 overflow-y-auto">
               <div className="flex items-center justify-between pb-4 border-b border-neutral-100 dark:border-neutral-800">
                 <h3 className="font-bold text-neutral-800 dark:text-white text-sm flex items-center gap-2">
-                  Detail Perusahaan
+                  Company Detail
                   {detailLoading && <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin" />}
                 </h3>
                 <button onClick={() => setSelectedCompany(null)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400">
@@ -441,37 +441,37 @@ export default function GaBenchmarkScorecardPage() {
 
               <div className="mt-6 space-y-6">
                 <div>
-                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Perusahaan</span>
+                  <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Company</span>
                   <h2 className="text-lg font-black text-neutral-800 dark:text-white">{selectedCompany.company_name}</h2>
                   {companyDetail?.company?.code && <span className="font-mono text-xs text-indigo-500 font-semibold block mt-1">{companyDetail.company.code}</span>}
                 </div>
 
-                {/* Recap headline (sudah tersedia dari card, tampil instan) */}
+                {/* Recap headline (already available from the card, shown instantly) */}
                 <div className="grid grid-cols-2 gap-4">
                   <div><span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Asset Value</span><span className="text-xs text-neutral-800 dark:text-slate-200 font-bold">{formatIDR(selectedCompany.totalAssetValue)}</span></div>
-                  <div><span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Unit Aset</span><span className="text-xs text-neutral-800 dark:text-slate-200 font-bold">{selectedCompany.totalAssetUnits}</span></div>
+                  <div><span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Asset Units</span><span className="text-xs text-neutral-800 dark:text-slate-200 font-bold">{selectedCompany.totalAssetUnits}</span></div>
                   <div><span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Utilization</span><span className="text-xs text-neutral-800 dark:text-slate-200 font-bold">{selectedCompany.assetUtilizationPct !== null ? `${selectedCompany.assetUtilizationPct}%` : '-'}</span></div>
                   <div><span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Achievement</span><span className="text-xs text-neutral-800 dark:text-slate-200 font-bold">{selectedCompany.budgetAchievementPct !== null ? `${selectedCompany.budgetAchievementPct}%` : '-'}</span></div>
                 </div>
 
                 <div className="h-px bg-neutral-100 dark:bg-neutral-800" />
 
-                {/* Asset Breakdown per Kategori */}
+                {/* Asset Breakdown per Category */}
                 <div>
                   <h4 className="text-xs font-bold text-neutral-800 dark:text-slate-200 mb-2.5 flex items-center gap-1.5">
-                    <Package className="w-3.5 h-3.5 text-indigo-500" /> Asset Breakdown per Kategori
+                    <Package className="w-3.5 h-3.5 text-indigo-500" /> Asset Breakdown per Category
                   </h4>
                   {detailLoading ? (
                     <div className="py-6 flex items-center justify-center"><Loader2 className="w-4 h-4 animate-spin text-neutral-400" /></div>
                   ) : !companyDetail?.assetByCategory?.length ? (
-                    <p className="text-[11px] text-neutral-400">Tidak ada data aset untuk perusahaan ini.</p>
+                    <p className="text-[11px] text-neutral-400">No asset data for this company.</p>
                   ) : (
                     <div className="space-y-2">
                       {companyDetail.assetByCategory.map(cat => (
                         <div key={cat.category} className="flex items-center justify-between bg-neutral-50 dark:bg-neutral-950 rounded-xl px-3 py-2 border border-neutral-100 dark:border-neutral-800">
                           <div className="min-w-0">
                             <p className="text-[11px] font-bold text-neutral-700 dark:text-neutral-300 truncate">{cat.category}</p>
-                            <p className="text-[10px] text-neutral-400">{cat.activeCount}/{cat.count} aktif</p>
+                            <p className="text-[10px] text-neutral-400">{cat.activeCount}/{cat.count} active</p>
                           </div>
                           <span className="text-[11px] font-bold text-neutral-800 dark:text-white shrink-0">{formatIDR(cat.value)}</span>
                         </div>
@@ -490,7 +490,7 @@ export default function GaBenchmarkScorecardPage() {
                   {detailLoading ? (
                     <div className="py-6 flex items-center justify-center"><Loader2 className="w-4 h-4 animate-spin text-neutral-400" /></div>
                   ) : !companyDetail?.expenseByCoa?.length ? (
-                    <p className="text-[11px] text-neutral-400">Tidak ada data anggaran untuk perusahaan ini.</p>
+                    <p className="text-[11px] text-neutral-400">No budget data for this company.</p>
                   ) : (
                     <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                       {companyDetail.expenseByCoa.map(coa => {

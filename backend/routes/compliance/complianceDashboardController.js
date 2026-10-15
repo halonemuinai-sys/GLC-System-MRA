@@ -16,32 +16,34 @@ async function getNotifications(req, res, next) {
   try {
     const ninetyDaysFromNow = new Date();
     ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
     const [genericDocs, licenseDocs, monitoringDocs, sopDocs] = await Promise.all([
       prisma.legal_documents.findMany({
         where: {
           module: { in: GENERIC_MODULES },
-          expiry_date: { not: null, lt: ninetyDaysFromNow }
+          expiry_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow }
         }
       }),
       prisma.compliance_licenses.findMany({
         where: {
           OR: [
-            { expiry_date: { not: null, lt: ninetyDaysFromNow } },
-            { next_audit_date: { not: null, lt: ninetyDaysFromNow } }
+            { expiry_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow } },
+            { next_audit_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow } }
           ]
         }
       }),
       prisma.compliance_monitoring.findMany({
         where: {
           OR: [
-            { due_date: { not: null, lt: ninetyDaysFromNow }, completion_date: null },
-            { next_audit_date: { not: null, lt: ninetyDaysFromNow } }
+            { due_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow }, completion_date: null },
+            { next_audit_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow } }
           ]
         }
       }),
       prisma.compliance_sop.findMany({
-        where: { expiry_date: { not: null, lt: ninetyDaysFromNow } }
+        where: { expiry_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow } }
       })
     ]);
 

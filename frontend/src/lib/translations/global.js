@@ -482,10 +482,10 @@ const g = {
 
     // GA Benchmark Scorecard
     gaBenchmark_title: 'Benchmark Scorecard',
-    gaBenchmark_kpiAssetValue: 'Total Nilai Aset',
-    gaBenchmark_kpiExpenseYtd: 'Realisasi Pengeluaran YTD',
-    gaBenchmark_kpiBudgetAchiev: 'Pencapaian Anggaran',
-    gaBenchmark_kpiSection: 'Indikator Kinerja Utama',
+    gaBenchmark_kpiAssetValue: 'Total Asset Value',
+    gaBenchmark_kpiExpenseYtd: 'Expense Actual YTD',
+    gaBenchmark_kpiBudgetAchiev: 'Budget Achievement',
+    gaBenchmark_kpiSection: 'Key Performance Indicators',
 
     // ─── Legal ───────────────────────────────────────────────────────────
     legal_dashTitle: 'Ikhtisar Legal',

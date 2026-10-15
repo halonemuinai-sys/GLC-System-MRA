@@ -50,19 +50,21 @@ async function getNotifications(req, res, next) {
   try {
     const ninetyDaysFromNow = new Date();
     ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
     const CLOSED_STATUSES = ['Won', 'Lost', 'Settlement', 'Closed'];
 
     const [genericDocs, litigationCases] = await Promise.all([
       prisma.legal_documents.findMany({
         where: {
           module: { in: LEGAL_GENERIC_MODULES },
-          expiry_date: { not: null, lt: ninetyDaysFromNow }
+          expiry_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow }
         }
       }),
       prisma.legal_litigation.findMany({
         where: {
           case_status: { notIn: CLOSED_STATUSES },
-          next_hearing_date: { not: null, lt: ninetyDaysFromNow }
+          next_hearing_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow }
         }
       })
     ]);

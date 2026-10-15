@@ -10,7 +10,8 @@ function computeDaysStatus(date) {
   target.setHours(0, 0, 0, 0);
   const daysLeft = Math.round((target - today) / (1000 * 60 * 60 * 24));
   let status;
-  if (daysLeft < 0) status = 'Expired';
+  if (daysLeft < -60) status = null; // expired too long ago — stop surfacing as an active notification
+  else if (daysLeft < 0) status = 'Expired';
   else if (daysLeft < 30) status = 'Critical';
   else if (daysLeft < 90) status = 'Warning';
   else status = null;
@@ -322,13 +323,15 @@ async function getNotifications(req, res, next) {
   try {
     const ninetyDaysFromNow = new Date();
     ninetyDaysFromNow.setDate(ninetyDaysFromNow.getDate() + 90);
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
     const [vehicles, maintenances, vendors, insurances, documents] = await Promise.all([
-      prisma.vehicles.findMany({ where: { tax_date: { not: null, lt: ninetyDaysFromNow } } }),
-      prisma.maintenances.findMany({ where: { expired_date: { not: null, lt: ninetyDaysFromNow } } }),
-      prisma.vendors.findMany({ where: { contract_end: { not: null, lt: ninetyDaysFromNow } } }),
-      prisma.insurances.findMany({ where: { end_date: { not: null, lt: ninetyDaysFromNow } } }),
-      prisma.documents.findMany({ where: { valid_until: { not: null, lt: ninetyDaysFromNow } } })
+      prisma.vehicles.findMany({ where: { tax_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow } } }),
+      prisma.maintenances.findMany({ where: { expired_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow } } }),
+      prisma.vendors.findMany({ where: { contract_end: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow } } }),
+      prisma.insurances.findMany({ where: { end_date: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow } } }),
+      prisma.documents.findMany({ where: { valid_until: { not: null, gte: sixtyDaysAgo, lt: ninetyDaysFromNow } } })
     ]);
 
     const items = [];

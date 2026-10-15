@@ -293,9 +293,16 @@ async function bulkImportAssets(req, res, next) {
     const existingAssetMap = new Map();
     existingAssets.forEach(ea => existingAssetMap.set(ea.asset_code, ea.id));
 
-    const createdAssets = await prisma.$transaction(async (tx) => {
+    // Import in chunks, each its own transaction — a single transaction spanning all
+    // rows can exceed Prisma's interactive-transaction timeout on large imports (one
+    // network round trip per row against the remote Supabase pooler adds up fast).
+    const IMPORT_CHUNK_SIZE = 25;
+    const createdAssets = [];
+    for (let chunkStart = 0; chunkStart < assets.length; chunkStart += IMPORT_CHUNK_SIZE) {
+      const chunk = assets.slice(chunkStart, chunkStart + IMPORT_CHUNK_SIZE);
+      const insertedChunk = await prisma.$transaction(async (tx) => {
       const inserted = [];
-      for (const item of assets) {
+      for (const item of chunk) {
         const compKey = normalize(item.company_name);
         const cleanCompKey = compKey.replace(/^pt\.?\s*/i, '').trim();
         const compId = companyMap[compKey] || companyMap[cleanCompKey];
@@ -431,14 +438,12 @@ async function bulkImportAssets(req, res, next) {
         inserted.push(savedAsset);
       }
       return inserted;
-    }, {
-      maxWait: 20000,
-      timeout: 60000
-    });
-
-
-
-
+      }, {
+        maxWait: 20000,
+        timeout: 60000
+      });
+      createdAssets.push(...insertedChunk);
+    }
     res.status(201).json({ message: `Berhasil mengimpor ${createdAssets.length} aset.`, data: createdAssets });
   } catch (err) {
     next(err);
