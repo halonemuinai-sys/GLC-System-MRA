@@ -257,6 +257,14 @@ async function bulkImportAssets(req, res, next) {
     const existingAssetMap = new Map();
     existingAssets.forEach(ea => existingAssetMap.set(ea.asset_code, ea.id));
 
+    // Codes that already existed in the DB before this import started — used to tell
+    // a legitimate "update an existing asset" apart from two rows in THIS SAME file
+    // sharing a code (almost always a copy-paste mistake, never an intentional update).
+    const codesExistingBeforeImport = new Set(existingAssetMap.keys());
+    // Which row of THIS file first claimed a given code — lets us catch and reject the
+    // second (and later) row instead of silently overwriting the first row's data.
+    const codeClaimedByRow = new Map();
+
     // Each row is processed and committed independently — one row's failure (bad
     // reference data, a transient DB hiccup, a constraint violation, ...) must never
     // roll back or block the rows around it. This is also what lets the response carry
@@ -295,6 +303,12 @@ async function bulkImportAssets(req, res, next) {
         }
 
         const cleanCode = item.asset_code && String(item.asset_code).trim() !== '' ? String(item.asset_code).trim() : null;
+
+        if (cleanCode && codeClaimedByRow.has(cleanCode) && !codesExistingBeforeImport.has(cleanCode)) {
+          throw new Error(`Asset Code "${cleanCode}" is duplicated within this file (already used by Row ${codeClaimedByRow.get(cleanCode)}) — each row needs its own unique code. Fix the code or leave it blank, then re-upload this row.`);
+        }
+        if (cleanCode) codeClaimedByRow.set(cleanCode, rowNum);
+
         const isUpdate = !!(cleanCode && existingAssetMap.has(cleanCode));
 
         const savedAsset = await prisma.$transaction(async (tx) => {

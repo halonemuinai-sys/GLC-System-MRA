@@ -288,12 +288,16 @@ export default function GaAssetsImportModal({
         }
 
         // 2. Anomaly & Duplicate Detection
-        // a. Duplicate Asset Code in file
+        // a. Duplicate Asset Code in file — this is a blocking ERROR, not just a
+        // warning: two rows sharing one code would make the second row silently
+        // overwrite the first during import (only the last one survives), so the
+        // user must fix it (give each row its own code, or leave the code blank)
+        // before they can proceed.
         if (asset_code && asset_code.trim()) {
           const codeKey = normalize(asset_code);
           if (seenCodes.has(codeKey)) {
             const prevRows = seenCodes.get(codeKey);
-            warningsInRow.push(`Asset Code "${asset_code}" is the same as Row ${prevRows.join(', ')}.`);
+            errorsInRow.push(`Asset Code "${asset_code}" is already used by Row ${prevRows.join(', ')} in this file. Each row must have a unique code (or leave it blank) — otherwise this row will overwrite that one instead of creating a separate asset.`);
             seenCodes.set(codeKey, [...prevRows, r]);
           } else {
             seenCodes.set(codeKey, [r]);
@@ -624,7 +628,7 @@ export default function GaAssetsImportModal({
                       Anomaly & Duplicate Warnings Detected ({importWarnings.length} notes):
                     </h5>
                     <p className="text-[11px] text-amber-600/80 dark:text-amber-400/80">
-                      The data can still be imported (duplicate asset codes will be updated automatically), but please review the following notes:
+                      The data can still be imported, but please review the following notes — if an asset code already exists in the system, that row will update the existing record instead of creating a new one:
                     </p>
                     <div className="max-h-32 overflow-y-auto divide-y divide-amber-500/15 text-[11px] space-y-1 pt-1">
                       {importWarnings.map((warn, i) => (
