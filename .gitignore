@@ -45,6 +45,7 @@ Database_Backups/
 
 # Local utility scripts (run locally, not needed on server)
 scripts/
+google-sheets-asset-sync/
 
 # Manual templates and documentation
 excel sample/
