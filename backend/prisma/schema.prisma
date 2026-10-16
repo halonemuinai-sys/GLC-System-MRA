@@ -87,10 +87,10 @@ model device_rentals {
   location_id     Int?
   status          String?     @default("Active") @db.VarChar(30)
   created_at      DateTime?   @default(now()) @db.Timestamp(6)
-  m_company       m_company   @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  m_location      m_location? @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  m_user          m_user?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  vendors         vendors?    @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_company       m_company          @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_location      m_company_branch?  @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  m_user          m_user?            @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendors         vendors?           @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([company_id], map: "idx_rental_company")
   @@index([end_rent], map: "idx_rental_endrent")
@@ -547,6 +547,7 @@ model m_company_branch {
   m_company_master   m_company_master? @relation(fields: [company_master_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
   assets             assets[]
   maintenances       maintenances[]
+  device_rentals     device_rentals[]
 
   @@schema("glc_mra")
 }
@@ -595,7 +596,6 @@ model m_location {
   floor          String?          @db.VarChar(20)
   room           String?          @db.VarChar(80)
   full_name      String?          @default(dbgenerated("(((((COALESCE(building, ''::character varying))::text || ' '::text) || (COALESCE(floor, ''::character varying))::text) || ' '::text) || (COALESCE(room, ''::character varying))::text)")) @db.VarChar(200)
-  device_rentals device_rentals[]
 
   @@schema("glc_mra")
 }
