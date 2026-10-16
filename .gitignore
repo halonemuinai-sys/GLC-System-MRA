@@ -42,3 +42,19 @@ yarn-error.log*
 backups/
 Database_Backups/
 .snapshots/
+
+# Local utility scripts (run locally, not needed on server)
+scripts/
+
+# Manual templates and documentation
+excel sample/
+HANDOFF.md
+frontend/AGENTS.md
+frontend/CLAUDE.md
+
+# Office & Document files (strictly local)
+*.docx
+*.xlsx
+*.pptx
+*.pdf
+~$*
