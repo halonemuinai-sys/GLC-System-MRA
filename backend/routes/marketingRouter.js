@@ -60,16 +60,16 @@ router.post('/magic/:token', approvalController.processMagicLink);
 router.get('/approvals-overview', verifyToken, attachCompanyScope, approvalController.getApprovalsOverview);
 
 // Approval Contacts (Admin only)
-router.get('/approval-contacts', verifyToken, checkRole(['admin']), settingsController.getApprovalContacts);
-router.put('/approval-contacts/:id', verifyToken, checkRole(['admin']), settingsController.updateApprovalContact);
-router.post('/approval-contacts', verifyToken, checkRole(['admin']), settingsController.createApprovalContact);
-router.delete('/approval-contacts/:id', verifyToken, checkRole(['admin']), settingsController.deleteApprovalContact);
+router.get('/approval-contacts', verifyToken, checkRole(['admin', 'ga']), settingsController.getApprovalContacts);
+router.put('/approval-contacts/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.updateApprovalContact);
+router.post('/approval-contacts', verifyToken, checkRole(['admin', 'ga']), settingsController.createApprovalContact);
+router.delete('/approval-contacts/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.deleteApprovalContact);
 
-// Approval Signers — master data approver (Admin only)
-router.get('/approval-signers', verifyToken, checkRole(['admin']), settingsController.getSigners);
-router.post('/approval-signers', verifyToken, checkRole(['admin']), settingsController.createSigner);
-router.put('/approval-signers/:id', verifyToken, checkRole(['admin']), settingsController.updateSigner);
-router.delete('/approval-signers/:id', verifyToken, checkRole(['admin']), settingsController.deleteSigner);
+// Approval Signers — master data approver (Admin & GA, dipakai lintas modul termasuk BAP)
+router.get('/approval-signers', verifyToken, checkRole(['admin', 'ga']), settingsController.getSigners);
+router.post('/approval-signers', verifyToken, checkRole(['admin', 'ga']), settingsController.createSigner);
+router.put('/approval-signers/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.updateSigner);
+router.delete('/approval-signers/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.deleteSigner);
 
 // File Uploads
 router.post('/upload', verifyToken, upload.single('file'), settingsController.uploadAttachment);
@@ -105,10 +105,10 @@ router.get('/budgets/:id/shifts', verifyToken, settingsController.getBudgetShift
 router.post('/budgets/:id/shifts', verifyToken, settingsController.createBudgetShift);
 router.post('/budgets/shifts/:shift_id/decision', verifyToken, settingsController.processShiftDecision);
 
-// Approval Rules CRUD (admin only)
-router.get('/approval-rules', verifyToken, checkRole(['admin']), settingsController.getApprovalRules);
-router.post('/approval-rules', verifyToken, checkRole(['admin']), settingsController.createApprovalRule);
-router.put('/approval-rules/:id', verifyToken, checkRole(['admin']), settingsController.updateApprovalRule);
-router.delete('/approval-rules/:id', verifyToken, checkRole(['admin']), settingsController.deleteApprovalRule);
+// Approval Rules CRUD (admin & GA)
+router.get('/approval-rules', verifyToken, checkRole(['admin', 'ga']), settingsController.getApprovalRules);
+router.post('/approval-rules', verifyToken, checkRole(['admin', 'ga']), settingsController.createApprovalRule);
+router.put('/approval-rules/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.updateApprovalRule);
+router.delete('/approval-rules/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.deleteApprovalRule);
 
 module.exports = router;

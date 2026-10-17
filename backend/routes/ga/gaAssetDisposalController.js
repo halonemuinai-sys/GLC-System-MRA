@@ -1,0 +1,312 @@
+const crypto = require('crypto');
+const prisma = require('../../api/db');
+const { sendAssetDocApprovalEmail } = require('../../api/mailer');
+const { nextDocNumber } = require('./gaDocNumber');
+
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
+const MAGIC_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Pasang approver + magic link baru ke BAP, set PENDING_APPROVAL, lalu kirim email ke approver.
+async function issueApprovalRequest(disposalId, approverSignerId) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const disposal = await prisma.asset_disposals.update({
+    where: { id: disposalId },
+    data: {
+      status: 'PENDING_APPROVAL',
+      approver_signer_id: parseInt(approverSignerId),
+      rejection_reason: null,
+      magic_link_token: token,
+      magic_link_expires_at: new Date(Date.now() + MAGIC_LINK_TTL_MS),
+      magic_link_used_at: null
+    },
+    include: { items: { include: { assets: true } }, m_company: true, requested_by: true, approver: true }
+  });
+
+  sendAssetDocApprovalEmail({
+    to: disposal.approver.email,
+    approverName: disposal.approver.name,
+    docTitle: 'Berita Acara Penghapusan Aset',
+    docNumber: disposal.disposal_number,
+    infoRows: [
+      ['Entitas (PT)', disposal.m_company.name],
+      ['Tanggal', new Date(disposal.disposal_date).toLocaleDateString('id-ID')],
+      ['Alasan', disposal.reason],
+      ['Diajukan oleh', disposal.requested_by.full_name]
+    ],
+    assets: disposal.items.map(it => ({
+      asset_code: it.assets.asset_code,
+      asset_name: it.assets.asset_name,
+      condition_snapshot: it.condition_snapshot
+    })),
+    approveUrl: `${FRONTEND_URL}/approve-disposal/${token}`
+  }).catch(err => console.error('Gagal mengirim email approval BAP:', err.message));
+
+  return disposal;
+}
+
+// GET /api/ga/asset-disposals
+async function getAssetDisposals(req, res, next) {
+  try {
+    const { status, companyId, page = 1, limit = 20 } = req.query;
+    const where = {};
+    if (status) where.status = status;
+    if (companyId) where.company_id = parseInt(companyId);
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [data, total] = await Promise.all([
+      prisma.asset_disposals.findMany({
+        where,
+        include: {
+          m_company: { select: { name: true } },
+          requested_by: { select: { full_name: true } },
+          approver: { select: { name: true, position: true } },
+          items: { select: { id: true } }
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: parseInt(limit)
+      }),
+      prisma.asset_disposals.count({ where })
+    ]);
+
+    res.json({
+      data,
+      meta: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/ga/asset-disposals/:id
+async function getAssetDisposalDetail(req, res, next) {
+  try {
+    const { id } = req.params;
+    const disposal = await prisma.asset_disposals.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        m_company: true,
+        requested_by: { select: { id: true, full_name: true, position: true, department: true } },
+        approver: true,
+        items: {
+          include: {
+            assets: {
+              include: { m_asset_category: true, m_condition: true, m_status: true }
+            }
+          }
+        }
+      }
+    });
+    if (!disposal) return res.status(404).json({ error: 'Berita Acara Penghapusan tidak ditemukan.' });
+    res.json(disposal);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/ga/asset-disposals
+async function createAssetDisposal(req, res, next) {
+  try {
+    const { company_id, disposal_date, reason, reason_detail, notes, approver_signer_id, asset_ids } = req.body;
+    const userId = req.user?.id;
+
+    if (!company_id || !disposal_date || !reason) {
+      return res.status(400).json({ error: 'Entitas PT, Tanggal, dan Alasan Penghapusan wajib diisi.' });
+    }
+    if (!Array.isArray(asset_ids) || asset_ids.length === 0) {
+      return res.status(400).json({ error: 'Pilih minimal satu aset untuk dihapuskan.' });
+    }
+
+    const assets = await prisma.assets.findMany({
+      where: { id: { in: asset_ids.map(Number) } },
+      include: { m_condition: true }
+    });
+    if (assets.length !== asset_ids.length) {
+      return res.status(400).json({ error: 'Beberapa aset yang dipilih tidak ditemukan di database.' });
+    }
+
+    const disposalNumber = await nextDocNumber(prisma.asset_disposals, 'disposal_number', 'BAP/GA');
+
+    const draft = await prisma.asset_disposals.create({
+      data: {
+        disposal_number: disposalNumber,
+        company_id: parseInt(company_id),
+        disposal_date: new Date(disposal_date),
+        reason,
+        reason_detail: reason_detail || null,
+        notes: notes || null,
+        status: 'DRAFT',
+        requested_by_id: userId,
+        items: {
+          create: assets.map(a => ({
+            asset_id: a.id,
+            condition_snapshot: a.m_condition?.name || null
+          }))
+        }
+      }
+    });
+
+    const disposal = approver_signer_id ? await issueApprovalRequest(draft.id, approver_signer_id) : draft;
+    res.status(201).json(disposal);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/ga/asset-disposals/:id/submit — kirim Draft / Rejected ke approver
+async function submitAssetDisposal(req, res, next) {
+  try {
+    const id = parseInt(req.params.id);
+    const { approver_signer_id } = req.body;
+    if (!approver_signer_id) return res.status(400).json({ error: 'Approver is required.' });
+    const disposal = await prisma.asset_disposals.findUnique({ where: { id } });
+    if (!disposal) return res.status(404).json({ error: 'Berita Acara Penghapusan tidak ditemukan.' });
+    if (!['DRAFT', 'REJECTED'].includes(disposal.status)) {
+      return res.status(400).json({ error: 'Only Draft or Rejected reports can be submitted for approval.' });
+    }
+    res.json(await issueApprovalRequest(id, approver_signer_id));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/ga/asset-disposals/:id/approve
+async function approveAssetDisposal(req, res, next) {
+  try {
+    const { id } = req.params;
+    const disposal = await prisma.asset_disposals.findUnique({ where: { id: parseInt(id) } });
+    if (!disposal) return res.status(404).json({ error: 'Berita Acara Penghapusan tidak ditemukan.' });
+    if (disposal.status === 'APPROVED') {
+      return res.status(400).json({ error: 'Berita Acara ini sudah disetujui sebelumnya.' });
+    }
+
+    const updated = await prisma.asset_disposals.update({
+      where: { id: parseInt(id) },
+      data: { status: 'APPROVED', approved_at: new Date(), rejection_reason: null }
+    });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/ga/asset-disposals/:id/reject
+async function rejectAssetDisposal(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { rejection_reason } = req.body;
+    if (!rejection_reason) {
+      return res.status(400).json({ error: 'Alasan penolakan wajib diisi.' });
+    }
+    const updated = await prisma.asset_disposals.update({
+      where: { id: parseInt(id) },
+      data: { status: 'REJECTED', rejection_reason }
+    });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/ga/asset-disposals/magic/:token (PUBLIK — tanpa login)
+async function getDisposalByToken(req, res, next) {
+  try {
+    const { token } = req.params;
+    const disposal = await prisma.asset_disposals.findUnique({
+      where: { magic_link_token: token },
+      include: {
+        m_company: true,
+        requested_by: { select: { full_name: true, position: true, department: true } },
+        approver: { select: { name: true, email: true, position: true } },
+        items: { include: { assets: { include: { m_asset_category: true } } } }
+      }
+    });
+
+    if (!disposal) return res.status(404).json({ error: 'Link approval tidak ditemukan atau tidak valid.' });
+    if (disposal.magic_link_used_at) return res.status(410).json({ error: 'Link approval ini sudah pernah digunakan.' });
+    if (new Date() > disposal.magic_link_expires_at) return res.status(410).json({ error: 'Link approval ini sudah kedaluwarsa.' });
+    if (disposal.status !== 'PENDING_APPROVAL') return res.status(410).json({ error: 'Berita Acara ini sudah diproses melalui jalur lain.' });
+
+    res.json(disposal);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/ga/asset-disposals/magic/:token (PUBLIK — tanpa login)
+async function processDisposalByToken(req, res, next) {
+  try {
+    const { token } = req.params;
+    const { action, rejection_reason } = req.body;
+
+    if (!action || !['APPROVE', 'REJECT'].includes(action)) {
+      return res.status(400).json({ error: 'Action harus APPROVE atau REJECT.' });
+    }
+    if (action === 'REJECT' && !rejection_reason) {
+      return res.status(400).json({ error: 'Alasan penolakan wajib diisi.' });
+    }
+
+    const disposal = await prisma.asset_disposals.findUnique({ where: { magic_link_token: token } });
+    if (!disposal) return res.status(404).json({ error: 'Link approval tidak ditemukan atau tidak valid.' });
+    if (disposal.magic_link_used_at) return res.status(410).json({ error: 'Link approval ini sudah pernah digunakan.' });
+    if (new Date() > disposal.magic_link_expires_at) return res.status(410).json({ error: 'Link approval ini sudah kedaluwarsa.' });
+    if (disposal.status !== 'PENDING_APPROVAL') return res.status(410).json({ error: 'Berita Acara ini sudah diproses melalui jalur lain.' });
+
+    const updated = await prisma.asset_disposals.update({
+      where: { id: disposal.id },
+      data: {
+        status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        approved_at: action === 'APPROVE' ? new Date() : null,
+        rejection_reason: action === 'REJECT' ? rejection_reason : null,
+        magic_link_used_at: new Date()
+      }
+    });
+
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /api/ga/asset-disposals/:id (hanya untuk status DRAFT)
+async function deleteAssetDisposal(req, res, next) {
+  try {
+    const { id } = req.params;
+    const disposal = await prisma.asset_disposals.findUnique({ where: { id: parseInt(id) } });
+    if (!disposal) return res.status(404).json({ error: 'Berita Acara Penghapusan tidak ditemukan.' });
+    if (!['DRAFT', 'REJECTED'].includes(disposal.status)) {
+      return res.status(400).json({ error: 'Only Draft or Rejected reports can be deleted.' });
+    }
+    await prisma.asset_disposals.delete({ where: { id: parseInt(id) } });
+    res.json({ message: 'Berita Acara Penghapusan berhasil dihapus.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/ga/asset-disposal-signers
+async function getApprovalSigners(req, res, next) {
+  try {
+    const signers = await prisma.m_approval_signer.findMany({
+      where: { is_active: true },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, position: true, email: true }
+    });
+    res.json(signers);
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  getAssetDisposals,
+  getAssetDisposalDetail,
+  createAssetDisposal,
+  submitAssetDisposal,
+  approveAssetDisposal,
+  rejectAssetDisposal,
+  deleteAssetDisposal,
+  getApprovalSigners,
+  getDisposalByToken,
+  processDisposalByToken
+};

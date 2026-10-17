@@ -20,6 +20,100 @@ model approval_requests {
   @@schema("glc_mra")
 }
 
+/// Berita Acara Penghapusan Aset (BAP) — pencatatan resmi penghapusan satu
+/// atau beberapa aset dari pembukuan, lengkap dengan alur persetujuan lewat
+/// Master Signer (m_approval_signer, sama seperti dipakai Marketing Plan).
+model asset_disposals {
+  id                 Int                    @id @default(autoincrement())
+  disposal_number    String?                @unique @db.VarChar(50)
+  company_id         Int
+  disposal_date      DateTime               @db.Date
+  reason             String                 @db.VarChar(50)
+  reason_detail      String?
+  status             String                 @default("DRAFT") @db.VarChar(20)
+  requested_by_id    Int
+  approver_signer_id Int?
+  approved_at        DateTime?              @db.Timestamp(6)
+  rejection_reason   String?
+  notes              String?
+  magic_link_token   String?                @unique @db.VarChar(64)
+  magic_link_expires_at DateTime?            @db.Timestamp(6)
+  magic_link_used_at DateTime?              @db.Timestamp(6)
+  created_at         DateTime?              @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?              @default(now()) @db.Timestamp(6)
+  m_company          m_company              @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requested_by       m_user                 @relation(fields: [requested_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  approver           m_approval_signer?     @relation(fields: [approver_signer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  items              asset_disposal_items[]
+
+  @@index([company_id], map: "idx_disposal_company")
+  @@index([status], map: "idx_disposal_status")
+  @@schema("glc_mra")
+}
+
+/// Berita Acara Serah Terima Aset (BAST) — penyerahan satu atau beberapa aset
+/// dari Pihak Pertama ke Pihak Kedua. Tanpa alur approval: ditandatangani fisik.
+model asset_handovers {
+  id                   Int                    @id @default(autoincrement())
+  handover_number      String?                @unique @db.VarChar(50)
+  company_id           Int
+  handover_date        DateTime               @db.Date
+  handover_type        String                 @db.VarChar(30)
+  giver_name           String                 @db.VarChar(120)
+  giver_position       String?                @db.VarChar(100)
+  recipient_name       String                 @db.VarChar(120)
+  recipient_position   String?                @db.VarChar(100)
+  recipient_department String?                @db.VarChar(100)
+  notes                String?
+  status               String                 @default("DRAFT") @db.VarChar(20)
+  approver_signer_id   Int?
+  approved_at          DateTime?              @db.Timestamp(6)
+  rejection_reason     String?
+  magic_link_token     String?                @unique @db.VarChar(64)
+  magic_link_expires_at DateTime?             @db.Timestamp(6)
+  magic_link_used_at   DateTime?              @db.Timestamp(6)
+  created_by_id        Int
+  created_at           DateTime?              @default(now()) @db.Timestamp(6)
+  m_company            m_company              @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  created_by           m_user                 @relation(fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  approver             m_approval_signer?     @relation(fields: [approver_signer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  items                asset_handover_items[]
+
+  @@index([company_id], map: "idx_handover_company")
+  @@index([status], map: "idx_handover_status")
+  @@schema("glc_mra")
+}
+
+model asset_handover_items {
+  id                 Int             @id @default(autoincrement())
+  handover_id        Int
+  asset_id           Int
+  condition_snapshot String?         @db.VarChar(80)
+  accessories        String?
+  asset_handovers    asset_handovers @relation(fields: [handover_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  assets             assets          @relation(fields: [asset_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([handover_id], map: "idx_handover_item_handover")
+  @@index([asset_id], map: "idx_handover_item_asset")
+  @@schema("glc_mra")
+}
+
+/// Baris aset per Berita Acara Penghapusan — satu disposal bisa mencakup
+/// banyak aset sekaligus.
+model asset_disposal_items {
+  id                 Int             @id @default(autoincrement())
+  disposal_id        Int
+  asset_id           Int
+  condition_snapshot String?         @db.VarChar(80)
+  notes              String?
+  asset_disposals    asset_disposals @relation(fields: [disposal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  assets             assets          @relation(fields: [asset_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([disposal_id], map: "idx_disposal_item_disposal")
+  @@index([asset_id], map: "idx_disposal_item_asset")
+  @@schema("glc_mra")
+}
+
 model assets {
   id                 Int                @id @default(autoincrement())
   company_id         Int
@@ -49,6 +143,8 @@ model assets {
   m_status           m_status?          @relation(fields: [status_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   inventory_checks   inventory_checks[]
   maintenances       maintenances[]
+  asset_disposal_items asset_disposal_items[]
+  asset_handover_items asset_handover_items[]
 
   @@index([asset_category_id], map: "idx_assets_category")
   @@index([company_id], map: "idx_assets_company")
@@ -529,6 +625,8 @@ model m_company {
   marketing_budgets m_marketing_budget[]
   m_branches        m_branch[]
   m_brands          m_brand[]
+  asset_disposals   asset_disposals[]
+  asset_handovers   asset_handovers[]
   m_company_master  m_company_master? @relation(fields: [company_master_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
   user_access       m_user_company_access[]
   approval_role_contacts approval_role_contacts[]
@@ -623,6 +721,8 @@ model m_user {
   audit_log      audit_log[]
   device_rentals device_rentals[]
   company_access m_user_company_access[]
+  asset_disposals asset_disposals[]
+  asset_handovers asset_handovers[]
 
   @@schema("glc_mra")
 }
@@ -1146,6 +1246,8 @@ model m_approval_signer {
   marketing_plan_amendments marketing_plan_amendments[]
   approval_history       approval_history[]
   marketing_budget_shifts m_marketing_budget_shift[]
+  asset_disposals        asset_disposals[]
+  asset_handovers        asset_handovers[]
 
   @@schema("marketing_budget")
 }

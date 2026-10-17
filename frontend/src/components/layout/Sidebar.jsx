@@ -144,6 +144,7 @@ function NavItem({
   onClick,
   collapsed,
   isChild = false,
+  isNested = false,
   badge = 0
 }) {
   const c = ACCENT[accent] || ACCENT.indigo;
@@ -166,7 +167,7 @@ function NavItem({
           transition={{ duration: 0.12 }}
           className={cn(
             "group relative flex items-center gap-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer select-none",
-            isChild && !collapsed ? "pl-6 pr-3 py-2" : "px-3 py-2.5",
+            isChild && !collapsed ? (isNested ? "pl-11 pr-3 py-1.5" : "pl-6 pr-3 py-2") : "px-3 py-2.5",
             isActive
               ? activeText
               : "text-slate-400 hover:text-white hover:bg-white/[0.06]"
@@ -218,7 +219,7 @@ function NavItem({
             transition={{ duration: 0.15 }}
             className={cn(
               "flex-1 leading-none whitespace-nowrap overflow-hidden",
-              isChild ? "text-[13px]" : "text-sm"
+              isNested ? "text-[12px]" : isChild ? "text-[13px]" : "text-sm"
             )}
           >
             {name}
@@ -393,6 +394,7 @@ function SubMenu({
                     onClick={onChildClick}
                     collapsed={false}
                     isChild={true}
+                    isNested={!!child.nested}
                     badge={child.badge || 0}
                   />
                 ))}
@@ -514,6 +516,7 @@ function SidebarContent({
           icon: Package,
           children: [
             { name: 'Assets', path: '/dashboard/assets', icon: Box, allowed: hasAccess(['ga', 'auditor']) },
+            { name: 'Berita Acara', path: '/dashboard/berita-acara', icon: FileSignature, allowed: hasAccess(['ga', 'admin', 'auditor']), nested: true },
             { name: 'Vehicles', path: '/dashboard/vehicles', icon: Truck, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'IT Rentals', path: '/dashboard/it-rentals', icon: Monitor, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'Maintenance', path: '/dashboard/maintenances', icon: Wrench, allowed: hasAccess(['ga', 'auditor']) },
@@ -554,8 +557,7 @@ function SidebarContent({
             { name: 'Payment Requests', path: '/dashboard/marketing/payments', icon: CreditCard, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Budget Control', path: '/dashboard/marketing/budgeting', icon: Wallet, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Event Locations', path: '/dashboard/marketing/event-locations', icon: MapPin, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
-            { name: 'Target Branches', path: '/dashboard/marketing/branches', icon: Building, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
-            { name: 'Approval Settings', path: '/dashboard/marketing-approval-settings', icon: Settings, allowed: hasAccess(['admin']) }
+            { name: 'Target Branches', path: '/dashboard/marketing/branches', icon: Building, allowed: hasAccess(['marketing', 'admin', 'auditor']) }
           ]
         }
       ]
@@ -589,7 +591,8 @@ function SidebarContent({
             { name: 'Companies', path: '/dashboard/master/companies', icon: Building2, allowed: hasAccess(['ga', 'legal', 'compliance', 'marketing', 'auditor']) },
             { name: 'Vendors', path: '/dashboard/vendors', icon: Users, allowed: hasAccess(['ga', 'legal', 'compliance', 'marketing', 'auditor']) },
             { name: 'Brands', path: '/dashboard/master/brands', icon: Tag, allowed: true },
-            { name: 'Line of Business', path: '/dashboard/master/lobs', icon: ClipboardList, allowed: true }
+            { name: 'Line of Business', path: '/dashboard/master/lobs', icon: ClipboardList, allowed: true },
+            { name: 'Approval Settings', path: '/dashboard/marketing-approval-settings', icon: Settings, allowed: hasAccess(['admin', 'ga']) }
           ]
         }
       ]

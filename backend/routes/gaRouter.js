@@ -9,6 +9,8 @@ const deviceRentalController = require('./ga/gaDeviceRentalController');
 const stockOpnameController = require('./ga/gaStockOpnameController');
 const itRentalController = require('./ga/gaItRentalController');
 const dashboardController = require('./ga/gaDashboardController');
+const assetDisposalController = require('./ga/gaAssetDisposalController');
+const assetHandoverController = require('./ga/gaAssetHandoverController');
 
 const router = express.Router();
 
@@ -37,6 +39,31 @@ router.get('/assets-types', allowRead, assetController.getAssetTypes);
 router.get('/assets-conditions', allowRead, assetController.getAssetConditions);
 router.get('/assets-locations', allowRead, assetController.getAssetLocations);
 router.get('/assets-statuses', allowRead, assetController.getAssetStatuses);
+
+// Asset Disposals (Berita Acara Penghapusan Aset / BAP)
+router.get('/asset-disposals', allowRead, assetDisposalController.getAssetDisposals);
+router.get('/asset-disposal-signers', allowRead, assetDisposalController.getApprovalSigners);
+router.get('/asset-disposals/:id', allowRead, assetDisposalController.getAssetDisposalDetail);
+router.post('/asset-disposals', allowWrite, assetDisposalController.createAssetDisposal);
+router.put('/asset-disposals/:id/submit', allowWrite, assetDisposalController.submitAssetDisposal);
+router.put('/asset-disposals/:id/approve', allowWrite, assetDisposalController.approveAssetDisposal);
+router.put('/asset-disposals/:id/reject', allowWrite, assetDisposalController.rejectAssetDisposal);
+router.delete('/asset-disposals/:id', allowWrite, assetDisposalController.deleteAssetDisposal);
+// Approval via magic link email — publik, tanpa login
+router.get('/asset-disposals/magic/:token', assetDisposalController.getDisposalByToken);
+router.post('/asset-disposals/magic/:token', assetDisposalController.processDisposalByToken);
+
+// Asset Handovers (Berita Acara Serah Terima / BAST)
+router.get('/asset-handovers', allowRead, assetHandoverController.getAssetHandovers);
+router.get('/asset-handovers/:id', allowRead, assetHandoverController.getAssetHandoverDetail);
+router.post('/asset-handovers', allowWrite, assetHandoverController.createAssetHandover);
+router.put('/asset-handovers/:id/submit', allowWrite, assetHandoverController.submitAssetHandover);
+router.put('/asset-handovers/:id/approve', allowWrite, assetHandoverController.approveAssetHandover);
+router.put('/asset-handovers/:id/reject', allowWrite, assetHandoverController.rejectAssetHandover);
+router.delete('/asset-handovers/:id', allowWrite, assetHandoverController.deleteAssetHandover);
+// Approval BAST via magic link email — publik, tanpa login
+router.get('/asset-handovers/magic/:token', assetHandoverController.getHandoverByToken);
+router.post('/asset-handovers/magic/:token', assetHandoverController.processHandoverByToken);
 
 // Vehicles CRUD
 router.get('/vehicles', allowRead, vehicleController.getVehicles);

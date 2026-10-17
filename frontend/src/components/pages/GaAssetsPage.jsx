@@ -21,7 +21,11 @@ import {
   Edit3,
   Trash2,
   ExternalLink,
-  Maximize2
+  Maximize2,
+  FileMinus,
+  FileSignature,
+  FileText,
+  ChevronDown
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
@@ -34,6 +38,8 @@ import GaAssetsFormDrawer from './GaAssetsFormDrawer';
 import GaAssetsDeleteModal from './GaAssetsDeleteModal';
 import GaAssetsImportModal from './GaAssetsImportModal';
 import GaAssetsPurgeModal from './GaAssetsPurgeModal';
+import GaAssetDisposalModal from './GaAssetDisposalModal';
+import GaAssetHandoverModal from './GaAssetHandoverModal';
 import { handleExportPDF, handleExportExcel } from './GaAssetsExports';
 
 // Searchable Dropdown for Companies (PT)
@@ -165,6 +171,9 @@ export default function GaAssetsPage() {
   // Excel Import States
   const [showImportModal, setShowImportModal] = useState(false);
   const [showPurgeModal, setShowPurgeModal] = useState(false);
+  const [showDisposalModal, setShowDisposalModal] = useState(false);
+  const [showHandoverModal, setShowHandoverModal] = useState(false);
+  const [showBaMenu, setShowBaMenu] = useState(false);
   const [importingFile, setImportingFile] = useState(false);
   const [importErrors, setImportErrors] = useState([]);
   const [importWarnings, setImportWarnings] = useState([]);
@@ -568,6 +577,50 @@ export default function GaAssetsPage() {
             <Upload className="w-4 h-4 text-indigo-500" />
             {t('importExcel')}
           </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowBaMenu(v => !v)}
+              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer border border-neutral-200 dark:border-neutral-800 shadow-sm w-fit"
+            >
+              <FileText className="w-4 h-4 text-amber-500" />
+              Berita Acara
+              <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${showBaMenu ? 'rotate-180' : ''}`} />
+            </button>
+            {showBaMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowBaMenu(false)} />
+                <div className="absolute z-50 left-0 mt-1.5 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-xl p-1.5">
+                  <button
+                    onClick={() => { setShowBaMenu(false); setShowDisposalModal(true); }}
+                    className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-left"
+                  >
+                    <FileMinus className="w-4 h-4 text-rose-500 mt-0.5 flex-shrink-0" />
+                    <span>
+                      <span className="block text-xs font-bold text-neutral-800 dark:text-neutral-100">New Disposal (BAP)</span>
+                      <span className="block text-[11px] text-neutral-400">Write off damaged / lost assets</span>
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => { setShowBaMenu(false); setShowHandoverModal(true); }}
+                    className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-left"
+                  >
+                    <FileSignature className="w-4 h-4 text-sky-500 mt-0.5 flex-shrink-0" />
+                    <span>
+                      <span className="block text-xs font-bold text-neutral-800 dark:text-neutral-100">New Handover (BAST)</span>
+                      <span className="block text-[11px] text-neutral-400">Hand over assets to an employee / unit</span>
+                    </span>
+                  </button>
+                  <div className="h-px bg-neutral-100 dark:bg-neutral-800 my-1" />
+                  <a
+                    href="/dashboard/berita-acara"
+                    className="block px-3 py-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-[11px] font-bold text-neutral-500"
+                  >
+                    View all reports &rarr;
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
           {isAdmin && (
             <>
               <div className="w-px h-6 bg-neutral-200 dark:bg-neutral-800 mx-0.5" />
@@ -913,6 +966,10 @@ export default function GaAssetsPage() {
         }}
         formatIDR={formatIDR}
       />
+
+      {/* Berita Acara: BAP (disposal) & BAST (handover) */}
+      <GaAssetDisposalModal isOpen={showDisposalModal} onClose={() => setShowDisposalModal(false)} />
+      <GaAssetHandoverModal isOpen={showHandoverModal} onClose={() => setShowHandoverModal(false)} />
     </div>
   );
 }

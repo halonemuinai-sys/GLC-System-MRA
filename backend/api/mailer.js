@@ -168,4 +168,56 @@ async function sendAmendmentNotifEmail({ to, recipientLabel, docTitle, planTitle
   return sendMail({ to, subject, html });
 }
 
-module.exports = { sendMail, sendPasswordResetEmail, sendApprovalMagicLinkEmail, sendPaymentStatusEmail, sendPlanStatusEmail, sendAmendmentNotifEmail, getTransporter };
+const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+// Email approval generik untuk Berita Acara aset (BAP / BAST): baris info + tabel aset + tombol magic link.
+async function sendAssetDocApprovalEmail({ to, approverName, docTitle, docNumber, infoRows, assets, approveUrl }) {
+  const subject = `[Approval Diperlukan] ${docTitle} ${docNumber}`;
+  const withAccessories = assets.some(a => a.accessories);
+  const td = 'padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 12px;';
+  const assetRows = assets.map(a => `
+    <tr>
+      <td style="${td}">${escapeHtml(a.asset_code || '-')}</td>
+      <td style="${td}">${escapeHtml(a.asset_name)}</td>
+      <td style="${td}">${escapeHtml(a.condition_snapshot || '-')}</td>
+      ${withAccessories ? `<td style="${td}">${escapeHtml(a.accessories || '-')}</td>` : ''}
+    </tr>
+  `).join('');
+  const info = [['Nomor BA', docNumber], ...infoRows].map(([label, value]) =>
+    `<tr><td style="padding: 4px 0; color: #64748b; vertical-align: top;">${escapeHtml(label)}</td><td style="padding: 4px 0; font-weight: bold;">${escapeHtml(value || '-')}</td></tr>`
+  ).join('');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #1f2937;">
+      <h2 style="color: #0f172a; margin-bottom: 4px;">Persetujuan ${escapeHtml(docTitle)}</h2>
+      <p>Halo ${escapeHtml(approverName)},</p>
+      <p>${escapeHtml(docTitle)} berikut membutuhkan persetujuan Anda:</p>
+      <table style="width: 100%; font-size: 13px; margin: 16px 0; border-collapse: collapse;">${info}</table>
+      <p style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 6px;">Daftar Aset (${assets.length}):</p>
+      <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="background: #0f172a; color: #ffffff;">
+            <th style="padding: 6px 8px; text-align: left;">Kode</th>
+            <th style="padding: 6px 8px; text-align: left;">Nama Aset</th>
+            <th style="padding: 6px 8px; text-align: left;">Kondisi</th>
+            ${withAccessories ? '<th style="padding: 6px 8px; text-align: left;">Kelengkapan</th>' : ''}
+          </tr>
+        </thead>
+        <tbody>${assetRows}</tbody>
+      </table>
+      <p style="text-align: center; margin: 24px 0;">
+        <a href="${approveUrl}" style="background: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Tinjau & Setujui</a>
+      </p>
+      <p>Atau salin link berikut ke browser Anda:</p>
+      <p style="word-break: break-all; font-size: 12px; color: #64748b;">${approveUrl}</p>
+      <p style="font-size: 12px; color: #64748b;">Link ini berlaku selama 7 hari dan hanya bisa dipakai satu kali.</p>
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+      <p style="font-size: 11px; color: #9ca3af;">Email otomatis dari MRA Hub - GLC Apps. Jangan membalas email ini.</p>
+    </div>
+  `;
+  const text = `Halo ${approverName},\n\n${docTitle} ${docNumber} (${assets.length} aset) membutuhkan persetujuan Anda.\nBuka link berikut untuk meninjau (berlaku 7 hari, sekali pakai):\n${approveUrl}`;
+
+  return sendMail({ to, subject, html, text });
+}
+
+module.exports = { sendMail, sendPasswordResetEmail, sendApprovalMagicLinkEmail, sendPaymentStatusEmail, sendPlanStatusEmail, sendAmendmentNotifEmail, sendAssetDocApprovalEmail, getTransporter };
