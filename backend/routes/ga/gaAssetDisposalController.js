@@ -47,10 +47,17 @@ async function issueApprovalRequest(disposalId, approverSignerId) {
 // GET /api/ga/asset-disposals
 async function getAssetDisposals(req, res, next) {
   try {
-    const { status, companyId, page = 1, limit = 20 } = req.query;
+    const { status, companyId, search, page = 1, limit = 20 } = req.query;
     const where = {};
     if (status) where.status = status;
     if (companyId) where.company_id = parseInt(companyId);
+    if (search) {
+      where.OR = [
+        { disposal_number: { contains: search, mode: 'insensitive' } },
+        { reason: { contains: search, mode: 'insensitive' } },
+        { reason_detail: { contains: search, mode: 'insensitive' } }
+      ];
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [data, total] = await Promise.all([

@@ -58,10 +58,18 @@ async function issueApprovalRequest(handoverId, approverSignerId) {
 // GET /api/ga/asset-handovers
 async function getAssetHandovers(req, res, next) {
   try {
-    const { status, companyId, page = 1, limit = 20 } = req.query;
+    const { status, companyId, search, page = 1, limit = 20 } = req.query;
     const where = {};
     if (status) where.status = status;
     if (companyId) where.company_id = parseInt(companyId);
+    if (search) {
+      where.OR = [
+        { handover_number: { contains: search, mode: 'insensitive' } },
+        { giver_name: { contains: search, mode: 'insensitive' } },
+        { recipient_name: { contains: search, mode: 'insensitive' } },
+        { recipient_department: { contains: search, mode: 'insensitive' } }
+      ];
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [data, total] = await Promise.all([
