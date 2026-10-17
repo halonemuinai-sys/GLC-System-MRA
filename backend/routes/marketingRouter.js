@@ -13,7 +13,7 @@ const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB
+    fileSize: 4 * 1024 * 1024 // 4MB (selaras dengan client_max_body_size nginx)
   }
 });
 

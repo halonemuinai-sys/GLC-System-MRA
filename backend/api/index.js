@@ -33,6 +33,9 @@ app.use('/api/ga', require('../routes/gaRouter'));
 app.use('/api/legal', require('../routes/legalRouter'));
 app.use('/api/compliance', require('../routes/complianceRouter'));
 app.use('/api/master', require('../routes/masterRouter'));
+// File upload yang disimpan di disk server (UPLOAD_DIR) — publik via nama file acak
+const { PUBLIC_PREFIX, serveUploads } = require('./uploadStorage');
+app.use(PUBLIC_PREFIX, serveUploads);
 // Catatan: verifyToken TIDAK dipasang di level mount ini (beda dari router lain) —
 // setiap route di marketingRouter.js sudah memanggil verifyToken sendiri-sendiri,
 // KECUALI 2 endpoint /magic/:token yang sengaja publik untuk approval via email (magic link)

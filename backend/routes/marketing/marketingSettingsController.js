@@ -1,5 +1,6 @@
 const prisma = require('../../api/db');
 const { resolveEmployee } = require('./marketingHelper');
+const { saveUpload, publicUrl } = require('../../api/uploadStorage');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -253,7 +254,7 @@ async function deleteSigner(req, res, next) {
   }
 }
 
-// POST /upload (Upload to Proxmox CDN with database fallback)
+// POST /upload — simpan ke folder upload di server (UPLOAD_DIR), fallback ke database kalau disk gagal
 async function uploadAttachment(req, res, next) {
   try {
     if (!req.file) {
@@ -263,43 +264,22 @@ async function uploadAttachment(req, res, next) {
     const { originalname, mimetype, buffer } = req.file;
     const folder = req.body.folder || 'marketing';
 
-    // 1. Upload ke Proxmox CDN server
-    const cdnBase = process.env.PROXMOX_CDN_URL || 'https://bvl.mogems.co.id';
-    let cdnUrl = null;
-
+    // 1. Simpan ke disk server (Proxmox)
     try {
-      const fd = new FormData();
-      fd.append('folder', folder);
-      fd.append('file', new Blob([buffer], { type: mimetype }), originalname);
-
-      const cdnRes = await fetch(`${cdnBase}/api/cdn/upload`, {
-        method: 'POST',
-        body: fd,
-        signal: AbortSignal.timeout(15000)
-      });
-
-      if (cdnRes.ok) {
-        const cdnJson = await cdnRes.json();
-        if (cdnJson.success && cdnJson.data?.url) {
-          cdnUrl = cdnJson.data.url;
-        }
-      }
-    } catch (cdnErr) {
-      console.warn('[Proxmox CDN] Upload to CDN failed, using database fallback:', cdnErr.message);
-    }
-
-    // Jika berhasil upload ke Proxmox CDN, langsung kembalikan CDN URL
-    if (cdnUrl) {
+      const relPath = saveUpload(buffer, originalname, folder);
       return res.json({
         success: true,
-        source: 'proxmox_cdn',
+        source: 'server_storage',
         filename: originalname,
         mime_type: mimetype,
-        url: cdnUrl
+        url: publicUrl(req, relPath)
       });
+    } catch (diskErr) {
+      if (diskErr.status === 400) return res.status(400).json({ error: diskErr.message });
+      console.warn('[upload] Gagal menyimpan ke disk, memakai database fallback:', diskErr.message);
     }
 
-    // 2. Fallback: simpan di PostgreSQL jika Proxmox CDN offline/gagal
+    // 2. Fallback: simpan di PostgreSQL jika disk server gagal
     const newAttachment = await prisma.attachments.create({
       data: {
         filename: originalname,
