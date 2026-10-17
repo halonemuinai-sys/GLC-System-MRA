@@ -6,7 +6,8 @@ import { apiClient } from '@/lib/apiClient';
 
 // Shared asset picker for Berita Acara (BAP / BAST): company-scoped asset table
 // with search + category/status filters. `selected` is a Map of id -> asset.
-export default function GaAssetPicker({ companyId, selected, onChange }) {
+// `badgeFor(asset)` optionally renders a marker next to the asset name.
+export default function GaAssetPicker({ companyId, selected, onChange, badgeFor }) {
   const [categories, setCategories] = useState([]);
   const [statuses, setStatuses] = useState([]);
   const [search, setSearch] = useState('');
@@ -123,7 +124,7 @@ export default function GaAssetPicker({ companyId, selected, onChange }) {
                     {selected.has(a.id) ? <CheckSquare className="w-4 h-4 text-indigo-600" /> : <Square className="w-4 h-4 text-neutral-300" />}
                   </td>
                   <td className="p-2.5 font-mono text-neutral-600 dark:text-neutral-400">{a.asset_code || '-'}</td>
-                  <td className="p-2.5 font-medium text-neutral-800 dark:text-neutral-200">{a.asset_name}</td>
+                  <td className="p-2.5 font-medium text-neutral-800 dark:text-neutral-200">{a.asset_name}{badgeFor && badgeFor(a)}</td>
                   <td className="p-2.5 text-neutral-500">{a.m_asset_category?.name || '-'}</td>
                   <td className="p-2.5 text-neutral-500">{a.m_condition?.name || '-'}</td>
                   <td className="p-2.5 text-neutral-500">{a.m_user?.full_name || '-'}</td>

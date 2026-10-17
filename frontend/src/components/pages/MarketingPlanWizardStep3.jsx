@@ -106,8 +106,8 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
             </span>
           </div>
           <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">
-            <InlineHelp summary={lang === 'id' ? 'Tentukan urutan penandatangan.' : 'Set the approval order.'} label={lang === 'id' ? 'Penjelasan alur persetujuan' : 'About the approval flow'}>
-              {lang === 'id' ? 'Setiap penandatangan menerima email berisi tautan persetujuan secara berurutan sesuai tahapnya.' : 'Each signer receives an approval link by email when their turn is reached.'}
+            <InlineHelp summary={lang === 'id' ? 'Pilih dari direktori atau isi nama dan email manual.' : 'Choose from the directory or enter a name and email.'} label={lang === 'id' ? 'Penjelasan alur persetujuan' : 'About the approval flow'}>
+              {lang === 'id' ? 'Penerima manual hanya disimpan untuk dokumen ini; direktori dan pengaturan PT tidak berubah. Periksa jabatan dan urutannya. Setiap penerima memperoleh tautan approval saat tahapnya tiba.' : 'Manual recipients are saved only on this document; the directory and company settings stay unchanged. Check the roles and order. Each recipient gets an approval link when their turn is reached.'}
             </InlineHelp>
           </p>
         </div>
@@ -121,7 +121,7 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
               title={lang === 'id' ? 'Muat ulang approver rekomendasi dari sistem MRA' : 'Load default MRA recommended signers'}
             >
               <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>{lang === 'id' ? 'Rekomendasi MRA' : 'Use Default Chain'}</span>
+              <span>{lang === 'id' ? 'Muat penerima PT' : 'Load company recipients'}</span>
             </button>
           )}
           <button
@@ -181,7 +181,7 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
                   list={`users-datalist-${idx}`}
                   value={approver.approver_name}
                   onChange={(e) => handleUserSelect(idx, e.target.value)}
-                  placeholder="e.g. Budi Santoso"
+                  placeholder={lang === 'id' ? 'Pilih nama / ketik manual' : 'Choose a name / type manually'}
                   required
                   className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
                 />

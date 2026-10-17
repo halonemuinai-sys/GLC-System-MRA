@@ -1,11 +1,14 @@
 const express = require('express');
-const { verifyApiKey } = require('./biAuthMiddleware');
+const { verifyApiKey, requireScope } = require('./biAuthMiddleware');
 const ga = require('./gaBIController');
 
 const router = express.Router();
 
 // Semua route BI dilindungi API key (X-API-Key header)
 router.use(verifyApiKey);
+
+// Each domain is reachable only with its scope.
+router.use('/ga', requireScope('ga'));
 
 // ── GA Domain ──────────────────────────────────────────────────────────────────
 // GET /api/bi/ga/overview       — consolidated KPIs

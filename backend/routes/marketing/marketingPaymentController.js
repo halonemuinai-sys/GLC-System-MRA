@@ -1,9 +1,14 @@
 const prisma = require('../../api/db');
 const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope } = require('./marketingHelper');
 
+const OPEN_STATUSES = ['PENDING', 'OVERBUDGET_WARN', 'APPROVED'];
+const inScope = (req, companyId) => req.companyScope?.all || (req.companyScope?.companyIds || []).includes(companyId);
+const isAdmin = req => String(req.user?.role || '').toLowerCase() === 'admin';
+
 const PAYMENT_INCLUDE = {
   marketing_plan_item: {
     include: {
+      m_coa: { select: { code: true, name: true } },
       marketing_plan: {
         include: { company: true }
       }
@@ -19,12 +24,15 @@ async function createPaymentRequest(req, res, next) {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
 
-    const { marketing_plan_item_id, title, amount, notes, doc_url } = req.body;
-    if (!marketing_plan_item_id || !title || !amount) {
+    const { marketing_plan_item_id, notes, doc_url } = req.body;
+    const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    const itemAmt = Number(req.body.amount);
+    if (!marketing_plan_item_id || !title) {
       return res.status(400).json({ error: 'marketing_plan_item_id, title, and amount are required.' });
     }
-
-    const itemAmt = parseFloat(amount);
+    if (!Number.isFinite(itemAmt) || itemAmt <= 0) {
+      return res.status(400).json({ error: 'Nominal pengajuan harus lebih dari 0.' });
+    }
 
     const planItem = await prisma.marketing_plan_items.findUnique({
       where: { id: parseInt(marketing_plan_item_id, 10) },
@@ -32,23 +40,32 @@ async function createPaymentRequest(req, res, next) {
     });
 
     if (!planItem) return res.status(404).json({ error: 'Marketing Plan Item not found.' });
+    if (!inScope(req, planItem.marketing_plan.company_id)) {
+      return res.status(404).json({ error: 'Marketing Plan Item not found.' });
+    }
     if (planItem.marketing_plan.status !== 'APPROVED') {
       return res.status(400).json({ error: 'Cannot request payment on an unapproved marketing plan.' });
     }
 
-    const remainingBudget = parseFloat(planItem.budget_amount) - parseFloat(planItem.actual_amount);
-    let status = 'PENDING';
+    // Remaining budget must also subtract requests already in flight (pending or
+    // approved but not yet paid) — actual_amount only grows when a payment is PAID.
+    const inFlight = await prisma.payment_requests.aggregate({
+      where: { marketing_plan_item_id: planItem.id, status: { in: OPEN_STATUSES } },
+      _sum: { amount: true }
+    });
+    const committed = Number(inFlight._sum.amount || 0);
+    const remainingBudget = parseFloat(planItem.budget_amount) - parseFloat(planItem.actual_amount) - committed;
     const isOverbudget = itemAmt > remainingBudget;
-    if (isOverbudget) status = 'OVERBUDGET_WARN';
+    const status = isOverbudget ? 'OVERBUDGET_WARN' : 'PENDING';
 
     const duplicate = await prisma.payment_requests.findFirst({
       where: {
-        marketing_plan_item_id: parseInt(marketing_plan_item_id, 10),
+        marketing_plan_item_id: planItem.id,
         amount: itemAmt,
-        status: { in: ['APPROVED', 'PAID'] }
+        status: { in: [...OPEN_STATUSES, 'PAID'] }
       }
     });
-    if (duplicate) return res.status(400).json({ error: 'Potensi Tagihan Ganda dideteksi! Pengajuan dibatalkan.' });
+    if (duplicate) return res.status(400).json({ error: `Potensi tagihan ganda: sudah ada pengajuan "${duplicate.title}" dengan nominal yang sama pada item ini (status ${duplicate.status}).` });
 
     if (itemAmt > 50000000) {
       const pks = await prisma.documents.findFirst({
@@ -64,52 +81,39 @@ async function createPaymentRequest(req, res, next) {
       }
     }
 
+    const approvalRules = await prisma.approval_rules.findMany({
+      where: {
+        module: 'PAYMENT_REQUEST',
+        min_amount: { lte: itemAmt },
+        OR: [{ max_amount: { gte: itemAmt } }, { max_amount: null }]
+      },
+      orderBy: { step_number: 'asc' }
+    });
+    if (!approvalRules.length && !isOverbudget) {
+      return res.status(400).json({ error: 'Belum ada tier approval Payment Request untuk nominal ini. Atur di Approval Settings.' });
+    }
+
     const magicLinkQueue = [];
     const newPayment = await prisma.$transaction(async (tx) => {
       const payment = await tx.payment_requests.create({
         data: {
-          marketing_plan_item_id: parseInt(marketing_plan_item_id, 10),
+          marketing_plan_item_id: planItem.id,
           title, amount: itemAmt, status, notes, doc_url,
           creator_id: employee.id
         }
       });
 
-      let stepNum = 1;
-      const approvalRules = await tx.approval_rules.findMany({
-        where: {
-          module: 'PAYMENT_REQUEST',
-          min_amount: { lte: itemAmt },
-          OR: [{ max_amount: { gte: itemAmt } }, { max_amount: null }]
-        },
-        orderBy: { step_number: 'asc' }
+      // Only the first step is opened. Later steps — including the CFO/CEO overbudget
+      // escalation after the last tier — are opened one by one by executeApprovalDecision,
+      // so the escalation can never be approved ahead of the normal tiers.
+      const history = await tx.approval_history.create({
+        data: { payment_request_id: payment.id, approver_id: employee.id, step_number: 1, status: 'PENDING' }
       });
-
-      if (approvalRules.length > 0) {
-        const history = await tx.approval_history.create({
-          data: { payment_request_id: payment.id, approver_id: employee.id, step_number: stepNum, status: 'PENDING' }
-        });
-        await queueMagicLink(tx, magicLinkQueue, {
-          approvalHistoryId: history.id, role: approvalRules[0].approver_role,
-          stepNumber: stepNum, companyId: planItem.marketing_plan.company?.id,
-          companyMasterId: planItem.marketing_plan.company?.company_master_id
-        });
-      }
-
-      if (isOverbudget) {
-        const lastStep = approvalRules.length > 0 ? approvalRules[approvalRules.length - 1].step_number : 1;
-        const escHistory = await tx.approval_history.create({
-          data: {
-            payment_request_id: payment.id, approver_id: employee.id,
-            step_number: lastStep + 1, status: 'PENDING',
-            comment: 'Eskalasi Otomatis: Pengeluaran Melampaui Sisa Anggaran (Overbudget Warning)'
-          }
-        });
-        await queueMagicLink(tx, magicLinkQueue, {
-          approvalHistoryId: escHistory.id, role: 'CFO_CEO',
-          stepNumber: lastStep + 1, companyId: planItem.marketing_plan.company?.id,
-          companyMasterId: planItem.marketing_plan.company?.company_master_id
-        });
-      }
+      await queueMagicLink(tx, magicLinkQueue, {
+        approvalHistoryId: history.id, role: approvalRules.length ? approvalRules[0].approver_role : 'CFO_CEO',
+        stepNumber: 1, companyId: planItem.marketing_plan.company?.id,
+        companyMasterId: planItem.marketing_plan.company?.company_master_id
+      });
       return payment;
     });
 
@@ -128,13 +132,24 @@ async function createPaymentRequest(req, res, next) {
 // GET /payments — list semua payment request dengan filter
 async function getPayments(req, res, next) {
   try {
-    const { status, request_type, plan_id, company_id, fiscal_year, page = 1, limit = 50 } = req.query;
+    const { status, request_type, plan_id, company_id, fiscal_year, search } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const userRole = req.user.role.toUpperCase();
     const employee = await resolveEmployee(req.user.email);
 
     const where = {};
-    if (status) where.status = status;
     if (['PAYMENT', 'CLAIM'].includes(request_type)) where.request_type = request_type;
+    const q = typeof search === 'string' ? search.trim() : '';
+    if (q) {
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { po_number: { contains: q, mode: 'insensitive' } },
+        { creator: { name: { contains: q, mode: 'insensitive' } } },
+        { marketing_plan_item: { marketing_plan: { title: { contains: q, mode: 'insensitive' } } } },
+        { marketing_plan_item: { marketing_plan: { company: { name: { contains: q, mode: 'insensitive' } } } } }
+      ];
+    }
 
     // Non-admin hanya lihat payment milik sendiri atau dari plan yang mereka buat
     if (userRole !== 'ADMIN' && userRole !== 'AUDITOR' && userRole !== 'GA' && userRole !== 'FINANCE') {
@@ -158,18 +173,23 @@ async function getPayments(req, res, next) {
       if (fiscal_year) where.marketing_plan_item.marketing_plan.fiscal_year = parseInt(fiscal_year, 10);
     }
 
-    const [payments, total] = await Promise.all([
+    // Summary per status uses every filter except status, so status tabs can show counts.
+    const listWhere = status ? { ...where, status } : where;
+    const [payments, total, byStatus] = await Promise.all([
       prisma.payment_requests.findMany({
-        where,
+        where: listWhere,
         include: PAYMENT_INCLUDE,
         orderBy: { created_at: 'desc' },
-        skip: (parseInt(page) - 1) * parseInt(limit),
-        take: parseInt(limit)
+        skip: (page - 1) * limit,
+        take: limit
       }),
-      prisma.payment_requests.count({ where })
+      prisma.payment_requests.count({ where: listWhere }),
+      prisma.payment_requests.groupBy({ by: ['status'], where, _count: { _all: true }, _sum: { amount: true } })
     ]);
 
-    res.json({ data: payments, total, page: parseInt(page), limit: parseInt(limit) });
+    const summary = {};
+    for (const row of byStatus) summary[row.status] = { count: row._count._all, amount: Number(row._sum.amount || 0) };
+    res.json({ data: payments, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)), summary });
   } catch (err) { next(err); }
 }
 
@@ -195,6 +215,21 @@ async function getPaymentDetail(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// Edit/delete is only for the requester (or admin) while nothing has been approved yet.
+async function editBlockReason(req, payment) {
+  if (!['PENDING', 'OVERBUDGET_WARN'].includes(payment.status)) {
+    return { status: 400, error: 'Hanya pengajuan yang belum diputuskan yang bisa {action}.' };
+  }
+  if (!isAdmin(req)) {
+    const employee = await resolveEmployee(req.user.email);
+    if (!employee || employee.id !== payment.creator_id) return { status: 403, error: 'Hanya pembuat pengajuan yang bisa {action}.' };
+  }
+  if ((payment.approval_history || []).some(h => h.status === 'APPROVED')) {
+    return { status: 400, error: 'Pengajuan sudah disetujui sebagian dan tidak bisa {action}.' };
+  }
+  return null;
+}
+
 // PUT /payments/:id — update payment request (hanya jika PENDING/OVERBUDGET_WARN)
 async function updatePayment(req, res, next) {
   try {
@@ -208,14 +243,15 @@ async function updatePayment(req, res, next) {
       return res.status(400).json({ error: 'Claim yang sudah diajukan tidak bisa diedit. Batalkan lalu ajukan ulang.' });
     }
 
-    if (!['PENDING', 'OVERBUDGET_WARN'].includes(payment.status)) {
-      return res.status(400).json({ error: 'Hanya payment dengan status PENDING yang bisa diubah.' });
-    }
+    const editBlock = await editBlockReason(req, payment);
+    if (editBlock) return res.status(editBlock.status).json({ error: editBlock.error.replace('{action}', 'diubah') });
 
-    const { title, notes, doc_url } = req.body;
+    const { notes, doc_url } = req.body;
+    const title = req.body.title === undefined ? undefined : String(req.body.title).trim();
+    if (title === '') return res.status(400).json({ error: 'Judul tidak boleh kosong.' });
     const updated = await prisma.payment_requests.update({
       where: { id },
-      data: { title, notes, doc_url },
+      data: { title, notes, doc_url, updated_at: new Date() },
       include: PAYMENT_INCLUDE
     });
     res.json(updated);
@@ -232,9 +268,8 @@ async function deletePayment(req, res, next) {
       return res.status(404).json({ error: 'Payment request not found.' });
     }
 
-    if (!['PENDING', 'OVERBUDGET_WARN'].includes(payment.status)) {
-      return res.status(400).json({ error: 'Hanya payment dengan status PENDING yang bisa dihapus.' });
-    }
+    const deleteBlock = await editBlockReason(req, payment);
+    if (deleteBlock) return res.status(deleteBlock.status).json({ error: deleteBlock.error.replace('{action}', 'dihapus') });
 
     await prisma.$transaction([
       prisma.approval_history.deleteMany({ where: { payment_request_id: id } }),
@@ -294,8 +329,8 @@ async function setPoNumber(req, res, next) {
     if (!po_number || !po_number.trim()) {
       return res.status(400).json({ error: 'Nomor PO wajib diisi.' });
     }
-    const payment = await prisma.payment_requests.findUnique({ where: { id } });
-    if (!payment) return res.status(404).json({ error: 'Payment request not found.' });
+    const payment = await prisma.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
+    if (!payment || !inScope(req, payment.marketing_plan_item.marketing_plan.company_id)) return res.status(404).json({ error: 'Payment request not found.' });
     if (!['APPROVED', 'PAID'].includes(payment.status)) {
       return res.status(400).json({ error: 'PO hanya bisa diterbitkan untuk payment berstatus APPROVED atau PAID.' });
     }
@@ -313,8 +348,8 @@ async function verifyPayment(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
     const { verified = true, note } = req.body || {};
-    const payment = await prisma.payment_requests.findUnique({ where: { id } });
-    if (!payment) return res.status(404).json({ error: 'Payment request not found.' });
+    const payment = await prisma.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
+    if (!payment || !inScope(req, payment.marketing_plan_item.marketing_plan.company_id)) return res.status(404).json({ error: 'Payment request not found.' });
     if (verified && !['APPROVED', 'PAID'].includes(payment.status)) {
       return res.status(400).json({ error: 'Hanya payment berstatus APPROVED atau PAID yang bisa diverifikasi.' });
     }

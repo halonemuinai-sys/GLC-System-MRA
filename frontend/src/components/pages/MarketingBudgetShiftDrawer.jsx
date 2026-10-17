@@ -84,7 +84,8 @@ export default function MarketingBudgetShiftDrawer({
 
   // Selected fromMonth data
   const selectedFromData = monthlyData.find((m) => m.month === parseInt(fromMonth, 10));
-  const maxAvailable = selectedFromData ? selectedFromData.available : 0;
+  // Free balance excludes shifts out of this month that are still awaiting approval.
+  const maxAvailable = selectedFromData ? Math.max(0, selectedFromData.available - (selectedFromData.pending_shift_out || 0)) : 0;
 
   // Calculate shift type
   const fromNum = parseInt(fromMonth, 10);

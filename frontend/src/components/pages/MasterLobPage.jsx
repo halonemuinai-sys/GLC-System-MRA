@@ -1,432 +1,262 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ClipboardList,
-  Search,
-  Plus,
-  X,
-  Edit3,
-  Trash2,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  AlertTriangle,
-  RefreshCw
+  ClipboardList, Search, Plus, X, Edit3, Trash2, Loader2, ChevronLeft, ChevronRight,
+  AlertTriangle, RefreshCw, LockKeyhole, Link2, CircleDashed
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
+import InlineHelp from '@/components/ui/InlineHelp';
 
-// ─── Stat Card Component ────────────────────────────────────────────────────────
-function StatCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
-  const colors = {
-    blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
-    emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35, ease: 'easeOut' }}
-      className="bg-white dark:bg-neutral-900/40 border border-neutral-200/70 dark:border-white/[0.06] rounded-2xl p-5 hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 transition-shadow"
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">{label}</p>
-          <p className="text-2xl font-black text-neutral-900 dark:text-white mt-1">{value}</p>
-        </div>
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${colors[color]}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-      </div>
-    </motion.div>
-  );
-}
+const USAGE_FILTERS = [['all', 'Semua'], ['used', 'Dipakai'], ['unused', 'Belum dipakai']];
 
 export default function MasterLobPage() {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
 
-  // Filters and Searching
   const [search, setSearch] = useState('');
-  const [searchQuery, setSearchQuery] = useState(''); // Committed search
+  const [usageFilter, setUsageFilter] = useState('all');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
-  // UI state
-  const [showDrawer, setShowDrawer] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
-  // Form State
-  const [formData, setFormData] = useState({ name: '' });
+  const flash = (msg) => { setNotice(msg); setTimeout(() => setNotice(null), 3500); };
 
-  // ── Fetch Data ──
+  // Master data is small; load it all and filter on the client for instant search.
   const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-
-      const res = await apiClient.get('/api/master/lobs', {
-        params: {
-          page,
-          limit: 10,
-          search: searchQuery || undefined
-        }
-      });
-
-      setData(res.data || []);
-      setMeta(res.meta || { total: 0, page: 1, limit: 10, totalPages: 1 });
+      const res = await apiClient.get('/api/master/lobs', { params: { limit: 500 } });
+      setData(res?.data || []);
     } catch (err) {
-      setError(err.message || 'Failed to fetch Line of Business.');
+      setError(err.message || 'Gagal memuat Line of Business.');
     } finally {
       setLoading(false);
     }
-  }, [page, searchQuery]);
+  }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Handle Search Submission
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    setSearchQuery(search);
-    setPage(1);
-  };
+  const isUsed = (item) => item.plan_item_count + item.budget_count > 0;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return data.filter(item =>
+      (!q || item.name.toLowerCase().includes(q)) &&
+      (usageFilter === 'all' || (usageFilter === 'used' ? isUsed(item) : !isUsed(item)))
+    );
+  }, [data, search, usageFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * pageSize;
+  const rows = filtered.slice(start, start + pageSize);
 
-  // Open Drawer for Add
-  const handleAdd = () => {
-    setEditingItem(null);
-    setFormData({ name: '' });
-    setFormError(null);
-    setShowDrawer(true);
-  };
+  const duplicate = useMemo(() => {
+    const n = name.trim().replace(/\s+/g, ' ').toLowerCase();
+    return n ? data.find(item => item.name.toLowerCase() === n && item.id !== editingItem?.id) : null;
+  }, [name, data, editingItem]);
 
-  // Open Drawer for Edit
-  const handleEdit = (item) => {
-    setEditingItem(item);
-    setFormData({ name: item.name });
-    setFormError(null);
-    setShowDrawer(true);
-  };
+  const stats = [
+    { label: t('masterLob_kpiTotal'), value: data.length, icon: ClipboardList, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+    { label: 'Dipakai plan / budget', value: data.filter(isUsed).length, icon: Link2, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
+    { label: 'Belum dipakai', value: data.filter(d => !isUsed(d)).length, icon: CircleDashed, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
+  ];
 
-  // Handle Submit Form
+  const openForm = (item = null) => { setEditingItem(item); setName(item?.name || ''); setFormError(null); setShowForm(true); };
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name.trim()) return;
-
+    e?.preventDefault();
+    if (!name.trim() || duplicate) return;
+    setSubmitting(true);
+    setFormError(null);
     try {
-      setSubmitting(true);
-      setFormError(null);
-
-      if (editingItem) {
-        await apiClient.put(`/api/master/lobs/${editingItem.id}`, formData);
-      } else {
-        await apiClient.post('/api/master/lobs', formData);
-      }
-
-      setShowDrawer(false);
+      if (editingItem) await apiClient.put(`/api/master/lobs/${editingItem.id}`, { name });
+      else await apiClient.post('/api/master/lobs', { name });
+      setShowForm(false);
+      flash(editingItem ? 'Line of Business diperbarui.' : 'Line of Business ditambahkan.');
       fetchData();
     } catch (err) {
-      setFormError(err.message || 'Failed to save Line of Business.');
+      setFormError(err.message || 'Gagal menyimpan Line of Business.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Handle Delete
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-
+    setSubmitting(true);
+    setDeleteError(null);
     try {
-      setSubmitting(true);
       await apiClient.delete(`/api/master/lobs/${deleteTarget.id}`);
       setDeleteTarget(null);
+      flash('Line of Business dihapus.');
       fetchData();
     } catch (err) {
-      alert(err.message || 'Failed to delete Line of Business.');
+      setDeleteError(err.message || 'Gagal menghapus Line of Business.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const usageText = (item) => [item.plan_item_count && `${item.plan_item_count} item plan`, item.budget_count && `${item.budget_count} budget`].filter(Boolean).join(' · ');
+  const actionClass = 'inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-35';
+
   return (
-    <div className="space-y-6">
-      
-      {/* 1. Header with icon + title + description */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
-            <ClipboardList className="w-6 h-6" />
-          </div>
+    <div className="space-y-6 pb-12">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 to-blue-950 px-5 py-6 text-white sm:px-7">
+        <motion.div aria-hidden="true" animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: 'linear' }} className="absolute -right-12 -top-24 h-64 w-64 rounded-full border-[36px] border-dashed border-white/[0.04]" />
+        <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-xl font-black text-neutral-900 dark:text-white tracking-wide">{t('masterLob_title')}</h1>
-            <p className="text-xs text-neutral-500 dark:text-neutral-500 font-semibold mt-1">
-              Manage Line of Business (LOB) categories for mapping marketing program budget transaction details.
-            </p>
+            <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300"><ClipboardList className="h-4 w-4" />Master data</p>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('masterLob_title')}</h1>
+            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Kategori lini bisnis yang dipakai untuk mengelompokkan budget dan item Marketing Plan (mis. Retail, Event, Service Center).</p>
           </div>
+          <button type="button" onClick={() => openForm()} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-blue-50 cursor-pointer"><Plus className="h-4 w-4" />{t('masterLob_addBtn')}</button>
         </div>
-        <button
-          onClick={handleAdd}
-          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-5 py-3 rounded-2xl transition-all cursor-pointer shadow-lg shadow-blue-600/10"
-        >
-          <Plus className="w-4 h-4" /> {t('masterLob_addBtn')}
-        </button>
+      </motion.div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {stats.map(({ label, value, icon: Icon, tone }, i) => (
+          <motion.div key={label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, duration: 0.3 }} whileHover={{ y: -2 }} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="h-4 w-4" /></span>
+            <div className="min-w-0"><p className="truncate text-[10px] font-semibold uppercase tracking-wider text-slate-400">{label}</p><p className="mt-0.5 text-base font-semibold tabular-nums text-slate-800 dark:text-slate-100">{value}</p></div>
+          </motion.div>
+        ))}
       </div>
 
-      {/* 2. Filter Bar */}
-      <form onSubmit={handleSearchSubmit} className="bg-neutral-50 dark:bg-neutral-950 p-4.5 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/80 flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-          <input
-            type="text"
-            placeholder="Search LOB by name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full md:w-auto bg-neutral-900 dark:bg-white hover:bg-neutral-800 dark:hover:bg-neutral-100 text-white dark:text-neutral-950 text-xs font-extrabold px-6 py-2.5 rounded-xl transition-all cursor-pointer"
-        >
-          {t('processData')}
-        </button>
-      </form>
+      <AnimatePresence>
+        {notice && <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">{notice}</motion.div>}
+      </AnimatePresence>
+      {error && <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />{error}</span><button type="button" onClick={fetchData} className="inline-flex items-center gap-1 font-semibold hover:underline cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Coba lagi</button></div>}
 
-      {/* 3. Summary Cards */}
-      {!loading && !error && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <StatCard label={t('masterLob_kpiTotal')} value={meta.total} icon={ClipboardList} color="blue" />
-          <StatCard label={t('masterLob_kpiActive')} value={meta.total} icon={Sparkles} color="emerald" />
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
+          <div className="relative min-w-48 flex-1">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input aria-label="Cari Line of Business" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Cari Line of Business..." className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-9 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" />
+            {search && <button type="button" aria-label="Hapus pencarian" onClick={() => { setSearch(''); setPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
+          </div>
+          <div className="flex gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">
+            {USAGE_FILTERS.map(([key, text]) => (
+              <button key={key} type="button" aria-pressed={usageFilter === key} onClick={() => { setUsageFilter(key); setPage(1); }} className={`relative rounded-md px-3 py-1 text-[11px] font-medium transition-colors cursor-pointer ${usageFilter === key ? 'text-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}>
+                {usageFilter === key && <motion.span layoutId="lob-usage-filter" transition={{ type: 'spring', stiffness: 500, damping: 35 }} className="absolute inset-0 rounded-md bg-slate-900 dark:bg-white" />}
+                <span className="relative">{text}</span>
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={fetchData} disabled={loading} aria-label="Muat ulang" className={`${actionClass} border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800`}><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /></button>
+          <span aria-live="polite" className="text-[11px] text-slate-400">{filtered.length} LOB</span>
         </div>
-      )}
 
-      {/* 4. Data Content / Table */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          <span className="text-xs text-neutral-400 font-bold">Loading LOB list...</span>
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 dark:bg-red-500/10 border border-red-200/60 dark:border-red-500/20 p-5 rounded-2xl text-center">
-          <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2" />
-          <p className="text-xs font-bold text-red-600 dark:text-red-400">{error}</p>
-          <button onClick={fetchData} className="mt-3 text-xs font-extrabold text-blue-600 flex items-center gap-1.5 mx-auto hover:underline">
-            <RefreshCw className="w-3.5 h-3.5" /> Try Again
-          </button>
-        </div>
-      ) : data.length === 0 ? (
-        <div className="bg-white dark:bg-neutral-900/30 border border-neutral-200/60 dark:border-neutral-800/60 p-20 rounded-2xl text-center space-y-2">
-          <ClipboardList className="w-10 h-10 text-neutral-300 dark:text-neutral-600 mx-auto" />
-          <h4 className="text-sm font-black text-neutral-700 dark:text-neutral-300">{t('masterLob_empty')}</h4>
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 max-w-sm mx-auto">Please add new line of business master data to complete your marketing budget needs.</p>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-neutral-800/80 rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-black uppercase tracking-wider">
-                  <th className="px-6 py-3.5 w-16 text-center">ID</th>
-                  <th className="px-6 py-3.5">{t('masterLob_colName')}</th>
-                  <th className="px-6 py-3.5 w-32 text-center">{t('masterLob_colAction')}</th>
-                </tr>
+        <div className="overflow-x-auto">
+          {loading && !data.length ? (
+            <div className="flex items-center justify-center gap-2 py-16 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin text-blue-500" />Memuat Line of Business...</div>
+          ) : (
+            <table className="w-full min-w-[560px] table-fixed text-left text-xs">
+              <thead className="border-b border-slate-100 bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-950/40">
+                <tr><th className="w-[50%] px-4 py-2.5 font-semibold">{t('masterLob_colName')}</th><th className="w-[33%] px-3 py-2.5 font-semibold">Penggunaan</th><th className="w-[17%] px-3 py-2.5 text-right font-semibold">{t('masterLob_colAction')}</th></tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-900 text-neutral-700 dark:text-neutral-300">
-                {data.map((item) => (
-                  <tr key={item.id} className="hover:bg-neutral-50/40 dark:hover:bg-neutral-950/25 transition-colors font-medium">
-                    <td className="px-6 py-3.5 text-center text-neutral-400 font-bold">{item.id}</td>
-                    <td className="px-6 py-3.5 font-bold text-neutral-800 dark:text-white">{item.name}</td>
-                    <td className="px-6 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleEdit(item)}
-                          className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-all cursor-pointer"
-                          title="Edit LOB"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteTarget(item)}
-                          className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
-                          title="Delete LOB"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                {!rows.length && <tr><td colSpan={3} className="px-4 py-14 text-center text-slate-400"><ClipboardList className="mx-auto mb-2 h-8 w-8 opacity-30" />{data.length ? 'Tidak ada LOB yang sesuai filter.' : t('masterLob_empty')}</td></tr>}
+                <AnimatePresence initial={false}>
+                  {rows.map((item, i) => (
+                    <motion.tr key={item.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: Math.min(i, 12) * 0.02, duration: 0.2 }} className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                      <td className="px-4 py-2"><div className="flex items-center gap-2.5"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{item.name.slice(0, 2).toUpperCase()}</span><div className="min-w-0"><p title={item.name} className="truncate font-medium text-slate-800 dark:text-slate-200">{item.name}</p><p className="text-[10px] text-slate-400">#{item.id}</p></div></div></td>
+                      <td className="px-3 py-2 text-[10px]">
+                        {!isUsed(item) ? <span className="text-slate-400">Belum dipakai</span> : (
+                          <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                            <LockKeyhole className="h-3 w-3 shrink-0 text-slate-400" />
+                            <InlineHelp summary={usageText(item)} label={`Penggunaan ${item.name}`}>LOB yang sudah dipakai budget atau item Marketing Plan tidak bisa dihapus agar data anggaran tetap konsisten. Namanya tetap bisa diubah.</InlineHelp>
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <button type="button" title={`Ubah ${item.name}`} onClick={() => openForm(item)} className={`${actionClass} hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10`}><Edit3 className="h-3.5 w-3.5" /></button>
+                          <span title={item.can_delete ? `Hapus ${item.name}` : 'Dipakai plan/budget — tidak bisa dihapus'}><button type="button" aria-label={`Hapus ${item.name}`} disabled={!item.can_delete} onClick={() => { setDeleteTarget(item); setDeleteError(null); }} className={`${actionClass} enabled:hover:bg-rose-50 enabled:hover:text-rose-600 dark:enabled:hover:bg-rose-500/10`}><Trash2 className="h-3.5 w-3.5" /></button></span>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
               </tbody>
             </table>
-          </div>
-
-          {/* Pagination */}
-          {meta.totalPages > 1 && (
-            <div className="px-6 py-4.5 bg-neutral-50 dark:bg-neutral-950/50 border-t border-neutral-100 dark:border-neutral-900 flex items-center justify-between">
-              <span className="text-xs text-neutral-400 dark:text-neutral-500 font-bold">
-                Showing Page {meta.page} of {meta.totalPages} ({meta.total} LOB)
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  disabled={page <= 1}
-                  onClick={() => setPage(p => p - 1)}
-                  className="p-2 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-white dark:hover:bg-neutral-900 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  disabled={page >= meta.totalPages}
-                  onClick={() => setPage(p => p + 1)}
-                  className="p-2 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-white dark:hover:bg-neutral-900 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
           )}
         </div>
-      )}
 
-      {/* 5. Slide-over Drawer for Add/Edit */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-slate-400 dark:border-slate-800">
+          <label className="flex items-center gap-2">Baris per halaman
+            <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">{[25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}</select>
+          </label>
+          <div className="flex items-center gap-3">
+            <span className="tabular-nums">{filtered.length ? `${start + 1}–${Math.min(start + pageSize, filtered.length)}` : '0'} dari {filtered.length}</span>
+            <div className="flex items-center gap-1">
+              <button type="button" aria-label="Halaman sebelumnya" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronLeft className="h-4 w-4" /></button>
+              <span className="min-w-10 text-center tabular-nums">{currentPage} / {totalPages}</span>
+              <button type="button" aria-label="Halaman berikutnya" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronRight className="h-4 w-4" /></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Form modal */}
       <AnimatePresence>
-        {showDrawer && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.4 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowDrawer(false)}
-              className="fixed inset-0 bg-black z-40"
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white dark:bg-neutral-900 z-50 shadow-2xl border-l border-neutral-200 dark:border-neutral-800 flex flex-col"
-            >
-              <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider">
-                    {editingItem ? 'Edit LOB' : 'Add New LOB'}
-                  </h3>
-                  <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold mt-0.5">
-                    {editingItem ? 'Update the line of business master data' : 'Enter new line of business information'}
-                  </p>
-                </div>
-                <button onClick={() => setShowDrawer(false)} className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-neutral-400 cursor-pointer">
-                  <X className="w-4 h-4" />
-                </button>
+        {showForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowForm(false)} className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm" />
+            <motion.form onSubmit={handleSubmit} initial={{ scale: 0.96, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.96, opacity: 0 }} className="relative w-full max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-start justify-between">
+                <div><h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{editingItem ? 'Ubah Line of Business' : 'Tambah Line of Business'}</h3><p className="mt-0.5 text-[11px] text-slate-400">Nama dibandingkan tanpa membedakan huruf besar/kecil.</p></div>
+                <button type="button" aria-label="Tutup" onClick={() => setShowForm(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4" /></button>
               </div>
-
-              <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
-                <div className="p-6 flex-1 space-y-4">
-                  {formError && (
-                    <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 p-4 rounded-xl text-xs font-bold text-red-600 dark:text-red-400">
-                      {formError}
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-600 uppercase tracking-wider block">
-                      Line of Business (LOB) Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ name: e.target.value })}
-                      placeholder="Enter LOB name..."
-                      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-semibold"
-                    />
-                  </div>
-                </div>
-
-                <div className="p-6 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/50 flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowDrawer(false)}
-                    className="text-neutral-500 hover:text-neutral-800 dark:hover:text-white text-xs font-extrabold px-5 py-2.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-extrabold px-6 py-2.5 rounded-xl transition-all cursor-pointer shadow-lg shadow-blue-600/10 flex items-center gap-2"
-                  >
-                    {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    Save LOB
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </>
+              <div>
+                <label htmlFor="lob-name" className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nama LOB *</label>
+                <input id="lob-name" autoFocus maxLength={100} value={name} onChange={e => setName(e.target.value)} placeholder="Contoh: Retail, Event, Service Center" className={`h-9 w-full rounded-lg border bg-slate-50 px-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/10 dark:bg-slate-950 dark:text-slate-100 ${duplicate ? 'border-amber-400' : 'border-slate-200 focus:border-blue-400 dark:border-slate-700'}`} />
+                {duplicate && <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">Sudah ada LOB “{duplicate.name}”.</p>}
+                {editingItem && isUsed(editingItem) && <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">Dipakai di {usageText(editingItem)}; nama baru akan terlihat di sana.</p>}
+              </div>
+              {formError && <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="h-4 w-4" />{formError}</div>}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowForm(false)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Batal</button>
+                <button type="submit" disabled={submitting || !name.trim() || !!duplicate} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Simpan</button>
+              </div>
+            </motion.form>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* 6. Animated Delete Confirmation Modal */}
+      {/* Delete modal */}
       <AnimatePresence>
         {deleteTarget && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.4 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDeleteTarget(null)}
-              className="fixed inset-0 bg-black z-40"
-            />
-            <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                className="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-2xl text-center space-y-4"
-              >
-                <div className="w-12 h-12 bg-red-50 dark:bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mx-auto">
-                  <AlertTriangle className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-black text-neutral-900 dark:text-white uppercase tracking-wider">Confirm Deletion</h4>
-                  <p className="text-xs text-neutral-400 dark:text-neutral-500 font-semibold mt-1">
-                    Are you sure you want to delete LOB <span className="font-bold text-neutral-700 dark:text-neutral-200 font-bold">"{deleteTarget.name}"</span>? This action cannot be undone.
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(null)}
-                    className="flex-1 text-neutral-500 hover:text-neutral-700 dark:hover:text-white text-xs font-extrabold py-3 border border-neutral-200 dark:border-neutral-800 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeleteConfirm}
-                    disabled={submitting}
-                    className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white text-xs font-extrabold py-3 rounded-xl transition-all cursor-pointer shadow-lg shadow-red-500/10 flex items-center justify-center gap-1.5"
-                  >
-                    {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    Yes, Delete
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          </>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteTarget(null)} className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm" />
+            <motion.div initial={{ scale: 0.96, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.96, opacity: 0 }} className="relative w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><Trash2 className="h-5 w-5" /></span>
+              <div>
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Hapus Line of Business?</h4>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">“{deleteTarget.name}” akan dihapus permanen.</p>
+              </div>
+              {deleteError && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{deleteError}</div>}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setDeleteTarget(null)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Batal</button>
+                <button type="button" onClick={handleDeleteConfirm} disabled={submitting} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Hapus</button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

@@ -81,6 +81,9 @@ router.delete('/vendors/:id', allowVendorWrite, vendorController.deleteVendor);
 
 
 // Maintenances CRUD
+router.get('/maintenances/journey', allowRead, maintenanceController.getMaintenanceJourney);
+router.get('/maintenances/asset-marks', allowRead, maintenanceController.getAssetMaintenanceMarks);
+router.post('/maintenances/bulk', allowWrite, maintenanceController.createBulkMaintenance);
 router.get('/maintenances', allowRead, maintenanceController.getMaintenances);
 router.post('/maintenances', allowWrite, maintenanceController.createMaintenance);
 router.put('/maintenances/:id', allowWrite, maintenanceController.updateMaintenance);

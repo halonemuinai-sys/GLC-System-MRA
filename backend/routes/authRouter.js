@@ -15,7 +15,6 @@ const router = express.Router();
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    console.log('Login attempt received in backend:', { email, password });
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required.' });

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useId } from 'react';
 import Link from 'next/link';
 import { BarChart3, TrendingUp, Wallet, Layers, RefreshCw, Loader2, AlertTriangle, FileSpreadsheet, ArrowUpRight, CalendarDays, Building2, ArrowRight, SlidersHorizontal } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import MarketingBudgetComparison from './MarketingBudgetComparison';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
 import InlineHelp from '@/components/ui/InlineHelp';
@@ -57,17 +57,6 @@ function MetricCard({ label, value, detail, help, icon: Icon, tone, progress }) 
       )}
     </section>
   );
-}
-
-function BudgetTooltip({ active, payload, isId }) {
-  if (!active || !payload?.length) return null;
-  const row = payload[0].payload;
-  return <div className={`${panel} max-w-72 p-4 text-xs shadow-xl`}>
-    <p className="mb-3 font-semibold text-slate-900 dark:text-white">{row.name}</p>
-    {[[isId ? 'Anggaran' : 'Budget', row.budget, 'bg-blue-500'], [isId ? 'Terbayar' : 'Paid', row.actual, 'bg-emerald-500']].map(([label, value, color]) => (
-      <div key={label} className="mt-2 flex items-center justify-between gap-6 text-slate-500 dark:text-slate-400"><span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${color}`} />{label}</span><span className="font-semibold tabular-nums text-slate-900 dark:text-white">{formatIDR(value)}</span></div>
-    ))}
-  </div>;
 }
 
 export default function MarketingOverviewPage() {
@@ -132,7 +121,7 @@ export default function MarketingOverviewPage() {
   }, [plans]);
 
   const chartData = useMemo(() => [...plans].sort((a, b) => Number(b.total_budget || 0) - Number(a.total_budget || 0)).slice(0, 10).map(plan => ({
-    name: plan.title || '—', budget: Number(plan.total_budget || 0), actual: paidAmount(plan),
+    id: plan.id, company: plan.company?.name || '-', name: plan.title || '—', budget: Number(plan.total_budget || 0), actual: paidAmount(plan),
   })), [plans]);
 
   const handleExportExcel = async () => {
@@ -235,26 +224,7 @@ export default function MarketingOverviewPage() {
           <Link href="/dashboard/marketing" className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400">{isId ? 'Buka rencana marketing' : 'Open marketing plans'}<ArrowRight className="h-4 w-4" /></Link>
         </section> : <>
           <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <section className={`${panel} min-w-0 overflow-hidden`}>
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <div><h2 className="text-sm font-semibold">{isId ? 'Anggaran & realisasi' : 'Budget & paid expenses'}</h2><p className="mt-1 text-[11px] text-slate-400">{isId ? `${chartData.length} campaign dengan anggaran terbesar` : `${chartData.length} campaigns with the largest budgets`}</p></div>
-                <div className="flex gap-4 text-[10px] text-slate-500 dark:text-slate-400"><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" />{isId ? 'Anggaran' : 'Budget'}</span><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />{isId ? 'Terbayar' : 'Paid'}</span></div>
-              </div>
-              <div className="max-h-[420px] overflow-auto px-2 py-4 sm:px-4">
-                <div className="min-w-[470px]" role="img" aria-label={isId ? 'Perbandingan anggaran dan pembayaran per campaign. Nilai lengkap tersedia pada ekspor Excel.' : 'Budget and paid expenses by campaign. Full values are available in the Excel export.'}>
-                  <ResponsiveContainer width="100%" height={Math.max(260, chartData.length * 52 + 30)} debounce={50}>
-                    <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 24, left: 0, bottom: 0 }} barGap={3} barCategoryGap="28%" accessibilityLayer>
-                      <CartesianGrid stroke="currentColor" strokeOpacity={0.07} strokeDasharray="3 4" horizontal={false} />
-                      <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactMoney} tick={{ fontSize: 10, fill: '#94a3b8' }} minTickGap={30} />
-                      <YAxis type="category" dataKey="name" width={160} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={value => value.length > 25 ? `${value.slice(0, 24)}…` : value} />
-                      <RechartsTooltip content={<BudgetTooltip isId={isId} />} cursor={{ fill: '#94a3b8', fillOpacity: 0.06 }} />
-                      <Bar dataKey="budget" name={isId ? 'Anggaran' : 'Budget'} fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={12} isAnimationActive={false} />
-                      <Bar dataKey="actual" name={isId ? 'Terbayar' : 'Paid'} fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={12} isAnimationActive={false} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </section>
+            <MarketingBudgetComparison key={fiscalYear} data={chartData} isId={isId} />
 
             <aside className={`${panel} flex flex-col p-5`}>
               <div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"><Building2 className="h-4 w-4" /></span><h2 className="text-sm font-semibold">{isId ? 'Alokasi perusahaan' : 'Company allocation'}</h2></div>

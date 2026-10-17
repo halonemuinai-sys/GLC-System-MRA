@@ -719,55 +719,67 @@ router.delete('/brands/:id', allowWrite, async (req, res, next) => {
  * ==========================================
  */
 
-// GET /api/master/lobs — List all LOBs (with pagination/search)
+// GET /api/master/lobs — List all LOBs (with pagination/search) plus usage counts
 router.get('/lobs', allowRead, async (req, res, next) => {
   try {
-    const { search = '', page = 1, limit = 20 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    
+    const { search = '' } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 20));
+
     const where = {};
     if (search) {
       where.name = { contains: search, mode: 'insensitive' };
     }
 
-    const [data, total] = await Promise.all([
+    const [rows, total, usedTotal] = await Promise.all([
       prisma.m_line_business.findMany({
         where,
         orderBy: { name: 'asc' },
-        skip: parseInt(skip),
-        take: parseInt(limit)
+        skip: (page - 1) * limit,
+        take: limit,
+        include: { _count: { select: { items: true, marketing_budgets: true } } }
       }),
-      prisma.m_line_business.count({ where })
+      prisma.m_line_business.count({ where }),
+      prisma.m_line_business.count({ where: { ...where, OR: [{ items: { some: {} } }, { marketing_budgets: { some: {} } }] } })
     ]);
+
+    const data = rows.map(({ _count, ...lob }) => ({
+      ...lob,
+      plan_item_count: _count.items,
+      budget_count: _count.marketing_budgets,
+      can_delete: _count.items === 0 && _count.marketing_budgets === 0
+    }));
 
     res.json({
       data,
-      meta: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / parseInt(limit))
-      }
+      meta: { total, used: usedTotal, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) }
     });
   } catch (err) {
     next(err);
   }
 });
 
+const cleanLobName = value => (typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : '');
+async function lobNameError(name, excludeId) {
+  if (!name) return 'Nama Line of Business wajib diisi.';
+  if (name.length > 100) return 'Nama Line of Business maksimal 100 karakter.';
+  const duplicate = await prisma.m_line_business.findFirst({
+    where: { name: { equals: name, mode: 'insensitive' }, ...(excludeId ? { NOT: { id: excludeId } } : {}) }
+  });
+  return duplicate ? `Line of Business "${duplicate.name}" sudah ada.` : null;
+}
+
 // POST /api/master/lobs — Create new LOB
 router.post('/lobs', allowWrite, async (req, res, next) => {
   try {
-    const { name } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'LOB name is required.' });
-    }
+    const name = cleanLobName(req.body?.name);
+    const error = await lobNameError(name);
+    if (error) return res.status(400).json({ error });
 
-    const lob = await prisma.m_line_business.create({
-      data: { name: name.trim() }
-    });
-
+    const lob = await prisma.m_line_business.create({ data: { name } });
     res.status(201).json(lob);
   } catch (err) {
+    if (err.code === 'P2002') return res.status(400).json({ error: 'Line of Business dengan nama ini sudah ada.' });
     next(err);
   }
 });
@@ -775,42 +787,40 @@ router.post('/lobs', allowWrite, async (req, res, next) => {
 // PUT /api/master/lobs/:id — Update LOB
 router.put('/lobs/:id', allowWrite, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { name } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'LOB name is required.' });
-    }
+    const id = parseInt(req.params.id, 10);
+    const existing = Number.isInteger(id) ? await prisma.m_line_business.findUnique({ where: { id } }) : null;
+    if (!existing) return res.status(404).json({ error: 'Line of Business tidak ditemukan.' });
 
-    const lob = await prisma.m_line_business.update({
-      where: { id: parseInt(id) },
-      data: { name: name.trim() }
-    });
+    const name = cleanLobName(req.body?.name);
+    const error = await lobNameError(name, id);
+    if (error) return res.status(400).json({ error });
 
+    const lob = await prisma.m_line_business.update({ where: { id }, data: { name } });
     res.json(lob);
   } catch (err) {
+    if (err.code === 'P2002') return res.status(400).json({ error: 'Line of Business dengan nama ini sudah ada.' });
     next(err);
   }
 });
 
-// DELETE /api/master/lobs/:id — Delete LOB
+// DELETE /api/master/lobs/:id — Delete LOB (blocked while used by plans or budgets)
 router.delete('/lobs/:id', allowWrite, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    
-    // Check if LOB is referenced in marketing items
-    const linkedItems = await prisma.marketing_plan_items.count({
-      where: { lob_id: parseInt(id) }
-    });
+    const id = parseInt(req.params.id, 10);
+    const lob = Number.isInteger(id) ? await prisma.m_line_business.findUnique({ where: { id } }) : null;
+    if (!lob) return res.status(404).json({ error: 'Line of Business tidak ditemukan.' });
 
-    if (linkedItems > 0) {
-      return res.status(400).json({ error: 'Cannot delete Line of Business as it is linked to marketing plans.' });
+    const [planItems, budgets] = await Promise.all([
+      prisma.marketing_plan_items.count({ where: { lob_id: id } }),
+      prisma.m_marketing_budget.count({ where: { lob_id: id } })
+    ]);
+    if (planItems > 0 || budgets > 0) {
+      const usedIn = [planItems && `${planItems} item marketing plan`, budgets && `${budgets} budget`].filter(Boolean).join(' dan ');
+      return res.status(409).json({ error: `"${lob.name}" tidak bisa dihapus karena dipakai di ${usedIn}. Ubah namanya bila perlu.` });
     }
 
-    await prisma.m_line_business.delete({
-      where: { id: parseInt(id) }
-    });
-
-    res.json({ message: 'Line of Business deleted successfully.' });
+    await prisma.m_line_business.delete({ where: { id } });
+    res.json({ message: 'Line of Business dihapus.' });
   } catch (err) {
     next(err);
   }

@@ -21,6 +21,67 @@ function resolveContactPreview(allContacts, role, companyId, companyMasterId) {
   return allContacts.find(c => c.role === role && c.company_id === null && c.company_master_id === null) || null;
 }
 
+const normalizeEmail = email => String(email || '').trim().toLowerCase();
+
+const TASK_INCLUDE = {
+  marketing_plan: {
+    include: {
+      company: true,
+      creator: true,
+      items: { include: { m_coa: true, m_brand: true, m_line_business: true }, orderBy: [{ period_month: 'asc' }, { id: 'asc' }] },
+      approvers: { orderBy: { step_number: 'asc' } }
+    }
+  },
+  payment_request: {
+    include: {
+      marketing_plan_item: { include: { m_coa: true, marketing_plan: { include: { company: true } } } },
+      creator: true
+    }
+  }
+};
+
+const taskCompanyId = task => task.marketing_plan?.company_id ?? task.payment_request?.marketing_plan_item?.marketing_plan?.company_id ?? null;
+const taskAmount = task => parseFloat(task.marketing_plan_id ? task.marketing_plan?.total_budget : task.payment_request?.amount) || 0;
+
+// The single authorization rule shared by the task list and the decision endpoint,
+// so a user never sees a task they cannot act on (or acts on one they cannot see).
+//  - Claim: Finance only, step 1.
+//  - Plan with a named approver chain (marketing_plan_approvers): only the person
+//    whose email is assigned to that step.
+//  - Otherwise: the approval_rules tier for the amount/step, or CFO/CEO for an
+//    overbudget payment escalation step without a tier.
+// Admin may act on everything except claims.
+function canActOnTask(task, { role, email }, rules) {
+  if (task.payment_request?.request_type === 'CLAIM') return role === 'FINANCE' && task.step_number === 1;
+  if (role === 'ADMIN') return true;
+
+  const isPlan = !!task.marketing_plan_id;
+  const chainStep = isPlan ? (task.marketing_plan?.approvers || []).find(a => a.step_number === task.step_number) : null;
+  if (chainStep) return normalizeEmail(chainStep.approver_email) === normalizeEmail(email);
+
+  const amount = taskAmount(task);
+  const module = isPlan ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
+  const rule = rules.find(r => r.module === module && r.step_number === task.step_number && Number(r.min_amount) <= amount && (r.max_amount === null || Number(r.max_amount) >= amount));
+  if (rule) return rule.approver_role === role;
+  const isOverbudgetEscalation = !isPlan && task.payment_request?.status === 'OVERBUDGET_WARN';
+  return isOverbudgetEscalation && role === 'CFO_CEO';
+}
+
+// Who the task is waiting for, for display.
+function waitingFor(task, rules) {
+  const chainStep = (task.marketing_plan?.approvers || []).find(a => a.step_number === task.step_number);
+  if (chainStep) return { name: chainStep.approver_name, email: chainStep.approver_email, role: chainStep.approver_role || null };
+  if (task.payment_request?.request_type === 'CLAIM') return { name: null, email: null, role: 'FINANCE' };
+  const amount = taskAmount(task);
+  const module = task.marketing_plan_id ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
+  const rule = rules.find(r => r.module === module && r.step_number === task.step_number && Number(r.min_amount) <= amount && (r.max_amount === null || Number(r.max_amount) >= amount));
+  return { name: null, email: null, role: rule?.approver_role || (task.payment_request?.status === 'OVERBUDGET_WARN' ? 'CFO_CEO' : null) };
+}
+
+const isDesignated = (task, { email }) => (task.marketing_plan?.approvers || []).some(a => a.step_number === task.step_number && normalizeEmail(a.approver_email) === normalizeEmail(email));
+
+const inScope = (req, companyId) => req.companyScope?.all || (req.companyScope?.companyIds || []).includes(companyId);
+
 // GET /tasks
 async function getPendingTasks(req, res, next) {
   try {
@@ -29,64 +90,15 @@ async function getPendingTasks(req, res, next) {
       return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
     }
 
-    const userRole = req.user.role.toUpperCase();
-    const isAdmin = userRole === 'ADMIN';
+    const actor = { role: req.user.role.toUpperCase(), email: req.user.email };
+    const pendingTasks = await prisma.approval_history.findMany({ where: { status: 'PENDING' }, include: TASK_INCLUDE, orderBy: { created_at: 'asc' } });
+    // Claims are Finance-only and never consult the approval tiers.
+    const rules = pendingTasks.some(t => t.payment_request?.request_type !== 'CLAIM') ? await prisma.approval_rules.findMany() : [];
 
-    const pendingTasks = await prisma.approval_history.findMany({
-      where: {
-        status: 'PENDING'
-      },
-      include: {
-        marketing_plan: {
-          include: { company: true, creator: true }
-        },
-        payment_request: {
-          include: {
-            marketing_plan_item: {
-              include: { marketing_plan: { include: { company: true } } }
-            },
-            creator: true
-          }
-        }
-      }
-    });
-
-    if (isAdmin) {
-      return res.json(pendingTasks.filter(task => task.payment_request?.request_type !== 'CLAIM'));
-    }
-
-    const tasks = [];
-    for (const t of pendingTasks) {
-      const isPlan = !!t.marketing_plan_id;
-      const taskCompanyId = isPlan ? t.marketing_plan.company_id : t.payment_request.marketing_plan_item.marketing_plan.company_id;
-      if (!req.companyScope.all && !req.companyScope.companyIds.includes(taskCompanyId)) continue;
-
-      if (t.payment_request?.request_type === 'CLAIM') {
-        if (userRole === 'FINANCE' && t.step_number === 1) tasks.push(t);
-        continue;
-      }
-
-      const amt = isPlan ? parseFloat(t.marketing_plan.total_budget) : parseFloat(t.payment_request.amount);
-      const mod = isPlan ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
-
-      const rule = await prisma.approval_rules.findFirst({
-        where: {
-          module: mod,
-          step_number: t.step_number,
-          min_amount: { lte: amt },
-          OR: [
-            { max_amount: { gte: amt } },
-            { max_amount: null }
-          ]
-        }
-      });
-
-      if (rule && rule.approver_role === userRole) {
-        tasks.push(t);
-      } else if (!rule && t.step_number > 1 && userRole === 'CFO_CEO') {
-        tasks.push(t);
-      }
-    }
+    const tasks = pendingTasks
+      .filter(task => (task.marketing_plan || task.payment_request) && (actor.role === 'ADMIN' || inScope(req, taskCompanyId(task)) || isDesignated(task, actor)))
+      .filter(task => canActOnTask(task, actor, rules))
+      .map(task => ({ ...task, waiting_for: waitingFor(task, rules) }));
 
     res.json(tasks);
   } catch (err) {
@@ -108,60 +120,29 @@ async function processApproval(req, res, next) {
     if (!action || !['APPROVE', 'REJECT'].includes(action)) {
       return res.status(400).json({ error: 'Action must be APPROVE or REJECT.' });
     }
+    if (action === 'REJECT' && (typeof comment !== 'string' || !comment.trim())) {
+      return res.status(400).json({ error: 'Isi alasan penolakan.' });
+    }
 
-    const task = await prisma.approval_history.findUnique({
-      where: { id: parseInt(id, 10) },
-      include: {
-        marketing_plan: { include: { company: true } },
-        payment_request: { include: { marketing_plan_item: { include: { marketing_plan: { include: { company: true } } } } } }
-      }
-    });
-
+    const task = await prisma.approval_history.findUnique({ where: { id: parseInt(id, 10) }, include: TASK_INCLUDE });
     if (!task || task.status !== 'PENDING') {
       return res.status(404).json({ error: 'Pending approval task not found.' });
     }
 
-    const userRole = req.user.role.toUpperCase();
-    const companyId = task.marketing_plan?.company_id || task.payment_request?.marketing_plan_item?.marketing_plan?.company_id;
-    if (!req.companyScope.all && !req.companyScope.companyIds.includes(companyId)) {
+    const actor = { role: req.user.role.toUpperCase(), email: req.user.email };
+    if (actor.role !== 'ADMIN' && !inScope(req, taskCompanyId(task)) && !isDesignated(task, actor)) {
       return res.status(403).json({ error: 'Company outside your access scope.' });
     }
-    const isClaim = task.payment_request?.request_type === 'CLAIM';
-    if (isClaim && (userRole !== 'FINANCE' || task.step_number !== 1)) {
-      return res.status(403).json({ error: 'Claim hanya dapat disetujui atau ditolak oleh Finance.' });
-    }
-    if (isClaim && action === 'REJECT' && (typeof comment !== 'string' || !comment.trim())) {
-      return res.status(400).json({ error: 'Isi alasan penolakan claim.' });
-    }
-    if (!isClaim && userRole !== 'ADMIN') {
-      const isPlanAuth = !!task.marketing_plan_id;
-      const amtAuth = isPlanAuth ? parseFloat(task.marketing_plan.total_budget) : parseFloat(task.payment_request.amount);
-      const modAuth = isPlanAuth ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
-
-      const authRule = await prisma.approval_rules.findFirst({
-        where: {
-          module: modAuth,
-          step_number: task.step_number,
-          min_amount: { lte: amtAuth },
-          OR: [
-            { max_amount: { gte: amtAuth } },
-            { max_amount: null }
-          ]
-        }
-      });
-
-      const isOverbudgetEscalation = !isPlanAuth && task.payment_request.status === 'OVERBUDGET_WARN' && !authRule && task.step_number > 1;
-      const authorized = (authRule && authRule.approver_role === userRole) || (isOverbudgetEscalation && userRole === 'CFO_CEO');
-
-      if (!authorized) {
-        return res.status(403).json({ error: 'Anda tidak memiliki kewenangan untuk menyetujui tahap approval ini.' });
-      }
+    const rules = task.payment_request?.request_type === 'CLAIM' ? [] : await prisma.approval_rules.findMany();
+    if (!canActOnTask(task, actor, rules)) {
+      const isClaim = task.payment_request?.request_type === 'CLAIM';
+      return res.status(403).json({ error: isClaim ? 'Claim hanya dapat disetujui atau ditolak oleh Finance.' : 'Anda tidak memiliki kewenangan untuk menyetujui tahap approval ini.' });
     }
 
     const { result, magicLinkQueue } = await executeApprovalDecision({
       task,
       action,
-      comment,
+      comment: typeof comment === 'string' ? comment.trim() || null : null,
       signature,
       actingApproverId: employee.id
     });
@@ -179,12 +160,18 @@ async function processApproval(req, res, next) {
   }
 }
 
-// GET /history
+// GET /history — decisions made by the current user; admins see every decision
+// in their company scope. Limited to the latest 300.
 async function getApprovalHistory(req, res, next) {
   try {
+    const role = req.user.role.toUpperCase();
+    const employee = await resolveEmployee(req.user.email);
+    if (role !== 'ADMIN' && !employee) return res.json([]);
+
     const records = await prisma.approval_history.findMany({
-      where: { status: { in: ['APPROVED', 'REJECTED'] } },
+      where: { status: { in: ['APPROVED', 'REJECTED'] }, ...(role === 'ADMIN' ? {} : { approver_id: employee.id }) },
       include: {
+        approver: { select: { name: true } },
         marketing_plan: { include: { company: true, creator: true } },
         payment_request: {
           include: {
@@ -194,23 +181,28 @@ async function getApprovalHistory(req, res, next) {
         }
       },
       orderBy: [{ action_at: 'desc' }, { created_at: 'desc' }],
-      take: 100
+      take: 300
     });
 
-    const history = records.map(r => {
-      const isPlan = !!r.marketing_plan_id;
-      return {
-        id: r.id,
-        type: isPlan ? 'Marketing Plan' : r.payment_request.request_type === 'CLAIM' ? 'Claim' : 'Payment Request',
-        title: isPlan ? r.marketing_plan.title : r.payment_request.title,
-        creatorName: isPlan ? r.marketing_plan.creator?.name : r.payment_request.creator?.name,
-        companyName: isPlan ? r.marketing_plan.company?.name : r.payment_request.marketing_plan_item?.marketing_plan?.company?.name,
-        amount: isPlan ? r.marketing_plan.total_budget : r.payment_request.amount,
-        action: r.status,
-        comment: r.comment,
-        date: r.action_at || r.created_at
-      };
-    });
+    const history = records
+      .filter(r => (r.marketing_plan || r.payment_request) && (role === 'ADMIN' ? inScope(req, taskCompanyId(r)) : true))
+      .map(r => {
+        const isPlan = !!r.marketing_plan_id;
+        return {
+          id: r.id,
+          type: isPlan ? 'Marketing Plan' : r.payment_request.request_type === 'CLAIM' ? 'Claim' : 'Payment Request',
+          title: isPlan ? r.marketing_plan.title : r.payment_request.title,
+          creatorName: isPlan ? r.marketing_plan.creator?.name : r.payment_request.creator?.name,
+          companyName: isPlan ? r.marketing_plan.company?.name : r.payment_request.marketing_plan_item?.marketing_plan?.company?.name,
+          amount: isPlan ? r.marketing_plan.total_budget : r.payment_request.amount,
+          step: r.step_number,
+          action: r.status,
+          comment: r.comment,
+          approverName: r.approver?.name || null,
+          mine: employee ? r.approver_id === employee.id : false,
+          date: r.action_at || r.created_at
+        };
+      });
 
     res.json(history);
   } catch (err) {
@@ -357,12 +349,14 @@ async function getApprovalsOverview(req, res, next) {
         include: {
           company: { select: { id: true, name: true, company_master_id: true } },
           creator: { select: { id: true, name: true, email: true } },
+          approvers: { orderBy: { step_number: 'asc' } },
+          items: { select: { period_month: true } },
           approval_history: {
             include: {
               approver: { select: { id: true, name: true, email: true } },
               magic_links: true
             },
-            orderBy: { step_number: 'asc' }
+            orderBy: [{ step_number: 'asc' }, { created_at: 'desc' }, { id: 'desc' }]
           }
         },
         orderBy: { created_at: 'desc' }
@@ -374,62 +368,75 @@ async function getApprovalsOverview(req, res, next) {
       prisma.approval_role_contacts.findMany({ orderBy: { company_master_id: 'desc' } })
     ]);
 
+    const now = new Date();
+    const mapLinks = record => (record?.magic_links || []).map(ml => ({
+      email: ml.recipient_email,
+      expires_at: ml.expires_at,
+      used_at: ml.used_at,
+      expired: !ml.used_at && new Date(ml.expires_at) < now
+    }));
+
     const results = [];
     for (const plan of plans) {
       const totalBudget = parseFloat(plan.total_budget || 0);
-
-      // Filter rules untuk plan ini di JS — fix duplicate OR key dan N+1
-      const matchedRules = allRules.filter(r => {
-        const amountOk = parseFloat(r.min_amount) <= totalBudget &&
-          (r.max_amount === null || parseFloat(r.max_amount) >= totalBudget);
-        const companyOk = r.company_id === null || r.company_id === plan.company_id;
-        return amountOk && companyOk;
-      });
-
-      const stepRulesMap = {};
-      for (const rule of matchedRules) {
-        if (!stepRulesMap[rule.step_number] || rule.company_id !== null) {
-          stepRulesMap[rule.step_number] = rule;
-        }
+      // Latest record per step — a plan that was rejected and resubmitted keeps its
+      // older rows; only the newest round reflects the current state.
+      const latestByStep = {};
+      for (const h of plan.approval_history) {
+        if (!latestByStep[h.step_number]) latestByStep[h.step_number] = h;
       }
-      const sortedRules = Object.values(stepRulesMap).sort((a, b) => a.step_number - b.step_number);
 
       const steps = [];
-      let currentActiveStep = null;
-
-      for (const rule of sortedRules) {
-        const historyRecord = plan.approval_history.find(h => h.step_number === rule.step_number && h.status === 'PENDING')
-          || plan.approval_history.find(h => h.step_number === rule.step_number);
-
-        // Resolusi kontak sesuai tingkatan asli (PT > Holding > Global) — konsisten dengan
-        // resolveApproverContact yang benar-benar dipakai saat mengirim magic link.
-        const resolvedContact = resolveContactPreview(allContacts, rule.approver_role, plan.company_id, plan.company.company_master_id);
-        const recipientEmails = resolvedContact ? [resolvedContact.email] : [];
-
-        const magicLinks = historyRecord ? historyRecord.magic_links.map(ml => ({
-          email: ml.recipient_email,
-          expires_at: ml.expires_at,
-          used_at: ml.used_at
-        })) : [];
-
-        const stepStatus = historyRecord ? historyRecord.status : 'WAITING';
-
-        if (stepStatus === 'PENDING' && !currentActiveStep) {
-          currentActiveStep = rule.step_number;
+      if (plan.approvers.length > 0) {
+        // Named approver chain chosen at submission — this is what the approval
+        // engine actually follows (see executeApprovalDecision).
+        for (const a of plan.approvers) {
+          const record = latestByStep[a.step_number];
+          steps.push({
+            step_number: a.step_number,
+            role: a.approver_role || null,
+            status: a.status === 'WAITING' ? 'WAITING' : a.status,
+            approver_name: a.approver_name,
+            approver_email: a.approver_email,
+            action_at: a.action_at || null,
+            comment: a.comment || null,
+            pending_since: a.status === 'PENDING' ? (record?.created_at || null) : null,
+            recipients: [a.approver_email],
+            magic_links: mapLinks(record)
+          });
         }
-
-        steps.push({
-          step_number: rule.step_number,
-          role: rule.approver_role,
-          status: stepStatus,
-          approver_name: historyRecord?.approver?.name || null,
-          action_at: historyRecord?.action_at || null,
-          comment: historyRecord?.comment || null,
-          recipients: recipientEmails,
-          magic_links: magicLinks
+      } else {
+        // Legacy plans without a named chain: steps follow the approval tier.
+        const matchedRules = allRules.filter(r => {
+          const amountOk = parseFloat(r.min_amount) <= totalBudget &&
+            (r.max_amount === null || parseFloat(r.max_amount) >= totalBudget);
+          const companyOk = r.company_id === null || r.company_id === plan.company_id;
+          return amountOk && companyOk;
         });
+        const stepRulesMap = {};
+        for (const rule of matchedRules) {
+          if (!stepRulesMap[rule.step_number] || rule.company_id !== null) stepRulesMap[rule.step_number] = rule;
+        }
+        for (const rule of Object.values(stepRulesMap).sort((a, b) => a.step_number - b.step_number)) {
+          const record = latestByStep[rule.step_number];
+          const resolvedContact = resolveContactPreview(allContacts, rule.approver_role, plan.company_id, plan.company.company_master_id);
+          const status = record ? record.status : 'WAITING';
+          steps.push({
+            step_number: rule.step_number,
+            role: rule.approver_role,
+            status,
+            approver_name: status === 'PENDING' ? null : record?.approver?.name || null,
+            approver_email: resolvedContact?.email || null,
+            action_at: record?.action_at || null,
+            comment: record?.comment || null,
+            pending_since: status === 'PENDING' ? record.created_at : null,
+            recipients: resolvedContact ? [resolvedContact.email] : [],
+            magic_links: mapLinks(record)
+          });
+        }
       }
 
+      const activeStep = steps.find(s => s.status === 'PENDING') || null;
       results.push({
         id: plan.id,
         title: plan.title,
@@ -440,9 +447,16 @@ async function getApprovalsOverview(req, res, next) {
         status: plan.status,
         is_over_budget: plan.is_over_budget,
         over_budget_reason: plan.over_budget_reason,
+        is_late_submission: plan.is_late_submission,
+        late_submission_reason: plan.late_submission_reason,
         creator_name: plan.creator?.name || 'Tidak diketahui',
         created_at: plan.created_at,
-        current_active_step: currentActiveStep,
+        submitted_at: plan.submitted_at || null,
+        chain_source: plan.approvers.length > 0 ? 'NAMED' : 'TIER',
+        // Campaign months covered by the plan items (1-12), used for month/quarter filters.
+        months: [...new Set(plan.items.map(i => i.period_month))].sort((a, b) => a - b),
+        current_active_step: activeStep?.step_number || null,
+        waiting_on: activeStep ? { name: activeStep.approver_name, email: activeStep.approver_email, role: activeStep.role, since: activeStep.pending_since } : null,
         steps
       });
     }

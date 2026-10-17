@@ -1,378 +1,256 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { motion, AnimatePresence, animate } from 'framer-motion';
 import {
   Wallet,
-  Search,
   Plus,
   X,
-  Edit3,
   Loader2,
   AlertTriangle,
   RefreshCw,
   Lock,
   Unlock,
-  Sparkles,
-  ChevronLeft,
   Coins,
-  ChevronRight,
   TrendingUp,
   Clock,
-  Briefcase,
   History,
   ArrowRightLeft,
   Calendar,
   CheckCircle2,
-  AlertCircle,
-  Info,
-  ShieldCheck
+  ShieldCheck,
+  HandCoins,
+  Undo2,
+  Save
 } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import InlineHelp from '@/components/ui/InlineHelp';
 import MarketingBudgetShiftDrawer from './MarketingBudgetShiftDrawer';
 import MarketingBudgetShiftHistoryModal from './MarketingBudgetShiftHistoryModal';
 
-const FISCAL_YEAR_OPTIONS = ['2024', '2025', '2026', '2027'];
+const THIS_YEAR = new Date().getFullYear();
+const FISCAL_YEAR_OPTIONS = [THIS_YEAR - 1, THIS_YEAR, THIS_YEAR + 1, THIS_YEAR + 2].map(String);
+const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const PERIOD_TABS = [['ALL', 'Full year'], ['Q1', 'Q1 · Jan–Mar'], ['Q2', 'Q2 · Apr–Jun'], ['Q3', 'Q3 · Jul–Sep'], ['Q4', 'Q4 · Okt–Des']];
+const PLAN_STATUS = {
+  DRAFT: ['Draft', 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'],
+  PENDING_APPROVAL: ['Menunggu', 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'],
+  APPROVED: ['Disetujui', 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'],
+  COMPLETED: ['Selesai', 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'],
+  REJECTED: ['Ditolak', 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400'],
+};
 
-// ─── Reusable Floating Tooltip Component ─────────────────────────────────────────
-function InfoTooltip({ content, position = 'top' }) {
-  if (!content) return null;
-  return (
-    <span className="relative inline-flex items-center group/tip align-middle ml-1.5 cursor-help">
-      <Info className="w-3.5 h-3.5 text-neutral-400 hover:text-blue-500 dark:text-neutral-500 dark:hover:text-blue-400 transition-colors" />
-      <span
-        role="tooltip"
-        className={`absolute z-50 hidden group-hover/tip:block px-3 py-2 text-[11px] font-normal leading-relaxed rounded-xl shadow-2xl border pointer-events-none w-64 text-neutral-100 bg-neutral-900/95 dark:bg-neutral-950/95 border-neutral-700/60 backdrop-blur-md normal-case text-left ${
-          position === 'top'
-            ? 'bottom-full mb-2 left-1/2 -translate-x-1/2'
-            : 'top-full mt-2 left-1/2 -translate-x-1/2'
-        }`}
-      >
-        <span className="relative z-10 block font-sans">{content}</span>
-        <span
-          className={`absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 border-neutral-700/60 rotate-45 ${
-            position === 'top' ? 'top-full -mt-1 border-r border-b' : 'bottom-full -mb-1 border-l border-t'
-          }`}
-        />
-      </span>
-    </span>
-  );
-}
+const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0);
+const shortRupiah = (v) => {
+  const abs = Math.abs(v || 0);
+  const sign = v < 0 ? '-' : '';
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(1).replace('.0', '')}M`;
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1).replace('.0', '')}jt`;
+  if (abs >= 1e3) return `${sign}${Math.round(abs / 1e3)}rb`;
+  return `${sign}${Math.round(abs)}`;
+};
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const monthHasEnded = (fy, month) => new Date() >= new Date(Number(fy), month, 1);
 
-// ─── Stat Card Component ────────────────────────────────────────────────────────
-function StatCard({ label, value, sub = '', icon: Icon, color = 'blue', delay = 0, tooltip = '' }) {
-  const colors = {
-    blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
-    emerald: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-    amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
-    rose: 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35, ease: 'easeOut' }}
-      className="bg-white dark:bg-neutral-900/40 border border-neutral-200/70 dark:border-white/[0.06] rounded-2xl p-5 hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 transition-shadow relative overflow-visible"
-    >
-      <div className="flex items-center justify-between">
-        <div className="min-w-0 flex-1 pr-2">
-          <div className="flex items-center">
-            <p className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider truncate">{label}</p>
-            {tooltip && <InfoTooltip content={tooltip} position="top" />}
-          </div>
-          <p className="text-xl font-black text-neutral-900 dark:text-white mt-1">{value}</p>
-          {sub && <p className="text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 mt-0.5">{sub}</p>}
-        </div>
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${colors[color]}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-      </div>
-    </motion.div>
-  );
+function CountUp({ value, format = (v) => formatRupiah(v) }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const controls = animate(0, value, { duration: 0.9, ease: 'easeOut', onUpdate: setDisplay });
+    return () => controls.stop();
+  }, [value]);
+  return <>{format(display)}</>;
 }
 
 export default function MarketingBudgetPage() {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [metadata, setMetadata] = useState({ brands: [], lobs: [], companies: [] });
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
 
-  // Active filter state
-  const [filter, setFilter] = useState({
-    company_id: '',
-    brand_id: '',
-    lob_id: '',
-    fiscal_year: String(new Date().getFullYear())
-  });
-
-  // Current Budget Data
+  const [filter, setFilter] = useState({ company_id: '', brand_id: '', lob_id: '', fiscal_year: String(THIS_YEAR) });
   const [activeBudget, setActiveBudget] = useState(null);
+  const [companyBudgets, setCompanyBudgets] = useState([]);
   const [userRole, setUserRole] = useState('');
   useEffect(() => { setUserRole((Cookies.get('glc_user_role') || '').toLowerCase()); }, []);
-  const isFinanceRole = userRole === 'finance' || userRole === 'admin' || userRole === 'superadmin';
+  const isFinanceRole = ['finance', 'admin', 'superadmin'].includes(userRole);
   const isValidated = activeBudget?.validation_status === 'VALIDATED';
+  const canEditLimits = isFinanceRole && activeBudget && !activeBudget.is_locked;
+
+  const [serverMonthly, setServerMonthly] = useState([]);
   const [monthlyData, setMonthlyData] = useState([]);
   const [quarterlyData, setQuarterlyData] = useState([]);
-  const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'Q1' | 'Q2' | 'Q3' | 'Q4'
+  const [activeTab, setActiveTab] = useState('ALL');
   const [relatedPlans, setRelatedPlans] = useState([]);
   const [shifts, setShifts] = useState([]);
 
-  // UI state
   const [showDrawer, setShowDrawer] = useState(false);
   const [showShiftDrawer, setShowShiftDrawer] = useState(false);
   const [showShiftHistoryModal, setShowShiftHistoryModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
-  
-  // Drawer Form State
-  const [formData, setFormData] = useState({
-    company_id: '',
-    brand_id: '',
-    lob_id: '',
-    fiscal_year: String(new Date().getFullYear()),
-    total_budget: '0'
-  });
+  const [formData, setFormData] = useState({ company_id: '', brand_id: '', lob_id: '', fiscal_year: String(THIS_YEAR), total_budget: '' });
 
-  // Load Metadata
-  const fetchMetadata = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await apiClient.get('/api/marketing/metadata');
-      if (res) {
-        setMetadata({
-          brands: res.brands || [],
-          lobs: res.lobs || [],
-          companies: res.companies || []
-        });
+  const flash = (msg) => { setNotice(msg); setTimeout(() => setNotice(null), 4000); };
+  // True once the user explicitly picks a brand/LOB; until then the page jumps to the
+  // first budget registered for the company so it never opens on an empty combination.
+  const comboPickedRef = useRef(false);
+  const brandsForCompany = useMemo(() => {
+    const own = metadata.brands.filter(b => String(b.company_id) === String(filter.company_id));
+    return own.length ? own : metadata.brands;
+  }, [metadata.brands, filter.company_id]);
+  const changeCompany = (val) => {
+    comboPickedRef.current = false;
+    const firstBrand = metadata.brands.find(b => String(b.company_id) === String(val));
+    setFilter(prev => ({ ...prev, company_id: val, brand_id: firstBrand ? String(firstBrand.id) : prev.brand_id }));
+  };
+  const changeCombo = (key, val) => { comboPickedRef.current = true; setFilter(prev => ({ ...prev, [key]: val })); };
 
-        // Set default values for filter
-        if (res.companies.length > 0) {
-          // Default to PT Mogems if exists, otherwise first company
-          const mogems = res.companies.find(c => c.name.toLowerCase().includes('mogems'));
+  // Metadata + sensible default filter.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiClient.get('/api/marketing/metadata');
+        setMetadata({ brands: res?.brands || [], lobs: res?.lobs || [], companies: res?.companies || [] });
+        if (res?.companies?.length) {
+          const company = res.companies.find(c => c.name.toLowerCase().includes('mogems')) || res.companies[0];
+          const brand = (res.brands || []).find(b => b.company_id === company.id) || res.brands?.[0];
           setFilter(prev => ({
             ...prev,
-            company_id: mogems ? String(mogems.id) : String(res.companies[0].id),
-            brand_id: res.brands.length > 0 ? String(res.brands[0].id) : '',
-            lob_id: res.lobs.length > 0 ? String(res.lobs[0].id) : ''
+            company_id: String(company.id),
+            brand_id: brand ? String(brand.id) : '',
+            lob_id: res.lobs?.length ? String(res.lobs[0].id) : ''
           }));
         }
+      } catch (err) {
+        setError(err.message || 'Gagal memuat metadata.');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err.message || 'Gagal memuat metadata.');
-    } finally {
-      setLoading(false);
-    }
+    })();
   }, []);
 
-  useEffect(() => {
-    fetchMetadata();
-  }, [fetchMetadata]);
-
-  // Load Budget based on current filters
-  const handleProses = async () => {
-    if (!filter.company_id || !filter.brand_id || !filter.lob_id || !filter.fiscal_year) {
-      return;
-    }
-
+  const loadBudget = useCallback(async () => {
+    if (!filter.company_id || !filter.brand_id || !filter.lob_id || !filter.fiscal_year) return;
+    setProcessing(true);
+    setError(null);
     try {
-      setProcessing(true);
-      setError(null);
-      const res = await apiClient.get('/api/marketing/budgets/check', {
-        params: filter
-      });
-
-      // Also get the budget header details if it exists to get the ID
-      const allBudgets = await apiClient.get('/api/marketing/budgets', {
-        params: filter
-      });
-
-      if (allBudgets && allBudgets.length > 0) {
-        setActiveBudget(allBudgets[0]);
-        try {
-          const shiftRes = await apiClient.get(`/api/marketing/budgets/${allBudgets[0].id}/shifts`);
-          setShifts(shiftRes || []);
-        } catch (e) {
-          console.error('Failed to load shifts:', e);
-        }
-      } else {
-        setActiveBudget(null);
-        setShifts([]);
+      const [check, budgets, perCompany] = await Promise.all([
+        apiClient.get('/api/marketing/budgets/check', { params: filter }),
+        apiClient.get('/api/marketing/budgets', { params: filter }),
+        apiClient.get('/api/marketing/budgets', { params: { company_id: filter.company_id, fiscal_year: filter.fiscal_year } }).catch(() => []),
+      ]);
+      const budget = budgets?.[0] || null;
+      if (!budget && perCompany?.length && !comboPickedRef.current) {
+        comboPickedRef.current = true;
+        setFilter(prev => ({ ...prev, brand_id: String(perCompany[0].brand_id), lob_id: String(perCompany[0].lob_id) }));
+        return;
       }
-
-      setMonthlyData(res.monthly || []);
-      setQuarterlyData(res.quarterly || []);
-      setRelatedPlans(res.related_plans || []);
+      setActiveBudget(budget);
+      setCompanyBudgets(perCompany || []);
+      setShifts(budget ? await apiClient.get(`/api/marketing/budgets/${budget.id}/shifts`).catch(() => []) : []);
+      setServerMonthly(check.monthly || []);
+      setMonthlyData(check.monthly || []);
+      setQuarterlyData(check.quarterly || []);
+      setRelatedPlans(check.related_plans || []);
     } catch (err) {
       setError(err.message || 'Gagal memuat anggaran.');
     } finally {
       setProcessing(false);
     }
-  };
+  }, [filter]);
 
-  // Run handleProses once metadata defaults are set
-  useEffect(() => {
-    if (filter.company_id && filter.brand_id && filter.lob_id) {
-      handleProses();
-    }
-  }, [filter.company_id, filter.brand_id, filter.lob_id, filter.fiscal_year]);
+  useEffect(() => { loadBudget(); }, [loadBudget]);
 
-  // Handle Edit Limit for a Specific Month
+  // Unsaved limit edits.
+  const dirtyMonths = useMemo(() => monthlyData.filter(m => {
+    const original = serverMonthly.find(o => o.month === m.month);
+    return original && original.limit !== m.limit;
+  }).map(m => m.month), [monthlyData, serverMonthly]);
+  const isDirty = dirtyMonths.length > 0;
+
   const handleLimitChange = (monthNum, value) => {
-    if (activeBudget?.is_locked) return;
-    const cleanVal = parseFloat(value.replace(/[^0-9]/g, '')) || 0;
-    
-    setMonthlyData(prev => {
-      return prev.map(m => m.month === monthNum ? { ...m, limit: cleanVal } : m);
-    });
+    if (!canEditLimits) return;
+    const clean = parseFloat(String(value).replace(/[^0-9]/g, '')) || 0;
+    setMonthlyData(prev => prev.map(m => m.month === monthNum ? { ...m, limit: clean, available: clean - m.committed, over_committed: m.committed > clean } : m));
   };
 
-  // Save changes to current monthly limits
   const handleSaveLimits = async () => {
-    if (!activeBudget || activeBudget.is_locked) return;
-
+    if (!activeBudget || !isDirty) return;
+    if (isValidated && !confirm('Budget ini sudah divalidasi Finance. Mengubah limit akan mengembalikan status ke Draft dan perlu divalidasi ulang. Lanjutkan?')) return;
+    setProcessing(true);
     try {
-      setProcessing(true);
-      const totalLimit = monthlyData.reduce((sum, m) => sum + m.limit, 0);
-      
-      const payload = {
-        total_budget: totalLimit,
-        monthly_limits: monthlyData.map(m => ({
-          period_month: m.month,
-          budget_limit: m.limit
-        }))
-      };
-
-      await apiClient.put(`/api/marketing/budgets/${activeBudget.id}`, payload);
-      // Reload
-      await handleProses();
+      await apiClient.put(`/api/marketing/budgets/${activeBudget.id}`, {
+        monthly_limits: monthlyData.filter(m => dirtyMonths.includes(m.month)).map(m => ({ period_month: m.month, budget_limit: m.limit }))
+      });
+      flash(`Limit ${dirtyMonths.length} bulan tersimpan.`);
+      await loadBudget();
     } catch (err) {
-      alert(err.message || 'Gagal menyimpan perubahan anggaran.');
-    } finally {
+      setError(err.message || 'Gagal menyimpan perubahan anggaran.');
       setProcessing(false);
     }
   };
 
-  // Validasi Finance atas cap tahunan (syarat sebelum budget bisa dikunci)
-  const handleValidate = async () => {
-    if (!activeBudget) return;
-    const note = window.prompt('Validasi cap tahunan ini sebagai Finance?\nCatatan validasi (opsional):', '');
+  const runAction = async (fn, message) => {
+    setProcessing(true);
+    setError(null);
+    try {
+      await fn();
+      if (message) flash(message);
+      await loadBudget();
+    } catch (err) {
+      setError(err.message || 'Aksi gagal diproses.');
+      setProcessing(false);
+    }
+  };
+
+  const handleValidate = () => {
+    const note = window.prompt('Validasi cap tahunan & alokasi bulanan ini sebagai Finance?\nCatatan validasi (opsional):', '');
     if (note === null) return;
-    try {
-      setProcessing(true);
-      const res = await apiClient.put(`/api/marketing/budgets/${activeBudget.id}/validate`, { note });
-      setActiveBudget(res);
-      await handleProses();
-    } catch (err) {
-      alert(err.message || 'Gagal memvalidasi budget.');
-    } finally {
-      setProcessing(false);
-    }
+    runAction(() => apiClient.put(`/api/marketing/budgets/${activeBudget.id}/validate`, { note }), 'Budget divalidasi Finance.');
+  };
+  const handleToggleLock = () => {
+    const action = activeBudget.is_locked ? 'unlock' : 'lock';
+    runAction(() => apiClient.put(`/api/marketing/budgets/${activeBudget.id}/${action}`), action === 'lock' ? 'Budget dikunci.' : 'Kunci budget dibuka.');
+  };
+  const handleCloseMonth = (monthNum) => {
+    if (!confirm(`Tutup buku ${MONTH_NAMES[monthNum - 1]}? Sisa alokasi ditahan dan tidak diakumulasikan ke bulan berikutnya.`)) return;
+    runAction(() => apiClient.post(`/api/marketing/budgets/${activeBudget.id}/close-month`, { period_month: monthNum }), `${MONTH_NAMES[monthNum - 1]} ditutup buku.`);
+  };
+  const handleReopenMonth = (monthNum) => {
+    if (!confirm(`Buka kembali pembukuan ${MONTH_NAMES[monthNum - 1]}?`)) return;
+    runAction(() => apiClient.post(`/api/marketing/budgets/${activeBudget.id}/reopen-month`, { period_month: monthNum }), `${MONTH_NAMES[monthNum - 1]} dibuka kembali.`);
   };
 
-  // Toggle Lock
-  const handleToggleLock = async () => {
-    if (!activeBudget) return;
-
-    try {
-      setProcessing(true);
-      const action = activeBudget.is_locked ? 'unlock' : 'lock';
-      const res = await apiClient.put(`/api/marketing/budgets/${activeBudget.id}/${action}`);
-      setActiveBudget(res);
-      await handleProses();
-    } catch (err) {
-      alert(err.message || 'Gagal mengubah status kunci.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Close Month (Tutup Buku)
-  const handleCloseMonth = async (monthNum) => {
-    if (!activeBudget) return;
-    if (!confirm(`Konfirmasi Tutup Buku untuk bulan ${getMonthName(monthNum)}? Sisa alokasi tidak akan diakumulasikan ke bulan berikutnya.`)) {
-      return;
-    }
-    try {
-      setProcessing(true);
-      await apiClient.post(`/api/marketing/budgets/${activeBudget.id}/close-month`, {
-        period_month: monthNum
-      });
-      await handleProses();
-    } catch (err) {
-      alert(err.message || 'Gagal menutup buku bulan ini.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Reopen Month (Buka Tutup Buku)
-  const handleReopenMonth = async (monthNum) => {
-    if (!activeBudget) return;
-    if (!confirm(`Buka kembali pembukuan untuk bulan ${getMonthName(monthNum)}?`)) {
-      return;
-    }
-    try {
-      setProcessing(true);
-      await apiClient.post(`/api/marketing/budgets/${activeBudget.id}/reopen-month`, {
-        period_month: monthNum
-      });
-      await handleProses();
-    } catch (err) {
-      alert(err.message || 'Gagal membuka kembali bulan ini.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Open Drawer to Create
   const handleOpenCreate = () => {
-    setFormData({
-      company_id: filter.company_id,
-      brand_id: filter.brand_id,
-      lob_id: filter.lob_id,
-      fiscal_year: filter.fiscal_year,
-      total_budget: '0'
-    });
+    setFormData({ company_id: filter.company_id, brand_id: filter.brand_id, lob_id: filter.lob_id, fiscal_year: filter.fiscal_year, total_budget: '' });
     setFormError(null);
     setShowDrawer(true);
   };
-
-  // Create Budget Form Submit
+  const createTotal = parseInt(String(formData.total_budget).replace(/[^0-9]/g, ''), 10) || 0;
   const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.company_id || !formData.brand_id || !formData.lob_id) {
-      setFormError('Perusahaan, Brand, dan Line of Business wajib dipilih.');
-      return;
-    }
+    e?.preventDefault();
+    if (!formData.company_id || !formData.brand_id || !formData.lob_id) { setFormError('Perusahaan, Brand, dan Line of Business wajib dipilih.'); return; }
+    if (createTotal <= 0) { setFormError('Isi plafon tahunan lebih dari 0.'); return; }
+    setSubmitting(true);
+    setFormError(null);
     try {
-      setSubmitting(true);
-      setFormError(null);
-
-      const totalVal = parseFloat(formData.total_budget.replace(/[^0-9]/g, '')) || 0;
-      // Split evenly by 12 months as default
-      const monthlySplit = Array.from({ length: 12 }, (_, i) => ({
-        period_month: i + 1,
-        budget_limit: totalVal / 12
-      }));
-
-      const payload = {
+      // Server splits the annual cap into whole-rupiah months (remainder in December).
+      await apiClient.post('/api/marketing/budgets', {
         company_id: parseInt(formData.company_id, 10),
         brand_id: parseInt(formData.brand_id, 10),
         lob_id: parseInt(formData.lob_id, 10),
         fiscal_year: parseInt(formData.fiscal_year, 10),
-        total_budget: totalVal,
-        monthly_limits: monthlySplit
-      };
-
-      await apiClient.post('/api/marketing/budgets', payload);
+        total_budget: createTotal
+      });
       setShowDrawer(false);
-      await handleProses();
+      setFilter({ company_id: formData.company_id, brand_id: formData.brand_id, lob_id: formData.lob_id, fiscal_year: formData.fiscal_year });
+      flash('Budget baru dibuat.');
     } catch (err) {
       setFormError(err.message || 'Gagal membuat anggaran baru.');
     } finally {
@@ -380,735 +258,361 @@ export default function MarketingBudgetPage() {
     }
   };
 
-  // Helpers for calculations respecting activeTab
-  const getFilteredMonthly = () => {
-    if (activeTab === 'Q1') return monthlyData.filter(m => [1, 2, 3].includes(m.month));
-    if (activeTab === 'Q2') return monthlyData.filter(m => [4, 5, 6].includes(m.month));
-    if (activeTab === 'Q3') return monthlyData.filter(m => [7, 8, 9].includes(m.month));
-    if (activeTab === 'Q4') return monthlyData.filter(m => [10, 11, 12].includes(m.month));
-    return monthlyData;
-  };
-
-  const displayedMonthly = getFilteredMonthly();
+  const displayedMonthly = activeTab === 'ALL' ? monthlyData : monthlyData.filter(m => `Q${m.quarter}` === activeTab);
   const currentQuarterConfig = quarterlyData.find(q => `Q${q.quarter}` === activeTab);
+  const totals = displayedMonthly.reduce((acc, m) => ({
+    limit: acc.limit + m.limit,
+    committed: acc.committed + m.committed,
+    actual: acc.actual + (m.actual || 0),
+    available: acc.available + m.available,
+    over: acc.over + (m.over_committed ? 1 : 0),
+  }), { limit: 0, committed: 0, actual: 0, available: 0, over: 0 });
+  const pct = (v) => totals.limit > 0 ? (v / totals.limit) * 100 : 0;
+  const maxBar = Math.max(1, ...displayedMonthly.map(m => Math.max(m.limit, m.committed, m.actual || 0)));
+  const pendingShifts = shifts.filter(s => s.status === 'PENDING').length;
+  const nameOf = (list, id) => list.find(x => String(x.id) === String(id))?.name || '—';
 
-  const totalLimit = displayedMonthly.reduce((sum, m) => sum + m.limit, 0);
-  const totalCommitted = displayedMonthly.reduce((sum, m) => sum + m.committed, 0);
-  const totalRealized = displayedMonthly.reduce((sum, m) => sum + (m.actual || 0), 0);
-  const totalAvailable = displayedMonthly.reduce((sum, m) => sum + m.available, 0);
+  const summaryCards = [
+    { label: 'Plafon (limit)', help: 'Total batas belanja marketing untuk periode terpilih (12 bulan atau kuartal aktif) pada PT, brand, dan LOB ini. Ditetapkan Finance dan menjadi batas tertinggi komitmen biaya.', value: totals.limit, sub: activeTab === 'ALL' ? '12 bulan' : activeTab, icon: Coins, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+    { label: 'Committed (plan)', help: 'Jumlah anggaran item Marketing Plan berstatus Menunggu, Disetujui, atau Selesai di brand & LOB ini. Plan Draft dan Ditolak tidak dihitung.', value: totals.committed, sub: `${pct(totals.committed).toFixed(1)}% dari plafon`, icon: Clock, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
+    { label: 'Realisasi (paid)', help: 'Pengeluaran yang benar-benar sudah dibayar (payment request berstatus Dibayar) dari item plan di brand & LOB ini.', value: totals.actual, sub: `${pct(totals.actual).toFixed(1)}% dari plafon`, icon: TrendingUp, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
+    { label: totals.available < 0 ? 'Over-commit' : 'Sisa kuota', help: 'Plafon dikurangi committed, untuk bulan yang belum tutup buku. Nilai negatif berarti plan yang diajukan melebihi limit (over-commit). Bulan yang sudah tutup buku dihitung 0; sisanya ditahan.', value: totals.available, sub: totals.over ? `${totals.over} bulan melebihi limit` : `${pct(totals.available).toFixed(1)}% bebas`, icon: totals.available < 0 ? AlertTriangle : HandCoins, tone: totals.available < 0 ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
+  ];
 
-  const pctOfLimit = (val) => totalLimit > 0 ? `${((val / totalLimit) * 100).toFixed(1)}% dari plafon` : '';
-
-  const getMonthName = (num) => {
-    const names = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    return names[num - 1] || '';
-  };
-
-  const formatRupiah = (num) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(num);
-  };
+  const btn = 'inline-flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer';
+  const fieldClass = 'h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
+  const label = 'mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400';
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-40 gap-3">
-        <Loader2 className="w-9 h-9 animate-spin text-blue-600" />
-        <p className="text-xs text-neutral-400 dark:text-neutral-500 font-bold">{t('marketing_budget_loading')}</p>
-      </div>
-    );
+    return <div className="flex items-center justify-center gap-2 py-40 text-xs text-slate-400"><Loader2 className="h-6 w-6 animate-spin text-blue-500" />{t('marketing_budget_loading')}</div>;
   }
 
   return (
-    <div className="space-y-6">
-      {/* ── Header Section ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-              <Wallet className="w-4 h-4" />
-            </div>
-            <h1 className="text-lg font-black text-neutral-900 dark:text-white tracking-tight">
-              {t('marketing_budget_title')}
-            </h1>
+    <div className="space-y-6 pb-24">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 to-blue-950 px-5 py-6 text-white sm:px-7">
+        <motion.div aria-hidden="true" animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: 'linear' }} className="absolute -right-12 -top-24 h-64 w-64 rounded-full border-[36px] border-dashed border-white/[0.04]" />
+        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300"><Wallet className="h-4 w-4" />Marketing budget control</p>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('marketing_budget_title')}</h1>
+            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Plafon bulanan per PT, brand, dan LOB: yang sudah ter-commit plan, yang sudah dibayar, dan sisa kuota.</p>
             {activeBudget && (
-              <span className={`ml-2 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider flex items-center gap-1 ${activeBudget.is_locked ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                {activeBudget.is_locked ? (
-                  <>
-                    <Lock className="w-2.5 h-2.5" />
-                    {t('marketing_budget_locked')}
-                  </>
-                ) : (
-                  <>
-                    <Unlock className="w-2.5 h-2.5" />
-                    {t('marketing_budget_unlocked')}
-                  </>
-                )}
-              </span>
-            )}
-            {activeBudget && (
-              <span
-                title={isValidated ? `Divalidasi ${activeBudget.validated_by || 'Finance'}${activeBudget.validated_at ? ` pada ${new Date(activeBudget.validated_at).toLocaleDateString('id-ID')}` : ''}${activeBudget.validation_note ? ` — ${activeBudget.validation_note}` : ''}` : 'Cap tahunan belum divalidasi Finance'}
-                className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider flex items-center gap-1 ${isValidated ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}
-              >
-                <ShieldCheck className="w-2.5 h-2.5" />
-                {isValidated ? 'VALIDATED BY FINANCE' : 'BELUM DIVALIDASI FINANCE'}
-              </span>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${activeBudget.is_locked ? 'bg-rose-500/20 text-rose-200' : 'bg-white/10 text-slate-200'}`}>{activeBudget.is_locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}{activeBudget.is_locked ? t('marketing_budget_locked') : t('marketing_budget_unlocked')}</span>
+                <span title={isValidated ? `Divalidasi ${activeBudget.validated_by || 'Finance'} ${fmtDate(activeBudget.validated_at)}${activeBudget.validation_note ? ` — ${activeBudget.validation_note}` : ''}` : 'Belum divalidasi Finance'} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${isValidated ? 'bg-emerald-500/20 text-emerald-200' : 'bg-amber-500/20 text-amber-200'}`}><ShieldCheck className="h-3 w-3" />{isValidated ? 'Validated by Finance' : 'Belum divalidasi Finance'}</span>
+              </div>
             )}
           </div>
-          <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-            Pantau limit alokasi pengeluaran, realisasi rencana kampanye, dan sisa kuota bulanan.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {activeBudget ? (
-            <>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => setShowShiftHistoryModal(true)}
-                title="Buka riwayat pergeseran anggaran antar-bulan, alur persetujuan berjenjang, dan audit trail"
-                className="relative flex items-center justify-center p-2.5 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-all cursor-pointer"
-              >
-                <History className="w-4 h-4" />
-                {shifts.length > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center text-[9px] font-extrabold rounded-full bg-blue-600 text-white">
-                    {shifts.length}
-                  </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {activeBudget ? (
+              <>
+                <button type="button" onClick={() => setShowShiftHistoryModal(true)} title="Riwayat pergeseran anggaran" className={`${btn} relative border border-white/20 bg-white/5 text-white hover:bg-white/10`}>
+                  <History className="h-3.5 w-3.5" />Riwayat
+                  {shifts.length > 0 && <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold ${pendingShifts ? 'bg-amber-400 text-slate-900' : 'bg-white/20'}`}>{pendingShifts || shifts.length}</span>}
+                </button>
+                {!isValidated && isFinanceRole && (
+                  <button type="button" onClick={handleValidate} disabled={processing || isDirty} title={isDirty ? 'Simpan perubahan limit dulu' : 'Validasi cap tahunan & alokasi bulanan'} className={`${btn} border border-emerald-300/30 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25`}><ShieldCheck className="h-3.5 w-3.5" />Validasi Finance</button>
                 )}
-              </motion.button>
-
-              {!isValidated && isFinanceRole && (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleValidate}
-                  title="Finance memvalidasi cap tahunan & alokasi bulanan. Budget baru bisa dikunci setelah divalidasi."
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 transition-all cursor-pointer"
-                >
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Validasi Finance
-                </motion.button>
-              )}
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleToggleLock}
-                disabled={!activeBudget.is_locked && !isValidated}
-                title={activeBudget.is_locked ? 'Buka kunci untuk mengizinkan perubahan limit alokasi bulanan' : !isValidated ? 'Budget harus divalidasi Finance dulu sebelum dikunci' : 'Kunci anggaran untuk melindungi limit alokasi dari perubahan tidak sah'}
-                className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${activeBudget.is_locked ? 'border-emerald-200 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10' : 'border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10'}`}
-              >
-                {activeBudget.is_locked ? (
-                  <>
-                    <Unlock className="w-3.5 h-3.5" />
-                    Buka Kunci
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-3.5 h-3.5" />
-                    Kunci Budget
-                  </>
+                {isFinanceRole && (
+                  <button type="button" onClick={handleToggleLock} disabled={processing || isDirty || (!activeBudget.is_locked && !isValidated)} title={activeBudget.is_locked ? 'Buka kunci untuk mengubah limit' : !isValidated ? 'Validasi Finance dulu sebelum dikunci' : 'Kunci limit dari perubahan'} className={`${btn} border border-white/20 bg-white/5 text-white hover:bg-white/10`}>
+                    {activeBudget.is_locked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}{activeBudget.is_locked ? 'Buka kunci' : 'Kunci budget'}
+                  </button>
                 )}
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowShiftDrawer(true)}
-                disabled={activeBudget?.is_locked}
-                title="Ajukan relokasi kuota anggaran antar-bulan (Intra-Kuartal: FC | Cross-Kuartal: Head of Marketing + FC)"
-                className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer"
-              >
-                <ArrowRightLeft className="w-3.5 h-3.5" />
-                Ajukan Pergeseran
-              </motion.button>
-            </>
-          ) : (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleOpenCreate}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/15 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              Inisialisasi Budget Baru
-            </motion.button>
-          )}
+                <button type="button" onClick={() => setShowShiftDrawer(true)} disabled={activeBudget.is_locked || isDirty} title={activeBudget.is_locked ? 'Budget terkunci' : 'Ajukan relokasi antar-bulan (intra-kuartal: FC · lintas kuartal: Marketing Manager + FC)'} className={`${btn} bg-white text-slate-900 hover:bg-blue-50`}><ArrowRightLeft className="h-3.5 w-3.5" />Ajukan pergeseran</button>
+              </>
+            ) : isFinanceRole && (
+              <button type="button" onClick={handleOpenCreate} className={`${btn} bg-white text-slate-900 hover:bg-blue-50`}><Plus className="h-3.5 w-3.5" />Inisialisasi budget</button>
+            )}
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* ── Filter Bar ── */}
-      <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl p-4 flex flex-wrap gap-4 items-center shadow-sm">
-        <div className="space-y-1 w-full sm:w-48">
-          <label className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">Company</label>
-          <SearchableSelect
-            value={filter.company_id}
-            onChange={(val) => setFilter(prev => ({ ...prev, company_id: val }))}
-            options={metadata.companies}
-            placeholder="Pilih Company..."
-            searchPlaceholder="Cari PT..."
-          />
+      {/* Filters */}
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_auto_auto]">
+          <div><span className={label}>Company</span><SearchableSelect value={filter.company_id} onChange={changeCompany} options={metadata.companies} placeholder="Pilih company..." searchPlaceholder="Cari PT..." /></div>
+          <div><span className={label}>Brand</span><SearchableSelect value={filter.brand_id} onChange={val => changeCombo('brand_id', val)} options={brandsForCompany} placeholder="Pilih brand..." searchPlaceholder="Cari brand..." /></div>
+          <div><span className={label}>Line of business</span><SearchableSelect value={filter.lob_id} onChange={val => changeCombo('lob_id', val)} options={metadata.lobs} placeholder="Pilih LOB..." searchPlaceholder="Cari LOB..." /></div>
+          <div><span className={label}>Fiscal year</span><select value={filter.fiscal_year} onChange={e => { comboPickedRef.current = false; setFilter(prev => ({ ...prev, fiscal_year: e.target.value })); }} className={`${fieldClass} w-full`}>{FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>FY {y}</option>)}</select></div>
+          <div className="flex items-end"><button type="button" onClick={loadBudget} disabled={processing} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"><RefreshCw className={`h-3.5 w-3.5 ${processing ? 'animate-spin' : ''}`} />Muat ulang</button></div>
         </div>
-
-        <div className="space-y-1 w-full sm:w-44">
-          <label className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">Brand</label>
-          <SearchableSelect
-            value={filter.brand_id}
-            onChange={(val) => setFilter(prev => ({ ...prev, brand_id: val }))}
-            options={metadata.brands}
-            placeholder="Pilih Brand..."
-            searchPlaceholder="Cari Brand..."
-          />
-        </div>
-
-        <div className="space-y-1 w-full sm:w-44">
-          <label className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">Line of Business</label>
-          <SearchableSelect
-            value={filter.lob_id}
-            onChange={(val) => setFilter(prev => ({ ...prev, lob_id: val }))}
-            options={metadata.lobs}
-            placeholder="Pilih LOB..."
-            searchPlaceholder="Cari LOB..."
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">Fiscal Year</label>
-          <select
-            value={filter.fiscal_year}
-            onChange={(e) => setFilter(prev => ({ ...prev, fiscal_year: e.target.value }))}
-            className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            {FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-
-        <button
-          onClick={handleProses}
-          disabled={processing}
-          className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-        >
-          {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-          Proses Data
-        </button>
-      </div>
-
-      {/* ── Quarterly Horizon Tabs & Planning Deadlines (COO Policy) ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-neutral-200/70 dark:border-neutral-800 pb-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-          {[
-            { key: 'ALL', label: 'Semua Bulan (Full Year)' },
-            { key: 'Q1', label: 'Q1 (Jan - Mar)' },
-            { key: 'Q2', label: 'Q2 (Apr - Jun)' },
-            { key: 'Q3', label: 'Q3 (Jul - Sep)' },
-            { key: 'Q4', label: 'Q4 (Okt - Des)' },
-          ].map((tab) => {
-            const isActive = activeTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
-                    : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200/70 dark:border-white/[0.06]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Advance Planning Deadline Status */}
-        {activeTab !== 'ALL' && currentQuarterConfig && (
-          <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border ${
-            currentQuarterConfig.is_deadline_passed
-              ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-300'
-              : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300'
-          }`}>
-            <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span>
-              Batas Pengajuan ({activeTab}): <strong className="font-semibold">{currentQuarterConfig.deadline}</strong>
-              {currentQuarterConfig.is_deadline_passed ? ' (Lewat Batas H-3)' : ' (Sesuai Jadwal Horizon H-3)'}
-            </span>
+        {companyBudgets.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3 dark:border-slate-800">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Budget terdaftar FY {filter.fiscal_year}:</span>
+            {companyBudgets.map(b => {
+              const active = String(b.brand_id) === filter.brand_id && String(b.lob_id) === filter.lob_id;
+              return (
+                <button key={b.id} type="button" onClick={() => { comboPickedRef.current = true; setFilter(prev => ({ ...prev, brand_id: String(b.brand_id), lob_id: String(b.lob_id) })); }} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer ${active ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300' : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'}`}>
+                  {b.is_locked && <Lock className="h-3 w-3" />}{b.brand?.name || '—'} · {b.lob?.name || '—'}<span className="text-slate-400">{shortRupiah(Number(b.total_budget))}</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* ── Summary Stats Cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Plafon Master (Limit)"
-          value={formatRupiah(totalLimit)}
-          icon={Coins}
-          color="blue"
-          delay={0.05}
-          tooltip="Total plafon alokasi anggaran maksimal yang ditetapkan untuk periode terpilih (12 bulan penuh atau kuartal aktif). Menjadi batas tertinggi komitmen biaya marketing."
-        />
-        <StatCard
-          label="Committed (Plan)"
-          value={formatRupiah(totalCommitted)}
-          sub={pctOfLimit(totalCommitted)}
-          icon={Clock}
-          color="amber"
-          delay={0.1}
-          tooltip="Akumulasi anggaran yang telah dialokasikan/diajukan oleh proposal Marketing Plans (status Menunggu, Disetujui, maupun Selesai) pada periode ini."
-        />
-        <StatCard
-          label="Realisasi (Actual)"
-          value={formatRupiah(totalRealized)}
-          sub={pctOfLimit(totalRealized)}
-          icon={TrendingUp}
-          color="rose"
-          delay={0.15}
-          tooltip="Total pengeluaran riil aktual yang telah dicatatkan/terbayarkan dari pelaksanaan kampanye marketing yang sedang atau telah selesai berjalan."
-        />
-        <StatCard
-          label="Sisa Kuota (Available)"
-          value={formatRupiah(totalAvailable)}
-          sub={pctOfLimit(totalAvailable)}
-          icon={Sparkles}
-          color="emerald"
-          delay={0.2}
-          tooltip="Sisa plafon anggaran yang masih bebas dan dapat digunakan untuk proposal kampanye baru. Pada bulan yang telah ditutup bukunya, sisa dialihkan ke holding pool."
-        />
-      </div>
+      <AnimatePresence>
+        {notice && <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle2 className="h-4 w-4" />{notice}</motion.div>}
+      </AnimatePresence>
+      {error && <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />{error}</span><button type="button" aria-label="Tutup" onClick={() => setError(null)} className="cursor-pointer"><X className="h-3.5 w-3.5" /></button></div>}
 
-      {/* ── Interactive Monthly Allocation Table ── */}
-      <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-neutral-100 dark:border-neutral-900 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-blue-500" />
-            <h3 className="text-xs font-bold text-neutral-900 dark:text-white">
-              Alokasi Bulanan
-            </h3>
-            <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold">
-              {activeTab === 'ALL' ? '12 Bulan' : `${activeTab}`}
-            </span>
-          </div>
-          {activeBudget && !activeBudget.is_locked && (
-            <button
-              type="button"
-              onClick={handleSaveLimits}
-              disabled={processing}
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-extrabold transition-all cursor-pointer shadow-sm shadow-blue-500/10"
-            >
-              {processing ? 'Menyimpan...' : 'Simpan Limit Anggaran'}
-            </button>
-          )}
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider text-[11px]">
-                <th className="px-5 py-3.5">
-                  <span className="inline-flex items-center">
-                    Bulan
-                    <InfoTooltip content="Bulan dalam periode fiskal dan pengelompokan kuartal (Q1–Q4) terkait." position="bottom" />
-                  </span>
-                </th>
-                <th className="px-5 py-3.5">
-                  <span className="inline-flex items-center">
-                    Status Buku
-                    <InfoTooltip content="Status pembukuan bulan. 'Tutup Buku' mengunci alokasi dan menahan sisa anggaran di holding pool (tidak otomatis rollover per aturan COO)." position="bottom" />
-                  </span>
-                </th>
-                <th className="px-5 py-3.5 text-right">
-                  <span className="inline-flex items-center justify-end">
-                    Limit Anggaran
-                    <InfoTooltip content="Plafon maksimal alokasi belanja untuk bulan bersangkutan. Dapat disunting jika status master budget belum terkunci." position="bottom" />
-                  </span>
-                </th>
-                <th className="px-5 py-3.5 text-right">
-                  <span className="inline-flex items-center justify-end">
-                    Committed
-                    <InfoTooltip content="Akumulasi anggaran dari rencana kampanye (Marketing Plans) yang aktif pada bulan ini." position="bottom" />
-                  </span>
-                </th>
-                <th className="px-5 py-3.5 text-right">
-                  <span className="inline-flex items-center justify-end">
-                    Realisasi
-                    <InfoTooltip content="Pengeluaran riil aktual yang sudah dibayarkan/dieksekusi pada bulan ini." position="bottom" />
-                  </span>
-                </th>
-                <th className="px-5 py-3.5 text-right">
-                  <span className="inline-flex items-center justify-end">
-                    Sisa Kuota
-                    <InfoTooltip content="Kapasitas sisa pagu belanja (Limit - Committed). Pada bulan yang ditutup buku, sisa ditahan di pool korporat." position="bottom" />
-                  </span>
-                </th>
-                <th className="px-5 py-3.5">
-                  <span className="inline-flex items-center">
-                    Pemakaian
-                    <InfoTooltip content="Rasio persentase serapan anggaran realisasi terhadap limit pagu bulanan." position="bottom" />
-                  </span>
-                </th>
-                <th className="px-5 py-3.5 text-right">
-                  <span className="inline-flex items-center justify-end">
-                    Aksi
-                    <InfoTooltip content="Aksi manajerial Tutup Buku (membekukan sisa anggaran per aturan COO) atau Buka Buku kembali." position="bottom" />
-                  </span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium text-neutral-700 dark:text-neutral-300">
-              {displayedMonthly.length === 0 ? (
-                <tr>
-                  <td colSpan="8" className="px-6 py-10 text-center text-neutral-400 font-bold">
-                    Belum ada inisialisasi anggaran untuk konfigurasi ini. Klik tombol "Inisialisasi Budget Baru" untuk memulai.
-                  </td>
-                </tr>
-              ) : (
-                displayedMonthly.map((item) => {
-                  const usagePct = item.limit > 0 ? ((item.actual || 0) / item.limit) * 100 : 0;
-                  const barColor = usagePct > 100 ? 'bg-rose-500' : usagePct > 80 ? 'bg-amber-500' : 'bg-emerald-500';
-
-                  return (
-                    <tr key={item.month} className="hover:bg-neutral-500/5 dark:hover:bg-neutral-950/10 transition-colors">
-                      <td className="px-5 py-3.5 font-bold text-neutral-900 dark:text-white">
-                        <div className="flex items-center gap-2">
-                          <span>{getMonthName(item.month)}</span>
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400">
-                            Q{item.quarter}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {item.is_closed ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-200 dark:border-neutral-700 w-fit">
-                              <Lock className="w-2.5 h-2.5" />
-                              Tutup Buku
-                            </span>
-                            {item.closed_at && (
-                              <span className="text-[9px] text-neutral-400 font-medium">
-                                {new Date(item.closed_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/20 w-fit">
-                            <CheckCircle2 className="w-2.5 h-2.5" />
-                            Terbuka
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        {activeBudget?.is_locked || item.is_closed ? (
-                          <span className="font-mono font-bold text-neutral-800 dark:text-white">
-                            {formatRupiah(item.limit)}
-                          </span>
-                        ) : (
-                          <div className="relative max-w-[150px] ml-auto">
-                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">Rp</span>
-                            <input
-                              type="text"
-                              value={item.limit.toLocaleString('id-ID')}
-                              onChange={(e) => handleLimitChange(item.month, e.target.value)}
-                              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-8 pr-2.5 py-1.5 font-mono text-[11px] font-bold text-neutral-800 dark:text-white text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            />
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5 text-right font-mono text-neutral-500 dark:text-neutral-400">
-                        {formatRupiah(item.committed)}
-                      </td>
-                      <td className="px-5 py-3.5 text-right font-mono text-neutral-500 dark:text-neutral-400">
-                        {formatRupiah(item.actual || 0)}
-                      </td>
-                      <td className="px-5 py-3.5 text-right font-mono font-bold">
-                        {item.is_closed ? (
-                          <div className="flex flex-col items-end">
-                            <span className="text-neutral-400 text-xs">Rp 0</span>
-                            {item.unspent > 0 && (
-                              <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">
-                                Ditahan: {formatRupiah(item.unspent)}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className={item.available < 0 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}>
-                            {formatRupiah(item.available)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex flex-col gap-1 items-end min-w-[90px] ml-auto">
-                          <span className={`text-[10px] font-extrabold ${usagePct > 100 ? 'text-rose-500' : usagePct > 80 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                            {usagePct.toFixed(1)}%
-                          </span>
-                          <div className="w-full h-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
-                            <div className={`h-full ${barColor}`} style={{ width: `${Math.min(usagePct, 100)}%` }} />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        {activeBudget && !activeBudget.is_locked ? (
-                          item.is_closed ? (
-                            <button
-                              type="button"
-                              onClick={() => handleReopenMonth(item.month)}
-                              disabled={processing}
-                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
-                              title="Buka kembali pembukuan bulan ini"
-                            >
-                              <Unlock className="w-3 h-3" />
-                              Buka
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleCloseMonth(item.month)}
-                              disabled={processing}
-                              className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-neutral-100 hover:bg-rose-50 hover:text-rose-600 dark:bg-neutral-800 dark:hover:bg-rose-500/10 text-neutral-600 dark:text-neutral-300 dark:hover:text-rose-400 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1"
-                              title="Tutup buku bulan ini per kebijakan COO"
-                            >
-                              <Lock className="w-3 h-3" />
-                              Tutup
-                            </button>
-                          )
-                        ) : (
-                          <span className="text-[10px] text-neutral-400">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Related Marketing Plans ── */}
-      {relatedPlans.length > 0 && (
-        <div className="bg-white dark:bg-neutral-900/40 border border-neutral-200/60 dark:border-white/[0.06] rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-4 border-b border-neutral-100 dark:border-neutral-900 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-blue-500" />
-              <h3 className="text-xs font-bold text-neutral-900 dark:text-white">
-                Marketing Plans Terkait
-              </h3>
-              <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-extrabold">
-                {relatedPlans.length} rencana
-              </span>
+      {!activeBudget && !processing ? (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+          <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800"><Wallet className="h-5 w-5" /></span>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Belum ada budget untuk kombinasi ini</h3>
+          <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-400">{nameOf(metadata.companies, filter.company_id)} · {nameOf(metadata.brands, filter.brand_id)} · {nameOf(metadata.lobs, filter.lob_id)} · FY {filter.fiscal_year}. {isFinanceRole ? 'Inisialisasi plafon tahunan untuk memulai.' : 'Hubungi Finance untuk menginisialisasi plafon.'}</p>
+          {isFinanceRole && <button type="button" onClick={handleOpenCreate} className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer"><Plus className="h-3.5 w-3.5" />Inisialisasi budget</button>}
+        </motion.div>
+      ) : (
+        <>
+          {/* Period tabs */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
+              {PERIOD_TABS.map(([key, text]) => (
+                <button key={key} type="button" aria-pressed={activeTab === key} onClick={() => setActiveTab(key)} className={`relative rounded-md px-3 py-1.5 text-[11px] font-medium transition-colors cursor-pointer ${activeTab === key ? 'text-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}>
+                  {activeTab === key && <motion.span layoutId="budget-period-tab" transition={{ type: 'spring', stiffness: 500, damping: 35 }} className="absolute inset-0 rounded-md bg-slate-900 dark:bg-white" />}
+                  <span className="relative">{text}</span>
+                </button>
+              ))}
             </div>
-            <p className="text-[10px] text-neutral-400 dark:text-neutral-500">Kampanye yang menggunakan alokasi anggaran ini</p>
+            {activeTab !== 'ALL' && currentQuarterConfig && (
+              <span className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[11px] ${currentQuarterConfig.is_deadline_passed ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300' : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300'}`}>
+                <Calendar className="h-3.5 w-3.5" />Batas pengajuan {activeTab}: <strong className="font-semibold">{currentQuarterConfig.deadline}</strong>{currentQuarterConfig.is_deadline_passed ? ' · lewat H-3' : ' · sesuai jadwal H-3'}
+              </span>
+            )}
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200/60 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
-                  <th className="px-5 py-3.5">#</th>
-                  <th className="px-5 py-3.5">Judul Rencana</th>
-                  <th className="px-5 py-3.5">Status</th>
-                  <th className="px-5 py-3.5 text-right">Total Budget</th>
-                  <th className="px-5 py-3.5">Periode</th>
-                  <th className="px-5 py-3.5">Dibuat Oleh</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium text-neutral-700 dark:text-neutral-300">
-                {relatedPlans.map((plan) => {
-                  const statusColors = {
-                    DRAFT: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500',
-                    PENDING_APPROVAL: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-                    APPROVED: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-                    REJECTED: 'bg-rose-500/10 text-rose-500',
-                    COMPLETED: 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                  };
-                  const statusLabels = {
-                    DRAFT: 'Draft',
-                    PENDING_APPROVAL: 'Menunggu',
-                    APPROVED: 'Disetujui',
-                    REJECTED: 'Ditolak',
-                    COMPLETED: 'Selesai'
-                  };
-                  const fmtDate = (d) => {
-                    if (!d) return '—';
-                    return new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                  };
 
-                  return (
-                    <tr key={plan.id} className="hover:bg-neutral-500/5 dark:hover:bg-neutral-950/10 transition-colors">
-                      <td className="px-5 py-3.5 text-neutral-400 font-mono font-bold">#{plan.id}</td>
-                      <td className="px-5 py-3.5 font-semibold text-neutral-900 dark:text-white max-w-[240px] truncate">{plan.title}</td>
-                      <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wide ${statusColors[plan.status] || statusColors.DRAFT}`}>
-                          {statusLabels[plan.status] || plan.status}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-right font-mono font-bold text-neutral-900 dark:text-white">{formatRupiah(plan.total_budget)}</td>
-                      <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
-                        {fmtDate(plan.start_date)} – {fmtDate(plan.end_date)}
-                      </td>
-                      <td className="px-5 py-3.5 text-neutral-500 dark:text-neutral-400">{plan.creator?.name || '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          {/* Summary */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {summaryCards.map(({ label: name, help, value, sub, icon: Icon, tone }, i) => (
+              <motion.div key={name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 * i, duration: 0.3 }} whileHover={{ y: -2 }} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="h-4 w-4" /></span>
+                <div className="min-w-0">
+                  <div className="-my-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400"><InlineHelp summary={name} label={`Penjelasan ${name}`}><span className="normal-case tracking-normal">{help}</span></InlineHelp></div>
+                  <p className={`mt-0.5 truncate text-base font-semibold tabular-nums ${value < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-100'}`}><CountUp value={value} /></p>
+                  <p className="truncate text-[10px] text-slate-400">{sub}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
-        </div>
+
+          {/* Utilization + chart */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="mb-2 flex items-center justify-between text-[11px]">
+              <span className="font-semibold uppercase tracking-wider text-slate-400"><InlineHelp summary="Pemakaian plafon" label="Penjelasan pemakaian plafon"><span className="normal-case tracking-normal">Bar kuning = porsi plafon yang sudah ter-commit plan. Bar biru = porsi yang sudah dibayar. Merah berarti committed melebihi plafon. Grafik di bawah membandingkan limit (garis putus-putus), committed, dan dibayar per bulan.</span></InlineHelp></span>
+              <span className="tabular-nums text-slate-500">{pct(totals.committed).toFixed(1)}% committed · {pct(totals.actual).toFixed(1)}% dibayar</span>
+            </div>
+            <div className="relative h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, pct(totals.committed))}%` }} transition={{ duration: 0.9, ease: 'easeOut' }} className={`absolute inset-y-0 left-0 rounded-full ${totals.committed > totals.limit ? 'bg-rose-400' : 'bg-amber-300 dark:bg-amber-400/70'}`} />
+              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, pct(totals.actual))}%` }} transition={{ duration: 0.9, delay: 0.15, ease: 'easeOut' }} className="absolute inset-y-0 left-0 rounded-full bg-blue-600" />
+            </div>
+
+            <div className="mt-5 grid items-end gap-1.5 sm:gap-2" style={{ gridTemplateColumns: `repeat(${displayedMonthly.length || 1}, minmax(0, 1fr))` }}>
+              {displayedMonthly.map((m, i) => {
+                const h = (v) => `${Math.max(v ? 3 : 0, (v / maxBar) * 100)}%`;
+                return (
+                  <div key={m.month} title={`${MONTH_NAMES[m.month - 1]} · limit ${formatRupiah(m.limit)} · committed ${formatRupiah(m.committed)} · dibayar ${formatRupiah(m.actual)}`} className="flex flex-col items-center gap-1.5">
+                    <span className={`text-[10px] font-semibold tabular-nums ${m.over_committed ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'}`}>{shortRupiah(m.available)}</span>
+                    <div className="relative flex h-32 w-full items-end justify-center rounded-md bg-slate-50 dark:bg-slate-800/50">
+                      <motion.div initial={{ height: 0 }} animate={{ height: h(m.limit) }} transition={{ delay: i * 0.03, duration: 0.5 }} className="absolute bottom-0 w-full rounded-md border border-dashed border-slate-300 dark:border-slate-600" />
+                      <motion.div initial={{ height: 0 }} animate={{ height: h(m.committed) }} transition={{ delay: 0.1 + i * 0.03, duration: 0.5 }} className={`absolute bottom-0 w-3/5 rounded-t-md ${m.over_committed ? 'bg-rose-400' : 'bg-amber-300 dark:bg-amber-400/70'}`} />
+                      <motion.div initial={{ height: 0 }} animate={{ height: h(m.actual || 0) }} transition={{ delay: 0.2 + i * 0.03, duration: 0.5 }} className="absolute bottom-0 w-2/5 rounded-t-md bg-blue-600" />
+                      {m.is_closed && <Lock className="absolute top-1.5 h-3 w-3 text-slate-400" />}
+                    </div>
+                    <span className="text-[10px] text-slate-400">{MONTH_SHORT[m.month - 1]}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-[10px] text-slate-400">
+              <span className="flex items-center gap-1.5"><span className="h-2 w-3 rounded-sm border border-dashed border-slate-400" />Limit</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-amber-300" />Committed</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-blue-600" />Dibayar</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-rose-400" />Over-commit</span>
+              <span className="ml-auto">Angka di atas batang = sisa kuota</span>
+            </div>
+          </div>
+
+          {/* Monthly table */}
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">Alokasi bulanan <span className="ml-1 font-normal text-slate-400">{activeTab === 'ALL' ? '12 bulan' : activeTab}</span></p>
+              {!canEditLimits && activeBudget && <span className="text-[10px] text-slate-400">{activeBudget.is_locked ? 'Budget terkunci — limit tidak bisa diubah' : 'Hanya Finance/Admin yang bisa mengubah limit'}</span>}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[960px] table-fixed text-left text-xs">
+                <thead className="border-b border-slate-100 bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-950/40">
+                  <tr>
+                    <th className="w-[15%] px-4 py-2.5 font-semibold"><InlineHelp summary="Bulan" label="Penjelasan Bulan"><span className="normal-case tracking-normal">Bulan fiskal dan kuartalnya. Keterangan kuning menunjukkan pergeseran anggaran yang masih menunggu approval.</span></InlineHelp></th>
+                    <th className="w-[17%] px-3 py-2.5 text-right font-semibold"><InlineHelp summary="Limit" label="Penjelasan Limit"><span className="normal-case tracking-normal">Plafon belanja bulan ini. Bisa diubah Finance/Admin selama budget tidak dikunci dan bulan belum tutup buku. Perubahan perlu disimpan lewat bar di bawah layar.</span></InlineHelp></th>
+                    <th className="w-[13%] px-3 py-2.5 text-right font-semibold"><InlineHelp summary="Committed" label="Penjelasan Committed"><span className="normal-case tracking-normal">Total anggaran item plan (Menunggu, Disetujui, Selesai) yang jatuh di bulan ini.</span></InlineHelp></th>
+                    <th className="w-[13%] px-3 py-2.5 text-right font-semibold"><InlineHelp summary="Dibayar" label="Penjelasan Dibayar"><span className="normal-case tracking-normal">Realisasi pembayaran yang sudah tercatat Dibayar untuk item plan di bulan ini.</span></InlineHelp></th>
+                    <th className="w-[14%] px-3 py-2.5 text-right font-semibold"><InlineHelp summary="Sisa kuota" label="Penjelasan Sisa kuota"><span className="normal-case tracking-normal">Limit dikurangi committed. Merah = over-commit. Setelah tutup buku sisa menjadi 0 dan nilainya ditahan (tidak dipindah otomatis ke bulan berikutnya).</span></InlineHelp></th>
+                    <th className="w-[15%] px-3 py-2.5 font-semibold"><InlineHelp summary="Pemakaian" label="Penjelasan Pemakaian"><span className="normal-case tracking-normal">Persentase committed terhadap limit. Bar biru di dalamnya menunjukkan porsi yang sudah dibayar.</span></InlineHelp></th>
+                    <th className="w-[13%] px-3 py-2.5 text-right font-semibold"><InlineHelp summary="Tutup buku" label="Penjelasan Tutup buku"><span className="normal-case tracking-normal">Finance/Admin dapat menutup buku setelah bulan berakhir. Bulan yang ditutup tidak bisa diubah limitnya atau menerima pergeseran.</span></InlineHelp></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                  {displayedMonthly.map((m, i) => {
+                    const usage = m.limit > 0 ? (m.committed / m.limit) * 100 : (m.committed > 0 ? 100 : 0);
+                    const paidPct = m.limit > 0 ? ((m.actual || 0) / m.limit) * 100 : 0;
+                    const dirty = dirtyMonths.includes(m.month);
+                    const ended = monthHasEnded(filter.fiscal_year, m.month);
+                    return (
+                      <motion.tr key={m.month} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }} className={`transition-colors ${dirty ? 'bg-blue-50/50 dark:bg-blue-500/5' : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'}`}>
+                        <td className="px-4 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-slate-800 dark:text-slate-200">{MONTH_NAMES[m.month - 1]}</span>
+                            <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">Q{m.quarter}</span>
+                          </div>
+                          {(m.pending_shift_in > 0 || m.pending_shift_out > 0) && (
+                            <p className="mt-0.5 text-[10px] text-amber-600 dark:text-amber-400">Shift menunggu: {m.pending_shift_in > 0 && `+${shortRupiah(m.pending_shift_in)}`}{m.pending_shift_in > 0 && m.pending_shift_out > 0 && ' / '}{m.pending_shift_out > 0 && `-${shortRupiah(m.pending_shift_out)}`}</p>
+                          )}
+                        </td>
+                        <td className="px-3 py-1.5 text-right">
+                          {canEditLimits && !m.is_closed ? (
+                            <div className="relative ml-auto max-w-[160px]">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">Rp</span>
+                              <input aria-label={`Limit ${MONTH_NAMES[m.month - 1]}`} inputMode="numeric" value={m.limit.toLocaleString('id-ID')} onChange={e => handleLimitChange(m.month, e.target.value)} className={`h-8 w-full rounded-lg border bg-slate-50 pl-7 pr-2.5 text-right text-[11px] font-medium tabular-nums text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:bg-slate-950 dark:text-slate-100 ${dirty ? 'border-blue-400 dark:border-blue-500' : 'border-slate-200 dark:border-slate-700'}`} />
+                            </div>
+                          ) : <span className="font-medium tabular-nums text-slate-800 dark:text-slate-100">{formatRupiah(m.limit)}</span>}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">{formatRupiah(m.committed)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-slate-500 dark:text-slate-400">{formatRupiah(m.actual || 0)}</td>
+                        <td className="px-3 py-2 text-right">
+                          {m.is_closed ? (
+                            <>
+                              <span className="tabular-nums text-slate-400">Rp 0</span>
+                              {m.unspent > 0 && <p className="text-[10px] text-amber-600 dark:text-amber-400">Ditahan {formatRupiah(m.unspent)}</p>}
+                            </>
+                          ) : (
+                            <>
+                              <span className={`font-medium tabular-nums ${m.over_committed ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatRupiah(m.available)}</span>
+                              {m.over_committed && <p className="text-[10px] text-rose-500">Over-commit</p>}
+                            </>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, usage)}%` }} transition={{ duration: 0.6 }} className={`absolute inset-y-0 left-0 rounded-full ${usage > 100 ? 'bg-rose-400' : 'bg-amber-300 dark:bg-amber-400/70'}`} />
+                              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, paidPct)}%` }} transition={{ duration: 0.6, delay: 0.1 }} className="absolute inset-y-0 left-0 rounded-full bg-blue-600" />
+                            </div>
+                            <span className={`w-11 text-right text-[10px] font-semibold tabular-nums ${usage > 100 ? 'text-rose-600 dark:text-rose-400' : usage > 80 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500'}`}>{usage.toFixed(0)}%</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-1.5 text-right">
+                          {m.is_closed ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span title={m.closed_at ? `Ditutup ${fmtDate(m.closed_at)}${m.closed_by ? ` oleh ${m.closed_by}` : ''}` : ''} className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"><Lock className="h-2.5 w-2.5" />Tutup</span>
+                              {isFinanceRole && <button type="button" onClick={() => handleReopenMonth(m.month)} disabled={processing} className="rounded-md px-1.5 py-1 text-[10px] font-medium text-amber-600 hover:bg-amber-50 disabled:opacity-50 dark:text-amber-400 dark:hover:bg-amber-500/10 cursor-pointer">Buka</button>}
+                            </div>
+                          ) : isFinanceRole ? (
+                            <button type="button" onClick={() => handleCloseMonth(m.month)} disabled={processing || !ended || dirty} title={!ended ? 'Bulan belum berakhir' : dirty ? 'Simpan perubahan limit dulu' : 'Tutup buku bulan ini'} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-35 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-500/10 cursor-pointer"><Lock className="h-2.5 w-2.5" />Tutup buku</button>
+                          ) : <span className="text-[10px] text-slate-400">Terbuka</span>}
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Related plans */}
+          {relatedPlans.length > 0 && (
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+                <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">Marketing plan terkait <span className="ml-1 font-normal text-slate-400">{relatedPlans.length} plan</span></p>
+                <span className="text-[10px] text-slate-400">Plan dengan item di brand & LOB ini</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] table-fixed text-left text-xs">
+                  <thead className="border-b border-slate-100 bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-950/40">
+                    <tr><th className="w-[38%] px-4 py-2.5 font-semibold">Plan</th><th className="w-[12%] px-3 py-2.5 font-semibold">Status</th><th className="w-[16%] px-3 py-2.5 text-right font-semibold">Total budget</th><th className="w-[20%] px-3 py-2.5 font-semibold">Periode</th><th className="px-3 py-2.5 font-semibold">Dibuat oleh</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                    {relatedPlans.map(plan => {
+                      const [statusText, statusCls] = PLAN_STATUS[plan.status] || PLAN_STATUS.DRAFT;
+                      return (
+                        <tr key={plan.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
+                          <td className="px-4 py-2"><p className="text-[10px] text-slate-400">#{plan.id}</p><p title={plan.title} className="truncate font-medium text-slate-800 dark:text-slate-200">{plan.title}</p></td>
+                          <td className="px-3 py-2"><span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${statusCls}`}><span className="h-1 w-1 rounded-full bg-current" />{statusText}</span></td>
+                          <td className="px-3 py-2 text-right font-medium tabular-nums text-slate-800 dark:text-slate-100">{formatRupiah(plan.total_budget)}</td>
+                          <td className="px-3 py-2 tabular-nums text-slate-500 dark:text-slate-400">{fmtDate(plan.start_date)} – {fmtDate(plan.end_date)}</td>
+                          <td className="truncate px-3 py-2 text-slate-500 dark:text-slate-400">{plan.creator?.name || '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
-      {/* ── Slide-over Drawer (Create Budget Form) ── */}
+      {/* Sticky save bar for unsaved limit edits */}
+      <AnimatePresence>
+        {isDirty && (
+          <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 30 }} className="fixed inset-x-0 bottom-4 z-40 mx-auto flex w-[min(640px,calc(100%-2rem))] items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+            <div className="min-w-0 text-xs">
+              <p className="font-semibold text-slate-800 dark:text-slate-100">{dirtyMonths.length} bulan diubah</p>
+              <p className="truncate text-[10px] text-slate-400">Plafon tahunan baru {formatRupiah(monthlyData.reduce((s, m) => s + m.limit, 0))}{isValidated ? ' · validasi Finance akan direset' : ''}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button type="button" onClick={() => setMonthlyData(serverMonthly)} disabled={processing} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer"><Undo2 className="h-3.5 w-3.5" />Batalkan</button>
+              <button type="button" onClick={handleSaveLimits} disabled={processing} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{processing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}Simpan limit</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create budget drawer */}
       <AnimatePresence>
         {showDrawer && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.4 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowDrawer(false)}
-              className="fixed inset-0 bg-black z-45"
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-white dark:bg-neutral-950 border-l border-neutral-200 dark:border-neutral-800 z-50 shadow-2xl p-6 flex flex-col justify-between"
-            >
-              <div className="space-y-6">
-                <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-4">
-                  <div>
-                    <h3 className="text-sm font-black text-neutral-900 dark:text-white">
-                      Inisialisasi Budget Baru
-                    </h3>
-                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
-                      Tetapkan plafon master tahunan yang akan dibagi rata ke 12 bulan sebagai basis awal.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowDrawer(false)}
-                    className="p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-lg transition-colors cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDrawer(false)} className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[2px]" />
+            <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 260 }} className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+              <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Inisialisasi budget</h3>
+                  <p className="mt-0.5 text-[11px] text-slate-400">Plafon tahunan dibagi rata ke 12 bulan (pembulatan ke Desember). Limit per bulan bisa diubah setelahnya.</p>
                 </div>
-
-                <form onSubmit={handleCreateSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">PT / Company</label>
-                    <SearchableSelect
-                      value={formData.company_id}
-                      onChange={(val) => setFormData(prev => ({ ...prev, company_id: val }))}
-                      options={metadata.companies}
-                      placeholder="Pilih Perusahaan..."
-                      searchPlaceholder="Cari PT..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">Brand</label>
-                    <SearchableSelect
-                      value={formData.brand_id}
-                      onChange={(val) => setFormData(prev => ({ ...prev, brand_id: val }))}
-                      options={metadata.brands}
-                      placeholder="Pilih Brand..."
-                      searchPlaceholder="Cari Brand..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">Line of Business</label>
-                    <SearchableSelect
-                      value={formData.lob_id}
-                      onChange={(val) => setFormData(prev => ({ ...prev, lob_id: val }))}
-                      options={metadata.lobs}
-                      placeholder="Pilih LOB..."
-                      searchPlaceholder="Cari LOB..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">Tahun Fiskal</label>
-                    <select
-                      value={formData.fiscal_year}
-                      onChange={(e) => setFormData(prev => ({ ...prev, fiscal_year: e.target.value }))}
-                      className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white"
-                      required
-                    >
-                      {FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 tracking-wider block">Total Master Plafon Tahun Fiskal *</label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">Rp</span>
-                      <input
-                        type="text"
-                        placeholder="Contoh: 1.000.000.000"
-                        value={formData.total_budget === '0' ? '' : formData.total_budget}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^0-9]/g, '');
-                          setFormData(prev => ({ ...prev, total_budget: val ? parseInt(val, 10).toLocaleString('id-ID') : '0' }));
-                        }}
-                        className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {formError && (
-                    <div className="p-3 bg-rose-500/10 border border-rose-500/25 text-rose-500 rounded-xl text-[10px] font-bold flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      <span>{formError}</span>
-                    </div>
-                  )}
-                </form>
+                <button type="button" aria-label="Tutup" onClick={() => setShowDrawer(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4" /></button>
               </div>
-
-              <div className="border-t border-neutral-100 dark:border-neutral-900 pt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowDrawer(false)}
-                  className="flex-1 px-4 py-2.5 bg-neutral-100 dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 rounded-xl hover:bg-neutral-200 dark:hover:bg-neutral-800 text-xs font-bold transition-all cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreateSubmit}
-                  disabled={submitting}
-                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
-                >
-                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Inisialisasi'}
-                </button>
+              <form onSubmit={handleCreateSubmit} className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+                <div><span className={label}>PT / Company</span><SearchableSelect value={formData.company_id} onChange={val => setFormData(prev => ({ ...prev, company_id: val }))} options={metadata.companies} placeholder="Pilih perusahaan..." searchPlaceholder="Cari PT..." /></div>
+                <div><span className={label}>Brand</span><SearchableSelect value={formData.brand_id} onChange={val => setFormData(prev => ({ ...prev, brand_id: val }))} options={metadata.brands} placeholder="Pilih brand..." searchPlaceholder="Cari brand..." /></div>
+                <div><span className={label}>Line of business</span><SearchableSelect value={formData.lob_id} onChange={val => setFormData(prev => ({ ...prev, lob_id: val }))} options={metadata.lobs} placeholder="Pilih LOB..." searchPlaceholder="Cari LOB..." /></div>
+                <div><span className={label}>Tahun fiskal</span><select value={formData.fiscal_year} onChange={e => setFormData(prev => ({ ...prev, fiscal_year: e.target.value }))} className={`${fieldClass} w-full`}>{FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>FY {y}</option>)}</select></div>
+                <div>
+                  <span className={label}>Plafon tahunan *</span>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">Rp</span>
+                    <input inputMode="numeric" placeholder="1.000.000.000" value={formData.total_budget} onChange={e => { const v = e.target.value.replace(/[^0-9]/g, ''); setFormData(prev => ({ ...prev, total_budget: v ? parseInt(v, 10).toLocaleString('id-ID') : '' })); }} className={`${fieldClass} w-full pl-9`} />
+                  </div>
+                </div>
+                {createTotal > 0 && (
+                  <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                    <p className="font-medium">Pratinjau per bulan</p>
+                    <p className="mt-1 tabular-nums">Jan–Nov: {formatRupiah(Math.floor(createTotal / 12))} · Des: {formatRupiah(createTotal - Math.floor(createTotal / 12) * 11)}</p>
+                  </motion.div>
+                )}
+                {formError && <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="h-4 w-4" />{formError}</div>}
+              </form>
+              <div className="flex gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
+                <button type="button" onClick={() => setShowDrawer(false)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Batal</button>
+                <button type="button" onClick={handleCreateSubmit} disabled={submitting} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Inisialisasi</button>
               </div>
-            </motion.div>
+            </motion.aside>
           </>
         )}
       </AnimatePresence>
 
-      {/* ── Budget Shift Drawer (Intra & Cross-Quarter) ── */}
-      <MarketingBudgetShiftDrawer
-        isOpen={showShiftDrawer}
-        onClose={() => setShowShiftDrawer(false)}
-        activeBudget={activeBudget}
-        monthlyData={monthlyData}
-        onShiftSuccess={handleProses}
-      />
-
-      {/* ── Budget Shift History & Approval Modal ── */}
-      <MarketingBudgetShiftHistoryModal
-        isOpen={showShiftHistoryModal}
-        onClose={() => setShowShiftHistoryModal(false)}
-        shifts={shifts}
-        onDecisionSuccess={handleProses}
-      />
+      <MarketingBudgetShiftDrawer isOpen={showShiftDrawer} onClose={() => setShowShiftDrawer(false)} activeBudget={activeBudget} monthlyData={monthlyData} onShiftSuccess={loadBudget} />
+      <MarketingBudgetShiftHistoryModal isOpen={showShiftHistoryModal} onClose={() => setShowShiftHistoryModal(false)} shifts={shifts} onDecisionSuccess={loadBudget} />
     </div>
   );
 }

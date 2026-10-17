@@ -64,17 +64,17 @@ router.post('/claims', verifyToken, attachCompanyScope, checkRole(['admin', 'mar
 // Payments (Payment Requests)
 router.get('/payments', verifyToken, attachCompanyScope, paymentController.getPayments);
 router.get('/payments/:id', verifyToken, attachCompanyScope, paymentController.getPaymentDetail);
-router.post('/payments', verifyToken, checkRole(['admin', 'marketing']), paymentController.createPaymentRequest);
+router.post('/payments', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), paymentController.createPaymentRequest);
 router.put('/payments/:id', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), paymentController.updatePayment);
 router.delete('/payments/:id', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), paymentController.deletePayment);
 router.post('/payments/:id/mark-paid', verifyToken, attachCompanyScope, checkRole(['admin', 'ga', 'finance']), paymentController.markPaymentPaid);
-router.post('/payments/:id/set-po', verifyToken, checkRole(['admin', 'ga']), paymentController.setPoNumber);
-router.put('/payments/:id/verify', verifyToken, checkRole(['admin', 'finance']), paymentController.verifyPayment);
+router.post('/payments/:id/set-po', verifyToken, attachCompanyScope, checkRole(['admin', 'ga']), paymentController.setPoNumber);
+router.put('/payments/:id/verify', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), paymentController.verifyPayment);
 
 // Approvals & Tasks
 router.get('/tasks', verifyToken, attachCompanyScope, approvalController.getPendingTasks);
 router.post('/approvals/:id', verifyToken, attachCompanyScope, approvalController.processApproval);
-router.get('/history', verifyToken, approvalController.getApprovalHistory);
+router.get('/history', verifyToken, attachCompanyScope, approvalController.getApprovalHistory);
 router.get('/magic/:token', approvalController.getMagicLinkDetail);
 router.post('/magic/:token', approvalController.processMagicLink);
 router.get('/approvals-overview', verifyToken, attachCompanyScope, approvalController.getApprovalsOverview);
@@ -97,34 +97,34 @@ router.get('/attachments/:id', settingsController.serveAttachment);
 
 // Branches CRUD
 router.get('/branches', verifyToken, settingsController.getBranches);
-router.post('/branches', verifyToken, settingsController.createBranch);
-router.put('/branches/:id', verifyToken, settingsController.updateBranch);
-router.delete('/branches/:id', verifyToken, settingsController.deleteBranch);
+router.post('/branches', verifyToken, checkRole(['admin', 'marketing']), settingsController.createBranch);
+router.put('/branches/:id', verifyToken, checkRole(['admin', 'marketing']), settingsController.updateBranch);
+router.delete('/branches/:id', verifyToken, checkRole(['admin', 'marketing']), settingsController.deleteBranch);
 
 // Event Locations CRUD
 router.get('/event-locations', verifyToken, settingsController.getEventLocations);
-router.post('/event-locations', verifyToken, settingsController.createEventLocation);
-router.put('/event-locations/:id', verifyToken, settingsController.updateEventLocation);
-router.delete('/event-locations/:id', verifyToken, settingsController.deleteEventLocation);
+router.post('/event-locations', verifyToken, checkRole(['admin', 'marketing']), settingsController.createEventLocation);
+router.put('/event-locations/:id', verifyToken, checkRole(['admin', 'marketing']), settingsController.updateEventLocation);
+router.delete('/event-locations/:id', verifyToken, checkRole(['admin', 'marketing']), settingsController.deleteEventLocation);
 
 // Budgets Control (read = semua; write/lock = admin + finance)
-router.get('/budgets', verifyToken, settingsController.getBudgets);
-router.get('/budgets/check', verifyToken, settingsController.checkBudgetAvailability);
-router.get('/budgets/:id', verifyToken, settingsController.getBudgetDetail);
-router.post('/budgets', verifyToken, checkRole(['admin', 'finance']), settingsController.createBudget);
-router.put('/budgets/:id', verifyToken, checkRole(['admin', 'finance']), settingsController.updateBudget);
-router.put('/budgets/:id/validate', verifyToken, checkRole(['admin', 'finance']), settingsController.validateBudget);
-router.put('/budgets/:id/lock', verifyToken, checkRole(['admin', 'finance']), settingsController.lockBudget);
-router.put('/budgets/:id/unlock', verifyToken, checkRole(['admin', 'finance']), settingsController.unlockBudget);
+router.get('/budgets', verifyToken, attachCompanyScope, settingsController.getBudgets);
+router.get('/budgets/check', verifyToken, attachCompanyScope, settingsController.checkBudgetAvailability);
+router.get('/budgets/:id', verifyToken, attachCompanyScope, settingsController.getBudgetDetail);
+router.post('/budgets', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.createBudget);
+router.put('/budgets/:id', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.updateBudget);
+router.put('/budgets/:id/validate', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.validateBudget);
+router.put('/budgets/:id/lock', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.lockBudget);
+router.put('/budgets/:id/unlock', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.unlockBudget);
 
 // Month-End Closing & Reopen (admin + finance)
-router.post('/budgets/:id/close-month', verifyToken, checkRole(['admin', 'finance']), settingsController.closeMonth);
-router.post('/budgets/:id/reopen-month', verifyToken, checkRole(['admin', 'finance']), settingsController.reopenMonth);
+router.post('/budgets/:id/close-month', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.closeMonth);
+router.post('/budgets/:id/reopen-month', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.reopenMonth);
 
 // Budget Shifting (Relokasi Anggaran)
-router.get('/budgets/:id/shifts', verifyToken, settingsController.getBudgetShifts);
-router.post('/budgets/:id/shifts', verifyToken, settingsController.createBudgetShift);
-router.post('/budgets/shifts/:shift_id/decision', verifyToken, settingsController.processShiftDecision);
+router.get('/budgets/:id/shifts', verifyToken, attachCompanyScope, settingsController.getBudgetShifts);
+router.post('/budgets/:id/shifts', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing', 'finance']), settingsController.createBudgetShift);
+router.post('/budgets/shifts/:shift_id/decision', verifyToken, attachCompanyScope, settingsController.processShiftDecision);
 
 // Approval Rules CRUD (admin & GA)
 router.get('/approval-rules', verifyToken, checkRole(['admin', 'ga']), settingsController.getApprovalRules);

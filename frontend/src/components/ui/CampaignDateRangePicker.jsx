@@ -23,26 +23,26 @@ function formatLocalDate(date) {
   return `${y}-${m}-${d}`;
 }
 
-function formatDisplay(date) {
+function formatDisplay(date, lang = 'id') {
   if (!date) return null;
-  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString(lang === 'en' ? 'en-GB' : 'id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-const RangeTriggerInput = forwardRef(function RangeTriggerInput({ start, end, onClick, onClear, placeholder }, ref) {
+const RangeTriggerInput = forwardRef(function RangeTriggerInput({ start, end, onClick, onClear, placeholder, lang }, ref) {
   const hasValue = start || end;
   return (
     <div
       ref={ref}
       onClick={onClick}
-      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between gap-2 cursor-pointer min-h-[38px] select-none text-xs"
+      className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-neutral-800 dark:text-white focus-within:border-blue-500 flex items-center justify-between gap-2 cursor-pointer min-h-[38px] select-none text-xs"
     >
       <div className="flex items-center gap-2 truncate">
-        <CalendarIcon className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+        <CalendarIcon className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
         {hasValue ? (
           <span className="flex items-center gap-1.5 text-neutral-900 dark:text-neutral-200 font-bold truncate">
-            {formatDisplay(start) || '...'}
+            {formatDisplay(start, lang) || '...'}
             <ArrowRight className="w-3 h-3 text-neutral-400 flex-shrink-0" />
-            {formatDisplay(end) || '...'}
+            {formatDisplay(end, lang) || '...'}
           </span>
         ) : (
           <span className="text-neutral-400">{placeholder}</span>
@@ -61,7 +61,8 @@ const RangeTriggerInput = forwardRef(function RangeTriggerInput({ start, end, on
   );
 });
 
-export default function CampaignDateRangePicker({ startValue, endValue, onChange, placeholder = 'Pilih rentang tanggal campaign' }) {
+// lang: 'id' (default) or 'en' for English month names and labels.
+export default function CampaignDateRangePicker({ startValue, endValue, onChange, placeholder = 'Pilih rentang tanggal campaign', lang = 'id' }) {
   const startDate = parseLocalDate(startValue);
   const endDate = parseLocalDate(endValue);
 
@@ -79,11 +80,14 @@ export default function CampaignDateRangePicker({ startValue, endValue, onChange
           start={startDate}
           end={endDate}
           placeholder={placeholder}
+          lang={lang}
           onClear={() => onChange({ start: '', end: '' })}
         />
       }
+      // react-datepicker passes placeholderText to the custom input as its placeholder.
+      placeholderText={placeholder}
       monthsShown={2}
-      locale="id"
+      locale={lang === 'en' ? undefined : 'id'}
       showMonthDropdown
       showYearDropdown
       dropdownMode="select"

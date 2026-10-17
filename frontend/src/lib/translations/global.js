@@ -248,9 +248,9 @@ const g = {
     marketing_approvalSettings_colFor: 'Used For',
     marketing_approvalSettings_colEmail: 'Recipient Email',
     marketing_approvalSettings_colAction: 'Action',
-    marketing_approvalSettings_sectionDefault: 'Default Global (Fallback)',
-    marketing_approvalSettings_sectionOverride: 'Override per PT / Holding Group',
-    marketing_approvalSettings_addOverride: 'Add Override',
+    marketing_approvalSettings_sectionDefault: 'General recipients',
+    marketing_approvalSettings_sectionOverride: 'Recipients for specific companies / holdings',
+    marketing_approvalSettings_addOverride: 'Assign Recipient',
     marketing_approvalSettings_editBtn: 'Edit',
 
     // ─── Admin ───────────────────────────────────────────────────────────
@@ -567,9 +567,9 @@ const g = {
     marketing_approvalSettings_colFor: 'Dipakai Untuk',
     marketing_approvalSettings_colEmail: 'Email Penerima',
     marketing_approvalSettings_colAction: 'Aksi',
-    marketing_approvalSettings_sectionDefault: 'Default Global (Fallback)',
-    marketing_approvalSettings_sectionOverride: 'Override per PT / Holding Group',
-    marketing_approvalSettings_addOverride: 'Tambah Override',
+    marketing_approvalSettings_sectionDefault: 'Penerima umum',
+    marketing_approvalSettings_sectionOverride: 'Penerima khusus PT / Holding',
+    marketing_approvalSettings_addOverride: 'Atur Penerima',
     marketing_approvalSettings_editBtn: 'Ubah',
 
     // ─── Admin ───────────────────────────────────────────────────────────
