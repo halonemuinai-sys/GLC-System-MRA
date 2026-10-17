@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Calendar, Paperclip, FileSpreadsheet, Building, Loader2,
   AlertTriangle, Info, BarChart2, CheckCircle, Clock,
-  GitMerge, CheckSquare, Plus, Send, Trash2, ChevronDown, ChevronUp,
-  TrendingUp, Flag, Copy, Check, Users
+  GitMerge, Plus, Send, Trash2, ChevronDown, ChevronUp,
+  TrendingUp, Flag, Copy, Check, Users, Wallet, CreditCard, CircleDollarSign, Megaphone, ArrowUpRight, LayoutDashboard, Target
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
+import MarketingPlanClosingSection from './MarketingPlanClosingSection';
+import MarketingReimbursementModal from './MarketingReimbursementModal';
 
 // Helper: Format to IDR Currency
 const formatIDR = (val) => {
@@ -39,6 +41,39 @@ const getMonthName = (monthNum, lang = 'en') => {
   return months[monthNum - 1] || '';
 };
 
+function PlanFinancialOverview({ plan, lang }) {
+  const totals = (plan.items || []).reduce((sum, item) => ({
+    budget: sum.budget + Number(item.budget_amount || 0),
+    committed: sum.committed + Number(item.committed_amount || 0),
+    actual: sum.actual + Number(item.actual_amount || 0),
+  }), { budget: 0, committed: 0, actual: 0 });
+  const remaining = totals.budget - totals.committed - totals.actual;
+  const paidPercent = totals.budget > 0 ? totals.actual / totals.budget * 100 : 0;
+  const metrics = [
+    { label: lang === 'id' ? 'Total anggaran' : 'Total budget', value: totals.budget, icon: Wallet, tone: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10' },
+    { label: 'Committed', value: totals.committed, icon: CreditCard, tone: 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/10' },
+    { label: lang === 'id' ? 'Realisasi terbayar' : 'Paid expenses', value: totals.actual, icon: CheckCircle, tone: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/10' },
+    { label: lang === 'id' ? 'Sisa anggaran' : 'Remaining budget', value: remaining, icon: CircleDollarSign, tone: remaining < 0 ? 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-500/10' : 'text-slate-600 bg-slate-100 dark:text-slate-300 dark:bg-slate-800' },
+  ];
+  return (
+    <section aria-label={lang === 'id' ? 'Ringkasan anggaran' : 'Budget overview'} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="grid grid-cols-2 sm:grid-cols-4">
+        {metrics.map(({ label, value, icon: Icon, tone }) => (
+          <div key={label} className="min-w-0 border-b border-slate-100 px-3 py-2 sm:p-3 sm:border-b-0 [&:nth-child(odd)]:border-r sm:border-r sm:last:border-r-0 dark:border-slate-800">
+            <div className="mb-1 flex items-center gap-2"><span className={`hidden sm:flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ${tone}`}><Icon className="h-3.5 w-3.5" /></span><span className="text-[10px] sm:text-[11px] font-medium text-slate-500 dark:text-slate-400">{label}</span></div>
+            <p className={`break-words text-sm sm:text-lg font-semibold tracking-tight tabular-nums ${value < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>{formatIDR(value)}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 bg-slate-50/60 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/30">
+        <span className="text-[11px] text-slate-500 dark:text-slate-400">{lang === 'id' ? 'Serapan anggaran terbayar' : 'Paid budget utilization'}</span>
+        <div className="h-1.5 min-w-20 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.max(0, Math.min(100, paidPercent))}%` }} /></div>
+        <span className="text-[11px] font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{paidPercent.toFixed(1)}%</span>
+      </div>
+    </section>
+  );
+}
+
 export default function MarketingPlanDetailModal({
   isOpen,
   onClose,
@@ -57,6 +92,36 @@ export default function MarketingPlanDetailModal({
   const [loading, setLoading] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [copiedToken, setCopiedToken] = useState(null);
+  const [activeTab, setActiveTab] = useState('costs');
+  const tabId = useId();
+  const tabButtons = useRef({});
+  const detailBody = useRef(null);
+  const detailTabs = [
+    { id: 'overview', label: lang === 'id' ? 'Ringkasan' : 'Overview', icon: LayoutDashboard },
+    { id: 'costs', label: lang === 'id' ? 'Biaya & Reimbursement' : 'Costs & Reimbursement', icon: Wallet },
+    { id: 'approvals', label: lang === 'id' ? 'Persetujuan & Perubahan' : 'Approvals & Changes', icon: Users },
+    { id: 'results', label: lang === 'id' ? 'Hasil & Closing' : 'Results & Closing', icon: BarChart2 },
+  ];
+
+  useEffect(() => {
+    setActiveTab('costs');
+  }, [isOpen, planId]);
+
+  const changeTab = (id) => {
+    setActiveTab(id);
+    if (detailBody.current) detailBody.current.scrollTop = 0;
+  };
+
+  const handleTabKeyDown = (event, index) => {
+    const last = detailTabs.length - 1;
+    const next = event.key === 'ArrowRight' ? (index + 1) % detailTabs.length
+      : event.key === 'ArrowLeft' ? (index + last) % detailTabs.length
+      : event.key === 'Home' ? 0 : event.key === 'End' ? last : null;
+    if (next === null) return;
+    event.preventDefault();
+    changeTab(detailTabs[next].id);
+    tabButtons.current[detailTabs[next].id]?.focus();
+  };
 
   const handleCopyMagicLink = (token) => {
     if (!token) return;
@@ -92,6 +157,7 @@ export default function MarketingPlanDetailModal({
 
   // Expense/Payment Request modal state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isReimbursementOpen, setIsReimbursementOpen] = useState(false);
   const [paymentRequestItem, setPaymentRequestItem] = useState(null);
   const [paymentForm, setPaymentForm] = useState({
     title: '',
@@ -106,9 +172,6 @@ export default function MarketingPlanDetailModal({
 
   // Recalling state
   const [recalling, setRecalling] = useState(false);
-
-  // Complete plan state
-  const [completing, setCompleting] = useState(false);
 
   // Amendment state
   const [showAmendmentPanel, setShowAmendmentPanel] = useState(false);
@@ -152,6 +215,7 @@ export default function MarketingPlanDetailModal({
       fetchPlanDetail();
     } else {
       setSelectedPlan(null);
+      setIsReimbursementOpen(false);
     }
   }, [isOpen, planId, fetchPlanDetail]);
 
@@ -226,6 +290,14 @@ export default function MarketingPlanDetailModal({
     }
   };
 
+  const openPaymentRequest = (item) => {
+    setPaymentRequestItem(item);
+    setPaymentForm({ title: '', amount: '', notes: '', doc_url: '' });
+    setPaymentError(null);
+    setPaymentUploadError('');
+    setIsPaymentModalOpen(true);
+  };
+
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     if (!paymentRequestItem || !selectedPlan) return;
@@ -279,18 +351,13 @@ export default function MarketingPlanDetailModal({
     }
   };
 
-  const handleCompletePlan = async () => {
+  // Refresh tanpa spinner (fetchPlanDetail mengganti seluruh isi modal dengan loader)
+  const refreshPlanSilently = async () => {
     if (!selectedPlan) return;
-    if (!window.confirm('Yakin ingin menutup plan ini? Status akan berubah menjadi COMPLETED dan tidak bisa dibatalkan.')) return;
-    setCompleting(true);
     try {
-      await apiClient.post(`/api/marketing/plans/${selectedPlan.id}/complete`);
-      onSuccessMsg('Plan berhasil diselesaikan dan ditutup.');
+      setSelectedPlan(await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`));
       loadPlans();
-      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
-      setSelectedPlan(updated);
-    } catch (err) { alert(err.message || 'Gagal menyelesaikan plan.'); }
-    finally { setCompleting(false); }
+    } catch (err) { /* abaikan — data akan ter-refresh saat modal dibuka ulang */ }
   };
 
   const addAmendmentChange = () => {
@@ -372,12 +439,12 @@ export default function MarketingPlanDetailModal({
       {/* MODAL 2: PLAN DETAIL */}
       <AnimatePresence>
         {isOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+              className="fixed inset-0 bg-slate-950/65 backdrop-blur-md"
               onClick={onClose}
             />
 
@@ -385,7 +452,10 @@ export default function MarketingPlanDetailModal({
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-6xl z-55 overflow-hidden flex flex-col max-h-[90vh]"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`${tabId}-title`}
+              className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-7xl z-55 overflow-hidden flex flex-col h-[94dvh]"
             >
               {loading ? (
                 <div className="py-32 flex flex-col items-center justify-center gap-3">
@@ -395,39 +465,76 @@ export default function MarketingPlanDetailModal({
               ) : selectedPlan ? (
                 <>
                   {/* Detail Header */}
-                  <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-md font-black text-neutral-900 dark:text-white">{selectedPlan.title}</h3>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                          selectedPlan.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-600' :
-                          selectedPlan.status === 'COMPLETED' ? 'bg-blue-500/10 text-blue-600' :
-                          selectedPlan.status === 'REJECTED' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600'
-                        }`}>
-                          {selectedPlan.status}
-                        </span>
+                  <div className="relative shrink-0 overflow-hidden border-b border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 px-4 py-3 sm:px-6 sm:py-4 text-white">
+                    <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-32 h-72 w-72 rounded-full border-[40px] border-white/[0.03]" />
+                    <div className="relative flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="mb-2 flex flex-wrap items-center gap-2.5">
+                          <span className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-blue-200"><Megaphone className="h-3.5 w-3.5" /> Campaign overview</span>
+                          <span className={`rounded-md px-2 py-1 text-[9px] font-semibold uppercase tracking-wide ${
+                            selectedPlan.status === 'APPROVED' ? 'bg-emerald-400/15 text-emerald-300' :
+                            selectedPlan.status === 'COMPLETED' ? 'bg-blue-400/15 text-blue-200' :
+                            selectedPlan.status === 'REJECTED' ? 'bg-rose-400/15 text-rose-300' :
+                            selectedPlan.status === 'DRAFT' ? 'bg-white/10 text-slate-300' : 'bg-amber-400/15 text-amber-200'
+                          }`}>{selectedPlan.status.replace(/_/g, ' ')}</span>
+                        </div>
+                        <h3 id={`${tabId}-title`} className="line-clamp-2 text-base sm:text-xl font-semibold tracking-tight leading-snug" title={selectedPlan.title}>{selectedPlan.title}</h3>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-slate-400">
+                          <span className="inline-flex items-center gap-1.5"><Building className="h-3.5 w-3.5" />{selectedPlan.company?.name || '-'}</span>
+                          <span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />{t('submittedBy')} {selectedPlan.creator?.name || 'N/A'}</span>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-neutral-500 mt-0.5">{t('submittedBy')} {selectedPlan.creator?.name || 'N/A'} • {selectedPlan.company?.name || ''}</p>
+                      <button type="button" onClick={onClose} aria-label={t('btnClose')}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                    <button
-                      onClick={onClose}
-                      className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
                   </div>
 
-                  {/* Detail Body */}
-                  <div className="flex-grow overflow-y-auto p-6 space-y-6">
+                  <div className="shrink-0 bg-slate-50/80 px-3 pt-3 sm:px-6 dark:bg-slate-950/50">
+                    <PlanFinancialOverview plan={selectedPlan} lang={lang} />
+                    <div role="tablist" aria-label="Campaign overview" className="flex gap-1 overflow-x-auto py-2 sm:gap-2">
+                      {detailTabs.map(({ id, label, icon: Icon }, index) => (
+                        <button key={id} ref={(node) => { tabButtons.current[id] = node; }}
+                          type="button" role="tab" id={`${tabId}-tab-${id}`}
+                          aria-controls={`${tabId}-panel-${id}`} aria-selected={activeTab === id}
+                          tabIndex={activeTab === id ? 0 : -1}
+                          onClick={() => changeTab(id)} onKeyDown={(event) => handleTabKeyDown(event, index)}
+                          className={`flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold transition-colors sm:flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset ${activeTab === id
+                            ? 'border-blue-200 bg-blue-50 text-blue-700 shadow-sm dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300'
+                            : 'border-transparent text-slate-500 hover:bg-white hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white'}`}>
+                          <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Keep panels mounted so unsaved forms survive tab changes. */}
+                  <div ref={detailBody} className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-slate-200/80 bg-slate-50/80 p-3 sm:p-6 dark:border-slate-800 dark:bg-slate-950/50">
+                    <section role="tabpanel" id={`${tabId}-panel-overview`} aria-labelledby={`${tabId}-tab-overview`}
+                      hidden={activeTab !== 'overview'} tabIndex={0} className="space-y-5 focus-visible:outline-blue-500">
+                    {selectedPlan.is_late_submission && (
+                      <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-700 dark:text-rose-400">
+                        <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-black uppercase tracking-wide text-[10px]">Late Submission (aturan H-3)</p>
+                          <p className="mt-0.5">
+                            Diajukan {selectedPlan.submitted_at ? new Date(selectedPlan.submitted_at).toLocaleDateString('id-ID') : '-'}, kurang dari 3 bulan sebelum event. Alasan: <strong>{selectedPlan.late_submission_reason || '-'}</strong>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Description & Period — card-style */}
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       {/* Description Card */}
                       <div className="md:col-span-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-                        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/40">
-                          <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-slate-900">
+                          <div className="w-6 h-6 bg-blue-50 dark:bg-blue-500/10 rounded-lg flex items-center justify-center">
+                            <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                           </div>
-                          <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest">{t('planDescription')}</span>
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t('planDescription')}</span>
                         </div>
                         <div className="px-4 py-4">
                           <p className="text-xs text-neutral-600 dark:text-neutral-300 leading-relaxed">{selectedPlan.description || t('noDescription')}</p>
@@ -436,11 +543,11 @@ export default function MarketingPlanDetailModal({
 
                       {/* Period & Attachment Card */}
                       <div className="md:col-span-2 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-                        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/40">
-                          <div className="w-6 h-6 bg-emerald-100 dark:bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                            <Calendar className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                        <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-slate-900">
+                          <div className="w-6 h-6 bg-blue-50 dark:bg-blue-500/10 rounded-lg flex items-center justify-center">
+                            <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                           </div>
-                          <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest">{t('periodAttachment')}</span>
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t('periodAttachment')}</span>
                         </div>
                         <div className="px-4 py-3 space-y-3">
                           <div className="flex items-start gap-2.5">
@@ -485,6 +592,33 @@ export default function MarketingPlanDetailModal({
                       </div>
                     </div>
 
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 dark:border-slate-800 dark:bg-slate-900">
+                      <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+                        <Target className="h-4 w-4 text-blue-500" /> {lang === 'id' ? 'Target KPI campaign' : 'Campaign KPI targets'}
+                      </h4>
+                      <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                        {[
+                          ['target_sales', lang === 'id' ? 'Penjualan' : 'Sales', 'currency'],
+                          ['target_leads', 'Leads'],
+                          ['target_reach', lang === 'id' ? 'Jangkauan' : 'Reach'],
+                          ['target_impressions', lang === 'id' ? 'Impresi' : 'Impressions'],
+                          ['target_roi_pct', 'ROI', 'percent'],
+                        ].map(([key, label, format]) => (
+                          <div key={key}>
+                            <dt className="text-[11px] text-slate-500 dark:text-slate-400">{label}</dt>
+                            <dd className="mt-1 text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+                              {selectedPlan[key] == null ? '-' : format === 'currency' ? formatIDR(selectedPlan[key])
+                                : `${Number(selectedPlan[key]).toLocaleString(lang === 'id' ? 'id-ID' : 'en-US')}${format === 'percent' ? '%' : ''}`}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                      {selectedPlan.target_notes && <p className="mt-4 whitespace-pre-wrap border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600 dark:border-slate-800 dark:text-slate-300">{selectedPlan.target_notes}</p>}
+                    </div>
+                    </section>
+
+                    <section role="tabpanel" id={`${tabId}-panel-costs`} aria-labelledby={`${tabId}-tab-costs`}
+                      hidden={activeTab !== 'costs'} tabIndex={0} className="space-y-5 focus-visible:outline-blue-500">
                     {/* Items Budget Table */}
                     {(() => {
                       const showAction = ['APPROVED', 'COMPLETED'].includes(selectedPlan.status);
@@ -496,16 +630,23 @@ export default function MarketingPlanDetailModal({
 
                       return (
                         <div className="space-y-3">
-                          <h4 className="text-xs font-black text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                            {t('budgetBreakdown')}
-                          </h4>
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <h4 className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                              {t('budgetBreakdown')}
+                            </h4>
+                            {selectedPlan.status === 'APPROVED' && ['admin', 'marketing'].includes(userRole) && !['PENDING_APPROVAL', 'APPROVED'].includes(selectedPlan.closing_status) && (
+                              <button type="button" onClick={() => setIsReimbursementOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700">
+                                <CircleDollarSign className="h-4 w-4" /> Claim Reimbursement
+                              </button>
+                            )}
+                          </div>
 
                           <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
                             <div className="overflow-x-auto">
-                              <table className="w-full text-left text-xs">
+                              <table className="w-full min-w-[1050px] text-left text-xs bg-white dark:bg-slate-900">
                                 <thead>
-                                  <tr className="bg-emerald-800 dark:bg-emerald-900 text-white text-[10px] font-black uppercase tracking-wider">
+                                  <tr className="bg-slate-100/80 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
                                     <th className="px-3 py-2.5">{t('colMonth')}</th>
                                     <th className="px-3 py-2.5">CoA Account</th>
                                     <th className="px-3 py-2.5">Brand / LOB</th>
@@ -527,11 +668,12 @@ export default function MarketingPlanDetailModal({
 
                                     return (
                                       <React.Fragment key={item.id || idx}>
-                                        <tr className="hover:bg-emerald-50/30 dark:hover:bg-emerald-900/5">
+                                        <tr className="hover:bg-blue-50/40 dark:hover:bg-blue-500/5 transition-colors">
                                           <td className="px-3 py-3 font-semibold whitespace-nowrap">{getMonthName(item.period_month, lang)}</td>
                                           <td className="px-3 py-3">
                                             <span className="font-black text-neutral-800 dark:text-white whitespace-nowrap">{item.m_coa?.code}</span>
                                             <p className="text-[10px] text-neutral-400 font-normal mt-0.5">{item.m_coa?.name}</p>
+                                            {item.description?.startsWith('Reimbursement: ') && <p className="mt-1 text-[10px] text-blue-600 dark:text-blue-400">{item.description}</p>}
                                           </td>
                                           <td className="px-3 py-3">
                                             <span className="font-semibold text-neutral-800 dark:text-neutral-200">{item.m_brand?.name || '-'}</span>
@@ -574,10 +716,11 @@ export default function MarketingPlanDetailModal({
                                           </td>
                                           {showAction && (
                                             <td className="px-3 py-3 text-center">
+                                              <div className="flex flex-col items-stretch gap-1.5">
                                               {selectedPlan.status === 'APPROVED' && remaining > 0 ? (
                                                 <button
-                                                  onClick={() => { setPaymentRequestItem(item); setIsPaymentModalOpen(true); }}
-                                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer whitespace-nowrap"
+                                                  onClick={() => openPaymentRequest(item)}
+                                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                                                 >
                                                   <CheckCircle className="w-3 h-3 flex-shrink-0" />
                                                   Realisasi Biaya
@@ -589,22 +732,25 @@ export default function MarketingPlanDetailModal({
                                               ) : (
                                                 <span className="text-neutral-400 text-xs">-</span>
                                               )}
+                                              </div>
                                             </td>
                                           )}
                                         </tr>
                                         {item.payment_requests && item.payment_requests.length > 0 && (
                                           <tr className="bg-neutral-50/40 dark:bg-neutral-950/20">
                                             <td colSpan={colSpanFull} className="px-6 py-2.5">
-                                              <div className="border-l-2 border-emerald-500 pl-4 py-1 space-y-2">
-                                                <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest block">
+                                              <details className="group/history rounded-xl border border-slate-200/70 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900">
+                                                <summary className="flex cursor-pointer list-none items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400 [&::-webkit-details-marker]:hidden">
+                                                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-open/history:rotate-180" />
                                                   {t('expenseHistory')} ({item.payment_requests.length})
-                                                </span>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                                                </summary>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
                                                   {item.payment_requests.map((pr) => (
                                                     <div key={pr.id} className="bg-white dark:bg-neutral-900/60 border border-neutral-200/80 dark:border-neutral-800 rounded-xl p-2.5 flex items-center justify-between text-[10px] shadow-sm">
                                                       <div className="space-y-0.5">
-                                                        <p className="font-bold text-neutral-800 dark:text-white">{pr.title}</p>
+                                                        <p className="font-bold text-neutral-800 dark:text-white">{pr.request_type === 'CLAIM' && <span className="mr-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">REIMBURSEMENT</span>}{pr.title}</p>
                                                         <p className="text-neutral-400 font-medium text-[9px]">{t('byLabel')} {pr.creator?.name || 'N/A'}</p>
+                                                        {pr.request_type === 'CLAIM' && pr.reimbursement_payee && <p className="text-[10px] text-slate-500">Penggantian untuk: {pr.reimbursement_payee}{pr.expense_date ? ` / ${new Date(pr.expense_date).toLocaleDateString('id-ID', { timeZone: 'UTC' })}` : ''}</p>}
                                                       </div>
                                                       <div className="flex items-center gap-3.5">
                                                         <span className="font-extrabold text-neutral-900 dark:text-white">{formatIDR(pr.amount)}</span>
@@ -625,7 +771,7 @@ export default function MarketingPlanDetailModal({
                                                     </div>
                                                   ))}
                                                 </div>
-                                              </div>
+                                              </details>
                                             </td>
                                           </tr>
                                         )}
@@ -650,18 +796,22 @@ export default function MarketingPlanDetailModal({
                       );
                     })()}
 
+                    </section>
+
+                    <section role="tabpanel" id={`${tabId}-panel-approvals`} aria-labelledby={`${tabId}-tab-approvals`}
+                      hidden={activeTab !== 'approvals'} tabIndex={0} className="space-y-5 focus-visible:outline-blue-500">
                     {/* DocHub-style Document Signers & Approval Timeline Card */}
                     <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-                      <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/60 dark:bg-neutral-950/40">
+                      <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-slate-900">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
                             <Users className="w-3.5 h-3.5" />
                           </div>
                           <div>
-                            <h4 className="text-xs font-black text-neutral-900 dark:text-white uppercase tracking-wider">
+                            <h4 className="text-sm font-semibold text-slate-800 dark:text-white">
                               {lang === 'id' ? 'Alur Persetujuan & Penandatangan Dokumen' : 'Approval Chain & Document Signers'}
                             </h4>
-                            <p className="text-[10px] text-neutral-400">DocHub-style sequential signing workflow</p>
+                            <p className="text-[10px] text-neutral-400">{lang === 'id' ? 'Status dan riwayat persetujuan campaign.' : 'Campaign approval status and history.'}</p>
                           </div>
                         </div>
                         <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-200/60 dark:border-blue-900/30">
@@ -699,7 +849,7 @@ export default function MarketingPlanDetailModal({
                                     isPending
                                       ? 'border-blue-500/40 bg-blue-50/20 dark:bg-blue-950/10 shadow-sm ring-1 ring-blue-500/20'
                                       : isApproved
-                                      ? 'border-emerald-500/30 bg-emerald-50/10 dark:bg-emerald-950/5'
+                                      ? 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
                                       : isRejected
                                       ? 'border-red-500/30 bg-red-50/10 dark:bg-red-950/5'
                                       : 'border-neutral-200/80 dark:border-neutral-800 bg-neutral-50/30 dark:bg-neutral-950/20'
@@ -716,7 +866,7 @@ export default function MarketingPlanDetailModal({
                                             </span>
                                           )}
                                         </div>
-                                        <p className="text-[11px] text-neutral-400 font-mono mt-0.5">
+                                        <p className="text-[11px] text-slate-400 mt-1 break-all">
                                           {signer.approver_email}
                                         </p>
                                       </div>
@@ -854,7 +1004,7 @@ export default function MarketingPlanDetailModal({
                         >
                           <div className="flex items-center gap-2">
                             <GitMerge className="w-4 h-4 text-amber-500" />
-                            <span className="text-xs font-black text-neutral-800 dark:text-white uppercase tracking-wider">Amendments / Perubahan Plan</span>
+                            <span className="text-sm font-semibold text-slate-800 dark:text-white">Amendments / Perubahan Plan</span>
                             {selectedPlan.amendments?.length > 0 && (
                               <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-black rounded-full">{selectedPlan.amendments.length}</span>
                             )}
@@ -1022,13 +1172,24 @@ export default function MarketingPlanDetailModal({
                       </div>
                     )}
 
+                    </section>
+
+                    <section role="tabpanel" id={`${tabId}-panel-results`} aria-labelledby={`${tabId}-tab-results`}
+                      hidden={activeTab !== 'results'} tabIndex={0} className="space-y-5 focus-visible:outline-blue-500">
+                    {!['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
+                        <BarChart2 className="mx-auto mb-3 h-8 w-8 text-slate-400" />
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-white">{lang === 'id' ? 'Hasil & closing belum tersedia' : 'Results & closing are not available yet'}</h4>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{lang === 'id' ? 'Tersedia setelah rencana disetujui.' : 'Available once the plan is approved.'}</p>
+                      </div>
+                    )}
                     {/* Post-Campaign Actuals & Completed Plan Performance Report */}
                     {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
                       <div className="p-5 bg-neutral-50 dark:bg-neutral-950/40 rounded-3xl border border-neutral-200/80 dark:border-neutral-800 space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-200/50 dark:border-neutral-800/80 pb-3">
                           <div>
                             <div className="flex items-center gap-2">
-                              <h4 className="text-xs font-black text-neutral-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                              <h4 className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
                                 <BarChart2 className="w-4 h-4 text-indigo-500" />
                                 {selectedPlan.status === 'COMPLETED' 
                                   ? 'Laporan Hasil Akhir & Evaluasi Kampanye' 
@@ -1093,39 +1254,6 @@ export default function MarketingPlanDetailModal({
                                 </div>
                               </div>
                             )}
-                          </div>
-                        )}
-
-                        {/* Financial Settlement summary for COMPLETED plans */}
-                        {selectedPlan.status === 'COMPLETED' && (
-                          <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                            <div className="space-y-1">
-                              <span className="font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
-                                <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                Penyelesaian Finansial (Financial Settlement)
-                              </span>
-                              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                                Kampanye resmi ditutup. Seluruh sisa kuota anggaran yang tidak terpakai telah dikunci dan dikembalikan ke kas cadangan perusahaan.
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-4 border-t sm:border-t-0 sm:border-l border-blue-200/60 dark:border-blue-900/30 pt-2 sm:pt-0 sm:pl-4 flex-shrink-0">
-                              <div>
-                                <span className="text-[9px] text-neutral-400 uppercase font-bold block">Total Budget</span>
-                                <span className="font-extrabold text-neutral-800 dark:text-white">{formatIDR(selectedPlan.total_budget)}</span>
-                              </div>
-                              <div>
-                                <span className="text-[9px] text-neutral-400 uppercase font-bold block">Realisasi</span>
-                                <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                                  {formatIDR(selectedPlan.items?.reduce((s, i) => s + Number(i.actual_amount || 0), 0) || 0)}
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-[9px] text-neutral-400 uppercase font-bold block">Sisa Saldo Kas</span>
-                                <span className="font-extrabold text-blue-600 dark:text-blue-400">
-                                  {formatIDR(Number(selectedPlan.total_budget || 0) - (selectedPlan.items?.reduce((s, i) => s + Number(i.actual_amount || 0), 0) || 0))}
-                                </span>
-                              </div>
-                            </div>
                           </div>
                         )}
 
@@ -1222,10 +1350,22 @@ export default function MarketingPlanDetailModal({
                         )}
                       </div>
                     )}
+
+                    {/* Closing: biaya final vs dibayar -> kelebihan / claim -> approval -> COMPLETED */}
+                    {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
+                      <MarketingPlanClosingSection
+                        key={`${selectedPlan.id}-${selectedPlan.actuals_filled_at ? 'actuals' : 'no-actuals'}`}
+                        planId={selectedPlan.id}
+                        planStatus={selectedPlan.status}
+                        userRole={userRole}
+                        onChanged={refreshPlanSilently}
+                      />
+                    )}
+                    </section>
                   </div>
 
                   {/* Detail Footer Controls */}
-                  <div className="px-6 py-4.5 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/30 dark:bg-neutral-950/10">
+                  <div className="shrink-0 px-4 sm:px-7 py-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-3 items-center justify-between bg-white dark:bg-slate-900">
                     <div className="flex items-center gap-2">
                       {selectedPlan.status === 'PENDING_APPROVAL' && (userRole === 'admin' || userRole === 'staff') && (
                         <button
@@ -1263,31 +1403,19 @@ export default function MarketingPlanDetailModal({
                         type="button"
                         disabled={duplicating}
                         onClick={handleDuplicatePlan}
-                        className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                        className="px-4 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                         title="Duplikat plan ini sebagai draft baru"
                       >
                         {duplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
                         Duplikat Plan
                       </button>
 
-                      {selectedPlan.status === 'APPROVED' && (userRole === 'admin' || userRole === 'marketing') && selectedPlan.actuals_filled_at && (
-                        <button
-                          type="button"
-                          disabled={completing}
-                          onClick={handleCompletePlan}
-                          className="px-4 py-2 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all active:scale-95"
-                          title="Tutup plan setelah semua payment selesai"
-                        >
-                          {completing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckSquare className="w-3.5 h-3.5" />}
-                          Selesaikan Plan
-                        </button>
-                      )}
                     </div>
 
                     <button
                       type="button"
                       onClick={onClose}
-                      className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors shadow-sm shadow-blue-600/20"
                     >
                       {t('btnClose')}
                     </button>
@@ -1298,6 +1426,17 @@ export default function MarketingPlanDetailModal({
           </div>
         )}
       </AnimatePresence>
+
+      {isOpen && isReimbursementOpen && selectedPlan && (
+        <MarketingReimbursementModal plan={selectedPlan} metadata={metadata}
+          onClose={() => setIsReimbursementOpen(false)}
+          onSuccess={() => {
+            setIsReimbursementOpen(false);
+            onSuccessMsg('Reimbursement diajukan ke Finance.');
+            refreshPlanSilently();
+          }}
+        />
+      )}
 
       {/* MODAL 3: EXPENSE / PAYMENT REQUEST RECORDING FORM */}
       <AnimatePresence>
@@ -1329,7 +1468,7 @@ export default function MarketingPlanDetailModal({
                 </button>
               </div>
 
-              <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
+              <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
                 {paymentError && (
                   <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold p-3 rounded-xl flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4" /> {paymentError}
@@ -1475,7 +1614,7 @@ export default function MarketingPlanDetailModal({
 
                   <button
                     type="submit"
-                    disabled={submittingPayment}
+                    disabled={submittingPayment || paymentUploading}
                     className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {submittingPayment && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

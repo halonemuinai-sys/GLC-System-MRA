@@ -28,6 +28,7 @@ import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
 import SearchableCompanySelect from './SearchableCompanySelect';
 import SearchableBrandSelect from './SearchableBrandSelect';
+import { isLateSubmission } from '@/lib/marketingGovernance';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const FISCAL_YEAR_OPTIONS = Array.from({ length: 4 }, (_, i) => String(CURRENT_YEAR - 1 + i));
@@ -68,7 +69,8 @@ export default function MarketingPlanQuickModal({
     brand_id: '',
     branch_id: '',
     description: '',
-    doc_url: ''
+    doc_url: '',
+    late_submission_reason: ''
   });
 
   const [approvers, setApprovers] = useState([]);
@@ -224,7 +226,8 @@ export default function MarketingPlanQuickModal({
         brand_id: metadata.brands?.[0]?.id ? String(metadata.brands[0].id) : '',
         branch_id: '',
         description: '',
-        doc_url: ''
+        doc_url: '',
+        late_submission_reason: ''
       });
       setApprovers(getDefaultApproversForCompany(initCompanyId));
       setErrMessage(null);
@@ -249,6 +252,11 @@ export default function MarketingPlanQuickModal({
     }
     if (!formData.coa_id) {
       setErrMessage('Pilih Kategori Anggaran / COA.');
+      return;
+    }
+
+    if (!saveAsDraft && isLateSubmission(formData.start_date) && !formData.late_submission_reason.trim()) {
+      setErrMessage('Event kurang dari 3 bulan lagi (aturan H-3). Isi alasan pengajuan terlambat.');
       return;
     }
 
@@ -289,6 +297,7 @@ export default function MarketingPlanQuickModal({
       event_start_date: formData.start_date || null,
       event_end_date: formData.end_date || null,
       doc_url: formData.doc_url.trim() || null,
+      late_submission_reason: formData.late_submission_reason.trim() || null,
       save_as_draft: saveAsDraft,
       items: [
         {
@@ -464,6 +473,22 @@ export default function MarketingPlanQuickModal({
                     />
                   </div>
                 </div>
+
+                {isLateSubmission(formData.start_date) && (
+                  <div className="bg-rose-500/10 border border-rose-500/25 rounded-xl p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      Event kurang dari 3 bulan lagi (aturan H-3) — plan akan ditandai "Late Submission".
+                    </p>
+                    <textarea
+                      rows={2}
+                      value={formData.late_submission_reason}
+                      onChange={(e) => setFormData({ ...formData, late_submission_reason: e.target.value })}
+                      placeholder="Alasan pengajuan terlambat (wajib saat diajukan ke approval)..."
+                      className="w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-rose-500 text-xs resize-none"
+                    />
+                  </div>
+                )}
 
                 {/* Total Budget & COA Category */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

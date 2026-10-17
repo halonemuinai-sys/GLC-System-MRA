@@ -1,5 +1,6 @@
 const prisma = require('../../api/db');
 const { resolveEmployee } = require('./marketingHelper');
+const { quarterConfigs } = require('./marketingGovernance');
 const { saveUpload, publicUrl } = require('../../api/uploadStorage');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -675,16 +676,9 @@ async function checkBudgetAvailability(req, res, next) {
     });
 
     // Quarterly aggregates & deadlines according to COO rules
-    const quarterConfigs = [
-      { quarter: 1, name: 'Q1 (Jan - Mar)', months: [1, 2, 3], deadline: `${fiscal_year - 1}-12-31` },
-      { quarter: 2, name: 'Q2 (Apr - Jun)', months: [4, 5, 6], deadline: `${fiscal_year}-02-28` },
-      { quarter: 3, name: 'Q3 (Jul - Sep)', months: [7, 8, 9], deadline: `${fiscal_year}-05-31` },
-      { quarter: 4, name: 'Q4 (Okt - Des)', months: [10, 11, 12], deadline: `${fiscal_year}-10-31` }
-    ];
-
     const todayStr = new Date().toISOString().split('T')[0];
 
-    const quarterly = quarterConfigs.map(qc => {
+    const quarterly = quarterConfigs(fiscal_year).map(qc => {
       const qMonths = result.filter(r => qc.months.includes(r.month));
       const total_limit = qMonths.reduce((sum, m) => sum + m.limit, 0);
       const total_committed = qMonths.reduce((sum, m) => sum + m.committed, 0);
@@ -832,7 +826,11 @@ async function updateBudget(req, res, next) {
       const bHeader = await tx.m_marketing_budget.update({
         where: { id },
         data: {
-          total_budget: parseFloat(total_budget || 0)
+          total_budget: parseFloat(total_budget || 0),
+          // Cap berubah setelah divalidasi Finance -> wajib divalidasi ulang
+          ...(existing.validation_status === 'VALIDATED'
+            ? { validation_status: 'DRAFT', validated_at: null, validated_by: null, validation_note: null }
+            : {})
         }
       });
 
@@ -866,10 +864,41 @@ async function updateBudget(req, res, next) {
   }
 }
 
+// PUT /budgets/:id/validate — Finance memvalidasi cap tahunan (syarat sebelum dikunci)
+async function validateBudget(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const existing = await prisma.m_marketing_budget.findUnique({ where: { id }, include: { monthly_limits: true } });
+    if (!existing) return res.status(404).json({ error: 'Budget control tidak ditemukan.' });
+    if (existing.validation_status === 'VALIDATED') return res.status(400).json({ error: 'Budget ini sudah divalidasi Finance.' });
+    const monthlySum = existing.monthly_limits.reduce((s, m) => s + parseFloat(m.budget_limit || 0), 0);
+    if (monthlySum <= 0) return res.status(400).json({ error: 'Isi alokasi bulanan terlebih dahulu sebelum divalidasi.' });
+
+    const updated = await prisma.m_marketing_budget.update({
+      where: { id },
+      data: {
+        validation_status: 'VALIDATED',
+        validated_at: new Date(),
+        validated_by: req.user?.full_name || req.user?.email || 'Finance',
+        validation_note: req.body?.note ? String(req.body.note).trim() || null : null,
+        updated_at: new Date()
+      }
+    });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // PUT /budgets/:id/lock
 async function lockBudget(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
+    const existing = await prisma.m_marketing_budget.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Budget control tidak ditemukan.' });
+    if (existing.validation_status !== 'VALIDATED') {
+      return res.status(400).json({ error: 'Budget harus divalidasi Finance terlebih dahulu sebelum dikunci.' });
+    }
     const updated = await prisma.m_marketing_budget.update({
       where: { id },
       data: {
@@ -1332,6 +1361,7 @@ module.exports = {
   getBudgetDetail,
   createBudget,
   updateBudget,
+  validateBudget,
   lockBudget,
   unlockBudget,
   closeMonth,

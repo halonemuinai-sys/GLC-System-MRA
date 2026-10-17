@@ -4,9 +4,12 @@ const { verifyToken, checkRole, attachCompanyScope } = require('../api/authMiddl
 
 const planController = require('./marketing/marketingPlanController');
 const paymentController = require('./marketing/marketingPaymentController');
+const claimController = require('./marketing/marketingClaimController');
 const approvalController = require('./marketing/marketingApprovalController');
 const settingsController = require('./marketing/marketingSettingsController');
 const amendmentController = require('./marketing/marketingAmendmentController');
+const closingController = require('./marketing/marketingClosingController');
+const governanceController = require('./marketing/marketingGovernanceController');
 
 const router = express.Router();
 
@@ -28,7 +31,20 @@ router.post('/plans/:id/recall', verifyToken, checkRole(['admin', 'marketing']),
 router.put('/plans/:id/actuals', verifyToken, checkRole(['admin', 'marketing']), planController.updatePlanActuals);
 router.put('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.revisePlan);
 router.post('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.revisePlan);
-router.post('/plans/:id/complete', verifyToken, checkRole(['admin', 'marketing']), planController.completePlan);
+// Plan Closing (settlement biaya final vs dibayar + approval 1 approver via magic link)
+router.get('/plans/:id/closing', verifyToken, attachCompanyScope, closingController.getClosing);
+router.put('/plans/:id/closing', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), closingController.saveClosing);
+router.post('/plans/:id/closing/submit', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), closingController.submitClosing);
+router.put('/plans/:id/closing/approve', verifyToken, attachCompanyScope, checkRole(['admin']), closingController.approveClosing);
+router.put('/plans/:id/closing/reject', verifyToken, attachCompanyScope, checkRole(['admin']), closingController.rejectClosing);
+router.put('/plans/:id/closing/settle', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), closingController.settleClosing);
+router.get('/closing/magic/:token', closingController.getClosingByToken);
+router.post('/closing/magic/:token', closingController.processClosingByToken);
+
+// Governance: pengingat closing (bell) & Quarterly Plan Alignment
+router.get('/notifications', verifyToken, attachCompanyScope, governanceController.getNotifications);
+router.get('/reports/quarterly-alignment', verifyToken, attachCompanyScope, governanceController.getQuarterlyAlignment);
+router.get('/reports/reconciliation', verifyToken, attachCompanyScope, governanceController.getReconciliation);
 router.get('/plans', verifyToken, attachCompanyScope, planController.getPlans);
 router.get('/plans/:id', verifyToken, attachCompanyScope, planController.getPlanDetail);
 router.post('/plans/:id/duplicate', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.duplicatePlan);
@@ -42,18 +58,22 @@ router.post('/amendments/:id/submit', verifyToken, checkRole(['admin', 'marketin
 router.post('/amendments/:id/review', verifyToken, checkRole(['admin', 'manager', 'finance']), amendmentController.reviewAmendment);
 router.delete('/amendments/:id', verifyToken, amendmentController.deleteAmendment);
 
+// Claims: one Finance approval, independent of payment approval rules.
+router.post('/claims', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), claimController.createClaim);
+
 // Payments (Payment Requests)
 router.get('/payments', verifyToken, attachCompanyScope, paymentController.getPayments);
 router.get('/payments/:id', verifyToken, attachCompanyScope, paymentController.getPaymentDetail);
 router.post('/payments', verifyToken, checkRole(['admin', 'marketing']), paymentController.createPaymentRequest);
-router.put('/payments/:id', verifyToken, checkRole(['admin', 'marketing']), paymentController.updatePayment);
-router.delete('/payments/:id', verifyToken, checkRole(['admin', 'marketing']), paymentController.deletePayment);
-router.post('/payments/:id/mark-paid', verifyToken, checkRole(['admin', 'ga']), paymentController.markPaymentPaid);
+router.put('/payments/:id', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), paymentController.updatePayment);
+router.delete('/payments/:id', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), paymentController.deletePayment);
+router.post('/payments/:id/mark-paid', verifyToken, attachCompanyScope, checkRole(['admin', 'ga', 'finance']), paymentController.markPaymentPaid);
 router.post('/payments/:id/set-po', verifyToken, checkRole(['admin', 'ga']), paymentController.setPoNumber);
+router.put('/payments/:id/verify', verifyToken, checkRole(['admin', 'finance']), paymentController.verifyPayment);
 
 // Approvals & Tasks
 router.get('/tasks', verifyToken, attachCompanyScope, approvalController.getPendingTasks);
-router.post('/approvals/:id', verifyToken, approvalController.processApproval);
+router.post('/approvals/:id', verifyToken, attachCompanyScope, approvalController.processApproval);
 router.get('/history', verifyToken, approvalController.getApprovalHistory);
 router.get('/magic/:token', approvalController.getMagicLinkDetail);
 router.post('/magic/:token', approvalController.processMagicLink);
@@ -93,6 +113,7 @@ router.get('/budgets/check', verifyToken, settingsController.checkBudgetAvailabi
 router.get('/budgets/:id', verifyToken, settingsController.getBudgetDetail);
 router.post('/budgets', verifyToken, checkRole(['admin', 'finance']), settingsController.createBudget);
 router.put('/budgets/:id', verifyToken, checkRole(['admin', 'finance']), settingsController.updateBudget);
+router.put('/budgets/:id/validate', verifyToken, checkRole(['admin', 'finance']), settingsController.validateBudget);
 router.put('/budgets/:id/lock', verifyToken, checkRole(['admin', 'finance']), settingsController.lockBudget);
 router.put('/budgets/:id/unlock', verifyToken, checkRole(['admin', 'finance']), settingsController.unlockBudget);
 

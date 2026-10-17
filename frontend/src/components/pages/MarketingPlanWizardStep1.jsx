@@ -5,6 +5,9 @@ import {
   X,
   Info,
   Target,
+  FileText,
+  Calendar,
+  ChevronDown,
   Paperclip,
   Loader2,
   AlertTriangle
@@ -28,7 +31,7 @@ export const formatThousands = (value) => {
 export function FormLabel({ label, tooltip }) {
   return (
     <div className="flex items-center gap-1.5 mb-1.5">
-      <span className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
+      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 block">
         {label}
       </span>
       {tooltip && (
@@ -50,10 +53,11 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden mt-2">
+    <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden mt-5 shadow-sm">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
         className="w-full flex items-center justify-between px-5 py-3.5 bg-neutral-50 dark:bg-neutral-950/30 hover:bg-neutral-100 dark:hover:bg-neutral-800/30 transition-colors text-left"
       >
         <div className="flex items-center gap-2">
@@ -64,7 +68,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
             <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-md">{t('hasTarget')}</span>
           )}
         </div>
-        <span className="text-neutral-400 text-xs">{open ? '▲' : '▼'}</span>
+        <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -81,7 +85,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_sales: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-semibold"
+                className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 font-semibold"
               />
             </div>
             <div className="space-y-1">
@@ -94,7 +98,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_leads: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
               />
             </div>
             <div className="space-y-1">
@@ -107,7 +111,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_reach: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
               />
             </div>
             <div className="space-y-1">
@@ -120,7 +124,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                   const val = e.target.value.replace(/\D/g, '');
                   setWizardHeader(p => ({ ...p, target_impressions: val }));
                 }}
-                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
               />
             </div>
             <div className="space-y-1">
@@ -131,7 +135,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
                 placeholder="0.00"
                 value={wizardHeader.target_roi_pct || ''}
                 onChange={(e) => setWizardHeader(p => ({ ...p, target_roi_pct: e.target.value }))}
-                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500"
+                className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500"
               />
             </div>
           </div>
@@ -145,7 +149,7 @@ export function KpiTargetSection({ wizardHeader, setWizardHeader, t }) {
               placeholder={t('targetNotesPlaceholder')}
               value={wizardHeader.target_notes || ''}
               onChange={(e) => setWizardHeader(p => ({ ...p, target_notes: e.target.value }))}
-              className={`w-full bg-neutral-50 dark:bg-neutral-950 border rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none ${!wizardHeader.target_notes?.trim() ? 'border-rose-300 dark:border-rose-900/50' : 'border-neutral-200 dark:border-neutral-800'}`}
+              className={`w-full bg-neutral-50 dark:bg-neutral-950 border rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 resize-none ${!wizardHeader.target_notes?.trim() ? 'border-rose-300 dark:border-rose-900/50' : 'border-neutral-200 dark:border-neutral-800'}`}
             />
           </div>
         </div>
@@ -160,6 +164,7 @@ export default function MarketingPlanWizardStep1({
   setWizardApprovers,
   getDefaultApproversForCompany,
   isDraftOrRevise,
+  lang = 'id',
   metadata,
   t
 }) {
@@ -235,7 +240,12 @@ export default function MarketingPlanWizardStep1({
 
   return (
     <TooltipProvider delay={100}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-2">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10"><FileText className="h-4 w-4" /></span>
+          <div><h4 className="text-sm font-semibold text-slate-800 dark:text-white">{lang === 'id' ? 'Identitas campaign' : 'Campaign details'}</h4><p className="mt-1 text-[11px] text-slate-500">{lang === 'id' ? 'Informasi utama, perusahaan, dan lingkup kegiatan.' : 'Key information, company, and campaign scope.'}</p></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
         {/* Title */}
         <div className="space-y-2">
           <FormLabel label="Campaign Title / Name *" tooltip="Name or title of your marketing campaign." />
@@ -244,7 +254,7 @@ export default function MarketingPlanWizardStep1({
             placeholder="e.g. Ramadhan Promotion Campaign Bvlgari"
             value={wizardHeader.title}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, title: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+            className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
             required
           />
         </div>
@@ -278,11 +288,11 @@ export default function MarketingPlanWizardStep1({
         <div className="space-y-2 md:col-span-2">
           <FormLabel label="Campaign Description / Scope" tooltip={t('descriptionTooltip')} />
           <textarea
-            rows={2.5}
+            rows={3}
             placeholder={t('descriptionPlaceholder')}
             value={wizardHeader.description}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, description: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-relaxed font-medium resize-none"
+            className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all leading-relaxed font-medium resize-none"
           />
         </div>
 
@@ -292,7 +302,7 @@ export default function MarketingPlanWizardStep1({
           <select
             value={wizardHeader.fiscal_year}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, fiscal_year: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
             required
           >
             {FISCAL_YEAR_OPTIONS.map(y => (
@@ -323,7 +333,7 @@ export default function MarketingPlanWizardStep1({
           <select
             value={wizardHeader.lob_id}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, lob_id: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
             required
           >
             <option value="">{t('selectLob')}</option>
@@ -338,7 +348,7 @@ export default function MarketingPlanWizardStep1({
           <select
             value={wizardHeader.event_location_id}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, event_location_id: e.target.value }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
+            className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
           >
             <option value="">{t('selectLocationOption')}</option>
             {metadata.event_locations.map(loc => (
@@ -350,6 +360,14 @@ export default function MarketingPlanWizardStep1({
         </div>
 
         {/* Event / Campaign Period Picker */}
+      </div>
+      </div>
+      <div className="mt-5 rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"><Calendar className="h-4 w-4" /></span>
+          <div><h4 className="text-sm font-semibold text-slate-800 dark:text-white">{lang === 'id' ? 'Jadwal & dokumen pendukung' : 'Schedule & supporting documents'}</h4><p className="mt-1 text-[11px] text-slate-500">{lang === 'id' ? 'Tentukan periode, cabang sasaran, dan lampirkan proposal.' : 'Set dates, target branches, and attach your proposal.'}</p></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
         <div className="space-y-2">
           <FormLabel label={t('eventPeriodLabel')} tooltip={t('eventPeriodTooltip')} />
           <CampaignDateRangePicker
@@ -376,7 +394,7 @@ export default function MarketingPlanWizardStep1({
           <button
             type="button"
             onClick={() => setWizardHeader(prev => ({ ...prev, _branchDropdownOpen: !prev._branchDropdownOpen }))}
-            className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-left font-medium flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+            className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-left font-medium flex items-center justify-between transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
           >
             <span className={wizardHeader.branch_ids.length === 0 ? 'text-neutral-900 dark:text-white font-medium' : 'text-blue-600 dark:text-blue-400 font-semibold'}>
               {(() => {
@@ -404,7 +422,7 @@ export default function MarketingPlanWizardStep1({
                     value={branchSearch}
                     onChange={(e) => setBranchSearch(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
-                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-3 pr-7 py-1.5 text-xs text-neutral-800 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-blue-500 font-medium"
+                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-lg pl-3 pr-7 py-1.5 text-xs text-neutral-800 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-500/15 focus:border-blue-500 font-medium"
                   />
                   {branchSearch && (
                     <button
@@ -477,7 +495,7 @@ export default function MarketingPlanWizardStep1({
                 placeholder={t('proposalLinkPlaceholder')}
                 value={wizardHeader.doc_url || ''}
                 onChange={(e) => setWizardHeader(prev => ({ ...prev, doc_url: e.target.value }))}
-                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
               />
             </div>
             <div className="relative shrink-0">
@@ -515,6 +533,7 @@ export default function MarketingPlanWizardStep1({
         </div>
       </div>
 
+      </div>
       <KpiTargetSection wizardHeader={wizardHeader} setWizardHeader={setWizardHeader} t={t} />
     </TooltipProvider>
   );

@@ -9,7 +9,8 @@ const PAYMENT_INCLUDE = {
       }
     }
   },
-  creator: { select: { id: true, name: true, email: true } }
+  creator: { select: { id: true, name: true, email: true } },
+  approval_history: { orderBy: { step_number: 'asc' }, include: { approver: { select: { name: true } } } }
 };
 
 // POST /payments — buat payment request baru
@@ -127,16 +128,17 @@ async function createPaymentRequest(req, res, next) {
 // GET /payments — list semua payment request dengan filter
 async function getPayments(req, res, next) {
   try {
-    const { status, plan_id, company_id, fiscal_year, page = 1, limit = 50 } = req.query;
+    const { status, request_type, plan_id, company_id, fiscal_year, page = 1, limit = 50 } = req.query;
     const userRole = req.user.role.toUpperCase();
     const employee = await resolveEmployee(req.user.email);
 
     const where = {};
     if (status) where.status = status;
+    if (['PAYMENT', 'CLAIM'].includes(request_type)) where.request_type = request_type;
 
     // Non-admin hanya lihat payment milik sendiri atau dari plan yang mereka buat
-    if (userRole !== 'ADMIN' && userRole !== 'AUDITOR' && userRole !== 'GA') {
-      if (employee) where.creator_id = employee.id;
+    if (userRole !== 'ADMIN' && userRole !== 'AUDITOR' && userRole !== 'GA' && userRole !== 'FINANCE') {
+      where.creator_id = employee?.id || -1;
     }
 
     if (plan_id || company_id || fiscal_year || !req.companyScope.all) {
@@ -197,8 +199,15 @@ async function getPaymentDetail(req, res, next) {
 async function updatePayment(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
-    const payment = await prisma.payment_requests.findUnique({ where: { id } });
+    const payment = await prisma.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
     if (!payment) return res.status(404).json({ error: 'Payment request not found.' });
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(payment.marketing_plan_item.marketing_plan.company_id)) {
+      return res.status(404).json({ error: 'Payment request not found.' });
+    }
+    if (payment.request_type === 'CLAIM') {
+      return res.status(400).json({ error: 'Claim yang sudah diajukan tidak bisa diedit. Batalkan lalu ajukan ulang.' });
+    }
+
     if (!['PENDING', 'OVERBUDGET_WARN'].includes(payment.status)) {
       return res.status(400).json({ error: 'Hanya payment dengan status PENDING yang bisa diubah.' });
     }
@@ -217,8 +226,12 @@ async function updatePayment(req, res, next) {
 async function deletePayment(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
-    const payment = await prisma.payment_requests.findUnique({ where: { id } });
+    const payment = await prisma.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
     if (!payment) return res.status(404).json({ error: 'Payment request not found.' });
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(payment.marketing_plan_item.marketing_plan.company_id)) {
+      return res.status(404).json({ error: 'Payment request not found.' });
+    }
+
     if (!['PENDING', 'OVERBUDGET_WARN'].includes(payment.status)) {
       return res.status(400).json({ error: 'Hanya payment dengan status PENDING yang bisa dihapus.' });
     }
@@ -239,30 +252,34 @@ async function markPaymentPaid(req, res, next) {
 
     const payment = await prisma.payment_requests.findUnique({
       where: { id },
-      include: { marketing_plan_item: true }
+      include: PAYMENT_INCLUDE
     });
     if (!payment) return res.status(404).json({ error: 'Payment request not found.' });
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(payment.marketing_plan_item.marketing_plan.company_id)) {
+      return res.status(404).json({ error: 'Payment request not found.' });
+    }
+    if (req.user.role.toLowerCase() === 'finance' && payment.request_type !== 'CLAIM') {
+      return res.status(403).json({ error: 'Akses ini khusus pembayaran claim.' });
+    }
+
     if (payment.status !== 'APPROVED') {
       return res.status(400).json({ error: 'Hanya payment yang sudah APPROVED yang bisa ditandai PAID.' });
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      // Update actual_amount di plan item
-      const newActual = parseFloat(payment.marketing_plan_item.actual_amount || 0) + parseFloat(payment.amount);
+      const claimed = await tx.payment_requests.updateMany({
+        where: { id, status: 'APPROVED' },
+        data: {
+          status: 'PAID', paid_at: paid_at ? new Date(paid_at) : new Date(), updated_at: new Date(),
+          notes: paid_notes ? `${payment.notes || ''}\n[PAID] ${paid_notes}`.trim() : payment.notes
+        }
+      });
+      if (claimed.count !== 1) throw new Error('Pembayaran sudah diproses.');
       await tx.marketing_plan_items.update({
         where: { id: payment.marketing_plan_item_id },
-        data: { actual_amount: newActual }
+        data: { actual_amount: { increment: payment.amount } }
       });
-
-      return tx.payment_requests.update({
-        where: { id },
-        data: {
-          status: 'PAID',
-          paid_at: paid_at ? new Date(paid_at) : new Date(),
-          notes: paid_notes ? `${payment.notes || ''}\n[PAID] ${paid_notes}`.trim() : payment.notes
-        },
-        include: PAYMENT_INCLUDE
-      });
+      return tx.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
     });
 
     res.json(updated);
@@ -291,7 +308,29 @@ async function setPoNumber(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// PUT /payments/:id/verify — Finance memverifikasi invoice & dokumen pendukung (atau membatalkan verifikasi)
+async function verifyPayment(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { verified = true, note } = req.body || {};
+    const payment = await prisma.payment_requests.findUnique({ where: { id } });
+    if (!payment) return res.status(404).json({ error: 'Payment request not found.' });
+    if (verified && !['APPROVED', 'PAID'].includes(payment.status)) {
+      return res.status(400).json({ error: 'Hanya payment berstatus APPROVED atau PAID yang bisa diverifikasi.' });
+    }
+    const updated = await prisma.payment_requests.update({
+      where: { id },
+      data: verified
+        ? { finance_verified_at: new Date(), finance_verified_by: req.user?.full_name || req.user?.email || 'Finance', finance_note: note ? String(note).trim() || null : null }
+        : { finance_verified_at: null, finance_verified_by: null, finance_note: note ? String(note).trim() || null : null },
+      include: PAYMENT_INCLUDE
+    });
+    res.json(updated);
+  } catch (err) { next(err); }
+}
+
 module.exports = {
+  verifyPayment,
   createPaymentRequest,
   getPayments,
   getPaymentDetail,

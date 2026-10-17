@@ -1,589 +1,280 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion } from 'framer-motion';
-
-import {
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Layers,
-  RefreshCw,
-  Loader2,
-  AlertTriangle,
-  FileSpreadsheet,
-  MoreVertical,
-  Info
-} from 'lucide-react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  ResponsiveContainer, LabelList
-} from 'recharts';
+import React, { useState, useEffect, useCallback, useMemo, useId } from 'react';
+import Link from 'next/link';
+import { BarChart3, TrendingUp, Wallet, Layers, RefreshCw, Loader2, AlertTriangle, FileSpreadsheet, ArrowUpRight, CalendarDays, Building2, ArrowRight, SlidersHorizontal } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
+import InlineHelp from '@/components/ui/InlineHelp';
 import MarketingGanttChart from './MarketingGanttChart';
-import {
-  formatIDR,
-  formatIDRCompact,
-  CURRENT_YEAR
-} from './MarketingGanttUtils';
+import { formatIDR, formatIDRCompact, CURRENT_YEAR } from './MarketingGanttUtils';
 
-// ── Floating Tooltip Component ───────────────────────────────────────────────
-function InfoTooltip({ content, position = 'top' }) {
-  if (!content) return null;
+const paidAmount = plan => (plan.items || []).reduce((sum, item) => sum + Number(item.actual_amount || 0), 0);
+const compactMoney = value => value < 0 ? `−${formatIDRCompact(Math.abs(value))}` : formatIDRCompact(value);
+const panel = 'rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
+const secondaryButton = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800';
+const THEMES = {
+  blue: { color: '#3b82f6', icon: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
+  emerald: { color: '#10b981', icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
+  amber: { color: '#f59e0b', icon: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
+  rose: { color: '#f43f5e', icon: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' },
+};
+
+function MetricCard({ label, value, detail, help, icon: Icon, tone, progress }) {
+  const gradientId = useId();
+  const theme = THEMES[tone];
+  const path = 'M0 28 L25 25 L50 29 L75 18 L100 22 L125 10 L150 16 L175 9 L200 14 L225 6 L250 12 L275 20 L300 15 L325 22 L350 18 L375 24 L400 28';
   return (
-    <span className="relative inline-flex items-center group/tip align-middle ml-1.5 cursor-help">
-      <Info className="w-3.5 h-3.5 text-neutral-400 hover:text-blue-500 dark:text-neutral-500 dark:hover:text-blue-400 transition-colors" />
-      <span
-        role="tooltip"
-        className={`absolute z-50 hidden group-hover/tip:block px-3 py-2 text-[11px] font-normal leading-relaxed rounded-xl shadow-2xl border pointer-events-none w-64 text-neutral-100 bg-neutral-900/95 dark:bg-neutral-950/95 border-neutral-700/60 backdrop-blur-md normal-case text-left ${
-          position === 'top'
-            ? 'bottom-full mb-2 left-1/2 -translate-x-1/2'
-            : 'top-full mt-2 left-1/2 -translate-x-1/2'
-        }`}
-      >
-        <span className="relative z-10 block font-sans">{content}</span>
-        <span
-          className={`absolute left-1/2 -translate-x-1/2 w-2 h-2 bg-neutral-900 border-neutral-700/60 rotate-45 ${
-            position === 'top' ? 'top-full -mt-1 border-r border-b' : 'bottom-full -mb-1 border-l border-t'
-          }`}
-        />
-      </span>
-    </span>
+    <section className={`${panel} relative isolate overflow-hidden p-4 pb-10 sm:p-5 sm:pb-11`}>
+      <div aria-hidden="true" className="pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full opacity-[0.07] blur-2xl" style={{ background: theme.color }} />
+      <div aria-hidden="true" className="absolute bottom-6 left-0 top-6 w-0.5 rounded-r" style={{ background: theme.color }} />
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            {label}<InlineHelp label={`Info ${label}`}>{help}</InlineHelp>
+          </div>
+          <p className="mt-2 break-words text-2xl font-semibold tracking-tight text-slate-900 tabular-nums dark:text-white sm:text-[28px]">{value}</p>
+        </div>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${theme.icon}`}><Icon className="h-[18px] w-[18px]" /></span>
+      </div>
+      <div className="relative mt-3 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">{detail}</div>
+      {progress !== undefined ? (
+        <div className="absolute bottom-4 left-5 right-5 flex items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-rose-500" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /></div>
+          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{progress.toFixed(0)}%</span>
+        </div>
+      ) : (
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-8 overflow-hidden opacity-40" style={{ backgroundImage: `linear-gradient(to right, ${theme.color}0d 1px, transparent 1px), linear-gradient(to top, ${theme.color}0d 1px, transparent 1px)`, backgroundSize: '20px 8px' }}>
+          <div className="marketing-overview-trend flex h-full w-[200%]">
+            {[0, 1].map(copy => <svg key={copy} viewBox="0 0 400 40" preserveAspectRatio="none" className="h-full w-1/2 shrink-0" fill="none">
+              {copy === 0 && <defs><linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={theme.color} stopOpacity="0.22" /><stop offset="100%" stopColor={theme.color} stopOpacity="0" /></linearGradient></defs>}
+              <path d={`${path} L400 40 L0 40 Z`} fill={`url(#${gradientId})`} />
+              <path d={path} stroke={theme.color} strokeWidth="1.5" />
+            </svg>)}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
-// ── Custom Tooltip: Budget vs Realisasi ───────────────────────────────────────
-function CustomBudgetTooltip({ active, payload }) {
+function BudgetTooltip({ active, payload, isId }) {
   if (!active || !payload?.length) return null;
-  const budget     = payload.find(p => p.dataKey === 'Budget')?.value    || 0;
-  const realisasi  = payload.find(p => p.dataKey === 'Realisasi')?.value || 0;
-  const pct        = budget > 0 ? Math.round((realisasi / budget) * 100) : 0;
-  const overBudget = pct > 100;
-  const pctColor   = overBudget ? 'text-red-500' : pct >= 80 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400';
-  const barColor   = overBudget ? 'bg-red-500'   : pct >= 80 ? 'bg-amber-400'   : 'bg-emerald-500';
-
-  return (
-    <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700/80 rounded-2xl shadow-xl shadow-black/10 dark:shadow-black/30 p-4 min-w-[220px]">
-      <p className="text-xs font-black text-neutral-800 dark:text-white mb-3 leading-tight line-clamp-2">
-        {payload[0]?.payload?.fullName || '—'}
-      </p>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-6">
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#CBD5E1' }} />
-            <span className="text-[11px] text-neutral-500 dark:text-neutral-400">Budget</span>
-          </div>
-          <span className="text-[11px] font-bold text-neutral-800 dark:text-white tabular-nums">{formatIDR(budget)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-6">
-          <div className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#22C55E' }} />
-            <span className="text-[11px] text-neutral-500 dark:text-neutral-400">Realisasi</span>
-          </div>
-          <span className="text-[11px] font-bold text-neutral-800 dark:text-white tabular-nums">{formatIDR(realisasi)}</span>
-        </div>
-      </div>
-      <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[10px] text-neutral-400 font-semibold uppercase tracking-wider">Utilisasi</span>
-          <span className={`text-[12px] font-black ${pctColor}`}>{pct}%</span>
-        </div>
-        <div className="h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full ${barColor}`}
-            style={{ width: `${Math.min(pct, 100)}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
+  const row = payload[0].payload;
+  return <div className={`${panel} max-w-72 p-4 text-xs shadow-xl`}>
+    <p className="mb-3 font-semibold text-slate-900 dark:text-white">{row.name}</p>
+    {[[isId ? 'Anggaran' : 'Budget', row.budget, 'bg-blue-500'], [isId ? 'Terbayar' : 'Paid', row.actual, 'bg-emerald-500']].map(([label, value, color]) => (
+      <div key={label} className="mt-2 flex items-center justify-between gap-6 text-slate-500 dark:text-slate-400"><span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${color}`} />{label}</span><span className="font-semibold tabular-nums text-slate-900 dark:text-white">{formatIDR(value)}</span></div>
+    ))}
+  </div>;
 }
 
-// ── Custom X-Axis Tick: wraps campaign names across 2 lines ──────────────────
-function CustomXAxisTick({ x, y, payload }) {
-  const raw = payload.value || '';
-  let lines;
-  if (raw.includes('/')) {
-    const parts = raw.split('/').map(s => s.trim());
-    lines = [parts[0], parts.slice(1).join(' / ')];
-  } else if (raw.length > 13) {
-    const cut = raw.lastIndexOf(' ', 13);
-    lines = cut > 0 ? [raw.slice(0, cut), raw.slice(cut + 1)] : [raw.slice(0, 13), raw.slice(13)];
-  } else {
-    lines = [raw];
-  }
-  // Truncate each line at 16 chars
-  lines = lines.map(l => l.length > 16 ? l.slice(0, 15) + '…' : l);
-
-  return (
-    <g transform={`translate(${x},${y})`}>
-      {lines.map((line, i) => (
-        <text
-          key={i}
-          x={0}
-          y={0}
-          dy={12 + i * 13}
-          textAnchor="middle"
-          fill="currentColor"
-          fillOpacity={0.5}
-          fontSize={9}
-          fontWeight={700}
-        >
-          {line}
-        </text>
-      ))}
-    </g>
-  );
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function MarketingOverviewPage() {
   const { lang, t } = useLanguage();
+  const isId = lang === 'id';
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
   const [fiscalYear, setFiscalYear] = useState(String(CURRENT_YEAR));
+  const [draftYear, setDraftYear] = useState(String(CURRENT_YEAR));
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const years = useMemo(() => Array.from({ length: 4 }, (_, i) => String(CURRENT_YEAR - 1 + i)), []);
 
-  const FISCAL_YEAR_OPTIONS = useMemo(() => Array.from({ length: 4 }, (_, i) => String(CURRENT_YEAR - 1 + i)), []);
+  const loadPlans = useCallback(async (year, signal) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = { fiscal_year: year, limit: 100 };
+      const first = await apiClient.get('/api/marketing/plans', { params, signal });
+      const all = [...(first.data || [])];
+      // The API caps a page at 100. Load every page before presenting annual totals.
+      for (let page = 2; page <= (first.totalPages || 1); page++) {
+        const next = await apiClient.get('/api/marketing/plans', { params: { ...params, page }, signal });
+        all.push(...(next.data || []));
+      }
+      if (signal?.aborted) return;
+      setPlans(all);
+      setFiscalYear(year);
+      setUpdatedAt(new Date());
+    } catch (err) {
+      if (!signal?.aborted) setError(err.message || 'Gagal memuat data.');
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadPlans(String(CURRENT_YEAR), controller.signal);
+    return () => controller.abort();
+  }, [loadPlans]);
+
+  const stats = useMemo(() => {
+    const result = { budget: 0, actual: 0, approved: 0, pending: 0, rejected: 0, draft: 0, completed: 0, companies: [] };
+    const companies = new Map();
+    const statusKeys = { APPROVED: 'approved', PENDING_APPROVAL: 'pending', REJECTED: 'rejected', DRAFT: 'draft', COMPLETED: 'completed' };
+    for (const plan of plans) {
+      const budget = Number(plan.total_budget || 0);
+      result.budget += budget;
+      result.actual += paidAmount(plan);
+      if (statusKeys[plan.status]) result[statusKeys[plan.status]]++;
+      const key = plan.company?.id ?? plan.company_id ?? 'unknown';
+      const company = companies.get(key) || { id: key, name: plan.company?.name || '—', budget: 0, count: 0 };
+      company.budget += budget;
+      company.count++;
+      companies.set(key, company);
+    }
+    result.companies = [...companies.values()].sort((a, b) => b.budget - a.budget);
+    result.burn = result.budget > 0 ? result.actual / result.budget * 100 : 0;
+    return result;
+  }, [plans]);
+
+  const chartData = useMemo(() => [...plans].sort((a, b) => Number(b.total_budget || 0) - Number(a.total_budget || 0)).slice(0, 10).map(plan => ({
+    name: plan.title || '—', budget: Number(plan.total_budget || 0), actual: paidAmount(plan),
+  })), [plans]);
 
   const handleExportExcel = async () => {
+    setExporting(true);
     try {
       const ExcelJS = (await import('exceljs')).default;
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet('Marketing Plans');
       ws.columns = [
-        { header: 'No', key: 'no', width: 5 },
-        { header: 'Judul Campaign', key: 'title', width: 35 },
-        { header: 'Perusahaan', key: 'company', width: 25 },
-        { header: 'Status', key: 'status', width: 16 },
-        { header: 'Total Budget (Rp)', key: 'budget', width: 22 },
-        { header: 'Realisasi (Rp)', key: 'actual', width: 20 },
-        { header: 'Sisa (Rp)', key: 'sisa', width: 20 },
-        { header: 'Burn Rate (%)', key: 'burn', width: 14 },
+        { header: 'No', key: 'no', width: 5 }, { header: 'Judul Campaign', key: 'title', width: 45 },
+        { header: 'Perusahaan', key: 'company', width: 30 }, { header: 'Status', key: 'status', width: 22 },
+        { header: 'Total Budget (Rp)', key: 'budget', width: 22 }, { header: 'Realisasi (Rp)', key: 'actual', width: 20 },
+        { header: 'Sisa (Rp)', key: 'remaining', width: 20 }, { header: 'Burn Rate (%)', key: 'burn', width: 16 },
         { header: 'Fiscal Year', key: 'fy', width: 12 },
       ];
       ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
-
-      plans.forEach((p, i) => {
-        const actual = (p.items || []).reduce((s, it) => s + Number(it.actual_amount || 0), 0);
-        const budget = Number(p.total_budget || 0);
-        ws.addRow({
-          no: i + 1,
-          title: p.title,
-          company: p.company?.name || '-',
-          status: p.status,
-          budget,
-          actual,
-          sisa: budget - actual,
-          burn: budget > 0 ? Number(((actual / budget) * 100).toFixed(1)) : 0,
-          fy: p.fiscal_year,
-        });
+      ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+      ws.getRow(1).height = 26;
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+      ws.autoFilter = 'A1:I1';
+      plans.forEach((plan, i) => {
+        const budget = Number(plan.total_budget || 0), actual = paidAmount(plan);
+        ws.addRow({ no: i + 1, title: plan.title, company: plan.company?.name || '-', status: plan.status, budget, actual, remaining: budget - actual, burn: budget > 0 ? Number((actual / budget * 100).toFixed(1)) : 0, fy: plan.fiscal_year });
       });
-      ['budget', 'actual', 'sisa'].forEach(k => { ws.getColumn(k).numFmt = '#,##0'; });
+      ['budget', 'actual', 'remaining'].forEach(key => { ws.getColumn(key).numFmt = '#,##0'; });
       ws.getColumn('burn').numFmt = '0.0"%"';
-
-      const buf = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url;
-      a.download = `marketing-plans-${fiscalYear}.xlsx`; a.click();
+      const buffer = await wb.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `marketing-plans-${fiscalYear}.xlsx`;
+      anchor.click();
       URL.revokeObjectURL(url);
-    } catch (err) { alert('Gagal export: ' + err.message); }
-  };
-
-  const loadPlans = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiClient.get('/api/marketing/plans', { params: { fiscal_year: fiscalYear, limit: 1000 } });
-      setPlans(res?.data || []);
-    } catch (err) {
-      setError(err.message || 'Gagal memuat data.');
-    } finally {
-      setLoading(false);
-    }
-  }, [fiscalYear]);
-
-  useEffect(() => { loadPlans(); }, [loadPlans]);
-
-  // ── Chart Data Memoization ──────────────────────────────────────────────────
-  const chartData = useMemo(() => {
-    return plans.slice(0, 10).map(p => ({
-      name: p.title || '-',
-      fullName: p.title || '-',
-      Budget: Number(p.total_budget || 0),
-      Realisasi: (p.items || []).reduce((s, it) => s + Number(it.actual_amount || 0), 0),
-    }));
-  }, [plans]);
-
-  // ── KPIs ──────────────────────────────────────────────────────────────────
-  const kpis = useMemo(() => {
-    let totalBudget = 0, totalActual = 0, approved = 0, pending = 0, rejected = 0, draft = 0;
-    plans.forEach(p => {
-      totalBudget += Number(p.total_budget || 0);
-      if (p.items) p.items.forEach(it => { totalActual += Number(it.actual_amount || 0); });
-      if (p.status === 'APPROVED') approved++;
-      else if (p.status === 'PENDING_APPROVAL') pending++;
-      else if (p.status === 'REJECTED') rejected++;
-      else draft++;
-    });
-    const burnRate = totalBudget > 0 ? (totalActual / totalBudget) * 100 : 0;
-    return { totalBudget, totalActual, burnRate, approved, pending, rejected, draft, total: plans.length };
-  }, [plans]);
-
-  const CARD_THEMES = {
-    blue: {
-      border: 'border-blue-500/20 dark:border-blue-500/10',
-      indicator: 'bg-blue-600',
-      iconBg: 'bg-gradient-to-br from-blue-500/15 to-blue-500/5 border-blue-500/20',
-      iconText: 'text-blue-600 dark:text-blue-500',
-      glow: 'bg-blue-500/10 dark:bg-blue-500/5'
-    },
-    emerald: {
-      border: 'border-emerald-500/20 dark:border-emerald-500/10',
-      indicator: 'bg-emerald-600',
-      iconBg: 'bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border-emerald-500/20',
-      iconText: 'text-emerald-600 dark:text-emerald-500',
-      glow: 'bg-emerald-500/10 dark:bg-emerald-500/5'
-    },
-    amber: {
-      border: 'border-amber-500/20 dark:border-amber-500/10',
-      indicator: 'bg-amber-600',
-      iconBg: 'bg-gradient-to-br from-amber-500/15 to-amber-500/5 border-amber-500/20',
-      iconText: 'text-amber-600 dark:text-amber-500',
-      glow: 'bg-amber-500/10 dark:bg-amber-500/5'
-    },
-    slate: {
-      border: 'border-rose-500/20 dark:border-rose-500/10',
-      indicator: 'bg-rose-500',
-      iconBg: 'bg-gradient-to-br from-rose-500/15 to-rose-500/5 border-rose-500/20',
-      iconText: 'text-rose-500 dark:text-rose-500',
-      glow: 'bg-rose-500/10 dark:bg-rose-500/5'
-    }
+    } catch (err) { alert(`Gagal export: ${err.message}`); }
+    finally { setExporting(false); }
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0">
-            <BarChart3 className="w-6 h-6 text-white" />
-          </div>
+    <div className="space-y-5 pb-10 text-slate-800 dark:text-slate-200">
+      <style>{`@keyframes marketingOverviewTrend { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .marketing-overview-trend { animation: marketingOverviewTrend 20s linear infinite; }
+        @media (prefers-reduced-motion: reduce) { .marketing-overview-trend { animation: none; } }`}</style>
+
+      <header className="relative isolate overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 px-5 py-6 text-white sm:px-7 sm:py-7">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-28 h-80 w-80 rounded-full border-[45px] border-white/[0.03]" />
+        <div aria-hidden="true" className="pointer-events-none absolute bottom-0 right-20 h-36 w-72 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">
-              {t('marketing_overview_title')}
-            </h1>
-            <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">
-              Visualisasi timeline campaign — ringkasan anggaran dan realisasi per periode.
-            </p>
+            <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-300"><BarChart3 className="h-4 w-4" /> Marketing intelligence</p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('marketing_overview_title')}</h1>
+            <p className="mt-2 text-xs leading-relaxed text-slate-400 sm:text-sm">{isId ? 'Pantau anggaran, realisasi, dan perjalanan campaign.' : 'Track budgets, paid expenses, and campaign timelines.'}</p>
           </div>
+          <Link href="/dashboard/marketing" className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 text-xs font-semibold text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
+            {isId ? 'Lihat rencana' : 'View plans'}<ArrowUpRight className="h-4 w-4" />
+          </Link>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-500/20 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-all active:scale-95 cursor-pointer"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" /> Export
-          </button>
-          <select
-            value={fiscalYear}
-            onChange={e => setFiscalYear(e.target.value)}
-            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-500 focus:outline-none shadow-sm font-semibold"
-          >
-            {FISCAL_YEAR_OPTIONS.map(y => (
-              <option key={y} value={y}>Tahun {y}</option>
-            ))}
+        <div className="relative mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t border-white/10 pt-4 text-[11px] text-slate-300">
+          <span className="inline-flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-blue-300" />{isId ? 'Tahun fiskal' : 'Fiscal year'} {fiscalYear}</span>
+          <span className="inline-flex items-center gap-2"><Layers className="h-3.5 w-3.5 text-blue-300" />{loading || error ? '—' : plans.length} campaign</span>
+          <span className="inline-flex items-center gap-2"><Building2 className="h-3.5 w-3.5 text-blue-300" />{loading || error ? '—' : stats.companies.length} {isId ? 'perusahaan' : 'companies'}</span>
+        </div>
+      </header>
+
+      <div className={`${panel} flex flex-col justify-between gap-3 p-3 sm:flex-row sm:items-center sm:px-4`}>
+        <form className="flex flex-wrap items-center gap-2" onSubmit={event => { event.preventDefault(); if (!loading) loadPlans(draftYear); }}>
+          <SlidersHorizontal className="mr-1 hidden h-4 w-4 text-slate-400 sm:block" />
+          <label htmlFor="marketing-overview-year" className="text-xs font-medium text-slate-500 dark:text-slate-400">{isId ? 'Periode' : 'Period'}</label>
+          <select id="marketing-overview-year" value={draftYear} disabled={loading} onChange={event => setDraftYear(event.target.value)} className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            {years.map(year => <option key={year} value={year}>{year}</option>)}
           </select>
-          <button
-            onClick={loadPlans}
-            className="w-9 h-9 flex items-center justify-center bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-400 hover:text-indigo-500 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm transition-all cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4" />
+          <button type="submit" disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-50">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />{isId ? 'Proses data' : 'Apply'}
+          </button>
+          {draftYear !== fiscalYear && !loading && <span className="text-[11px] text-amber-600 dark:text-amber-400">{isId ? 'Filter belum diterapkan' : 'Filter not applied'}</span>}
+        </form>
+        <div className="flex items-center justify-between gap-3">
+          <span aria-live="polite" className="text-[10px] text-slate-400">{updatedAt && !error && !loading ? `${isId ? 'Diperbarui' : 'Updated'} ${updatedAt.toLocaleTimeString(isId ? 'id-ID' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+          <button type="button" disabled={loading || exporting || !!error || !plans.length} onClick={handleExportExcel} className={secondaryButton}>
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}{isId ? 'Ekspor Excel' : 'Export Excel'}
           </button>
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold px-4 py-3 rounded-2xl flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4" /> {error}
+      {error && <div role="alert" className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>}
+      {loading ? <div role="status" aria-label={t('loading')} className="space-y-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map(key => <div key={key} className={`${panel} h-44 animate-pulse motion-reduce:animate-none p-5`}><div className="h-3 w-24 rounded bg-slate-100 dark:bg-slate-800" /><div className="mt-5 h-8 w-36 rounded bg-slate-100 dark:bg-slate-800" /><div className="mt-4 h-2 w-28 rounded bg-slate-100 dark:bg-slate-800" /></div>)}</div>
+        <div className={`${panel} flex h-80 items-center justify-center gap-2 text-xs text-slate-400`}><Loader2 className="h-4 w-4 animate-spin" />{t('loading')}</div>
+      </div> : !error && <>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard label={isId ? 'Total anggaran' : 'Total budget'} value={compactMoney(stats.budget)} detail={`${plans.length} campaign · ${fiscalYear}`} help={isId ? `Total rencana pada seluruh status: ${formatIDR(stats.budget)}. Grafik kecil merupakan dekorasi, bukan tren historis.` : `Plans across all statuses: ${formatIDR(stats.budget)}. The small graphic is decorative, not historical data.`} icon={Wallet} tone="blue" />
+          <MetricCard label={isId ? 'Realisasi terbayar' : 'Paid expenses'} value={compactMoney(stats.actual)} detail={`${stats.burn.toFixed(1)}% ${isId ? 'anggaran terserap' : 'of budget used'}`} help={isId ? `Pembayaran yang telah tercatat lunas: ${formatIDR(stats.actual)}.` : `Recorded paid expenses: ${formatIDR(stats.actual)}.`} icon={TrendingUp} tone="emerald" />
+          <MetricCard label={isId ? 'Sisa anggaran' : 'Remaining budget'} value={compactMoney(stats.budget - stats.actual)} detail={isId ? 'Anggaran dikurangi pembayaran' : 'Budget less paid expenses'} help={isId ? `Selisih anggaran dan realisasi terbayar: ${formatIDR(stats.budget - stats.actual)}. Belum mengurangi pengajuan yang belum dibayar.` : `Budget less paid expenses: ${formatIDR(stats.budget - stats.actual)}. Unpaid requests are not deducted.`} icon={Wallet} tone="amber" />
+          <MetricCard label={isId ? 'Campaign disetujui' : 'Approved campaigns'} value={stats.approved} detail={<div className="flex flex-wrap gap-x-3 gap-y-1">{[[stats.pending, 'pending', 'bg-amber-500'], [stats.completed, isId ? 'selesai' : 'completed', 'bg-blue-500'], [stats.draft, 'draft', 'bg-slate-400'], [stats.rejected, isId ? 'ditolak' : 'rejected', 'bg-rose-400']].map(([count, label, color]) => <span key={label} className="inline-flex items-center gap-1.5"><span className={`h-1.5 w-1.5 rounded-full ${color}`} />{count} {label}</span>)}</div>} help={isId ? 'Persentase menunjukkan campaign berstatus Approved dari seluruh campaign. Completed dihitung terpisah.' : 'Percentage of all campaigns currently Approved. Completed campaigns are counted separately.'} icon={Layers} tone="rose" progress={plans.length ? stats.approved / plans.length * 100 : 0} />
         </div>
-      )}
 
-      {loading ? (
-        <div className="py-32 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-          <span className="text-xs text-neutral-500 font-bold">{t('loading')}</span>
-        </div>
-      ) : (
-        <>
-          {/* Animated trendline keyframe style */}
-          <style>{`
-            @keyframes waveMove {
-              0% { transform: translateX(0); }
-              100% { transform: translateX(-50%); }
-            }
-            .wave-animated-fast {
-              animation: waveMove 12s linear infinite;
-            }
-          `}</style>
+        {plans.length === 0 ? <section className={`${panel} flex flex-col items-center px-5 py-16 text-center`}>
+          <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-500 dark:bg-blue-500/10"><CalendarDays className="h-6 w-6" /></span>
+          <h2 className="text-base font-semibold">{isId ? 'Belum ada campaign' : 'No campaigns yet'}</h2>
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{isId ? `Tidak ada rencana untuk tahun ${fiscalYear}.` : `No plans for ${fiscalYear}.`}</p>
+          <Link href="/dashboard/marketing" className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400">{isId ? 'Buka rencana marketing' : 'Open marketing plans'}<ArrowRight className="h-4 w-4" /></Link>
+        </section> : <>
+          <div className="grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <section className={`${panel} min-w-0 overflow-hidden`}>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                <div><h2 className="text-sm font-semibold">{isId ? 'Anggaran & realisasi' : 'Budget & paid expenses'}</h2><p className="mt-1 text-[11px] text-slate-400">{isId ? `${chartData.length} campaign dengan anggaran terbesar` : `${chartData.length} campaigns with the largest budgets`}</p></div>
+                <div className="flex gap-4 text-[10px] text-slate-500 dark:text-slate-400"><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" />{isId ? 'Anggaran' : 'Budget'}</span><span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" />{isId ? 'Terbayar' : 'Paid'}</span></div>
+              </div>
+              <div className="max-h-[420px] overflow-auto px-2 py-4 sm:px-4">
+                <div className="min-w-[470px]" role="img" aria-label={isId ? 'Perbandingan anggaran dan pembayaran per campaign. Nilai lengkap tersedia pada ekspor Excel.' : 'Budget and paid expenses by campaign. Full values are available in the Excel export.'}>
+                  <ResponsiveContainer width="100%" height={Math.max(260, chartData.length * 52 + 30)} debounce={50}>
+                    <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 24, left: 0, bottom: 0 }} barGap={3} barCategoryGap="28%" accessibilityLayer>
+                      <CartesianGrid stroke="currentColor" strokeOpacity={0.07} strokeDasharray="3 4" horizontal={false} />
+                      <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={compactMoney} tick={{ fontSize: 10, fill: '#94a3b8' }} minTickGap={30} />
+                      <YAxis type="category" dataKey="name" width={160} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={value => value.length > 25 ? `${value.slice(0, 24)}…` : value} />
+                      <RechartsTooltip content={<BudgetTooltip isId={isId} />} cursor={{ fill: '#94a3b8', fillOpacity: 0.06 }} />
+                      <Bar dataKey="budget" name={isId ? 'Anggaran' : 'Budget'} fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={12} isAnimationActive={false} />
+                      <Bar dataKey="actual" name={isId ? 'Terbayar' : 'Paid'} fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={12} isAnimationActive={false} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </section>
 
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              {
-                label: 'Total Anggaran',
-                value: formatIDRCompact(kpis.totalBudget),
-                sub: `${kpis.total} campaign`,
-                theme: 'blue',
-                stroke: '#3b82f6',
-                icon: DollarSign,
-                tooltip: 'Total akumulasi pagu anggaran seluruh rencana campaign marketing dalam tahun fiskal aktif.',
-                strokePath: 'M 0 25 L 30 18 L 60 22 L 90 12 L 120 28 L 150 10 L 180 20 L 210 5 L 240 18 L 270 8 L 300 15 L 330 25 L 360 12 L 400 25',
-                fillPath: 'M 0 40 L 0 25 L 30 18 L 60 22 L 90 12 L 120 28 L 150 10 L 180 20 L 210 5 L 240 18 L 270 8 L 300 15 L 330 25 L 360 12 L 400 25 L 400 40 Z'
-              },
-              {
-                label: 'Realisasi Terbayar',
-                value: formatIDRCompact(kpis.totalActual),
-                sub: `${kpis.burnRate.toFixed(1)}% burn rate`,
-                theme: 'emerald',
-                stroke: '#10b981',
-                icon: TrendingUp,
-                tooltip: 'Total nominal pengeluaran riil yang telah terbayarkan dari item campaign yang berjalan (burn rate terhadap pagu).',
-                strokePath: 'M 0 35 L 40 32 L 80 25 L 120 28 L 160 18 L 200 20 L 240 12 L 280 15 L 320 8 L 360 10 L 400 35',
-                fillPath: 'M 0 40 L 0 35 L 40 32 L 80 25 L 120 28 L 160 18 L 200 20 L 240 12 L 280 15 L 320 8 L 360 10 L 400 35 L 400 40 Z'
-              },
-              {
-                label: 'Sisa Anggaran',
-                value: formatIDRCompact(kpis.totalBudget - kpis.totalActual),
-                sub: 'belum terserap',
-                theme: 'amber',
-                stroke: '#f59e0b',
-                icon: TrendingDown,
-                tooltip: 'Sisa pagu anggaran yang belum terserap dan masih tersedia untuk alokasi rencana campaign baru.',
-                strokePath: 'M 0 10 L 40 12 L 80 18 L 120 15 L 160 22 L 200 20 L 240 28 L 280 25 L 320 32 L 360 30 L 400 10',
-                fillPath: 'M 0 40 L 0 10 L 40 12 L 80 18 L 120 15 L 160 22 L 200 20 L 240 28 L 280 25 L 320 32 L 360 30 L 400 10 L 400 40 Z'
-              },
-              {
-                label: 'Status Campaign',
-                value: `${kpis.approved} Approved`,
-                sub: (
-                  <>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                      {kpis.pending} pending
-                    </span>
-                    <span className="mx-0.5 text-neutral-300 dark:text-neutral-600">·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-neutral-400 dark:bg-neutral-600 shrink-0" />
-                      {kpis.rejected} ditolak
-                    </span>
-                    <span className="mx-0.5 text-neutral-300 dark:text-neutral-600">·</span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#64748b] shrink-0" />
-                      {kpis.draft} draft
-                    </span>
-                  </>
-                ),
-                theme: 'slate',
-                icon: Layers,
-                tooltip: 'Distribusi status keseluruhan proposal campaign marketing (Disetujui, Menunggu, Ditolak, dan Draft).',
-                showProgress: true
-              },
-            ].map(({ label, value, sub, theme, stroke, icon: Icon, strokePath, fillPath, showProgress, tooltip }, idx) => {
-              const currentTheme = CARD_THEMES[theme];
-              const approvedPercentage = kpis.total > 0 ? Math.round((kpis.approved / kpis.total) * 100) : 0;
-              return (
-                <motion.div
-                  key={label}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.08, duration: 0.4, ease: 'easeOut' }}
-                  className="relative bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-5 pb-8 rounded-2xl shadow-sm hover:shadow-lg hover:shadow-neutral-200/40 dark:hover:shadow-neutral-950/30 hover:-translate-y-0.5 transition-all duration-300 group min-h-[128px] overflow-visible"
-                >
-                  <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full blur-2xl group-hover:opacity-100 opacity-60 transition-opacity duration-350 ${currentTheme.glow}`} />
-                  <div className={`absolute left-0 top-5 bottom-5 w-1 rounded-r-md transition-all duration-300 group-hover:top-3 group-hover:bottom-3 ${currentTheme.indicator}`} />
-                  <div className="flex items-center gap-3 relative z-10">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105 ${currentTheme.iconBg}`}>
-                      <Icon className={`w-5.5 h-5.5 ${currentTheme.iconText}`} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center">
-                        <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider leading-none truncate">{label}</p>
-                        {tooltip && <InfoTooltip content={tooltip} position="top" />}
-                      </div>
-                      <h3 className="text-lg font-black text-neutral-900 dark:text-white truncate mt-1.5 leading-none">{value}</h3>
-                      {typeof sub === 'string' ? (
-                        <p className="text-[10px] text-neutral-500 dark:text-neutral-500 mt-2 font-semibold truncate leading-none">{sub}</p>
-                      ) : (
-                        <div className="text-[10px] text-neutral-500 dark:text-neutral-400 mt-2 font-bold flex items-center flex-wrap gap-1 leading-none mb-3">
-                          {sub}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Modern Graph sparkline background with Grid overlay */}
-                  {theme !== 'slate' && (
-                    <div className="absolute inset-x-0 bottom-0 h-10 overflow-hidden pointer-events-none select-none rounded-b-2xl opacity-60 dark:opacity-40">
-                      {/* Grid overlay */}
-                      <div 
-                        className="absolute inset-0 opacity-[0.06] dark:opacity-[0.04]"
-                        style={{
-                          backgroundImage: `
-                            linear-gradient(to right, ${stroke} 1px, transparent 1px),
-                            linear-gradient(to top, ${stroke} 1px, transparent 1px)
-                          `,
-                          backgroundSize: '12px 6px'
-                        }}
-                      />
-                      
-                      {/* Scrolling Graph */}
-                      <div className="flex w-[200%] h-full wave-animated-fast">
-                        <svg className="w-1/2 h-full shrink-0" viewBox="0 0 400 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                          <defs>
-                            <linearGradient id={`graph-grad-${idx}`} x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={stroke} stopOpacity="0.22" />
-                              <stop offset="100%" stopColor={stroke} stopOpacity="0.00" />
-                            </linearGradient>
-                          </defs>
-                          <path d={fillPath} fill={`url(#graph-grad-${idx})`} />
-                          <path d={strokePath} stroke={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        <svg className="w-1/2 h-full shrink-0" viewBox="0 0 400 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                          <path d={fillPath} fill={`url(#graph-grad-${idx})`} />
-                          <path d={strokePath} stroke={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Progress Bar for Status Campaign card */}
-                  {showProgress && (
-                    <div className="absolute bottom-4 left-5 right-5 flex items-center gap-3">
-                      <div className="flex-1 h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full rounded-full bg-rose-500 transition-all duration-500"
-                          style={{ width: `${approvedPercentage}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] font-black text-neutral-500 dark:text-neutral-400 shrink-0 leading-none">
-                        {approvedPercentage}%
-                      </span>
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
+            <aside className={`${panel} flex flex-col p-5`}>
+              <div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"><Building2 className="h-4 w-4" /></span><h2 className="text-sm font-semibold">{isId ? 'Alokasi perusahaan' : 'Company allocation'}</h2></div>
+              <p className="mt-2 text-[11px] text-slate-400">{isId ? 'Porsi dari total anggaran rencana.' : 'Share of total planned budget.'}</p>
+              <div className="mt-6 max-h-72 space-y-5 overflow-y-auto pr-1">
+                {stats.companies.map(company => {
+                  const percentage = stats.budget > 0 ? company.budget / stats.budget * 100 : 0;
+                  return <div key={company.id}>
+                    <div className="flex items-start justify-between gap-3"><p className="min-w-0 truncate text-xs font-medium" title={company.name}>{company.name}</p><span className="text-[11px] font-semibold tabular-nums text-slate-400">{percentage.toFixed(0)}%</span></div>
+                    <div className="my-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-500/80" style={{ width: `${Math.max(0, Math.min(100, percentage))}%` }} /></div>
+                    <div className="flex justify-between gap-2 text-[10px] text-slate-400"><span>{company.count} campaign</span><span title={formatIDR(company.budget)} className="font-medium text-slate-600 dark:text-slate-300">{compactMoney(company.budget)}</span></div>
+                  </div>;
+                })}
+              </div>
+              <div className="mt-auto pt-5"><div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50"><div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400"><span>{isId ? 'Serapan keseluruhan' : 'Overall utilization'}</span><span className="font-semibold text-emerald-600 dark:text-emerald-400">{stats.burn.toFixed(1)}%</span></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.max(0, Math.min(100, stats.burn))}%` }} /></div></div></div>
+            </aside>
           </div>
-
-          {/* Budget vs Actual Chart */}
-          {plans.length > 0 && (
-            <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-              {/* Header */}
-              <div className="px-6 pt-5 pb-4 border-b border-neutral-100 dark:border-neutral-800/80 flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-widest mb-0.5">Perbandingan</p>
-                  <h3 className="text-sm font-black text-neutral-900 dark:text-white">Budget vs Realisasi per Campaign</h3>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#CBD5E1' }} />
-                      <span className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">Budget</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#22C55E' }} />
-                      <span className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">Realisasi</span>
-                    </div>
-                  </div>
-                  <button className="p-1 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Chart */}
-              <div className="px-4 pt-2 pb-3 min-h-[320px]">
-                <ResponsiveContainer width="100%" height={320} debounce={50}>
-                  <BarChart
-                    data={chartData}
-                    margin={{ top: 28, right: 16, left: 4, bottom: 44 }}
-                    barCategoryGap="40%"
-                    barGap={3}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="currentColor"
-                      strokeOpacity={0.06}
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="name"
-                      tick={<CustomXAxisTick />}
-                      interval={0}
-                      axisLine={false}
-                      tickLine={false}
-                      height={50}
-                    />
-                    <YAxis
-                      tickFormatter={v => formatIDRCompact(v)}
-                      tick={{ fontSize: 9, fill: 'currentColor', opacity: 0.45 }}
-                      width={62}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <RechartsTooltip
-                      content={<CustomBudgetTooltip />}
-                      cursor={{ fill: 'currentColor', fillOpacity: 0.03, radius: [4, 4, 0, 0] }}
-                    />
-                    <Bar
-                      dataKey="Budget"
-                      fill="#CBD5E1"
-                      radius={[4, 4, 2, 2]}
-                      maxBarSize={32}
-                      isAnimationActive={false}
-                    >
-                      <LabelList
-                        dataKey="Budget"
-                        position="top"
-                        formatter={v => formatIDRCompact(v)}
-                        style={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
-                      />
-                    </Bar>
-                    <Bar
-                      dataKey="Realisasi"
-                      fill="#22C55E"
-                      radius={[4, 4, 2, 2]}
-                      maxBarSize={32}
-                      isAnimationActive={false}
-                    >
-                      <LabelList
-                        dataKey="Realisasi"
-                        position="top"
-                        formatter={v => v > 0 ? formatIDRCompact(v) : '—'}
-                        style={{ fontSize: 9, fontWeight: 700, fill: '#16a34a' }}
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {plans.length > 10 && (
-                <p className="text-center text-[11px] text-neutral-400 pb-4">
-                  Menampilkan 10 dari {plans.length} campaign
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Gantt Chart */}
           <MarketingGanttChart plans={plans} fiscalYear={fiscalYear} />
-        </>
-      )}
+        </>}
+      </>}
     </div>
   );
 }

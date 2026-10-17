@@ -220,4 +220,86 @@ async function sendAssetDocApprovalEmail({ to, approverName, docTitle, docNumber
   return sendMail({ to, subject, html, text });
 }
 
-module.exports = { sendMail, sendPasswordResetEmail, sendApprovalMagicLinkEmail, sendPaymentStatusEmail, sendPlanStatusEmail, sendAmendmentNotifEmail, sendAssetDocApprovalEmail, getTransporter };
+const fmtRp = (v) => `Rp ${Number(v || 0).toLocaleString('id-ID')}`;
+
+// Email approval closing Marketing Plan: ringkasan selisih + tabel biaya per item.
+async function sendPlanClosingApprovalEmail({ to, approverName, stepLabel, previousApprovals = [], planTitle, companyName, submitterName, totalPaid, totalFinal, variance, settlementType, kpiScore, kpiRows = [], items, approveUrl }) {
+  const settlementLabel = settlementType === 'CLAIM'
+    ? `CLAIM ${fmtRp(variance)} (perlu diganti)`
+    : settlementType === 'EXCESS'
+      ? `KELEBIHAN DANA ${fmtRp(Math.abs(variance))} (dikembalikan)`
+      : 'Pas (tidak ada selisih)';
+  const td = 'padding: 6px 8px; border-bottom: 1px solid #e2e8f0; font-size: 12px;';
+  const rows = items.map(it => `
+    <tr>
+      <td style="${td}">${escapeHtml(it.label)}</td>
+      <td style="${td} text-align: right;">${fmtRp(it.paid)}</td>
+      <td style="${td} text-align: right;">${fmtRp(it.final)}</td>
+      <td style="${td} text-align: right; font-weight: bold; color: ${it.variance > 0 ? '#b45309' : it.variance < 0 ? '#047857' : '#64748b'};">${it.variance === 0 ? '-' : fmtRp(it.variance)}</td>
+    </tr>
+  `).join('');
+
+  const kpiTable = kpiRows.filter(k => k.target !== null || k.actual !== null).map(k => `
+    <tr>
+      <td style="${td}">${escapeHtml(k.label)}</td>
+      <td style="${td} text-align: right;">${k.target === null ? '-' : k.currency ? fmtRp(k.target) : Number(k.target).toLocaleString('id-ID')}</td>
+      <td style="${td} text-align: right;">${k.actual === null ? '-' : k.currency ? fmtRp(k.actual) : Number(k.actual).toLocaleString('id-ID')}</td>
+      <td style="${td} text-align: right; font-weight: bold;">${k.achievement === null ? '-' : `${k.achievement}%`}</td>
+    </tr>
+  `).join('');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
+      <h2 style="color: #0f172a; margin-bottom: 4px;">Persetujuan Closing Marketing Plan</h2>
+      ${stepLabel ? `<p style="display: inline-block; background: #f1f5f9; color: #0f172a; font-size: 12px; font-weight: bold; padding: 4px 10px; border-radius: 6px; margin: 4px 0;">${escapeHtml(stepLabel)}</p>` : ''}
+      <p>Halo ${escapeHtml(approverName)},</p>
+      <p>Closing (pertanggungjawaban biaya & evaluasi KPI) untuk plan berikut membutuhkan persetujuan Anda:</p>
+      ${previousApprovals.length ? `<p style="font-size: 12px; color: #047857;">Sudah disetujui: ${previousApprovals.map(escapeHtml).join('; ')}</p>` : ''}
+      <table style="width: 100%; font-size: 13px; margin: 16px 0; border-collapse: collapse;">
+        <tr><td style="padding: 4px 0; color: #64748b;">Plan</td><td style="padding: 4px 0; font-weight: bold;">${escapeHtml(planTitle)}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Entitas (PT)</td><td style="padding: 4px 0; font-weight: bold;">${escapeHtml(companyName)}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Diajukan oleh</td><td style="padding: 4px 0; font-weight: bold;">${escapeHtml(submitterName)}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Total dibayar</td><td style="padding: 4px 0; font-weight: bold;">${fmtRp(totalPaid)}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Total biaya final</td><td style="padding: 4px 0; font-weight: bold;">${fmtRp(totalFinal)}</td></tr>
+        <tr><td style="padding: 4px 0; color: #64748b;">Hasil</td><td style="padding: 4px 0; font-weight: bold;">${settlementLabel}</td></tr>
+      </table>
+      <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="background: #0f172a; color: #ffffff;">
+            <th style="padding: 6px 8px; text-align: left;">Item</th>
+            <th style="padding: 6px 8px; text-align: right;">Dibayar</th>
+            <th style="padding: 6px 8px; text-align: right;">Final</th>
+            <th style="padding: 6px 8px; text-align: right;">Selisih</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      ${kpiTable ? `
+      <p style="font-size: 13px; font-weight: bold; color: #0f172a; margin-bottom: 6px;">Evaluasi KPI${kpiScore !== null && kpiScore !== undefined ? ` — skor ${kpiScore}%` : ''}</p>
+      <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="background: #0f172a; color: #ffffff;">
+            <th style="padding: 6px 8px; text-align: left;">Indikator</th>
+            <th style="padding: 6px 8px; text-align: right;">Target</th>
+            <th style="padding: 6px 8px; text-align: right;">Aktual</th>
+            <th style="padding: 6px 8px; text-align: right;">Capaian</th>
+          </tr>
+        </thead>
+        <tbody>${kpiTable}</tbody>
+      </table>` : ''}
+      <p style="text-align: center; margin: 24px 0;">
+        <a href="${approveUrl}" style="background: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Tinjau & Setujui</a>
+      </p>
+      <p>Atau salin link berikut ke browser Anda:</p>
+      <p style="word-break: break-all; font-size: 12px; color: #64748b;">${approveUrl}</p>
+      <p style="font-size: 12px; color: #64748b;">Link ini berlaku selama 7 hari dan hanya bisa dipakai satu kali.</p>
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+      <p style="font-size: 11px; color: #9ca3af;">Email otomatis dari MRA Hub - GLC Apps. Jangan membalas email ini.</p>
+    </div>
+  `;
+  const text = `Halo ${approverName},\n\n${stepLabel ? `[${stepLabel}] ` : ''}Closing Marketing Plan "${planTitle}" (${companyName}) membutuhkan persetujuan Anda. Hasil: ${settlementLabel}.${kpiScore !== null && kpiScore !== undefined ? ` Skor KPI: ${kpiScore}%.` : ''}\nBuka link berikut untuk meninjau (berlaku 7 hari, sekali pakai):\n${approveUrl}`;
+
+  return sendMail({ to, subject: `[Approval Diperlukan] Closing Marketing Plan: ${planTitle}`, html, text });
+}
+
+module.exports = { sendMail, sendPasswordResetEmail, sendApprovalMagicLinkEmail, sendPaymentStatusEmail, sendPlanStatusEmail, sendAmendmentNotifEmail, sendAssetDocApprovalEmail, sendPlanClosingApprovalEmail, getTransporter };

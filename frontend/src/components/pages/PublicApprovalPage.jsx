@@ -180,7 +180,7 @@ export default function PublicApprovalPage({ token }) {
                 <div>
                   <h3 className="text-sm font-black text-neutral-900 dark:text-white">Detail Pengajuan</h3>
                   <p className="text-[10px] text-neutral-400 mt-0.5">
-                    Modul: {isPlan ? 'Marketing Plan' : 'Payment Request'} · Step {task.step_number} Approval
+                    Modul: {isPlan ? 'Marketing Plan' : task.payment_request?.request_type === 'CLAIM' ? 'Reimbursement - Finance' : 'Payment Request'} · Step {task.step_number} Approval
                   </p>
                 </div>
                 <span className="px-2.5 py-1 rounded-lg text-[10px] font-black bg-indigo-500/10 text-indigo-600 border border-indigo-200">
@@ -206,6 +206,14 @@ export default function PublicApprovalPage({ token }) {
                       )}
                     </>
                   )}
+                  {!isPlan && task.payment_request.request_type === 'CLAIM' && (
+                    <div className="sm:col-span-2 space-y-2">
+                      <div>Penerima reimbursement: <span className="font-normal text-neutral-900 dark:text-white">{task.payment_request.reimbursement_payee || task.payment_request.creator?.name || '-'}</span></div>
+                      <div>Tanggal transaksi: <span className="font-normal text-neutral-900 dark:text-white">{task.payment_request.expense_date ? new Date(task.payment_request.expense_date).toLocaleDateString('id-ID', { timeZone: 'UTC' }) : '-'}</span></div>
+                      <div>Vendor: <span className="font-normal text-neutral-900 dark:text-white">{task.payment_request.expense_vendor || '-'}</span></div>
+                      <div>Catatan: <span className="font-normal text-neutral-900 dark:text-white">{task.payment_request.notes || '-'}</span></div>
+                    </div>
+                  )}
                   {!isPlan && task.payment_request.doc_url && (
                     <div>
                       Lampiran:
@@ -228,6 +236,18 @@ export default function PublicApprovalPage({ token }) {
                     </div>
                     <p className="font-normal text-[11px] leading-relaxed text-amber-600 dark:text-amber-300">
                       Realisasi biaya ini melampaui sisa anggaran bulanan pos terkait dan membutuhkan persetujuan level akhir.
+                    </p>
+                  </div>
+                )}
+
+                {isPlan && task.marketing_plan.is_late_submission && (
+                  <div className="bg-rose-500/10 border border-rose-300 text-rose-700 dark:text-rose-400 text-xs font-bold p-4 rounded-2xl space-y-1">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span>LATE SUBMISSION (ATURAN H-3)</span>
+                    </div>
+                    <p className="font-normal text-[11px] leading-relaxed text-rose-600 dark:text-rose-300">
+                      Plan ini diajukan kurang dari 3 bulan sebelum event. Alasan pengaju: <strong>{task.marketing_plan.late_submission_reason || '-'}</strong>
                     </p>
                   </div>
                 )}

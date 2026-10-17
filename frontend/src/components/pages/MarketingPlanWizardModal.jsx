@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Check, Save, Loader2, AlertTriangle, Info, Plus, Users, FileText, Wallet, ClipboardCheck
+  X, Check, Save, Loader2, AlertTriangle, Info, Plus, Users, FileText, Wallet, ClipboardCheck, ArrowLeft, ArrowRight, Send, Megaphone
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
+import { isLateSubmission } from '@/lib/marketingGovernance';
 import WizardStep1GeneralInfo, { CURRENT_YEAR, FISCAL_YEAR_OPTIONS, formatThousands } from './MarketingPlanWizardStep1';
 import WizardStep2BudgetItems from './MarketingPlanWizardStep2';
 import WizardStep3ReviewSubmit from './MarketingPlanWizardStep3';
@@ -79,7 +80,8 @@ export default function MarketingPlanWizardModal({
     target_reach: '',
     target_impressions: '',
     target_roi_pct: '',
-    target_notes: ''
+    target_notes: '',
+    late_submission_reason: ''
   });
 
   const [wizardItems, setWizardItems] = useState([
@@ -181,7 +183,8 @@ export default function MarketingPlanWizardModal({
         target_reach: '',
         target_impressions: '',
         target_roi_pct: '',
-        target_notes: ''
+        target_notes: '',
+        late_submission_reason: ''
       });
       setWizardItems([
         { period_month: '1', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }
@@ -227,7 +230,8 @@ export default function MarketingPlanWizardModal({
           target_reach: plan.target_reach ? String(plan.target_reach) : '',
           target_impressions: plan.target_impressions ? String(plan.target_impressions) : '',
           target_roi_pct: plan.target_roi_pct ? String(plan.target_roi_pct) : '',
-          target_notes: plan.target_notes || ''
+          target_notes: plan.target_notes || '',
+          late_submission_reason: plan.late_submission_reason || ''
         });
 
         setWizardItems(plan.items && plan.items.length > 0
@@ -428,6 +432,14 @@ export default function MarketingPlanWizardModal({
       return;
     }
 
+    if (isLateSubmission(wizardHeader.event_start_date) && !wizardHeader.late_submission_reason?.trim()) {
+      onError(lang === 'id'
+        ? 'Event kurang dari 3 bulan lagi (aturan H-3). Isi alasan pengajuan terlambat di Step 3.'
+        : 'The event is less than 3 months away (H-3 rule). Fill in the late submission reason in Step 3.');
+      setSubmitting(false);
+      return;
+    }
+
     if (!wizardHeader.target_notes?.trim()) {
       onError(lang === 'id'
         ? 'Catatan Target / Indikator Lain wajib diisi pada bagian KPI Targets.'
@@ -481,12 +493,12 @@ export default function MarketingPlanWizardModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-md"
             onClick={onClose}
           />
           
@@ -494,25 +506,29 @@ export default function MarketingPlanWizardModal({
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-7xl z-55 overflow-hidden flex flex-col max-h-[90vh]"
+            className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl shadow-2xl relative w-full max-w-7xl z-55 overflow-hidden flex flex-col max-h-[94dvh]"
           >
             {/* Wizard Header */}
-            <div className="px-6 py-4.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/50 dark:bg-neutral-950/20">
-              <div>
-                <h3 className="text-md font-black text-neutral-900 dark:text-white">
+            <div className="shrink-0 px-5 sm:px-7 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4 justify-between bg-white dark:bg-slate-900">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20"><Megaphone className="h-5 w-5" /></span>
+                <div>
+                <h3 className="text-base sm:text-lg font-semibold tracking-tight text-neutral-900 dark:text-white">
                   {revisingPlanId ? t('wizardTitleRevise', revisingPlanId) :
                    draftPlanId ? t('wizardTitleDraft', draftPlanId) :
                    t('wizardTitle')}
                 </h3>
-                <p className="text-[10px] text-neutral-400 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   {revisingPlanId ? t('wizardSubtitleRevise') :
                    draftPlanId ? t('wizardSubtitleDraft') :
                    t('wizardSubtitle')}
                 </p>
               </div>
+              </div>
               <button
+                aria-label={lang === 'id' ? 'Tutup wizard' : 'Close wizard'}
                 onClick={onClose}
-                className="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 rounded-full text-neutral-400 hover:text-neutral-800 dark:hover:text-white"
+                className="p-2.5 border border-slate-200 dark:border-slate-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-neutral-400 hover:text-neutral-800 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -525,100 +541,29 @@ export default function MarketingPlanWizardModal({
               </div>
             ) : (
               <>
-                {/* Wizard Steps indicator */}
-                <div className="px-8 py-6 bg-neutral-50/50 dark:bg-neutral-950/20 border-b border-neutral-100 dark:border-neutral-800 select-none">
-                  <div className="flex items-center justify-between max-w-2xl mx-auto relative px-4">
-                    <div className="absolute left-6 right-6 top-4.5 h-0.5 bg-neutral-200 dark:bg-neutral-800 -z-10 rounded-full" />
-
-                    {/* Biru: progres sejauh ini (termasuk step yang sedang berjalan) */}
-                    <motion.div
-                      className="absolute left-6 top-4.5 h-0.5 bg-gradient-to-r from-blue-600 to-blue-400 -z-10 rounded-full"
-                      initial={{ width: '0%' }}
-                      animate={{ width: wizardStep === 1 ? '0%' : wizardStep === 2 ? '50%' : '100%' }}
-                      transition={{ type: 'spring', stiffness: 100, damping: 18 }}
-                    />
-
-                    {/* Emerald: segmen yang sudah benar-benar selesai, digambar menutupi ujung biru */}
-                    <motion.div
-                      className="absolute left-6 top-4.5 h-0.5 bg-emerald-500 -z-10 rounded-full"
-                      initial={{ width: '0%' }}
-                      animate={{ width: wizardStep >= 3 ? '50%' : '0%' }}
-                      transition={{ type: 'spring', stiffness: 100, damping: 18, delay: wizardStep >= 3 ? 0.15 : 0 }}
-                    />
-
+                <nav aria-label={lang === 'id' ? 'Tahapan pengajuan' : 'Submission steps'} className="shrink-0 border-b border-slate-200/70 bg-white px-3 py-3 sm:px-7 dark:border-slate-800 dark:bg-slate-900">
+                  <ol className="grid grid-cols-3 gap-2 sm:gap-3">
                     {[
-                      { num: 1, label: t('stepGeneralInfo'), icon: FileText },
-                      { num: 2, label: t('stepMonthlyBudget'), icon: Wallet },
-                      { num: 3, label: 'Review & Submit', icon: ClipboardCheck }
-                    ].map((s) => {
-                      const isDone = wizardStep > s.num;
-                      const isActive = wizardStep === s.num;
-                      const StepIcon = s.icon;
-                      return (
-                        <div key={s.num} className="flex flex-col items-center relative">
-                          <div className="relative">
-                            {isActive && (
-                              <motion.span
-                                className="absolute inset-0 rounded-full bg-blue-500"
-                                initial={{ opacity: 0.45, scale: 1 }}
-                                animate={{ opacity: 0, scale: 1.9 }}
-                                transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
-                              />
-                            )}
-                            <motion.span
-                              layout
-                              className="relative w-9 h-9 rounded-full flex items-center justify-center text-xs font-black border-2 z-10 select-none"
-                              animate={{
-                                scale: isActive ? 1.15 : 1.0,
-                                backgroundColor: isDone ? 'rgb(5, 150, 105)' : isActive ? 'rgb(37, 99, 235)' : 'rgba(115, 115, 115, 0.08)',
-                                borderColor: isDone ? 'rgb(5, 150, 105)' : isActive ? 'rgb(37, 99, 235)' : 'rgba(115, 115, 115, 0.35)',
-                                color: (isDone || isActive) ? 'rgb(255, 255, 255)' : 'rgb(163, 163, 163)',
-                                boxShadow: isActive ? '0 10px 15px -3px rgba(37, 99, 235, 0.3)' : isDone ? '0 6px 12px -4px rgba(5, 150, 105, 0.3)' : 'none'
-                              }}
-                              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                            >
-                              <AnimatePresence mode="wait">
-                                {isDone ? (
-                                  <motion.span
-                                    key="check"
-                                    initial={{ scale: 0, rotate: -45 }}
-                                    animate={{ scale: 1, rotate: 0 }}
-                                    exit={{ scale: 0 }}
-                                    transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                                  >
-                                    <Check className="w-4 h-4" strokeWidth={3} />
-                                  </motion.span>
-                                ) : (
-                                  <motion.span
-                                    key="icon"
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    exit={{ scale: 0 }}
-                                    transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-                                  >
-                                    <StepIcon className="w-4 h-4" strokeWidth={2.25} />
-                                  </motion.span>
-                                )}
-                              </AnimatePresence>
-                            </motion.span>
-                          </div>
-                          <motion.span
-                            className="text-[10px] font-bold mt-2 whitespace-nowrap"
-                            animate={{
-                              color: isDone ? 'rgb(5, 150, 105)' : isActive ? 'rgb(37, 99, 235)' : 'rgb(163, 163, 163)',
-                            }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            {s.label}
-                          </motion.span>
+                      { num: 1, label: t('stepGeneralInfo'), icon: FileText, hint: lang === 'id' ? 'Campaign, jadwal & target' : 'Campaign, schedule & targets' },
+                      { num: 2, label: t('stepMonthlyBudget'), icon: Wallet, hint: lang === 'id' ? 'Alokasi biaya per bulan' : 'Monthly expense allocation' },
+                      { num: 3, label: 'Review & Submit', icon: ClipboardCheck, hint: lang === 'id' ? 'Ringkasan & persetujuan' : 'Summary & approvals' }
+                    ].map(({ num, label, icon: Icon, hint }) => (
+                      <li key={num} aria-current={wizardStep === num ? 'step' : undefined}
+                        className={`flex items-center gap-3 rounded-xl border px-2 py-3 sm:px-4 transition-colors ${wizardStep === num ? 'border-blue-200 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10' : 'border-transparent bg-slate-50 dark:bg-slate-800/40'}`}>
+                        <span className={`hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${wizardStep > num ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400' : wizardStep === num ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20' : 'bg-white text-slate-400 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700'}`}>
+                          {wizardStep > num ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
+                        </span>
+                        <div className="min-w-0">
+                          <p className={`text-[11px] sm:text-xs font-semibold ${wizardStep === num ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'}`}><span className="mr-1.5 opacity-50">0{num}</span>{label}</p>
+                          <p className="hidden lg:block mt-1 text-[11px] text-slate-400">{hint}</p>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      </li>
+                    ))}
+                  </ol>
+                </nav>
 
                 {/* Wizard Body (Scrollable) */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div key={wizardStep} className="min-h-0 flex-1 overflow-y-auto bg-slate-50/80 dark:bg-slate-950/50 p-4 sm:p-6 space-y-5">
                   {wizardStep === 1 && (
                     <WizardStep1GeneralInfo
                       wizardHeader={wizardHeader}
@@ -626,6 +571,7 @@ export default function MarketingPlanWizardModal({
                       setWizardApprovers={setWizardApprovers}
                       getDefaultApproversForCompany={getDefaultApproversForCompany}
                       isDraftOrRevise={Boolean(draftPlanId || revisingPlanId)}
+                      lang={lang}
                       metadata={metadata}
                       t={t}
                     />
@@ -665,15 +611,16 @@ export default function MarketingPlanWizardModal({
                 </div>
 
                 {/* Wizard Footer Controls */}
-                <div className="px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/30 dark:bg-neutral-950/10">
+                <div className="shrink-0 px-4 sm:px-7 py-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-3 items-center justify-between bg-white dark:bg-slate-900 shadow-[0_-4px_20px_-12px_rgba(15,23,42,0.15)]">
                   <button
                     type="button"
                     onClick={() => {
                       if (wizardStep === 1) onClose();
                       else setWizardStep(prev => prev - 1);
                     }}
-                    className="px-4 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold cursor-pointer"
+                    className="flex items-center gap-2 px-3 py-2.5 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded-xl text-xs font-bold cursor-pointer"
                   >
+                    {wizardStep > 1 && <ArrowLeft className="h-3.5 w-3.5" />}
                     {wizardStep === 1 ? t('btnCancel') : t('btnBack')}
                   </button>
 
@@ -683,7 +630,7 @@ export default function MarketingPlanWizardModal({
                         type="button"
                         disabled={submittingDraft || submitting}
                         onClick={handleSaveDraft}
-                        className="px-4 py-2 border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                        className="px-3 sm:px-4 py-2.5 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                       >
                         {submittingDraft ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                         {draftPlanId ? t('btnUpdateDraft') : t('btnSaveDraft')}
@@ -697,12 +644,13 @@ export default function MarketingPlanWizardModal({
                         if (wizardStep < 3) setWizardStep(prev => prev + 1);
                         else handleWizardSubmit(e);
                       }}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="px-4 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       {wizardStep === 3
                         ? (revisingPlanId ? t('btnResubmit') : t('btnSubmitPlan'))
                         : t('btnNext')}
+                      {!submitting && (wizardStep === 3 ? <Send className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />)}
                     </button>
                   </div>
                 </div>

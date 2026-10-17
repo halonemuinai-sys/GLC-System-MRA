@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import InlineHelp from '@/components/ui/InlineHelp';
 import {
   Users,
   Plus,
@@ -9,8 +10,10 @@ import {
   ArrowDown,
   Mail,
   AlertTriangle,
-  Paperclip
+  Paperclip,
+  Clock
 } from 'lucide-react';
+import { isLateSubmission, earliestOnTimeEventDate } from '@/lib/marketingGovernance';
 
 const formatIDR = (val) => {
   if (val === undefined || val === null) return 'Rp 0';
@@ -95,17 +98,17 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
             <div className="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs">
               <Users className="w-3.5 h-3.5" />
             </div>
-            <h4 className="text-xs font-black text-neutral-900 dark:text-white uppercase tracking-wider">
-              {lang === 'id' ? 'Alur Penandatangan Dokumen (DocHub Workflow)' : 'Document Signers & Approval Chain'}
+            <h4 className="text-sm font-semibold text-neutral-900 dark:text-white">
+              {lang === 'id' ? 'Alur persetujuan' : 'Document Signers & Approval Chain'}
             </h4>
             <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-200/60 dark:border-blue-900/30">
               {lang === 'id' ? 'Berurutan' : 'Sequential'}
             </span>
           </div>
           <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">
-            {lang === 'id'
-              ? 'Tentukan pihak yang menandatangani dokumen secara berurutan. Setiap penandatangan akan menerima notifikasi email beserta Magic Link persetujuan.'
-              : 'Specify ordered signers. Each approver will receive an email notification with a digital approval Magic Link.'}
+            <InlineHelp summary={lang === 'id' ? 'Tentukan urutan penandatangan.' : 'Set the approval order.'} label={lang === 'id' ? 'Penjelasan alur persetujuan' : 'About the approval flow'}>
+              {lang === 'id' ? 'Setiap penandatangan menerima email berisi tautan persetujuan secara berurutan sesuai tahapnya.' : 'Each signer receives an approval link by email when their turn is reached.'}
+            </InlineHelp>
           </p>
         </div>
 
@@ -137,7 +140,7 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
         {wizardApprovers.map((approver, idx) => (
           <div
             key={idx}
-            className="group p-3.5 rounded-xl border border-neutral-200/80 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/30 hover:border-blue-500/40 transition-all flex flex-col md:flex-row md:items-center gap-3"
+            className="group p-4 rounded-xl border border-neutral-200/80 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/30 hover:border-blue-500/40 transition-all flex flex-col md:flex-row md:items-center gap-3"
           >
             {/* Step badge & reorder controls */}
             <div className="flex items-center gap-2 shrink-0">
@@ -277,11 +280,20 @@ export default function MarketingPlanWizardStep3({
   const companyName = metadata.companies.find(c => String(c.id) === String(wizardHeader.company_id))?.name || '';
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      <div className="bg-gradient-to-br from-slate-900 to-blue-950 p-5 sm:p-6 rounded-2xl text-white shadow-lg shadow-blue-950/10 flex flex-wrap gap-4 items-center justify-between">
+        <div className="space-y-0.5">
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-100">Estimated Total Budget</span>
+          <p className="text-[10px] text-blue-200">Calculated sum of monthly expense breakdowns</p>
+        </div>
+        <span className="text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums">
+          {formatIDR(totalEstimation)}
+        </span>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-neutral-50 dark:bg-neutral-950 p-5 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/80 space-y-3">
-          <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">General Information</h4>
-          <div className="space-y-2 text-xs font-bold text-neutral-600 dark:text-neutral-400">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+          <h4 className="text-xs font-semibold text-blue-600 dark:text-blue-400 border-b border-slate-100 dark:border-slate-800 pb-3">General Information</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4 text-[11px] font-medium text-slate-500 dark:text-slate-400">
             <div>Campaign Title: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.title}</span></div>
             <div>PT / Company: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{companyName}</span></div>
             <div>Brand: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{metadata.brands.find(b => String(b.id) === String(wizardHeader.brand_id))?.name || '-'}</span></div>
@@ -291,9 +303,9 @@ export default function MarketingPlanWizardStep3({
           </div>
         </div>
 
-        <div className="bg-neutral-50 dark:bg-neutral-950 p-5 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/80 space-y-3">
-          <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Timeline & Scope</h4>
-          <div className="space-y-2 text-xs font-bold text-neutral-600 dark:text-neutral-400">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
+          <h4 className="text-xs font-semibold text-blue-600 dark:text-blue-400 border-b border-slate-100 dark:border-slate-800 pb-3">Timeline & Scope</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4 text-[11px] font-medium text-slate-500 dark:text-slate-400">
             <div>Fiscal Year: <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.fiscal_year}</span></div>
             <div>{t('eventPeriod')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.event_start_date || '-'} {t('dateSeparator')} {wizardHeader.event_end_date || '-'}</span></div>
             <div>{t('promotionPeriodReview')} <span className="font-semibold text-neutral-900 dark:text-white block mt-0.5">{wizardHeader.cta_start_date || '-'} {t('dateSeparator')} {wizardHeader.cta_end_date || '-'}</span></div>
@@ -311,22 +323,41 @@ export default function MarketingPlanWizardStep3({
         </div>
 
         {wizardHeader.description && (
-          <div className="bg-neutral-50 dark:bg-neutral-950 p-5 rounded-2xl border border-neutral-200/60 dark:border-neutral-800/80 space-y-2 md:col-span-2">
-            <h4 className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider">Description</h4>
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2 md:col-span-2">
+            <h4 className="text-xs font-semibold text-blue-600 dark:text-blue-400 border-b border-slate-100 dark:border-slate-800 pb-3">Description</h4>
             <p className="text-xs text-neutral-700 dark:text-neutral-400 leading-relaxed font-medium">{wizardHeader.description}</p>
           </div>
         )}
       </div>
 
-      <div className="bg-gradient-to-r from-blue-600 to-blue-500 p-5 rounded-2xl text-white shadow-xl shadow-blue-600/10 flex items-center justify-between">
-        <div className="space-y-0.5">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-100">Estimated Total Budget</span>
-          <p className="text-[10px] text-blue-200">Calculated sum of monthly expense breakdowns</p>
+      {isLateSubmission(wizardHeader.event_start_date) && (
+        <div className="bg-rose-500/10 border border-rose-500/25 rounded-2xl p-5 space-y-3">
+          <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 text-xs font-black">
+            <Clock className="w-4 h-4" />
+            <span>{lang === 'id' ? 'Pengajuan Terlambat (Aturan H-3)' : 'Late Submission (H-3 Rule)'}</span>
+          </div>
+          <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-semibold">
+            {lang === 'id'
+              ? `Plan wajib diajukan minimal 3 bulan sebelum event. Event dimulai ${wizardHeader.event_start_date}, sedangkan batas tepat waktu adalah event mulai ${earliestOnTimeEventDate().toLocaleDateString('id-ID')} atau sesudahnya. Plan tetap bisa diajukan, tapi akan ditandai "Late Submission" dan approver akan melihat alasannya.`
+              : `Plans must be submitted at least 3 months before the event. The event starts ${wizardHeader.event_start_date}; on-time submissions need an event starting ${earliestOnTimeEventDate().toLocaleDateString('en-GB')} or later. You can still submit, but it will be flagged "Late Submission" and approvers will see your reason.`}
+          </p>
+          <div className="space-y-2 pt-2 border-t border-rose-500/10">
+            <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
+              {lang === 'id' ? 'Alasan Pengajuan Terlambat (wajib)' : 'Late Submission Reason (required)'}
+            </label>
+            <textarea
+              rows="3"
+              required
+              placeholder={lang === 'id' ? 'Contoh: peluang event mendadak dari mall partner, konfirmasi venue baru didapat...' : 'e.g. sudden event opportunity from partner mall, venue just confirmed...'}
+              value={wizardHeader.late_submission_reason || ''}
+              onChange={(e) => setWizardHeader(prev => ({ ...prev, late_submission_reason: e.target.value }))}
+              className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium leading-relaxed resize-none"
+            />
+          </div>
         </div>
-        <span className="text-xl font-black tracking-wide">
-          {formatIDR(totalEstimation)}
-        </span>
-      </div>
+      )}
+
+
 
       {thresholdAlert && (
         <div className={`p-4 rounded-2xl border flex items-start gap-3 ${thresholdAlert.level === 'critical' ? 'bg-red-500/10 border-red-500/25' : 'bg-amber-500/10 border-amber-500/25'}`}>
@@ -376,7 +407,7 @@ export default function MarketingPlanWizardStep3({
         </div>
       )}
 
-      <div className="border border-neutral-200 dark:border-neutral-900 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[11px] border-collapse">
             <thead>
@@ -393,7 +424,7 @@ export default function MarketingPlanWizardStep3({
               {wizardItems.map((item, idx) => {
                 const subTotal = Number(item.qty || 1) * Number(item.unit_price || 0);
                 return (
-                  <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-neutral-950/10 transition-colors">
+                  <tr key={idx} className="even:bg-slate-50/60 hover:bg-blue-50/40 dark:even:bg-slate-800/20 dark:hover:bg-blue-500/5 transition-colors">
                     <td className="px-4.5 py-3 font-semibold text-neutral-900 dark:text-white">{getMonthName(Number(item.period_month), lang)}</td>
                     <td className="px-4.5 py-3">{metadata.coas.find(c => String(c.id) === String(item.coa_id))?.name || 'N/A'}</td>
                     <td className="px-4.5 py-3">{metadata.vendors.find(v => String(v.id) === String(item.vendor_id))?.vendor_name || item.vendor_id || '-'}</td>

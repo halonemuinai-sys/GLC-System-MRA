@@ -25,8 +25,10 @@ import {
   Calendar,
   CheckCircle2,
   AlertCircle,
-  Info
+  Info,
+  ShieldCheck
 } from 'lucide-react';
+import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
 import { useLanguage } from '@/lib/LanguageContext';
 import SearchableSelect from '@/components/ui/SearchableSelect';
@@ -110,6 +112,10 @@ export default function MarketingBudgetPage() {
 
   // Current Budget Data
   const [activeBudget, setActiveBudget] = useState(null);
+  const [userRole, setUserRole] = useState('');
+  useEffect(() => { setUserRole((Cookies.get('glc_user_role') || '').toLowerCase()); }, []);
+  const isFinanceRole = userRole === 'finance' || userRole === 'admin' || userRole === 'superadmin';
+  const isValidated = activeBudget?.validation_status === 'VALIDATED';
   const [monthlyData, setMonthlyData] = useState([]);
   const [quarterlyData, setQuarterlyData] = useState([]);
   const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'Q1' | 'Q2' | 'Q3' | 'Q4'
@@ -247,6 +253,23 @@ export default function MarketingBudgetPage() {
       await handleProses();
     } catch (err) {
       alert(err.message || 'Gagal menyimpan perubahan anggaran.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Validasi Finance atas cap tahunan (syarat sebelum budget bisa dikunci)
+  const handleValidate = async () => {
+    if (!activeBudget) return;
+    const note = window.prompt('Validasi cap tahunan ini sebagai Finance?\nCatatan validasi (opsional):', '');
+    if (note === null) return;
+    try {
+      setProcessing(true);
+      const res = await apiClient.put(`/api/marketing/budgets/${activeBudget.id}/validate`, { note });
+      setActiveBudget(res);
+      await handleProses();
+    } catch (err) {
+      alert(err.message || 'Gagal memvalidasi budget.');
     } finally {
       setProcessing(false);
     }
@@ -429,6 +452,15 @@ export default function MarketingBudgetPage() {
                 )}
               </span>
             )}
+            {activeBudget && (
+              <span
+                title={isValidated ? `Divalidasi ${activeBudget.validated_by || 'Finance'}${activeBudget.validated_at ? ` pada ${new Date(activeBudget.validated_at).toLocaleDateString('id-ID')}` : ''}${activeBudget.validation_note ? ` — ${activeBudget.validation_note}` : ''}` : 'Cap tahunan belum divalidasi Finance'}
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider flex items-center gap-1 ${isValidated ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}
+              >
+                <ShieldCheck className="w-2.5 h-2.5" />
+                {isValidated ? 'VALIDATED BY FINANCE' : 'BELUM DIVALIDASI FINANCE'}
+              </span>
+            )}
           </div>
           <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
             Pantau limit alokasi pengeluaran, realisasi rencana kampanye, dan sisa kuota bulanan.
@@ -453,12 +485,26 @@ export default function MarketingBudgetPage() {
                 )}
               </motion.button>
 
+              {!isValidated && isFinanceRole && (
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleValidate}
+                  title="Finance memvalidasi cap tahunan & alokasi bulanan. Budget baru bisa dikunci setelah divalidasi."
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-900/40 text-emerald-700 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 transition-all cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Validasi Finance
+                </motion.button>
+              )}
+
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleToggleLock}
-                title={activeBudget.is_locked ? 'Buka kunci untuk mengizinkan perubahan limit alokasi bulanan' : 'Kunci anggaran untuk melindungi limit alokasi dari perubahan tidak sah'}
-                className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${activeBudget.is_locked ? 'border-emerald-200 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10' : 'border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10'}`}
+                disabled={!activeBudget.is_locked && !isValidated}
+                title={activeBudget.is_locked ? 'Buka kunci untuk mengizinkan perubahan limit alokasi bulanan' : !isValidated ? 'Budget harus divalidasi Finance dulu sebelum dikunci' : 'Kunci anggaran untuk melindungi limit alokasi dari perubahan tidak sah'}
+                className={`flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${activeBudget.is_locked ? 'border-emerald-200 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10' : 'border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10'}`}
               >
                 {activeBudget.is_locked ? (
                   <>

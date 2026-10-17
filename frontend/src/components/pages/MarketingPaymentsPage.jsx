@@ -65,8 +65,11 @@ function KpiCard({ label, value, icon: Icon, color = 'blue', delay = 0 }) {
 }
 
 // Modal detail + mark paid
-function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }) {
+function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, onReview, userRole }) {
   const { t } = useLanguage();
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewNote, setReviewNote] = useState('');
+  const [actionError, setActionError] = useState('');
   const [markingPaid, setMarkingPaid] = useState(false);
   const [paidNotes, setPaidNotes] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -75,15 +78,19 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
   if (!payment) return null;
 
   const plan = payment.marketing_plan_item?.marketing_plan;
-  const canDelete = ['PENDING', 'OVERBUDGET_WARN'].includes(payment.status);
-  const canMarkPaid = payment.status === 'APPROVED' && ['admin', 'ga'].includes(userRole);
+  const isClaim = payment.request_type === 'CLAIM';
+  const pendingTask = payment.approval_history?.find(h => h.status === 'PENDING');
+  const canReview = isClaim && payment.status === 'PENDING' && userRole === 'finance' && pendingTask;
+  const canDelete = ['PENDING', 'OVERBUDGET_WARN'].includes(payment.status) && ['admin', 'marketing'].includes(userRole);
+  const canMarkPaid = payment.status === 'APPROVED' && (['admin', 'ga'].includes(userRole) || (isClaim && userRole === 'finance'));
 
   const handleMarkPaid = async () => {
     setMarkingPaid(true);
     try {
       await onMarkPaid(payment.id, paidNotes);
       onClose();
-    } finally { setMarkingPaid(false); }
+    } catch (err) { setActionError(err.message || 'Gagal mencatat pembayaran.'); }
+    finally { setMarkingPaid(false); }
   };
 
   const handleDelete = async () => {
@@ -92,7 +99,19 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
     try {
       await onDelete(payment.id);
       onClose();
-    } finally { setDeleting(false); }
+    } catch (err) { setActionError(err.message || 'Gagal menghapus pengajuan.'); }
+    finally { setDeleting(false); }
+  };
+
+  const handleReview = async action => {
+    if (action === 'REJECT' && !reviewNote.trim()) { setActionError('Isi alasan penolakan.'); return; }
+    setReviewing(true);
+    setActionError('');
+    try {
+      await onReview(pendingTask.id, action, reviewNote);
+      onClose();
+    } catch (err) { setActionError(err.message || 'Gagal memproses claim.'); }
+    finally { setReviewing(false); }
   };
 
   return (
@@ -106,7 +125,7 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-neutral-100 dark:border-neutral-800">
           <div>
-            <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-wider mb-1">Payment Request</p>
+            <p className="text-[10px] font-extrabold text-neutral-400 uppercase tracking-wider mb-1">{isClaim ? 'Reimbursement / Finance Approval' : 'Payment Request'}</p>
             <h3 className="text-lg font-black text-neutral-900 dark:text-white leading-tight">{payment.title}</h3>
             <p className="text-2xl font-black text-neutral-900 dark:text-white mt-1">{formatIDR(payment.amount)}</p>
           </div>
@@ -115,6 +134,7 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
 
         {/* Body */}
         <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+          {actionError && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">{actionError}</p>}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-neutral-50 dark:bg-neutral-900/60 rounded-xl p-3">
               <p className="text-[10px] text-neutral-400 font-semibold uppercase tracking-wider mb-0.5">Perusahaan</p>
@@ -135,6 +155,14 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
               <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate">{plan?.title || '-'}</p>
             </div>
           </div>
+
+          {isClaim && payment.reimbursement_payee && (
+            <div className="grid grid-cols-2 gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-xs dark:border-blue-500/20 dark:bg-blue-500/5">
+              <div><p className="text-[10px] text-slate-500">Penerima reimbursement</p><p className="mt-1 font-semibold text-slate-800 dark:text-white">{payment.reimbursement_payee}</p></div>
+              <div><p className="text-[10px] text-slate-500">Tanggal transaksi</p><p className="mt-1 font-semibold text-slate-800 dark:text-white">{payment.expense_date ? new Date(payment.expense_date).toLocaleDateString('id-ID', { timeZone: 'UTC' }) : '-'}</p></div>
+              <div className="col-span-2"><p className="text-[10px] text-slate-500">Vendor / tempat transaksi</p><p className="mt-1 font-semibold text-slate-800 dark:text-white">{payment.expense_vendor || '-'}</p></div>
+            </div>
+          )}
 
           {payment.notes && (
             <div className="bg-neutral-50 dark:bg-neutral-900/60 rounded-xl p-3">
@@ -162,12 +190,23 @@ function PaymentDetailModal({ payment, onClose, onMarkPaid, onDelete, userRole }
                       h.status === 'REJECTED' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
                     }`}>{h.step_number}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{h.approver?.name || 'Menunggu approver'}</p>
+                      <p className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{isClaim && h.status === 'PENDING' ? 'Menunggu Finance' : h.approver?.name || 'Menunggu approver'}</p>
                       {h.comment && <p className="text-[11px] text-neutral-400 truncate">{h.comment}</p>}
                     </div>
                     <StatusBadge status={h.status} />
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {canReview && (
+            <div className="space-y-3 rounded-xl border border-blue-200 p-4 dark:border-blue-500/30">
+              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">Persetujuan Reimbursement - Finance</p>
+              <textarea aria-label="Catatan keputusan Finance" value={reviewNote} onChange={e => setReviewNote(e.target.value)} placeholder="Catatan (wajib jika ditolak)" rows={2} className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs dark:border-neutral-700 dark:bg-neutral-900" />
+              <div className="flex gap-2">
+                <button disabled={reviewing} onClick={() => handleReview('REJECT')} className="flex-1 rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 disabled:opacity-50">Tolak</button>
+                <button disabled={reviewing} onClick={() => handleReview('APPROVE')} className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">{reviewing ? 'Memproses...' : 'Setujui Reimbursement'}</button>
               </div>
             </div>
           )}
@@ -231,7 +270,7 @@ export default function MarketingPaymentsPage() {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
-  const [filter, setFilter] = useState({ status: '', fiscal_year: String(new Date().getFullYear()), search: '' });
+  const [filter, setFilter] = useState({ status: '', request_type: '', fiscal_year: String(new Date().getFullYear()), search: '' });
   const [selectedPayment, setSelectedPayment] = useState(null);
 
   const loadPayments = useCallback(async () => {
@@ -240,6 +279,7 @@ export default function MarketingPaymentsPage() {
     try {
       const params = {};
       if (filter.status) params.status = filter.status;
+      if (filter.request_type) params.request_type = filter.request_type;
       if (filter.fiscal_year) params.fiscal_year = filter.fiscal_year;
       const res = await apiClient.get('/api/marketing/payments', { params });
       setPayments(res?.data || []);
@@ -249,7 +289,7 @@ export default function MarketingPaymentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter.status, filter.fiscal_year]);
+  }, [filter.status, filter.request_type, filter.fiscal_year]);
 
   useEffect(() => { loadPayments(); }, [loadPayments]);
 
@@ -261,6 +301,12 @@ export default function MarketingPaymentsPage() {
   const handleMarkPaid = async (id, paidNotes) => {
     await apiClient.post(`/api/marketing/payments/${id}/mark-paid`, { paid_notes: paidNotes });
     showSuccess('Payment berhasil ditandai sebagai PAID.');
+    loadPayments();
+  };
+
+  const handleReview = async (taskId, action, comment) => {
+    await apiClient.post(`/api/marketing/approvals/${taskId}`, { action, comment });
+    showSuccess(action === 'APPROVE' ? 'Claim disetujui Finance. Menunggu pembayaran.' : 'Claim ditolak Finance.');
     loadPayments();
   };
 
@@ -417,6 +463,10 @@ export default function MarketingPaymentsPage() {
           <option value="PAID">Paid</option>
           <option value="REJECTED">Rejected</option>
         </select>
+        <select aria-label="Jenis pengajuan" value={filter.request_type} onChange={e => setFilter(f => ({ ...f, request_type: e.target.value }))}
+          className="text-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2.5">
+          <option value="">Semua Pengajuan</option><option value="CLAIM">Reimbursement</option><option value="PAYMENT">Payment Request</option>
+        </select>
         <select value={filter.fiscal_year} onChange={e => setFilter(f => ({ ...f, fiscal_year: e.target.value }))}
           className="text-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/30">
           {FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
@@ -460,7 +510,7 @@ export default function MarketingPaymentsPage() {
                     className="hover:bg-neutral-50/80 dark:hover:bg-neutral-800/30 transition-colors group"
                   >
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-neutral-800 dark:text-neutral-200 truncate max-w-[200px]">{p.title}</p>
+                      <p className="font-semibold text-neutral-800 dark:text-neutral-200 truncate max-w-[200px]">{p.request_type === 'CLAIM' && <span className="mr-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">REIMBURSEMENT</span>}{p.title}</p>
                       {p.marketing_plan_item?.marketing_plan?.title && (
                         <p className="text-[11px] text-neutral-400 truncate max-w-[200px]">{p.marketing_plan_item.marketing_plan.title}</p>
                       )}
@@ -500,6 +550,7 @@ export default function MarketingPaymentsPage() {
             onClose={() => setSelectedPayment(null)}
             onMarkPaid={handleMarkPaid}
             onDelete={handleDelete}
+            onReview={handleReview}
             userRole={userRole}
           />
         )}

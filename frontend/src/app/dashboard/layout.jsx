@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { Menu, Sun, Moon, Eye, EyeOff, Briefcase, Scale, ShieldCheck, Calendar } from 'lucide-react';
+import { Menu, Sun, Moon, Eye, EyeOff, Briefcase, Scale, ShieldCheck, Calendar, Megaphone } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { LanguageProvider } from '@/lib/LanguageContext';
@@ -129,6 +129,9 @@ export default function DashboardLayout({ children }) {
             )}
             {(role === 'admin' || role === 'auditor' || role === 'compliance' || role === 'legal_compliance') && (
               <NotificationBell label="Compliance" endpoint="/api/compliance/notifications" icon={ShieldCheck} color="#10b981" />
+            )}
+            {(role === 'admin' || role === 'auditor' || role === 'marketing') && (
+              <NotificationBell label="Marketing" endpoint="/api/marketing/notifications" icon={Megaphone} color="#f59e0b" />
             )}
 
             {/* Hide Nominal Toggle Button */}

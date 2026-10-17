@@ -383,7 +383,7 @@ export default function CostApprovalsPage() {
                           <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase inline-block ${
                             isPlan ? 'bg-blue-500/10 text-blue-600 border border-blue-200' : 'bg-emerald-500/10 text-emerald-600 border border-emerald-200'
                           }`}>
-                            {isPlan ? 'Marketing Plan' : 'Payment Request'}
+                            {isPlan ? 'Marketing Plan' : task.payment_request?.request_type === 'CLAIM' ? 'Reimbursement - Finance' : 'Payment Request'}
                           </span>
                           <p className="text-[10px] text-neutral-400 mt-1 font-mono">Step {task.step_number} Approval</p>
                         </td>
@@ -510,7 +510,7 @@ export default function CostApprovalsPage() {
                 <div>
                   <h3 className="text-md font-black text-neutral-900 dark:text-white">Proses Otorisasi Dokumen</h3>
                   <p className="text-[10px] text-neutral-400 mt-0.5">
-                    Modul: {activeTask.marketing_plan_id ? 'Marketing Plan' : 'Payment Request'} (Step {activeTask.step_number})
+                    Modul: {activeTask.marketing_plan_id ? 'Marketing Plan' : activeTask.payment_request?.request_type === 'CLAIM' ? 'Reimbursement - Finance' : 'Payment Request'} (Step {activeTask.step_number})
                   </p>
                 </div>
                 <button
@@ -578,6 +578,13 @@ export default function CostApprovalsPage() {
                           >
                             <Paperclip className="w-3.5 h-3.5" /> Lihat Lampiran
                           </a>
+                        </div>
+                      )}
+                      {activeTask.payment_request.request_type === 'CLAIM' && (
+                        <div className="sm:col-span-2 space-y-2">
+                          <div>Penerima reimbursement: <span className="font-normal text-neutral-500 dark:text-neutral-400">{activeTask.payment_request.reimbursement_payee || '-'}</span></div>
+                          <div>Tanggal transaksi: <span className="font-normal text-neutral-500 dark:text-neutral-400">{activeTask.payment_request.expense_date ? new Date(activeTask.payment_request.expense_date).toLocaleDateString('id-ID', { timeZone: 'UTC' }) : '-'}</span></div>
+                          <div>Vendor: <span className="font-normal text-neutral-500 dark:text-neutral-400">{activeTask.payment_request.expense_vendor || '-'}</span></div>
                         </div>
                       )}
                       {activeTask.payment_request.notes && <div className="sm:col-span-2">Catatan: <span className="font-normal text-neutral-500 dark:text-neutral-400">{activeTask.payment_request.notes}</span></div>}

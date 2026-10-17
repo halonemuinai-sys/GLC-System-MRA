@@ -98,17 +98,17 @@ export default function MarketingGanttChart({ plans, fiscalYear }) {
     <>
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="px-5 py-3.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-b border-neutral-100 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <Calendar className="w-4 h-4 text-indigo-500 flex-shrink-0" />
-            <h2 className="text-sm font-extrabold text-neutral-900 dark:text-white whitespace-nowrap">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10"><Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" /></span>
+            <h2 className="text-sm font-semibold text-slate-800 dark:text-white">
               {t('marketing_ganttTitle')} {fiscalYear}
             </h2>
-            <span className="text-[10px] font-bold text-neutral-400 hidden sm:inline">({sorted.length} campaign)</span>
+            <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400 hidden sm:inline">{sorted.length} campaign</span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* Legend (hidden on small) */}
-            <div className="hidden xl:flex items-center gap-3 mr-2">
+            <div className="hidden 2xl:flex items-center gap-3 mr-2">
               {Object.entries(STATUS_CONFIG).map(([k, c]) => (
                 <span key={k} className="flex items-center gap-1 text-[10px] font-bold text-neutral-400">
                   <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: c.color }} />{c.label}
@@ -116,16 +116,17 @@ export default function MarketingGanttChart({ plans, fiscalYear }) {
               ))}
             </div>
             {/* Scroll */}
-            <button onClick={() => scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' })} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors cursor-pointer">
+            <button aria-label="Geser timeline ke kiri" onClick={() => scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' })} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500">
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })} className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors cursor-pointer">
+            <button aria-label="Geser timeline ke kanan" onClick={() => scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500">
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
             {/* Fullscreen */}
             <button
+              aria-label="Buka timeline layar penuh"
               onClick={() => setIsFullscreen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-[10px] font-extrabold transition-colors cursor-pointer border border-indigo-200/60 dark:border-indigo-500/20 ml-0.5"
+              className="flex min-h-9 items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-[11px] font-semibold transition-colors cursor-pointer border border-blue-200/60 dark:border-blue-500/20 ml-0.5 focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <Maximize2 className="w-3 h-3" />
               <span className="hidden sm:inline">Fullscreen</span>
@@ -141,14 +142,14 @@ export default function MarketingGanttChart({ plans, fiscalYear }) {
         ) : (
           <div className="flex">
             {/* Fixed left column */}
-            <div className="flex-shrink-0 w-[192px] border-r border-neutral-100 dark:border-neutral-800">
+            <div className="flex-shrink-0 w-[140px] sm:w-[220px] border-r border-neutral-100 dark:border-neutral-800">
               <div className="h-8 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-950/50 flex items-center px-3">
                 <span className="text-[9px] font-extrabold uppercase tracking-wider text-neutral-400">Campaign</span>
               </div>
               {displayed.map(plan => (
                 <div key={plan.id} className="h-10 flex items-center px-3 border-b border-neutral-100/60 dark:border-neutral-800/40 gap-2 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/20 transition-colors">
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: GANTT_BAR_COLORS[plan.status] || GANTT_BAR_COLORS.DRAFT }} />
-                  <p className="text-[11px] font-bold text-neutral-900 dark:text-neutral-200 truncate leading-tight">{plan.title}</p>
+                  <p title={plan.title} className="text-[11px] font-medium text-neutral-900 dark:text-neutral-200 truncate leading-tight">{plan.title}</p>
                 </div>
               ))}
               {remaining > 0 && (
@@ -163,7 +164,7 @@ export default function MarketingGanttChart({ plans, fiscalYear }) {
             </div>
 
             {/* Scrollable right */}
-            <div ref={scrollRef} className="flex-1 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div ref={scrollRef} className="min-w-0 flex-1 overflow-x-auto" style={{ scrollbarWidth: 'thin' }}>
               <div className="min-w-[680px]">
                 {/* Month header */}
                 <div className="grid grid-cols-12 h-8 border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-950/50">

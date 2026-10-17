@@ -552,10 +552,12 @@ function SidebarContent({
           children: [
             { name: 'Marketing Plan', path: '/dashboard/marketing', icon: ClipboardList, allowed: hasAccess(['marketing', 'auditor']) },
             { name: 'Overview & Analytics', path: '/dashboard/marketing/overview', icon: LineChart, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
-            { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: hasAccess(['marketing', 'auditor']) },
+            { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: hasAccess(['marketing', 'finance', 'auditor']) },
             { name: 'Overview Approval', path: '/dashboard/marketing/approval-overview', icon: ClipboardCheck, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
-            { name: 'Payment Requests', path: '/dashboard/marketing/payments', icon: CreditCard, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
-            { name: 'Budget Control', path: '/dashboard/marketing/budgeting', icon: Wallet, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
+            { name: 'Payment Requests', path: '/dashboard/marketing/payments', icon: CreditCard, allowed: hasAccess(['marketing', 'finance', 'admin', 'auditor']) },
+            { name: 'Budget Control', path: '/dashboard/marketing/budgeting', icon: Wallet, allowed: hasAccess(['marketing', 'finance', 'admin', 'auditor']) },
+            { name: 'Quarterly Alignment', path: '/dashboard/marketing/quarterly-alignment', icon: LineChart, allowed: hasAccess(['marketing', 'finance', 'admin', 'auditor']) },
+            { name: 'Finance Reconciliation', path: '/dashboard/marketing/reconciliation', icon: Scale, allowed: hasAccess(['finance', 'marketing', 'admin', 'auditor']) },
             { name: 'Event Locations', path: '/dashboard/marketing/event-locations', icon: MapPin, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
             { name: 'Target Branches', path: '/dashboard/marketing/branches', icon: Building, allowed: hasAccess(['marketing', 'admin', 'auditor']) }
           ]

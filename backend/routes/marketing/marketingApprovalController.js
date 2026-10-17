@@ -52,7 +52,7 @@ async function getPendingTasks(req, res, next) {
     });
 
     if (isAdmin) {
-      return res.json(pendingTasks);
+      return res.json(pendingTasks.filter(task => task.payment_request?.request_type !== 'CLAIM'));
     }
 
     const tasks = [];
@@ -60,6 +60,11 @@ async function getPendingTasks(req, res, next) {
       const isPlan = !!t.marketing_plan_id;
       const taskCompanyId = isPlan ? t.marketing_plan.company_id : t.payment_request.marketing_plan_item.marketing_plan.company_id;
       if (!req.companyScope.all && !req.companyScope.companyIds.includes(taskCompanyId)) continue;
+
+      if (t.payment_request?.request_type === 'CLAIM') {
+        if (userRole === 'FINANCE' && t.step_number === 1) tasks.push(t);
+        continue;
+      }
 
       const amt = isPlan ? parseFloat(t.marketing_plan.total_budget) : parseFloat(t.payment_request.amount);
       const mod = isPlan ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
@@ -117,7 +122,18 @@ async function processApproval(req, res, next) {
     }
 
     const userRole = req.user.role.toUpperCase();
-    if (userRole !== 'ADMIN') {
+    const companyId = task.marketing_plan?.company_id || task.payment_request?.marketing_plan_item?.marketing_plan?.company_id;
+    if (!req.companyScope.all && !req.companyScope.companyIds.includes(companyId)) {
+      return res.status(403).json({ error: 'Company outside your access scope.' });
+    }
+    const isClaim = task.payment_request?.request_type === 'CLAIM';
+    if (isClaim && (userRole !== 'FINANCE' || task.step_number !== 1)) {
+      return res.status(403).json({ error: 'Claim hanya dapat disetujui atau ditolak oleh Finance.' });
+    }
+    if (isClaim && action === 'REJECT' && (typeof comment !== 'string' || !comment.trim())) {
+      return res.status(400).json({ error: 'Isi alasan penolakan claim.' });
+    }
+    if (!isClaim && userRole !== 'ADMIN') {
       const isPlanAuth = !!task.marketing_plan_id;
       const amtAuth = isPlanAuth ? parseFloat(task.marketing_plan.total_budget) : parseFloat(task.payment_request.amount);
       const modAuth = isPlanAuth ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
@@ -185,7 +201,7 @@ async function getApprovalHistory(req, res, next) {
       const isPlan = !!r.marketing_plan_id;
       return {
         id: r.id,
-        type: isPlan ? 'Marketing Plan' : 'Payment Request',
+        type: isPlan ? 'Marketing Plan' : r.payment_request.request_type === 'CLAIM' ? 'Claim' : 'Payment Request',
         title: isPlan ? r.marketing_plan.title : r.payment_request.title,
         creatorName: isPlan ? r.marketing_plan.creator?.name : r.payment_request.creator?.name,
         companyName: isPlan ? r.marketing_plan.company?.name : r.payment_request.marketing_plan_item?.marketing_plan?.company?.name,

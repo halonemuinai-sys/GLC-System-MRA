@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../../api/db');
 const { sendMail } = require('../../api/mailer');
 const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope } = require('./marketingHelper');
+const { evaluateLateSubmission, closingWindow } = require('./marketingGovernance');
 
 /**
  * Helper function to check if the proposed marketing plan items exceed the locked monthly budget.
@@ -71,7 +72,7 @@ async function createPlan(req, res, next) {
     }
 
     const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason, save_as_draft,
-      target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes } = req.body;
+      target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes, late_submission_reason } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
@@ -79,6 +80,11 @@ async function createPlan(req, res, next) {
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(parseInt(company_id, 10))) {
       return res.status(403).json({ error: 'Company outside your access scope.' });
     }
+
+    const lateCheck = save_as_draft
+      ? { late: false, reason: late_submission_reason ? String(late_submission_reason).trim() || null : null }
+      : evaluateLateSubmission(event_start_date || start_date, late_submission_reason);
+    if (lateCheck.error) return res.status(400).json({ error: lateCheck.error, code: lateCheck.code });
 
     let totalBudget = 0;
     for (const item of items) {
@@ -113,7 +119,10 @@ async function createPlan(req, res, next) {
           target_reach: target_reach ? parseInt(target_reach, 10) : null,
           target_impressions: target_impressions ? parseInt(target_impressions, 10) : null,
           target_roi_pct: target_roi_pct ? parseFloat(target_roi_pct) : null,
-          target_notes: target_notes || null
+          target_notes: target_notes || null,
+          is_late_submission: lateCheck.late,
+          late_submission_reason: lateCheck.reason,
+          submitted_at: save_as_draft ? null : new Date()
         }
       });
 
@@ -294,7 +303,7 @@ async function updatePlan(req, res, next) {
     }
 
     const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason,
-      target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes } = req.body;
+      target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes, late_submission_reason } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
@@ -328,6 +337,7 @@ async function updatePlan(req, res, next) {
           target_impressions: target_impressions ? parseInt(target_impressions, 10) : null,
           target_roi_pct: target_roi_pct ? parseFloat(target_roi_pct) : null,
           target_notes: target_notes || null,
+          late_submission_reason: late_submission_reason ? String(late_submission_reason).trim() || null : null,
           updated_at: new Date()
         }
       });
@@ -410,6 +420,12 @@ async function submitPlan(req, res, next) {
     if (!existingPlan) return res.status(404).json({ error: 'Marketing Plan not found.' });
     if (existingPlan.status !== 'DRAFT') return res.status(400).json({ error: 'Hanya rencana berstatus DRAFT yang dapat diajukan.' });
 
+    const lateCheck = evaluateLateSubmission(
+      existingPlan.event_start_date || existingPlan.start_date,
+      req.body?.late_submission_reason || existingPlan.late_submission_reason
+    );
+    if (lateCheck.error) return res.status(400).json({ error: lateCheck.error, code: lateCheck.code });
+
     const totalBudget = parseFloat(existingPlan.total_budget);
     const isOverBudget = await checkBudgetLimits(existingPlan.company_id, existingPlan.fiscal_year, existingPlan.items);
 
@@ -423,7 +439,10 @@ async function submitPlan(req, res, next) {
 
       await tx.marketing_plans.update({
         where: { id: planId },
-        data: { status: 'PENDING_APPROVAL', is_over_budget: isOverBudget, updated_at: new Date() }
+        data: {
+          status: 'PENDING_APPROVAL', is_over_budget: isOverBudget, updated_at: new Date(),
+          is_late_submission: lateCheck.late, late_submission_reason: lateCheck.reason, submitted_at: new Date()
+        }
       });
 
       const planApprovers = await tx.marketing_plan_approvers.findMany({
@@ -619,11 +638,14 @@ async function revisePlan(req, res, next) {
     }
 
     const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason,
-      target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes } = req.body;
+      target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes, late_submission_reason } = req.body;
 
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
     }
+
+    const lateCheck = evaluateLateSubmission(event_start_date || start_date, late_submission_reason);
+    if (lateCheck.error) return res.status(400).json({ error: lateCheck.error, code: lateCheck.code });
 
     let totalBudget = 0;
     for (const item of items) {
@@ -656,6 +678,9 @@ async function revisePlan(req, res, next) {
           doc_url,
           is_over_budget: isOverBudget,
           over_budget_reason: isOverBudget ? over_budget_reason : null,
+          is_late_submission: lateCheck.late,
+          late_submission_reason: lateCheck.reason,
+          submitted_at: new Date(),
           target_sales: target_sales ? parseFloat(target_sales) : null,
           target_leads: target_leads ? parseInt(target_leads, 10) : null,
           target_reach: target_reach ? parseInt(target_reach, 10) : null,
@@ -818,7 +843,7 @@ async function revisePlan(req, res, next) {
 // GET /plans — server-side pagination + search + summary
 async function getPlans(req, res, next) {
   try {
-    const { company_id, fiscal_year, status, search, page = 1, limit = 15 } = req.query;
+    const { company_id, fiscal_year, quarter, month, status, search, page = 1, limit = 15 } = req.query;
     const pageNum = Math.max(1, parseInt(page, 10));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10)));
 
@@ -833,6 +858,27 @@ async function getPlans(req, res, next) {
       applyCompanyScope(filters, req.companyScope);
     }
     if (fiscal_year) filters.fiscal_year = parseInt(fiscal_year, 10);
+    if (quarter || month) {
+      const year = Number(fiscal_year);
+      const q = quarter ? Number(quarter) : null;
+      const m = month ? Number(month) : null;
+      if (!Number.isInteger(year) || year < 1900 || year > 9999 ||
+          (quarter && (!Number.isInteger(q) || q < 1 || q > 4)) ||
+          (month && (!Number.isInteger(m) || m < 1 || m > 12)) ||
+          (q && m && Math.ceil(m / 3) !== q)) {
+        return res.status(400).json({ error: 'Tahun, kuartal, atau bulan tidak valid.' });
+      }
+      const firstMonth = m || (q - 1) * 3 + 1;
+      const start = new Date(Date.UTC(year, firstMonth - 1, 1));
+      const end = new Date(Date.UTC(year, firstMonth - 1 + (m ? 1 : 3), 1));
+      // Match overlapping event periods; older plans fall back to plan dates.
+      const startFields = ['event_start_date', 'start_date'];
+      const endFields = ['event_end_date', 'end_date', ...startFields];
+      const dateCondition = (fields, range) => ({ OR: fields.map((field, index) => ({
+        AND: [...fields.slice(0, index).map(previous => ({ [previous]: null })), { [field]: range }]
+      })) });
+      filters.AND = [dateCondition(startFields, { lt: end }), dateCondition(endFields, { gte: start })];
+    }
     if (status) filters.status = status;
     if (search) {
       filters.OR = [
@@ -849,12 +895,14 @@ async function getPlans(req, res, next) {
         include: {
           company: { select: { id: true, name: true } },
           creator: { select: { id: true, name: true } },
+          items: { select: { actual_amount: true } },
           approvers: { orderBy: { step_number: 'asc' } },
           approval_history: {
             where: { status: 'PENDING' },
             orderBy: { step_number: 'asc' },
             take: 1
-          }
+          },
+          closing: { select: { status: true } }
         },
         orderBy: { created_at: 'desc' },
         skip: (pageNum - 1) * limitNum,
@@ -864,7 +912,7 @@ async function getPlans(req, res, next) {
       // Summary selalu dihitung dari SEMUA filter (tanpa pagination) untuk KPI cards
       prisma.marketing_plans.groupBy({
         by: ['status'],
-        where: { ...(filters.company_id ? { company_id: filters.company_id } : {}), ...(fiscal_year ? { fiscal_year: parseInt(fiscal_year, 10) } : {}) },
+        where: filters,
         _sum: { total_budget: true },
         _count: { _all: true }
       }),
@@ -881,7 +929,9 @@ async function getPlans(req, res, next) {
       else if (g.status === 'REJECTED') summary.rejected = g._count._all;
     });
 
-    const plansWithPipeline = plans.map(plan => {
+    const plansWithPipeline = plans.map(planRow => {
+      const { closing, ...planNoClosing } = planRow;
+      const plan = { ...planNoClosing, closing_status: closing?.status || null, closing_window: closingWindow(planRow, closing?.status) };
       const { approval_history, approvers, ...rest } = plan;
 
       // If plan has DocHub style custom approvers
@@ -997,43 +1047,15 @@ async function getPlanDetail(req, res, next) {
       // tabel belum ada — abaikan saja
     }
 
-    res.json({ ...plan, items: itemsWithVariance, amendments });
-  } catch (err) {
-    next(err);
-  }
-}
+    const closingRow = await prisma.marketing_plan_closings.findUnique({ where: { marketing_plan_id: plan.id }, select: { status: true } });
 
-// POST /plans/:id/complete — tutup plan (APPROVED → COMPLETED)
-async function completePlan(req, res, next) {
-  try {
-    const planId = parseInt(req.params.id, 10);
-    const employee = await resolveEmployee(req.user.email);
-    if (!employee) return res.status(403).json({ error: 'User not registered.' });
-
-    const plan = await prisma.marketing_plans.findUnique({
-      where: { id: planId },
-      include: { items: { include: { payment_requests: true } } }
+    res.json({
+      ...plan,
+      items: itemsWithVariance,
+      amendments,
+      closing_status: closingRow?.status || null,
+      closing_window: closingWindow(plan, closingRow?.status)
     });
-    if (!plan) return res.status(404).json({ error: 'Marketing Plan not found.' });
-    if (plan.status !== 'APPROVED') return res.status(400).json({ error: 'Hanya plan berstatus APPROVED yang bisa diselesaikan.' });
-
-    // Guard: tidak boleh ada payment yang masih PENDING atau APPROVED (belum PAID/REJECTED)
-    const pendingPayments = plan.items.flatMap(i => i.payment_requests).filter(pr => ['PENDING', 'APPROVED'].includes(pr.status));
-    if (pendingPayments.length > 0) {
-      return res.status(400).json({ error: `Masih ada ${pendingPayments.length} payment request yang belum selesai (PENDING/APPROVED). Selesaikan atau tolak terlebih dahulu.` });
-    }
-
-    // Guard: actuals harus sudah diisi
-    if (!plan.actuals_filled_at) {
-      return res.status(400).json({ error: 'Data aktual (post-campaign) harus diisi sebelum plan dapat diselesaikan.' });
-    }
-
-    const updated = await prisma.marketing_plans.update({
-      where: { id: planId },
-      data: { status: 'COMPLETED', updated_at: new Date() }
-    });
-
-    res.json({ message: 'Plan berhasil diselesaikan dan ditutup.', plan: updated });
   } catch (err) {
     next(err);
   }
@@ -1222,7 +1244,6 @@ module.exports = {
   revisePlan,
   getPlans,
   getPlanDetail,
-  completePlan,
   deletePlan,
   duplicatePlan
 };

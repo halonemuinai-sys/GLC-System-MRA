@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Menu } from '@base-ui/react/menu';
 import {
   BarChart3,
   Plus,
@@ -34,12 +35,16 @@ import {
   Building2,
   SlidersHorizontal,
   Zap,
-  Copy
+  Copy,
+  MoreHorizontal,
+  ArrowUpRight,
+  Megaphone
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import Cookies from 'js-cookie';
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
+import { CLOSING_WINDOW_BADGE } from '@/lib/marketingGovernance';
 import MarketingPlanWizardModal from './MarketingPlanWizardModal';
 import MarketingPlanDetailModal from './MarketingPlanDetailModal';
 import MarketingPlanQuickModal from './MarketingPlanQuickModal';
@@ -51,6 +56,15 @@ const formatIDR = (val) => {
     currency: 'IDR',
     maximumFractionDigits: 0
   }).format(Number(val));
+};
+
+const formatPlanPeriod = (plan, locale) => {
+  const start = plan.event_start_date || plan.start_date;
+  const end = plan.event_end_date || plan.end_date || start;
+  const format = value => value ? new Date(value).toLocaleDateString(locale, { month: 'short', year: 'numeric' }) : '-';
+  const first = format(start);
+  const last = format(end);
+  return first === last ? first : `${first} \u2013 ${last}`;
 };
 
 // Helper: Format angka jadi pemisah ribuan saat diketik (tampilan saja, value yang
@@ -188,6 +202,17 @@ function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap,
   );
 }
 
+function PlanAction({ icon: Icon, children, danger = false, ...props }) {
+  return (
+    <Menu.Item {...props} className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs font-medium outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-40 ${danger
+      ? 'text-rose-600 data-[highlighted]:bg-rose-50 dark:text-rose-400 dark:data-[highlighted]:bg-rose-500/10'
+      : 'text-slate-600 data-[highlighted]:bg-slate-100 data-[highlighted]:text-slate-950 dark:text-slate-300 dark:data-[highlighted]:bg-slate-800 dark:data-[highlighted]:text-white'}`}>
+      <Icon className="h-4 w-4 shrink-0" />
+      {children}
+    </Menu.Item>
+  );
+}
+
 export default function MarketingPlanPage() {
   const { lang } = useLanguage();
   const t = (key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key);
@@ -203,6 +228,8 @@ export default function MarketingPlanPage() {
 
   // Filter States
   const [fiscalYear, setFiscalYear] = useState(String(new Date().getFullYear()));
+  const [quarter, setQuarter] = useState('');
+  const [month, setMonth] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -212,7 +239,7 @@ export default function MarketingPlanPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPlans, setTotalPlans] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const PAGE_SIZE = 15;
+  const PAGE_SIZE = 25;
 
   // Summary for KPI (independent of page)
   const [summary, setSummary] = useState({ totalBudget: 0, approved: 0, pending: 0, draft: 0, rejected: 0 });
@@ -245,6 +272,8 @@ export default function MarketingPlanPage() {
     try {
       const params = {
         fiscal_year: fiscalYear || undefined,
+        quarter: quarter || undefined,
+        month: month || undefined,
         company_id: companyId || undefined,
         status: statusFilter || undefined,
         search: search || undefined,
@@ -262,7 +291,7 @@ export default function MarketingPlanPage() {
     } finally {
       setLoading(false);
     }
-  }, [fiscalYear, companyId, statusFilter]);
+  }, [fiscalYear, quarter, month, companyId, statusFilter]);
 
   useEffect(() => { loadMetadata(); }, []);
 
@@ -359,16 +388,25 @@ export default function MarketingPlanPage() {
     }
   };
 
-  const handleSubmitDraft = async (planId) => {
-    if (!window.confirm(t('confirmSubmitDraft'))) return;
+  const handleSubmitDraft = async (planId, lateReason) => {
+    if (!lateReason && !window.confirm(t('confirmSubmitDraft'))) return;
     try {
       setSubmitting(true);
-      await apiClient.post(`/api/marketing/plans/${planId}/submit`);
+      await apiClient.post(`/api/marketing/plans/${planId}/submit`, lateReason ? { late_submission_reason: lateReason } : {});
       setSuccessMsg(t('successSubmitted'));
       loadPlans();
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      alert(err.message || t('errFailSubmitPlan'));
+      // Aturan H-3: event < 3 bulan lagi -> minta alasan lalu ajukan ulang
+      if (err.message?.includes('H-3')) {
+        const reason = window.prompt(`${err.message}\n\nAlasan pengajuan terlambat:`);
+        if (reason?.trim()) {
+          setSubmitting(false);
+          return handleSubmitDraft(planId, reason.trim());
+        }
+      } else {
+        alert(err.message || t('errFailSubmitPlan'));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -392,7 +430,7 @@ export default function MarketingPlanPage() {
   // Search sudah server-side, tidak perlu filter client
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 pb-12">
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -408,7 +446,7 @@ export default function MarketingPlanPage() {
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={handleRefresh}
@@ -420,7 +458,7 @@ export default function MarketingPlanPage() {
 
           <button
             onClick={() => setIsQuickModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/25 transition-all cursor-pointer active:scale-95"
+            className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Express Mode: Pendaftaran Campaign Ringkas"
           >
             <Zap className="w-4 h-4" />
@@ -429,7 +467,7 @@ export default function MarketingPlanPage() {
 
           <button
             onClick={handleCreatePlan}
-            className="flex items-center gap-2 bg-gradient-to-br from-indigo-500 to-indigo-700 hover:from-indigo-400 hover:to-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/25 transition-all cursor-pointer active:scale-95"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm shadow-blue-600/20 transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
           >
             <Plus className="w-4 h-4" />
             {t('createPlan')}
@@ -526,7 +564,7 @@ export default function MarketingPlanPage() {
       {/* Filter Bar */}
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm">
         {/* Top row: title + filter pills */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-neutral-800/80">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-neutral-800/80">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center">
               <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-500" />
@@ -546,6 +584,28 @@ export default function MarketingPlanPage() {
               icon={Calendar}
               options={FISCAL_YEAR_OPTIONS.map(y => ({ value: y, label: y }))}
               onChange={setFiscalYear}
+            />
+            <FilterDropdown
+              label={lang === 'id' ? 'Semua Kuartal' : 'All Quarters'}
+              value={quarter}
+              icon={Calendar}
+              options={[
+                { value: '', label: lang === 'id' ? 'Semua Kuartal' : 'All Quarters' },
+                ...[1, 2, 3, 4].map(q => ({ value: String(q), label: `Q${q} (${getMonthName(q * 3 - 2, lang).slice(0, 3)} - ${getMonthName(q * 3, lang).slice(0, 3)})` }))
+              ]}
+              onChange={value => { setQuarter(value); setMonth(''); }}
+            />
+            <FilterDropdown
+              label={lang === 'id' ? 'Semua Bulan' : 'All Months'}
+              value={month}
+              icon={Calendar}
+              options={[
+                { value: '', label: lang === 'id' ? 'Semua Bulan' : 'All Months' },
+                ...Array.from({ length: 12 }, (_, i) => i + 1)
+                  .filter(m => !quarter || Math.ceil(m / 3) === Number(quarter))
+                  .map(m => ({ value: String(m), label: getMonthName(m, lang) }))
+              ]}
+              onChange={setMonth}
             />
             <FilterDropdown
               label={t('allCompanies')}
@@ -579,13 +639,13 @@ export default function MarketingPlanPage() {
               }}
               onChange={setStatusFilter}
             />
-            {(companyId || statusFilter) && (
+            {(companyId || statusFilter || quarter || month) && (
               <motion.button
                 type="button"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
-                onClick={() => { setCompanyId(''); setStatusFilter(''); }}
+                onClick={() => { setCompanyId(''); setStatusFilter(''); setQuarter(''); setMonth(''); }}
                 className="flex items-center gap-1 px-2.5 py-2 rounded-xl text-[11px] font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200 dark:hover:border-red-500/20 transition-all cursor-pointer"
               >
                 <X className="w-3 h-3" />
@@ -626,24 +686,24 @@ export default function MarketingPlanPage() {
         </div>
       ) : (
         /* Plans Table View */
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-[0_4px_24px_-12px_rgba(15,23,42,0.18)] overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full min-w-[1000px] table-fixed text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/50 dark:bg-neutral-950/20 text-neutral-400 font-bold uppercase tracking-wider">
-                  <th className="px-5 py-4">{t('colPlanName')}</th>
-                  <th className="px-5 py-4">{t('colCompany')}</th>
-                  <th className="px-5 py-4">{t('colPeriod')}</th>
-                  <th className="px-5 py-4 text-right">{t('colTotalBudget')}</th>
-                  <th className="px-5 py-4 text-center">Status</th>
-                  <th className="px-5 py-4">{t('colSubmittedBy')}</th>
-                  <th className="px-5 py-4 text-center">{t('colActions')}</th>
+                <tr className="border-b border-neutral-100 dark:border-neutral-800/80 bg-slate-50 dark:bg-slate-950/50 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase tracking-[0.08em]">
+                  <th className="px-3 py-3 w-[34%]">{t('colPlanName')}</th>
+                  <th className="px-3 py-3">{t('colCompany')}</th>
+                  <th className="px-3 py-3">{t('colPeriod')}</th>
+                  <th className="px-3 py-3 text-right">{t('colTotalBudget')}</th>
+                  <th className="px-3 py-3 text-center">Status</th>
+
+                  <th className="px-3 py-3 w-[140px] text-right">{t('colActions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium">
                 {plans.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-5 py-16 text-center">
+                    <td colSpan="6" className="px-5 py-16 text-center">
                       {totalPlans === 0 ? (
                         <div className="flex flex-col items-center gap-3">
                           <FileSpreadsheet className="w-9 h-9 text-neutral-300 dark:text-neutral-700" />
@@ -689,121 +749,77 @@ export default function MarketingPlanPage() {
                     }
 
                     return (
-                      <tr key={plan.id} className={`border-l-[3px] ${rowAccent} hover:bg-neutral-50/30 dark:hover:bg-neutral-800/5 text-neutral-700 dark:text-neutral-300 transition-colors`}>
-                        <td className="px-5 py-4">
+                      <tr key={plan.id} className={`border-l-[3px] ${rowAccent} group/row even:bg-slate-50/40 hover:bg-blue-50/60 dark:even:bg-slate-800/15 dark:hover:bg-blue-500/5 text-neutral-700 dark:text-neutral-300 transition-colors`}>
+                        <td className="px-3 py-2">
                           <button
                             onClick={() => openDetail(plan.id)}
-                            className="font-bold text-neutral-900 dark:text-white hover:text-indigo-500 transition-colors text-left"
+                            title={[plan.title, plan.is_late_submission && "Late Submission", CLOSING_WINDOW_BADGE[plan.closing_window?.state]?.label].filter(Boolean).join(" \u00b7 ")}
+                            className="flex w-full items-center gap-2.5 rounded-md font-semibold text-slate-700 dark:text-slate-200 hover:text-blue-600 transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                           >
-                            {plan.title}
-                          </button>
-                          {plan.description && <p className="text-[10px] text-neutral-400 font-normal line-clamp-1 mt-0.5">{plan.description}</p>}
-                        </td>
-                        <td className="px-5 py-4 text-neutral-900 dark:text-neutral-200">
-                          {plan.company?.name || 'N/A'}
-                        </td>
-                        <td className="px-5 py-4 text-neutral-500">
-                          <span className="font-bold text-neutral-800 dark:text-neutral-200 block">
-                            {plan.event_start_date ? new Date(plan.event_start_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : (plan.start_date ? new Date(plan.start_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : '-')} - {plan.event_end_date ? new Date(plan.event_end_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : (plan.end_date ? new Date(plan.end_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' }) : '-')}
-                          </span>
-                          {plan.cta_start_date && (
-                            <span className="text-[9px] text-neutral-400 dark:text-neutral-500 block mt-0.5">
-                              {t('promoLabel')} {new Date(plan.cta_start_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' })} - {new Date(plan.cta_end_date).toLocaleDateString(t('dateLocale'), { month: 'short', year: 'numeric' })}
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400 transition-colors group-hover/row:bg-blue-100 group-hover/row:text-blue-500 dark:bg-slate-800 dark:group-hover/row:bg-blue-500/15">
+                              <Megaphone className="h-3.5 w-3.5" />
                             </span>
-                          )}
+                            <span className="truncate">{plan.title}</span>
+                          </button>
+
                         </td>
-                        <td className="px-5 py-4 text-right font-bold text-neutral-900 dark:text-white">
+                        <td className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                          <span className="block truncate" title={plan.company?.name}>{plan.company?.name || 'N/A'}</span>
+                        </td>
+                        <td className="px-3 py-2 text-neutral-500">
+                          <span className="block truncate" title={formatPlanPeriod(plan, t('dateLocale'))}>
+                            {formatPlanPeriod(plan, t('dateLocale'))}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap tabular-nums text-right font-semibold text-neutral-900 dark:text-white">
                           {formatIDR(plan.total_budget)}
                         </td>
-                        <td className="px-5 py-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wide inline-flex items-center gap-1 border ${statusBadge}`}>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`px-2 py-1 whitespace-nowrap rounded-md text-[10px] font-semibold inline-flex items-center gap-1 border ${statusBadge}`}>
                             <StatusIcon className="w-3 h-3" />
                             {statusText}
                           </span>
-                          {plan.pipeline && (
-                            <p className="text-[9px] text-neutral-400 font-bold mt-1">
-                              Step {plan.pipeline.currentStep}/{plan.pipeline.totalSteps || '?'}
-                              {plan.pipeline.approverName ? (
-                                <> · <span className="text-neutral-700 dark:text-neutral-300 font-semibold">{plan.pipeline.approverName}</span>{plan.pipeline.approverRole ? ` (${plan.pipeline.approverRole.replace(/_/g, ' ')})` : ''}</>
-                              ) : plan.pipeline.approverRole ? (
-                                <> · {plan.pipeline.approverRole.replace(/_/g, ' ')}</>
-                              ) : null}
-                            </p>
-                          )}
                         </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 text-neutral-400" />
-                            <span>{plan.creator?.name || 'N/A'}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            {/* DRAFT actions */}
-                            {plan.status === 'DRAFT' && (
-                              <>
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                                  onClick={() => handleEditDraft(plan.id)}
-                                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200/70 dark:border-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-all cursor-pointer"
-                                  title={t('btnContinue')}
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </motion.button>
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                                  onClick={() => handleSubmitDraft(plan.id)}
-                                  disabled={submitting}
-                                  className="w-7 h-7 flex items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-sm shadow-emerald-500/30 hover:from-emerald-400 hover:to-emerald-600 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title={t('btnSubmit')}
-                                >
-                                  <Send className="w-3.5 h-3.5" />
-                                </motion.button>
-                              </>
-                            )}
-
-                            {/* PENDING_APPROVAL recall */}
-                            {plan.status === 'PENDING_APPROVAL' && (userRole === 'marketing' || userRole === 'admin') && (
-                              <motion.button
-                                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                                onClick={() => handleRecallPlan(plan.id)}
-                                disabled={recallingPlanId === plan.id}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/25 transition-all cursor-pointer disabled:opacity-50"
-                                title={t('btnRecallTitle')}
-                              >
-                                {recallingPlanId === plan.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
-                              </motion.button>
-                            )}
-
-                            <motion.button
-                              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                              onClick={() => handleDuplicatePlan(plan.id)}
-                              disabled={submitting}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/25 transition-all cursor-pointer disabled:opacity-50"
-                              title="Duplikat Plan Ini"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                            </motion.button>
-
-                            <motion.button
-                              whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
                               onClick={() => openDetail(plan.id)}
-                              className="w-7 h-7 flex items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800 border border-neutral-200/70 dark:border-neutral-700/40 text-neutral-500 dark:text-neutral-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200/70 dark:hover:border-indigo-500/20 transition-all cursor-pointer"
-                              title={t('btnDetails')}
+                              aria-label={`${t('btnDetails')}: ${plan.title}`}
+                              className="group/detail inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-[11px] font-semibold text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-500/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-300"
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                            </motion.button>
-                            {/* Delete button: hanya untuk DRAFT/REJECTED atau role ADMIN */}
-                            {(plan.status === 'DRAFT' || plan.status === 'REJECTED' || userRole === 'admin') && (
-                              <motion.button
-                                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                                onClick={() => setPlanToDelete(plan)}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200/60 dark:hover:border-red-500/20 transition-all cursor-pointer"
-                                title={t('btnDeleteTitle')}
+                              Detail <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover/detail:-translate-y-0.5 group-hover/detail:translate-x-0.5" />
+                            </button>
+                            <Menu.Root>
+                              <Menu.Trigger
+                                aria-label={`${lang === 'id' ? 'Aksi lainnya' : 'More actions'}: ${plan.title}`}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-slate-400 transition-colors hover:border-slate-200 hover:bg-slate-100 hover:text-slate-700 data-[popup-open]:border-blue-200 data-[popup-open]:bg-blue-50 data-[popup-open]:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:border-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </motion.button>
-                            )}
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Menu.Trigger>
+                              <Menu.Portal>
+                                <Menu.Positioner align="end" sideOffset={6} className="z-[100]">
+                                  <Menu.Popup className="min-w-48 origin-[var(--transform-origin)] rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-900/10 outline-none transition-[transform,opacity] duration-150 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 dark:border-slate-700 dark:bg-slate-900">
+                                    {plan.status === 'DRAFT' && (
+                                      <>
+                                        <PlanAction icon={Pencil} onClick={() => handleEditDraft(plan.id)}>{t('btnContinue')}</PlanAction>
+                                        <PlanAction icon={Send} disabled={submitting} onClick={() => handleSubmitDraft(plan.id)}>{t('btnSubmit')}</PlanAction>
+                                      </>
+                                    )}
+                                    {plan.status === 'PENDING_APPROVAL' && (userRole === 'marketing' || userRole === 'admin') && (
+                                      <PlanAction icon={Undo2} disabled={recallingPlanId === plan.id} onClick={() => handleRecallPlan(plan.id)}>{t('btnRecallTitle')}</PlanAction>
+                                    )}
+                                    <PlanAction icon={Copy} disabled={submitting} onClick={() => handleDuplicatePlan(plan.id)}>{lang === 'id' ? 'Duplikat campaign' : 'Duplicate campaign'}</PlanAction>
+                                    {(plan.status === 'DRAFT' || plan.status === 'REJECTED' || userRole === 'admin') && (
+                                      <>
+                                        <div role="separator" className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                                        <PlanAction icon={Trash2} danger onClick={() => setPlanToDelete(plan)}>{t('btnDeleteTitle')}</PlanAction>
+                                      </>
+                                    )}
+                                  </Menu.Popup>
+                                </Menu.Positioner>
+                              </Menu.Portal>
+                            </Menu.Root>
                           </div>
                         </td>
                       </tr>

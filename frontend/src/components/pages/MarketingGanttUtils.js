@@ -18,6 +18,7 @@ export const MONTHS_FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Jun
 export const CURRENT_YEAR = new Date().getFullYear();
 
 export const STATUS_CONFIG = {
+  COMPLETED: { label: 'Completed', color: '#3b82f6', bg: 'bg-blue-500/10', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-200/60', icon: CheckCircle },
   APPROVED: { label: 'Approved', color: '#10b981', bg: 'bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200/60', icon: CheckCircle },
   PENDING_APPROVAL: { label: 'Pending', color: '#f97316', bg: 'bg-amber-500/10', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200/60', icon: Clock },
   REJECTED: { label: 'Rejected', color: '#f43f5e', bg: 'bg-red-500/10', text: 'text-red-600 dark:text-red-400', border: 'border-red-200/60', icon: XCircle },
@@ -25,6 +26,7 @@ export const STATUS_CONFIG = {
 };
 
 export const GANTT_BAR_COLORS = {
+  COMPLETED: '#3b82f6',
   APPROVED: '#10b981',
   PENDING_APPROVAL: '#f97316',
   REJECTED: '#f43f5e',

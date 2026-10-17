@@ -103,11 +103,11 @@ export default function MarketingPlanWizardStep2({
   const availableMonths = getAvailableMonths();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h4 className="text-xs font-bold text-neutral-800 dark:text-white">{t('monthlyAllocationTitle')}</h4>
-          <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">{t('monthlyAllocationSub')}</p>
+          <h4 className="text-sm font-semibold text-neutral-800 dark:text-white">{t('monthlyAllocationTitle')}</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('monthlyAllocationSub')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
@@ -136,7 +136,7 @@ export default function MarketingPlanWizardStep2({
           <button
             type="button"
             onClick={addWizardItem}
-            className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 text-[11px] font-extrabold border border-blue-500/20 px-3.5 py-1.5 rounded-xl hover:bg-blue-500/5 transition-all cursor-pointer shadow-sm"
+            className="flex items-center gap-1.5 text-white bg-blue-600 hover:bg-blue-700 text-[11px] font-semibold border border-blue-600 px-3.5 py-2 rounded-lg transition-all cursor-pointer shadow-sm"
           >
             <Plus className="w-3.5 h-3.5" /> {t('addRow')}
           </button>
@@ -145,35 +145,35 @@ export default function MarketingPlanWizardStep2({
 
       <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full text-left text-[10px] border-collapse table-fixed">
+          <table className="w-full min-w-[1000px] text-left text-[11px] border-collapse table-fixed">
             <thead>
-              <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-extrabold uppercase tracking-wider">
-                <th className="px-1 py-2 text-center w-[4%]">No</th>
-                <th className="px-1 py-2 w-[11%]">Month *</th>
-                <th className="px-1 py-2 w-[22%]">CoA Account *</th>
-                <th className="px-1 py-2 w-[16%]">Vendor Partner</th>
-                <th className="px-1 py-2 w-[8%] text-center">Qty *</th>
-                <th className="px-1 py-2 w-[13%] text-right pr-2">{t('unitPriceStar')}</th>
-                <th className="px-1 py-2 w-[13%] text-right pr-2">Sub Total</th>
-                <th className="px-1 py-2 w-[10%]">Cost Notes</th>
-                <th className="px-1 py-2 text-center w-[3%]"></th>
+              <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-semibold uppercase tracking-wider">
+                <th className="px-2 py-3 text-center w-[4%]">No</th>
+                <th className="px-2 py-3 w-[11%]">Month *</th>
+                <th className="px-2 py-3 w-[22%]">CoA Account *</th>
+                <th className="px-2 py-3 w-[16%]">Vendor Partner</th>
+                <th className="px-2 py-3 w-[8%] text-center">Qty *</th>
+                <th className="px-2 py-3 w-[13%] text-right pr-2">{t('unitPriceStar')}</th>
+                <th className="px-2 py-3 w-[13%] text-right pr-2">Sub Total</th>
+                <th className="px-2 py-3 w-[10%]">Cost Notes</th>
+                <th className="px-2 py-3 text-center w-[3%]"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-900 text-neutral-700 dark:text-neutral-300">
               {wizardItems.map((item, idx) => {
                 const subTotal = Number(item.qty || 1) * Number(item.unit_price || 0);
                 return (
-                  <tr key={idx} className="hover:bg-neutral-50/20 dark:hover:bg-neutral-950/10 transition-colors">
-                    <td className="px-1 py-1.5 text-center text-neutral-400 font-bold">
+                  <tr key={idx} className="even:bg-slate-50/60 hover:bg-blue-50/40 dark:even:bg-slate-800/20 dark:hover:bg-blue-500/5 transition-colors">
+                    <td className="px-2 py-2.5 text-center text-neutral-400 font-bold">
                       {idx + 1}
                     </td>
                     
                     {/* Month */}
-                    <td className="px-1 py-1.5">
+                    <td className="px-2 py-2.5">
                       <select
                         value={item.period_month}
                         onChange={(e) => handleItemChange(idx, 'period_month', e.target.value)}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
                       >
                         <option value="">{t('monthWord')}</option>
                         {availableMonths.map((m) => (
@@ -193,11 +193,11 @@ export default function MarketingPlanWizardStep2({
                     </td>
 
                     {/* CoA select */}
-                    <td className="px-1 py-1.5">
+                    <td className="px-2 py-2.5">
                       <select
                         value={item.coa_id}
                         onChange={(e) => handleItemChange(idx, 'coa_id', e.target.value)}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
                         required
                       >
                         <option value="">Select Account</option>
@@ -210,7 +210,7 @@ export default function MarketingPlanWizardStep2({
                     </td>
 
                     {/* Vendor input with autocomplete datalist */}
-                    <td className="px-1 py-1.5">
+                    <td className="px-2 py-2.5">
                       <input
                         type="text"
                         list={`vendors-datalist-${idx}`}
@@ -231,7 +231,7 @@ export default function MarketingPlanWizardStep2({
                             handleItemChange(idx, 'vendor_id', val);
                           }
                         }}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
                       />
                       <datalist id={`vendors-datalist-${idx}`}>
                         {metadata.vendors.map(v => (
@@ -241,49 +241,49 @@ export default function MarketingPlanWizardStep2({
                     </td>
 
                     {/* Qty */}
-                    <td className="px-1 py-1.5">
+                    <td className="px-2 py-2.5">
                       <input
                         type="text"
                         inputMode="numeric"
                         placeholder="1"
                         value={item.qty || '1'}
                         onChange={(e) => handleItemChange(idx, 'qty', e.target.value.replace(/\D/g, ''))}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-900 dark:text-white text-center"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-900 dark:text-white text-center"
                         required
                       />
                     </td>
 
                     {/* Harga Satuan */}
-                    <td className="px-1 py-1.5">
+                    <td className="px-2 py-2.5">
                       <input
                         type="text"
                         inputMode="numeric"
                         placeholder="0"
                         value={formatThousands(item.unit_price || '')}
                         onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value.replace(/\D/g, ''))}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-neutral-900 dark:text-white text-right pr-2"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-semibold text-neutral-900 dark:text-white text-right pr-2"
                         required
                       />
                     </td>
 
                     {/* Sub Total */}
-                    <td className="px-1 py-1.5 text-right font-bold text-neutral-800 dark:text-neutral-100 pr-2">
+                    <td className="px-2 py-2.5 text-right font-bold text-neutral-800 dark:text-neutral-100 pr-2">
                       {formatThousands(subTotal)}
                     </td>
 
                     {/* Cost detail description */}
-                    <td className="px-1 py-1.5">
+                    <td className="px-2 py-2.5">
                       <input
                         type="text"
                         placeholder="Activity notes..."
                         value={item.description}
                         onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-1.5 py-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-900 dark:text-white"
+                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-900 dark:text-white"
                       />
                     </td>
 
                     {/* Delete Button */}
-                    <td className="px-1 py-1.5 text-center">
+                    <td className="px-2 py-2.5 text-center">
                       {wizardItems.length > 1 && (
                         <button
                           type="button"
@@ -300,14 +300,14 @@ export default function MarketingPlanWizardStep2({
               })}
               
               {/* Total Row */}
-              <tr className="bg-neutral-50/70 dark:bg-neutral-950/60 border-t border-neutral-200 dark:border-neutral-800 font-bold">
+              <tr className="bg-blue-50/70 dark:bg-blue-500/10 border-t border-neutral-200 dark:border-neutral-800 font-bold">
                 <td colSpan="6" className="px-3 py-2.5 text-right text-xs uppercase tracking-wider text-neutral-500 dark:text-neutral-500">
                   {t('totalPlannedBudgetRow')}
                 </td>
-                <td className="px-1 py-2.5 text-right text-xs text-blue-600 dark:text-blue-400 pr-2 font-black">
+                <td className="px-2 py-3.5 text-right text-xs text-blue-600 dark:text-blue-400 pr-2 font-black">
                   {formatThousands(wizardItems.reduce((acc, curr) => acc + (Number(curr.qty || 1) * Number(curr.unit_price || 0)), 0))}
                 </td>
-                <td colSpan="2" className="px-1 py-2.5"></td>
+                <td colSpan="2" className="px-2 py-3.5"></td>
               </tr>
             </tbody>
           </table>

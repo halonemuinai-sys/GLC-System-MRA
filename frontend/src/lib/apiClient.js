@@ -24,7 +24,7 @@ async function request(path, options = {}) {
   const token = Cookies.get('glc_mra_token');
 
   // Set default headers
-  const defaultHeaders = {
+  const defaultHeaders = restOptions.body instanceof FormData ? {} : {
     'Content-Type': 'application/json',
   };
 
@@ -76,6 +76,9 @@ export const apiClient = {
     
   post: (path, body, options) => 
     request(path, { ...options, method: 'POST', body: JSON.stringify(body) }),
+
+  postForm: (path, body, options) =>
+    request(path, { ...options, method: 'POST', body }),
     
   put: (path, body, options) => 
     request(path, { ...options, method: 'PUT', body: JSON.stringify(body) }),
