@@ -3,6 +3,7 @@ const prisma = require('../../api/db');
 const { sendMail } = require('../../api/mailer');
 const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope, canManageDoc, seesAllMarketingDocs, hasRole } = require('./marketingHelper');
 const { evaluateLateSubmission, closingWindow } = require('./marketingGovernance');
+const { loadTierSteps } = require('./marketingTiers');
 
 // Vendor on a plan item: an id from the vendor master, or a typed name. A name that is not in
 // the master is recorded as a Pending vendor (no vendor code) so GA registers and activates it;
@@ -220,18 +221,8 @@ async function createPlan(req, res, next) {
           });
         } else {
           // Fallback legacy approval_rules
-          const firstRules = await tx.approval_rules.findMany({
-            where: {
-              module: 'MARKETING_PLAN',
-              min_amount: { lte: totalBudget },
-              OR: [
-                { max_amount: { gte: totalBudget } },
-                { max_amount: null }
-              ],
-              step_number: 1
-            }
-          });
-
+          // Tier set of the plan's company (company → holding → general), step 1 only.
+          const firstRules = (await loadTierSteps(tx, 'MARKETING_PLAN', plan.company_id, totalBudget)).filter(r => r.step_number === 1);
           const planCompany = await tx.m_company.findUnique({ where: { id: plan.company_id }, select: { company_master_id: true } });
 
           for (const rule of firstRules) {
@@ -469,14 +460,8 @@ async function submitPlan(req, res, next) {
         });
       } else {
         // Fallback: legacy rule-based
-        const firstRules = await tx.approval_rules.findMany({
-          where: {
-            module: 'MARKETING_PLAN',
-            min_amount: { lte: totalBudget },
-            OR: [{ max_amount: { gte: totalBudget } }, { max_amount: null }],
-            step_number: 1
-          }
-        });
+        // Tier set of the plan's company (company → holding → general), step 1 only.
+        const firstRules = (await loadTierSteps(tx, 'MARKETING_PLAN', existingPlan.company_id, totalBudget)).filter(r => r.step_number === 1);
         const planCompany = await tx.m_company.findUnique({ where: { id: existingPlan.company_id }, select: { company_master_id: true } });
         for (const rule of firstRules) {
           const history = await tx.approval_history.create({
@@ -760,14 +745,8 @@ async function revisePlan(req, res, next) {
         });
       } else {
         // Fallback legacy approval_rules
-        const firstRules = await tx.approval_rules.findMany({
-          where: {
-            module: 'MARKETING_PLAN',
-            min_amount: { lte: totalBudget },
-            OR: [{ max_amount: { gte: totalBudget } }, { max_amount: null }],
-            step_number: 1
-          }
-        });
+        // Tier set of the plan's company (company → holding → general), step 1 only.
+        const firstRules = (await loadTierSteps(tx, 'MARKETING_PLAN', parseInt(company_id, 10), totalBudget)).filter(r => r.step_number === 1);
         const planCompany = await tx.m_company.findUnique({ where: { id: parseInt(company_id, 10) }, select: { company_master_id: true } });
         for (const rule of firstRules) {
           const history = await tx.approval_history.create({

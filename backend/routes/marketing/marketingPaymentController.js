@@ -1,4 +1,5 @@
 const prisma = require('../../api/db');
+const { loadTierSteps } = require('./marketingTiers');
 const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope, canManageDoc, isMarketingManager, seesAllMarketingDocs, hasRole } = require('./marketingHelper');
 
 const OPEN_STATUSES = ['PENDING', 'OVERBUDGET_WARN', 'APPROVED'];
@@ -81,14 +82,8 @@ async function createPaymentRequest(req, res, next) {
       }
     }
 
-    const approvalRules = await prisma.approval_rules.findMany({
-      where: {
-        module: 'PAYMENT_REQUEST',
-        min_amount: { lte: itemAmt },
-        OR: [{ max_amount: { gte: itemAmt } }, { max_amount: null }]
-      },
-      orderBy: { step_number: 'asc' }
-    });
+    // Tier set of the plan's company (company → holding → general).
+    const approvalRules = await loadTierSteps(prisma, 'PAYMENT_REQUEST', planItem.marketing_plan.company_id, itemAmt);
     if (!approvalRules.length && !isOverbudget) {
       return res.status(400).json({ error: 'No Payment Request approval tier covers this amount yet. Set one up in Approval Settings.' });
     }

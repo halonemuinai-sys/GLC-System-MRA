@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../../api/db');
 const { sendApprovalMagicLinkEmail, sendPaymentStatusEmail, sendPlanStatusEmail } = require('../../api/mailer');
 const { hasRole } = require('../../api/roles');
+const { loadTierSteps } = require('./marketingTiers');
 
 // ── Marketing document ownership ────────────────────────────────────────────
 // marketing (staff)  : sees and changes only plans / payments they created.
@@ -238,23 +239,15 @@ async function executeApprovalDecision({ task, action, comment, signature, actin
     }
 
     const nextStep = task.step_number + 1;
-    const nextRule = await tx.approval_rules.findFirst({
-      where: {
-        module: mod,
-        step_number: nextStep,
-        min_amount: { lte: amt },
-        OR: [{ max_amount: { gte: amt } }, { max_amount: null }]
-      }
-    });
+    // Same tier set as the first step: the document's company → holding → general.
+    const docCompanyId = isPlan
+      ? (task.marketing_plan?.company_id ?? (await tx.marketing_plans.findUnique({ where: { id: docId }, select: { company_id: true } }))?.company_id)
+      : (task.payment_request?.marketing_plan_item?.marketing_plan?.company_id ?? (await tx.payment_requests.findUnique({ where: { id: docId }, select: { marketing_plan_item: { select: { marketing_plan: { select: { company_id: true } } } } } }))?.marketing_plan_item?.marketing_plan?.company_id);
+    const tierSteps = await loadTierSteps(tx, mod, docCompanyId ?? null, amt);
+    const nextRule = tierSteps.find(r => r.step_number === nextStep) || null;
 
     const isOverbudget = !isPlan && task.payment_request.status === 'OVERBUDGET_WARN';
-    const maxNormalSteps = await tx.approval_rules.count({
-      where: {
-        module: mod,
-        min_amount: { lte: amt },
-        OR: [{ max_amount: { gte: amt } }, { max_amount: null }]
-      }
-    });
+    const maxNormalSteps = tierSteps.length;
 
     const hasNextStep = nextRule || (isOverbudget && nextStep <= (maxNormalSteps + 1));
 

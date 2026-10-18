@@ -7,6 +7,7 @@ import Cookies from 'js-cookie';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingCart,
+  Rocket,
   LayoutDashboard,
   Box,
   Truck,
@@ -554,6 +555,7 @@ function SidebarContent({
           icon: Settings,
           children: [
             { name: 'Approval Settings', path: '/dashboard/marketing-approval-settings', icon: UserCheck, allowed: hasAccess(['marketing_manager']) },
+            { name: 'Go-live Readiness', path: '/dashboard/marketing/readiness', icon: Rocket, allowed: hasAccess(['marketing_manager', 'finance', 'auditor']) },
             { name: 'Event Locations', path: '/dashboard/marketing/event-locations', icon: MapPin, allowed: hasAccess(['marketing', 'marketing_manager', 'auditor']) },
             { name: 'Target Branches', path: '/dashboard/marketing/branches', icon: Building, allowed: hasAccess(['marketing', 'marketing_manager', 'auditor']) }
           ]

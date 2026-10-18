@@ -1355,32 +1355,53 @@ async function processShiftDecision(req, res, next) {
 async function getApprovalRules(req, res, next) {
   try {
     const rules = await prisma.approval_rules.findMany({
-      orderBy: [{ module: 'asc' }, { min_amount: 'asc' }, { step_number: 'asc' }]
+      orderBy: [{ module: 'asc' }, { company_master_id: 'asc' }, { company_id: 'asc' }, { min_amount: 'asc' }, { step_number: 'asc' }]
     });
     res.json(rules);
   } catch (err) { next(err); }
 }
 
+// Validates a tier step. Scope: company_id (one company) OR company_master_id (holding) OR neither (general).
+async function cleanRule(body, current = {}) {
+  const pick = key => (body[key] !== undefined ? body[key] : current[key]);
+  const module = pick('module');
+  if (!['MARKETING_PLAN', 'PAYMENT_REQUEST'].includes(module)) throw Object.assign(new Error('module must be MARKETING_PLAN or PAYMENT_REQUEST.'), { status: 400 });
+  const step = parseInt(pick('step_number'), 10);
+  if (!Number.isInteger(step) || step < 1 || step > 10) throw Object.assign(new Error('Step must be between 1 and 10.'), { status: 400 });
+  const role = String(pick('approver_role') || '').trim().toUpperCase();
+  if (!role || role.length > 50) throw Object.assign(new Error('Select an approver role.'), { status: 400 });
+  const rawMin = pick('min_amount');
+  const rawMax = pick('max_amount');
+  const min = rawMin === undefined || rawMin === null || rawMin === '' ? 0 : Number(rawMin);
+  const max = rawMax === undefined || rawMax === null || rawMax === '' ? null : Number(rawMax);
+  if (!Number.isFinite(min) || min < 0 || (max !== null && (!Number.isFinite(max) || max < min))) {
+    throw Object.assign(new Error('Amounts must be 0 or more, and the maximum cannot be below the minimum.'), { status: 400 });
+  }
+  const companyId = pick('company_id') ? parseInt(pick('company_id'), 10) : null;
+  const masterId = companyId ? null : (pick('company_master_id') ? parseInt(pick('company_master_id'), 10) : null);
+  if (companyId && !(await prisma.m_company.findUnique({ where: { id: companyId }, select: { id: true } }))) throw Object.assign(new Error('Company not found.'), { status: 400 });
+  if (masterId && !(await prisma.m_company_master.findUnique({ where: { id: masterId }, select: { id: true } }))) throw Object.assign(new Error('Holding group not found.'), { status: 400 });
+  return { module, step_number: step, approver_role: role, min_amount: min, max_amount: max, company_id: companyId, company_master_id: masterId };
+}
+
+// The same step cannot be defined twice for the same scope and amount range.
+async function assertNoDuplicateStep(data, excludeId = null) {
+  const clash = await prisma.approval_rules.findFirst({
+    where: {
+      module: data.module, step_number: data.step_number, company_id: data.company_id, company_master_id: data.company_master_id,
+      min_amount: data.min_amount, max_amount: data.max_amount,
+      ...(excludeId ? { id: { not: excludeId } } : {})
+    }
+  });
+  if (clash) throw Object.assign(new Error(`Step ${data.step_number} already exists for this range and scope.`), { status: 400 });
+}
+
 // POST /approval-rules
 async function createApprovalRule(req, res, next) {
   try {
-    const { module, min_amount, max_amount, step_number, approver_role, company_id } = req.body;
-    if (!module || !step_number || !approver_role) {
-      return res.status(400).json({ error: 'module, step_number and approver_role are required.' });
-    }
-    if (!['MARKETING_PLAN', 'PAYMENT_REQUEST'].includes(module)) {
-      return res.status(400).json({ error: 'module must be MARKETING_PLAN or PAYMENT_REQUEST.' });
-    }
-    const rule = await prisma.approval_rules.create({
-      data: {
-        module,
-        min_amount: min_amount !== undefined && min_amount !== '' ? parseFloat(min_amount) : 0,
-        max_amount: max_amount !== undefined && max_amount !== '' ? parseFloat(max_amount) : null,
-        step_number: parseInt(step_number, 10),
-        approver_role: approver_role.trim().toUpperCase(),
-        company_id: company_id ? parseInt(company_id, 10) : null
-      }
-    });
+    const data = await cleanRule(req.body || {});
+    await assertNoDuplicateStep(data);
+    const rule = await prisma.approval_rules.create({ data });
     res.status(201).json(rule);
   } catch (err) { next(err); }
 }
@@ -1389,20 +1410,15 @@ async function createApprovalRule(req, res, next) {
 async function updateApprovalRule(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
-    const { module, min_amount, max_amount, step_number, approver_role, company_id } = req.body;
-    const rule = await prisma.approval_rules.findUnique({ where: { id } });
+    const rule = Number.isInteger(id) ? await prisma.approval_rules.findUnique({ where: { id } }) : null;
     if (!rule) return res.status(404).json({ error: 'Approval rule not found.' });
-    const updated = await prisma.approval_rules.update({
-      where: { id },
-      data: {
-        module: module || rule.module,
-        min_amount: min_amount !== undefined && min_amount !== '' ? parseFloat(min_amount) : rule.min_amount,
-        max_amount: max_amount !== undefined ? (max_amount !== '' ? parseFloat(max_amount) : null) : rule.max_amount,
-        step_number: step_number ? parseInt(step_number, 10) : rule.step_number,
-        approver_role: approver_role ? approver_role.trim().toUpperCase() : rule.approver_role,
-        company_id: company_id !== undefined ? (company_id ? parseInt(company_id, 10) : null) : rule.company_id
-      }
-    });
+    const body = { ...(req.body || {}) };
+    // Switching scope: choosing a company clears the holding and the other way round.
+    if (body.company_id !== undefined && body.company_master_id === undefined) body.company_master_id = null;
+    if (body.company_master_id !== undefined && body.company_id === undefined) body.company_id = null;
+    const data = await cleanRule(body, rule);
+    await assertNoDuplicateStep(data, id);
+    const updated = await prisma.approval_rules.update({ where: { id }, data });
     res.json(updated);
   } catch (err) { next(err); }
 }

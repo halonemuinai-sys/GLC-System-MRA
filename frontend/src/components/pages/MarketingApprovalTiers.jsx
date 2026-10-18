@@ -3,7 +3,7 @@ import { ArrowRight, ListFilter } from 'lucide-react';
 
 const formatAmount = value => `Rp ${Number(value).toLocaleString('id-ID')}`;
 
-export default function MarketingApprovalTiers({ rules, companies, moduleLabels, roleLabels }) {
+export default function MarketingApprovalTiers({ rules, companies, holdings = [], moduleLabels, roleLabels }) {
   const sections = useMemo(() => {
     const modules = new Map();
     for (const rule of rules) {
@@ -11,14 +11,14 @@ export default function MarketingApprovalTiers({ rules, companies, moduleLabels,
       const groups = modules.get(rule.module);
       const min = Number(rule.min_amount ?? 0);
       const max = rule.max_amount == null || rule.max_amount === '' ? null : Number(rule.max_amount);
-      const key = JSON.stringify([rule.company_id ?? null, min, max]);
-      if (!groups.has(key)) groups.set(key, { key, min, max, companyId: rule.company_id, steps: [] });
+      const key = JSON.stringify([rule.company_id ?? null, rule.company_master_id ?? null, min, max]);
+      if (!groups.has(key)) groups.set(key, { key, min, max, companyId: rule.company_id, masterId: rule.company_master_id, steps: [] });
       groups.get(key).steps.push(rule);
     }
     return [...modules].map(([module, groups]) => ({
       module,
       tiers: [...groups.values()]
-        .sort((a, b) => Number(a.companyId ?? 0) - Number(b.companyId ?? 0) || a.min - b.min || (a.max ?? Infinity) - (b.max ?? Infinity))
+        .sort((a, b) => Number(a.masterId ?? 0) - Number(b.masterId ?? 0) || Number(a.companyId ?? 0) - Number(b.companyId ?? 0) || a.min - b.min || (a.max ?? Infinity) - (b.max ?? Infinity))
         .map(tier => ({ ...tier, steps: tier.steps.sort((a, b) => a.step_number - b.step_number) })),
     }));
   }, [rules]);
@@ -42,7 +42,7 @@ export default function MarketingApprovalTiers({ rules, companies, moduleLabels,
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Tier {index + 1}</p>
             <p className="mt-1.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200">{formatAmount(tier.min)} {tier.max === null ? 'and above' : `– ${formatAmount(tier.max)}`}</p>
-            {tier.companyId && <p className="mt-1 text-[10px] text-slate-400">{companies.find(company => String(company.id) === String(tier.companyId))?.name || `Company #${tier.companyId}`}</p>}
+            <p className={`mt-1 text-[10px] ${tier.companyId || tier.masterId ? 'font-medium text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>{tier.companyId ? (companies.find(company => String(company.id) === String(tier.companyId))?.name || `Company #${tier.companyId}`) : tier.masterId ? `Group: ${holdings.find(h => String(h.id) === String(tier.masterId))?.name || `#${tier.masterId}`}` : 'General — all companies'}</p>
           </div>
           <ol className="flex flex-wrap items-center gap-2" aria-label={`Role order for tier ${index + 1}`}>
             {tier.steps.map((step, stepIndex) => <li key={step.id} className="flex items-center gap-2">

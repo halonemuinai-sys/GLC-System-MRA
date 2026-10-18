@@ -50,6 +50,12 @@ const ROLE_LABELS = {
 
 const MODULE_LABELS = { MARKETING_PLAN: 'Marketing Plan', PAYMENT_REQUEST: 'Payment Request' };
 
+// Tier scope: '' = general, 'h:ID' = holding group, 'c:ID' = one company.
+const scopeOf = rule => (rule.company_id ? `c:${rule.company_id}` : rule.company_master_id ? `h:${rule.company_master_id}` : '');
+const scopePayload = scope => (scope?.startsWith('c:') ? { company_id: Number(scope.slice(2)), company_master_id: null }
+  : scope?.startsWith('h:') ? { company_id: null, company_master_id: Number(scope.slice(2)) } : { company_id: null, company_master_id: null });
+const EMPTY_RULE = { module: 'MARKETING_PLAN', min_amount: '', max_amount: '', step_number: '1', approver_role: '', scope: '' };
+
 export default function MarketingApprovalSettingsPage() {
   const [activeTab, setActiveTab] = useState('rules');
   // Tiers and automatic recipients are Marketing setup (admin, Marketing Manager). The approver
@@ -97,7 +103,7 @@ export default function MarketingApprovalSettingsPage() {
   const [editingRuleId, setEditingRuleId] = useState(null);
   const [editingRule, setEditingRule] = useState({});
   const [addingRule, setAddingRule] = useState(false);
-  const [newRule, setNewRule] = useState({ module: 'MARKETING_PLAN', min_amount: '', max_amount: '', step_number: '1', approver_role: '' });
+  const [newRule, setNewRule] = useState(EMPTY_RULE);
   const [ruleSaving, setRuleSaving] = useState(false);
   const [showRuleEditor, setShowRuleEditor] = useState(false);
   const ruleRoleOptions = useMemo(() => [...new Set([...ROLE_OPTIONS, ...rules.map(rule => rule.approver_role), ...contacts.map(contact => contact.role)])].filter(Boolean), [rules, contacts]);
@@ -142,14 +148,15 @@ export default function MarketingApprovalSettingsPage() {
     setRuleSaving(true);
     setRulesError(null);
     try {
+      const toBody = ({ scope, ...rule }) => ({ ...rule, ...scopePayload(scope) });
       if (editingRuleId) {
-        await apiClient.put(`/api/marketing/approval-rules/${editingRuleId}`, editingRule);
+        await apiClient.put(`/api/marketing/approval-rules/${editingRuleId}`, toBody(editingRule));
       } else {
-        await apiClient.post('/api/marketing/approval-rules', newRule);
+        await apiClient.post('/api/marketing/approval-rules', toBody(newRule));
       }
       setEditingRuleId(null);
       setAddingRule(false);
-      setNewRule({ module: 'MARKETING_PLAN', min_amount: '', max_amount: '', step_number: '1', approver_role: '' });
+      setNewRule(EMPTY_RULE);
       loadRules();
     } catch (err) {
       setRulesError(err.message || 'Failed to save the step.');
@@ -873,10 +880,10 @@ export default function MarketingApprovalSettingsPage() {
 
           {rulesError && <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold px-4 py-3 rounded-2xl flex items-center gap-2"><AlertTriangle className="w-4 h-4" />{rulesError}</div>}
 
-          {rulesLoading ? <div className="flex items-center justify-center gap-2 py-12 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin" />Loading tiers...</div> : !rulesError && <MarketingApprovalTiers rules={rules} companies={companies} moduleLabels={MODULE_LABELS} roleLabels={ROLE_LABELS} />}
+          {rulesLoading ? <div className="flex items-center justify-center gap-2 py-12 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin" />Loading tiers...</div> : !rulesError && <MarketingApprovalTiers rules={rules} companies={companies} holdings={holdings} moduleLabels={MODULE_LABELS} roleLabels={ROLE_LABELS} />}
 
           {showRuleEditor && <div id="approval-rule-editor" className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-            <div className="border-b border-slate-100 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">One row per step. Use the same budget range for every step in a tier.</div>
+            <div className="border-b border-slate-100 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">One row per step. Use the same budget range for every step in a tier. A group or company with its own steps uses only those; others use the general steps.</div>
             {rulesLoading ? (
               <div className="py-16 flex items-center justify-center gap-2 text-neutral-400"><Loader2 className="w-5 h-5 animate-spin" /><span className="text-xs">Loading...</span></div>
             ) : (
@@ -885,6 +892,7 @@ export default function MarketingApprovalSettingsPage() {
                   <thead>
                     <tr className="bg-neutral-50 dark:bg-neutral-800/60 border-b border-neutral-100 dark:border-neutral-800 text-neutral-400 font-black uppercase tracking-wider">
                       <th className="px-4 py-3 text-left">Module</th>
+                      <th className="px-4 py-3 text-left">Applies to</th>
                       <th className="px-4 py-3 text-right">Minimum (Rp)</th>
                       <th className="px-4 py-3 text-right">Maximum (Rp)</th>
                       <th className="px-4 py-3 text-center">Step</th>
@@ -902,6 +910,7 @@ export default function MarketingApprovalSettingsPage() {
                             <option value="PAYMENT_REQUEST">Payment Request</option>
                           </select>
                         </td>
+                        <td className="px-3 py-2"><select aria-label="Scope for the new step" value={newRule.scope} onChange={e => setNewRule(r => ({ ...r, scope: e.target.value }))} className="w-full max-w-48 text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">All companies (general)</option><optgroup label="Holding group">{holdings.map(h => <option key={h.id} value={`h:${h.id}`}>{h.name}</option>)}</optgroup><optgroup label="Single company">{companies.map(c => <option key={c.id} value={`c:${c.id}`}>{c.name}</option>)}</optgroup></select></td>
                         <td className="px-3 py-2"><input type="number" placeholder="0" value={newRule.min_amount} onChange={e => setNewRule(r => ({ ...r, min_amount: e.target.value }))} className="w-full text-xs text-right bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                         <td className="px-3 py-2"><input type="number" placeholder="∞" value={newRule.max_amount} onChange={e => setNewRule(r => ({ ...r, max_amount: e.target.value }))} className="w-full text-xs text-right bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                         <td className="px-3 py-2 text-center"><input type="number" min="1" max="10" value={newRule.step_number} onChange={e => setNewRule(r => ({ ...r, step_number: e.target.value }))} className="w-16 text-xs text-center bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 mx-auto block" /></td>
@@ -915,7 +924,7 @@ export default function MarketingApprovalSettingsPage() {
                       </tr>
                     )}
                     {rules.length === 0 && !addingRule ? (
-                      <tr><td colSpan="6" className="px-4 py-10 text-center text-neutral-400">No approval steps yet. Click “Add step” to start.</td></tr>
+                      <tr><td colSpan="7" className="px-4 py-10 text-center text-neutral-400">No approval steps yet. Click “Add step” to start.</td></tr>
                     ) : rules.map(rule => (
                       <tr key={rule.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors">
                         {editingRuleId === rule.id ? (
@@ -927,6 +936,7 @@ export default function MarketingApprovalSettingsPage() {
                                 <option value="PAYMENT_REQUEST">Payment Request</option>
                               </select>
                             </td>
+                            <td className="px-3 py-2"><select aria-label="Scope of this step" value={editingRule.scope} onChange={e => setEditingRule(r => ({ ...r, scope: e.target.value }))} className="w-full max-w-48 text-xs bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"><option value="">All companies (general)</option><optgroup label="Holding group">{holdings.map(h => <option key={h.id} value={`h:${h.id}`}>{h.name}</option>)}</optgroup><optgroup label="Single company">{companies.map(c => <option key={c.id} value={`c:${c.id}`}>{c.name}</option>)}</optgroup></select></td>
                             <td className="px-3 py-2"><input type="number" value={editingRule.min_amount ?? ''} onChange={e => setEditingRule(r => ({ ...r, min_amount: e.target.value }))} className="w-full text-xs text-right bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                             <td className="px-3 py-2"><input type="number" placeholder="∞" value={editingRule.max_amount ?? ''} onChange={e => setEditingRule(r => ({ ...r, max_amount: e.target.value }))} className="w-full text-xs text-right bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500" /></td>
                             <td className="px-3 py-2 text-center"><input type="number" min="1" max="10" value={editingRule.step_number || 1} onChange={e => setEditingRule(r => ({ ...r, step_number: e.target.value }))} className="w-16 text-xs text-center bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500 mx-auto block" /></td>
@@ -941,13 +951,14 @@ export default function MarketingApprovalSettingsPage() {
                         ) : (
                           <>
                             <td className="px-4 py-3 font-semibold text-neutral-800 dark:text-neutral-200">{MODULE_LABELS[rule.module] || rule.module}</td>
+                            <td className="px-4 py-3 text-neutral-600 dark:text-neutral-400">{rule.company_id ? (companies.find(c => c.id === rule.company_id)?.name || `Company #${rule.company_id}`) : rule.company_master_id ? <span className="font-medium text-blue-600 dark:text-blue-400">{holdings.find(h => h.id === rule.company_master_id)?.name || `Group #${rule.company_master_id}`}</span> : <span className="text-neutral-400">General</span>}</td>
                             <td className="px-4 py-3 text-right tabular-nums text-neutral-600 dark:text-neutral-400">Rp {Number(rule.min_amount || 0).toLocaleString('id-ID')}</td>
                             <td className="px-4 py-3 text-right tabular-nums text-neutral-600 dark:text-neutral-400">{rule.max_amount != null && rule.max_amount !== '' ? `Rp ${Number(rule.max_amount).toLocaleString('id-ID')}` : 'No limit'}</td>
                             <td className="px-4 py-3 text-center font-black text-blue-600 dark:text-blue-400">{rule.step_number}</td>
                             <td className="px-4 py-3"><span className="text-[11px] bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-lg text-neutral-700 dark:text-neutral-300">{ROLE_LABELS[rule.approver_role] || rule.approver_role.replace(/_/g, ' ')}</span></td>
                             <td className="px-4 py-3">
                               <div className="flex items-center justify-center gap-1.5">
-                                <button title="Edit step" onClick={() => { setEditingRuleId(rule.id); setEditingRule({ module: rule.module, min_amount: rule.min_amount ?? 0, max_amount: rule.max_amount ?? '', step_number: rule.step_number, approver_role: rule.approver_role }); setAddingRule(false); }}
+                                <button title="Edit step" onClick={() => { setEditingRuleId(rule.id); setEditingRule({ module: rule.module, min_amount: rule.min_amount ?? 0, max_amount: rule.max_amount ?? '', step_number: rule.step_number, approver_role: rule.approver_role, scope: scopeOf(rule) }); setAddingRule(false); }}
                                   className="p-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-neutral-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer">
                                   <Edit3 className="w-3 h-3" />
                                 </button>

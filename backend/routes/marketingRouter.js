@@ -11,6 +11,7 @@ const amendmentController = require('./marketing/marketingAmendmentController');
 const closingController = require('./marketing/marketingClosingController');
 const governanceController = require('./marketing/marketingGovernanceController');
 
+const readinessController = require('./marketing/marketingReadinessController');
 const router = express.Router();
 
 // Role groups (a user passes when ANY of their roles is listed).
@@ -53,6 +54,7 @@ router.post('/closing/magic/:token', closingController.processClosingByToken);
 // Governance: pengingat closing (bell) & Quarterly Plan Alignment
 router.get('/notifications', verifyToken, attachCompanyScope, checkRole(MKT_READ), governanceController.getNotifications);
 router.get('/reports/quarterly-alignment', verifyToken, attachCompanyScope, checkRole(MKT_READ), governanceController.getQuarterlyAlignment);
+router.get('/readiness', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing_manager', 'finance', 'auditor']), readinessController.getReadiness);
 router.get('/reports/reconciliation', verifyToken, attachCompanyScope, checkRole(['admin', 'finance', 'marketing_manager', 'ga', 'manager', 'auditor']), governanceController.getReconciliation);
 router.get('/plans', verifyToken, attachCompanyScope, checkRole(MKT_READ), planController.getPlans);
 router.get('/plans/:id', verifyToken, attachCompanyScope, checkRole(MKT_READ), planController.getPlanDetail);

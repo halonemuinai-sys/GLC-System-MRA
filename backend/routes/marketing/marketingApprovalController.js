@@ -1,5 +1,6 @@
 const prisma = require('../../api/db');
 const { rolesOf, hasRole } = require('../../api/roles');
+const { tierStepsFor } = require('./marketingTiers');
 
 // Login roles used for in-app approval matching. The login role marketing_manager shares its name
 // with the approval role MARKETING_MANAGER, but that approval step belongs to the designated
@@ -57,6 +58,14 @@ const taskAmount = task => parseFloat(task.marketing_plan_id ? task.marketing_pl
 //  - Otherwise: the approval_rules tier for the amount/step, or CFO/CEO for an
 //    overbudget payment escalation step without a tier.
 // Admin may act on everything except claims.
+// Tier step for a task, taken from the tier set of the document's company (company → holding → general).
+function tierRuleFor(task, rules) {
+  const isPlan = !!task.marketing_plan_id;
+  const company = isPlan ? task.marketing_plan?.company : task.payment_request?.marketing_plan_item?.marketing_plan?.company;
+  const scope = { companyId: taskCompanyId(task), companyMasterId: company?.company_master_id ?? null, module: isPlan ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST' };
+  return tierStepsFor(rules, scope, taskAmount(task)).find(r => r.step_number === task.step_number) || null;
+}
+
 // `roles` = all of the user's roles in upper case (primary + extra).
 function canActOnTask(task, { roles, email }, rules) {
   if (task.payment_request?.request_type === 'CLAIM') return roles.includes('FINANCE') && task.step_number === 1;
@@ -66,9 +75,7 @@ function canActOnTask(task, { roles, email }, rules) {
   const chainStep = isPlan ? (task.marketing_plan?.approvers || []).find(a => a.step_number === task.step_number) : null;
   if (chainStep) return normalizeEmail(chainStep.approver_email) === normalizeEmail(email);
 
-  const amount = taskAmount(task);
-  const module = isPlan ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
-  const rule = rules.find(r => r.module === module && r.step_number === task.step_number && Number(r.min_amount) <= amount && (r.max_amount === null || Number(r.max_amount) >= amount));
+  const rule = tierRuleFor(task, rules);
   if (rule) return roles.includes(rule.approver_role);
   const isOverbudgetEscalation = !isPlan && task.payment_request?.status === 'OVERBUDGET_WARN';
   return isOverbudgetEscalation && roles.includes('CFO_CEO');
@@ -79,9 +86,7 @@ function waitingFor(task, rules) {
   const chainStep = (task.marketing_plan?.approvers || []).find(a => a.step_number === task.step_number);
   if (chainStep) return { name: chainStep.approver_name, email: chainStep.approver_email, role: chainStep.approver_role || null };
   if (task.payment_request?.request_type === 'CLAIM') return { name: null, email: null, role: 'FINANCE' };
-  const amount = taskAmount(task);
-  const module = task.marketing_plan_id ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
-  const rule = rules.find(r => r.module === module && r.step_number === task.step_number && Number(r.min_amount) <= amount && (r.max_amount === null || Number(r.max_amount) >= amount));
+  const rule = tierRuleFor(task, rules);
   return { name: null, email: null, role: rule?.approver_role || (task.payment_request?.status === 'OVERBUDGET_WARN' ? 'CFO_CEO' : null) };
 }
 
@@ -507,17 +512,8 @@ async function getApprovalsOverview(req, res, next) {
         }
       } else {
         // Legacy plans without a named chain: steps follow the approval tier.
-        const matchedRules = allRules.filter(r => {
-          const amountOk = parseFloat(r.min_amount) <= totalBudget &&
-            (r.max_amount === null || parseFloat(r.max_amount) >= totalBudget);
-          const companyOk = r.company_id === null || r.company_id === plan.company_id;
-          return amountOk && companyOk;
-        });
-        const stepRulesMap = {};
-        for (const rule of matchedRules) {
-          if (!stepRulesMap[rule.step_number] || rule.company_id !== null) stepRulesMap[rule.step_number] = rule;
-        }
-        for (const rule of Object.values(stepRulesMap).sort((a, b) => a.step_number - b.step_number)) {
+        const tierSteps = tierStepsFor(allRules, { companyId: plan.company_id, companyMasterId: plan.company.company_master_id ?? null, module: 'MARKETING_PLAN' }, totalBudget);
+        for (const rule of tierSteps) {
           const record = latestByStep[rule.step_number];
           const resolvedContact = resolveContactPreview(allContacts, rule.approver_role, plan.company_id, plan.company.company_master_id);
           const status = record ? record.status : 'WAITING';

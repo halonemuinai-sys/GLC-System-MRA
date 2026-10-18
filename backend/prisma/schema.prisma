@@ -1251,6 +1251,7 @@ model marketing_plan_approvers {
 model approval_rules {
   id            Int                     @id @default(autoincrement())
   company_id    Int?
+  company_master_id Int?                // tier for a holding group (company_id = one company; both null = general)
   module        String                  @db.VarChar(50) // MARKETING_PLAN, PAYMENT_REQUEST
   min_amount    Decimal                 @default(0) @db.Decimal(18, 2)
   max_amount    Decimal?                @db.Decimal(18, 2)
