@@ -547,7 +547,7 @@ function SidebarContent({
           ]
         },
         {
-          name: 'Pengaturan Marketing',
+          name: 'Marketing Settings',
           icon: Settings,
           children: [
             { name: 'Approval Settings', path: '/dashboard/marketing-approval-settings', icon: UserCheck, allowed: hasAccess(['admin', 'ga']) },

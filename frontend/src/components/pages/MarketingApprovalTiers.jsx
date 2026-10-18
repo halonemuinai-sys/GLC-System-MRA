@@ -26,8 +26,8 @@ export default function MarketingApprovalTiers({ rules, companies, moduleLabels,
   if (!rules.length) return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
       <ListFilter className="mx-auto mb-3 h-6 w-6 text-blue-500" />
-      <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Mulai dari tier pertama</h3>
-      <p className="mt-2 text-xs text-slate-500">Tambahkan tahap, lalu tentukan rentang anggaran dan role pemberi persetujuan.</p>
+      <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Start with the first tier</h3>
+      <p className="mt-2 text-xs text-slate-500">Add a step, then set its budget range and the approving role.</p>
     </div>
   );
 
@@ -35,20 +35,20 @@ export default function MarketingApprovalTiers({ rules, companies, moduleLabels,
     {sections.map(({ module, tiers }) => <section key={module} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
         <h3 className="text-sm font-semibold text-slate-800 dark:text-white">{moduleLabels[module] || module}</h3>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">{tiers.length} tier</span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">{tiers.length} {tiers.length === 1 ? 'tier' : 'tiers'}</span>
       </div>
       <div className="divide-y divide-slate-100 dark:divide-slate-800">
         {tiers.map((tier, index) => <div key={tier.key} className="grid gap-4 p-5 lg:grid-cols-[250px_minmax(0,1fr)] lg:items-center">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">Tier {index + 1}</p>
-            <p className="mt-1.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200">{formatAmount(tier.min)} {tier.max === null ? 'ke atas' : `– ${formatAmount(tier.max)}`}</p>
-            {tier.companyId && <p className="mt-1 text-[10px] text-slate-400">{companies.find(company => String(company.id) === String(tier.companyId))?.name || `PT #${tier.companyId}`}</p>}
+            <p className="mt-1.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200">{formatAmount(tier.min)} {tier.max === null ? 'and above' : `– ${formatAmount(tier.max)}`}</p>
+            {tier.companyId && <p className="mt-1 text-[10px] text-slate-400">{companies.find(company => String(company.id) === String(tier.companyId))?.name || `Company #${tier.companyId}`}</p>}
           </div>
-          <ol className="flex flex-wrap items-center gap-2" aria-label={`Urutan role untuk tier ${index + 1}`}>
+          <ol className="flex flex-wrap items-center gap-2" aria-label={`Role order for tier ${index + 1}`}>
             {tier.steps.map((step, stepIndex) => <li key={step.id} className="flex items-center gap-2">
               {stepIndex > 0 && <ArrowRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />}
               <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 py-2 pl-2 pr-3 dark:border-slate-700 dark:bg-slate-800/60">
-                <span aria-label={`Tahap ${step.step_number}`} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-[11px] font-semibold text-blue-600 shadow-sm dark:bg-slate-900 dark:text-blue-400">{step.step_number}</span>
+                <span aria-label={`Step ${step.step_number}`} className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-[11px] font-semibold text-blue-600 shadow-sm dark:bg-slate-900 dark:text-blue-400">{step.step_number}</span>
                 <span className="text-[11px] font-medium text-slate-700 dark:text-slate-200">{roleLabels[step.approver_role] || step.approver_role.replace(/_/g, ' ')}</span>
               </div>
             </li>)}

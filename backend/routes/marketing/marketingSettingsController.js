@@ -108,11 +108,11 @@ async function resolveContactEmailLabel(body, existingLabel = null) {
   const { signer_id, email, label } = body;
   if (signer_id) {
     const signer = await prisma.m_approval_signer.findUnique({ where: { id: parseInt(signer_id, 10) } });
-    if (!signer) throw Object.assign(new Error('Signer tidak ditemukan.'), { status: 400 });
+    if (!signer) throw Object.assign(new Error('Approver not found.'), { status: 400 });
     return { email: signer.email, label: label !== undefined ? label : existingLabel, signer_id: signer.id };
   }
   if (!email || !EMAIL_REGEX.test(email)) {
-    throw Object.assign(new Error('Pilih signer atau isi email tujuan yang valid.'), { status: 400 });
+    throw Object.assign(new Error('Select an approver or enter a valid recipient email.'), { status: 400 });
   }
   return { email, label: label !== undefined ? label : existingLabel, signer_id: null };
 }
@@ -122,7 +122,7 @@ async function updateApprovalContact(req, res, next) {
   try {
     const { id } = req.params;
     const existing = await prisma.approval_role_contacts.findUnique({ where: { id: parseInt(id, 10) } });
-    if (!existing) return res.status(404).json({ error: 'Konfigurasi tidak ditemukan.' });
+    if (!existing) return res.status(404).json({ error: 'Setting not found.' });
 
     const resolved = await resolveContactEmailLabel(req.body, existing.label);
 
@@ -144,10 +144,10 @@ async function createApprovalContact(req, res, next) {
     const { role, company_master_id, company_id } = req.body;
 
     if (!role) {
-      return res.status(400).json({ error: 'Role wajib diisi.' });
+      return res.status(400).json({ error: 'Role is required.' });
     }
     if (!company_master_id && !company_id) {
-      return res.status(400).json({ error: 'Override wajib menentukan PT atau Holding Group. Untuk default global, ubah baris yang sudah ada.' });
+      return res.status(400).json({ error: 'A specific recipient needs a company or holding group. To change the general recipient, edit its existing row.' });
     }
 
     const resolved = await resolveContactEmailLabel(req.body);
@@ -165,7 +165,7 @@ async function createApprovalContact(req, res, next) {
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     if (err.code === 'P2002') {
-      return res.status(400).json({ error: 'Override untuk role dan PT/Holding Group ini sudah ada.' });
+      return res.status(400).json({ error: 'A recipient for this role and company/holding group already exists.' });
     }
     next(err);
   }
@@ -178,14 +178,14 @@ async function deleteApprovalContact(req, res, next) {
     const contact = await prisma.approval_role_contacts.findUnique({ where: { id: parseInt(id, 10) } });
 
     if (!contact) {
-      return res.status(404).json({ error: 'Konfigurasi tidak ditemukan.' });
+      return res.status(404).json({ error: 'Setting not found.' });
     }
     if (!contact.company_master_id && !contact.company_id) {
-      return res.status(400).json({ error: 'Baris default global tidak bisa dihapus, hanya bisa diubah.' });
+      return res.status(400).json({ error: 'General recipient rows cannot be deleted, only edited.' });
     }
 
     await prisma.approval_role_contacts.delete({ where: { id: parseInt(id, 10) } });
-    res.json({ message: 'Override berhasil dihapus.' });
+    res.json({ message: 'Specific recipient removed.' });
   } catch (err) {
     next(err);
   }
@@ -206,16 +206,16 @@ async function createSigner(req, res, next) {
   try {
     const { name, email, position } = req.body;
     if (typeof name !== 'string' || !name.trim() || name.trim().length > 150 || typeof email !== 'string' || !EMAIL_REGEX.test(email.trim()) || email.trim().length > 150 || (position != null && (typeof position !== 'string' || position.trim().length > 100))) {
-      return res.status(400).json({ error: 'Isi nama dan email approver yang valid. Maksimal nama/email 150 karakter dan jabatan 100 karakter.' });
+      return res.status(400).json({ error: 'Enter a valid approver name and email. Name/email can be up to 150 characters and position up to 100.' });
     }
     const duplicate = await prisma.m_approval_signer.findFirst({ where: { email: { equals: normalizeEmail(email), mode: 'insensitive' } } });
-    if (duplicate) return res.status(400).json({ error: 'Email approver ini sudah terdaftar.' });
+    if (duplicate) return res.status(400).json({ error: 'This approver email is already registered.' });
     const created = await prisma.m_approval_signer.create({
       data: { name: name.trim(), email: normalizeEmail(email), position: position?.trim() || null }
     });
     res.status(201).json(created);
   } catch (err) {
-    if (err.code === 'P2002') return res.status(400).json({ error: 'Email signer ini sudah terdaftar.' });
+    if (err.code === 'P2002') return res.status(400).json({ error: 'This approver email is already registered.' });
     next(err);
   }
 }
@@ -225,20 +225,20 @@ async function updateSigner(req, res, next) {
   try {
     const id = Number(req.params.id);
     const { name, email, position, is_active } = req.body;
-    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ error: 'ID approver tidak valid.' });
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid approver ID.' });
     if ((name !== undefined && (typeof name !== 'string' || !name.trim() || name.trim().length > 150)) || (email !== undefined && (typeof email !== 'string' || !EMAIL_REGEX.test(email.trim()) || email.trim().length > 150)) || (position != null && (typeof position !== 'string' || position.trim().length > 100)) || (is_active !== undefined && typeof is_active !== 'boolean')) {
-      return res.status(400).json({ error: 'Nama, email, jabatan, atau status approver tidak valid.' });
+      return res.status(400).json({ error: 'Invalid approver name, email, position or status.' });
     }
     const updated = await prisma.$transaction(async tx => {
       const existing = await tx.m_approval_signer.findUnique({ where: { id }, include: signerUsageInclude });
-      if (!existing) throw Object.assign(new Error('Approver tidak ditemukan.'), { status: 404 });
+      if (!existing) throw Object.assign(new Error('Approver not found.'), { status: 404 });
       if (email !== undefined && normalizeEmail(email) !== normalizeEmail(existing.email)) {
         const [usage] = await withSignerUsage(tx, [existing]);
         // Changing an email-only snapshot identity would otherwise bypass the
         // transaction deletion guard. Names, positions and active status remain editable.
-        if (usage.email_locked) throw Object.assign(new Error('Email approver yang sudah digunakan tidak dapat diganti. Nonaktifkan data lama dan tambahkan approver baru.'), { status: 409 });
+        if (usage.email_locked) throw Object.assign(new Error('An approver email that is already in use cannot be changed. Deactivate the old entry and add a new approver.'), { status: 409 });
         const duplicate = await tx.m_approval_signer.findFirst({ where: { id: { not: id }, email: { equals: normalizeEmail(email), mode: 'insensitive' } } });
-        if (duplicate) throw Object.assign(new Error('Email approver ini sudah terdaftar.'), { status: 400 });
+        if (duplicate) throw Object.assign(new Error('This approver email is already registered.'), { status: 400 });
       }
       return tx.m_approval_signer.update({
         where: { id },
@@ -254,7 +254,7 @@ async function updateSigner(req, res, next) {
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     if (err.code === 'P2034') return res.status(409).json({ error: 'Data approver sedang berubah. Muat ulang dan coba kembali.' });
-    if (err.code === 'P2002') return res.status(400).json({ error: 'Email signer ini sudah terdaftar.' });
+    if (err.code === 'P2002') return res.status(400).json({ error: 'This approver email is already registered.' });
     next(err);
   }
 }
@@ -263,20 +263,20 @@ async function updateSigner(req, res, next) {
 async function deleteSigner(req, res, next) {
   try {
     const id = Number(req.params.id);
-    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ error: 'ID approver tidak valid.' });
+    if (!Number.isSafeInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid approver ID.' });
     await prisma.$transaction(async tx => {
       const signer = await tx.m_approval_signer.findUnique({ where: { id }, include: signerUsageInclude });
-      if (!signer) throw Object.assign(new Error('Approver tidak ditemukan.'), { status: 404 });
+      if (!signer) throw Object.assign(new Error('Approver not found.'), { status: 404 });
       const [usage] = await withSignerUsage(tx, [signer]);
       if (!usage.can_delete) throw Object.assign(new Error(usage.delete_block_reason), { status: 409 });
       await tx.m_approval_signer.delete({ where: { id } });
     }, { isolationLevel: 'Serializable' });
-    res.json({ message: 'Approver berhasil dihapus.' });
+    res.json({ message: 'Approver deleted.' });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     if (err.code === 'P2003') return res.status(409).json({ error: TRANSACTION_MESSAGE });
-    if (err.code === 'P2025') return res.status(404).json({ error: 'Approver tidak ditemukan.' });
-    if (err.code === 'P2034') return res.status(409).json({ error: 'Data approver sedang digunakan atau berubah. Muat ulang dan coba kembali.' });
+    if (err.code === 'P2025') return res.status(404).json({ error: 'Approver not found.' });
+    if (err.code === 'P2034') return res.status(409).json({ error: 'The approver is in use or has changed. Reload and try again.' });
     next(err);
   }
 }
@@ -383,7 +383,7 @@ const withUsage = (rows, usage) => rows.map(row => {
 async function deleteMasterLocation(req, res, { field, model, label }) {
   const id = parseInt(req.params.id, 10);
   const row = Number.isInteger(id) ? await prisma[model].findUnique({ where: { id } }) : null;
-  if (!row) return res.status(404).json({ error: `${label} tidak ditemukan.` });
+  if (!row) return res.status(404).json({ error: `${label} not found.` });
 
   const [lockedItem, draftCount] = await Promise.all([
     prisma.marketing_plan_items.findFirst({ where: { [field]: id, marketing_plan: { status: { in: LOCKING_PLAN_STATUSES } } }, include: { marketing_plan: { select: { title: true, fiscal_year: true, status: true } } } }),
@@ -391,10 +391,10 @@ async function deleteMasterLocation(req, res, { field, model, label }) {
   ]);
   if (lockedItem) {
     const plan = lockedItem.marketing_plan;
-    return res.status(409).json({ error: `${label} "${row.name}" tidak bisa dihapus karena tercatat di plan "${plan?.title}" (FY ${plan?.fiscal_year}, ${plan?.status}). Ubah namanya jika perlu.` });
+    return res.status(409).json({ error: `${label} "${row.name}" cannot be deleted because it is used in plan "${plan?.title}" (FY ${plan?.fiscal_year}, ${plan?.status}). Rename it if needed.` });
   }
   if (draftCount > 0 && req.query.confirm_draft !== '1') {
-    return res.status(409).json({ error: `${label} "${row.name}" dipakai di ${draftCount} item plan Draft. Konfirmasi untuk melepas referensinya lalu menghapus.`, draft_items: draftCount, needs_confirmation: true });
+    return res.status(409).json({ error: `${label} "${row.name}" is used in ${draftCount} Draft plan item(s). Confirm to clear those references and delete it.`, draft_items: draftCount, needs_confirmation: true });
   }
 
   await prisma.$transaction([
@@ -412,17 +412,17 @@ const BRANCH_INCLUDE = {
 // Validates name and the company/brand pair; returns { data } or { error }.
 async function parseBranchInput(body) {
   const name = cleanName(body.name);
-  if (!name) return { error: 'Nama cabang wajib diisi.' };
+  if (!name) return { error: 'Branch name is required.' };
   if (name.length > 100) return { error: 'Nama cabang maksimal 100 karakter.' };
   const companyId = body.company_id ? parseInt(body.company_id, 10) : null;
   const brandId = body.brand_id ? parseInt(body.brand_id, 10) : null;
   if (companyId) {
     const company = await prisma.m_company.findUnique({ where: { id: companyId }, select: { id: true } });
-    if (!company) return { error: 'PT tidak ditemukan.' };
+    if (!company) return { error: 'Company not found.' };
   }
   if (brandId) {
     const brand = await prisma.m_brand.findUnique({ where: { id: brandId }, select: { id: true, company_id: true } });
-    if (!brand) return { error: 'Brand tidak ditemukan.' };
+    if (!brand) return { error: 'Brand not found.' };
     if (companyId && brand.company_id && brand.company_id !== companyId) return { error: 'Brand yang dipilih bukan milik PT tersebut.' };
     // A brand implies its company even when the PT was left empty.
     return { data: { name, company_id: companyId || brand.company_id || null, brand_id: brandId } };
@@ -465,7 +465,7 @@ async function createBranch(req, res, next) {
     const parsed = await parseBranchInput(req.body || {});
     if (parsed.error) return res.status(400).json({ error: parsed.error });
     if (await findDuplicateBranch(parsed.data)) {
-      return res.status(400).json({ error: 'Nama cabang untuk PT & Brand tersebut sudah terdaftar.' });
+      return res.status(400).json({ error: 'A branch with this name already exists for that company & brand.' });
     }
     const branch = await prisma.m_branch.create({ data: parsed.data, include: BRANCH_INCLUDE });
     res.status(201).json(branch);
@@ -479,7 +479,7 @@ async function updateBranch(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
     const current = Number.isInteger(id) ? await prisma.m_branch.findUnique({ where: { id } }) : null;
-    if (!current) return res.status(404).json({ error: 'Cabang tidak ditemukan.' });
+    if (!current) return res.status(404).json({ error: 'Branch not found.' });
 
     const body = req.body || {};
     const parsed = await parseBranchInput({
@@ -489,7 +489,7 @@ async function updateBranch(req, res, next) {
     });
     if (parsed.error) return res.status(400).json({ error: parsed.error });
     if (await findDuplicateBranch(parsed.data, id)) {
-      return res.status(400).json({ error: 'Nama cabang untuk PT & Brand tersebut sudah terdaftar.' });
+      return res.status(400).json({ error: 'A branch with this name already exists for that company & brand.' });
     }
     const branch = await prisma.m_branch.update({ where: { id }, data: parsed.data, include: BRANCH_INCLUDE });
     res.json(branch);
@@ -501,7 +501,7 @@ async function updateBranch(req, res, next) {
 // DELETE /branches/:id
 async function deleteBranch(req, res, next) {
   try {
-    await deleteMasterLocation(req, res, { field: 'branch_id', model: 'm_branch', label: 'Cabang' });
+    await deleteMasterLocation(req, res, { field: 'branch_id', model: 'm_branch', label: 'Branch' });
   } catch (err) {
     next(err);
   }
@@ -522,7 +522,7 @@ async function getEventLocations(req, res, next) {
 
 function parseEventLocationName(body) {
   const name = cleanName(body?.name);
-  if (!name) return { error: 'Nama lokasi event wajib diisi.' };
+  if (!name) return { error: 'Event location name is required.' };
   if (name.length > 100) return { error: 'Nama lokasi event maksimal 100 karakter.' };
   return { name };
 }
@@ -533,12 +533,12 @@ async function createEventLocation(req, res, next) {
     const parsed = parseEventLocationName(req.body);
     if (parsed.error) return res.status(400).json({ error: parsed.error });
     const existing = await prisma.m_event_location.findFirst({ where: { name: { equals: parsed.name, mode: 'insensitive' } } });
-    if (existing) return res.status(400).json({ error: `Lokasi event "${existing.name}" sudah ada.` });
+    if (existing) return res.status(400).json({ error: `Event location "${existing.name}" already exists.` });
 
     const location = await prisma.m_event_location.create({ data: { name: parsed.name } });
     res.status(201).json(location);
   } catch (err) {
-    if (err.code === 'P2002') return res.status(400).json({ error: 'Lokasi event dengan nama ini sudah ada.' });
+    if (err.code === 'P2002') return res.status(400).json({ error: 'An event location with this name already exists.' });
     next(err);
   }
 }
@@ -550,15 +550,15 @@ async function updateEventLocation(req, res, next) {
     const parsed = parseEventLocationName(req.body);
     if (parsed.error) return res.status(400).json({ error: parsed.error });
     const current = Number.isInteger(id) ? await prisma.m_event_location.findUnique({ where: { id } }) : null;
-    if (!current) return res.status(404).json({ error: 'Lokasi event tidak ditemukan.' });
+    if (!current) return res.status(404).json({ error: 'Event location not found.' });
 
     const existing = await prisma.m_event_location.findFirst({ where: { name: { equals: parsed.name, mode: 'insensitive' }, NOT: { id } } });
-    if (existing) return res.status(400).json({ error: `Lokasi event "${existing.name}" sudah ada.` });
+    if (existing) return res.status(400).json({ error: `Event location "${existing.name}" already exists.` });
 
     const location = await prisma.m_event_location.update({ where: { id }, data: { name: parsed.name } });
     res.json(location);
   } catch (err) {
-    if (err.code === 'P2002') return res.status(400).json({ error: 'Lokasi event dengan nama ini sudah ada.' });
+    if (err.code === 'P2002') return res.status(400).json({ error: 'An event location with this name already exists.' });
     next(err);
   }
 }
@@ -566,7 +566,7 @@ async function updateEventLocation(req, res, next) {
 // DELETE /event-locations/:id
 async function deleteEventLocation(req, res, next) {
   try {
-    await deleteMasterLocation(req, res, { field: 'event_location_id', model: 'm_event_location', label: 'Lokasi event' });
+    await deleteMasterLocation(req, res, { field: 'event_location_id', model: 'm_event_location', label: 'Event location' });
   } catch (err) {
     next(err);
   }
@@ -581,7 +581,7 @@ const toMoney = value => Math.round(Number(value || 0) * 100) / 100;
 async function findScopedBudget(req, res, id, include) {
   const budget = Number.isInteger(id) ? await prisma.m_marketing_budget.findUnique({ where: { id }, include }) : null;
   if (!budget || !budgetInScope(req, budget.company_id)) {
-    res.status(404).json({ error: 'Budget control tidak ditemukan.' });
+    res.status(404).json({ error: 'Budget control not found.' });
     return null;
   }
   return budget;
@@ -662,7 +662,7 @@ async function checkBudgetAvailability(req, res, next) {
     const fiscal_year = parseInt(req.query.fiscal_year, 10);
 
     if (!company_id || !brand_id || !lob_id || !fiscal_year) {
-      return res.status(400).json({ error: 'Parameter company_id, brand_id, lob_id, dan fiscal_year wajib diisi.' });
+      return res.status(400).json({ error: 'company_id, brand_id, lob_id and fiscal_year are required.' });
     }
 
     if (!budgetInScope(req, company_id)) {
@@ -780,16 +780,16 @@ async function createBudget(req, res, next) {
     const { company_id, brand_id, lob_id, fiscal_year, total_budget, monthly_limits } = req.body;
 
     if (!company_id || !brand_id || !lob_id || !fiscal_year) {
-      return res.status(400).json({ error: 'Perusahaan, Brand, LOB, dan Tahun Fiskal wajib diisi.' });
+      return res.status(400).json({ error: 'Company, brand, LOB and fiscal year are required.' });
     }
     if (!budgetInScope(req, parseInt(company_id, 10))) {
       return res.status(403).json({ error: 'Company outside your access scope.' });
     }
     const annual = toMoney(total_budget);
-    if (!Number.isFinite(annual) || annual < 0) return res.status(400).json({ error: 'Plafon tahunan tidak valid.' });
+    if (!Number.isFinite(annual) || annual < 0) return res.status(400).json({ error: 'Invalid annual cap.' });
     const providedMonths = Array.isArray(monthly_limits) && monthly_limits.length ? monthly_limits : null;
     if (providedMonths && providedMonths.some(ml => !Number.isFinite(Number(ml.budget_limit)) || Number(ml.budget_limit) < 0)) {
-      return res.status(400).json({ error: 'Limit bulanan tidak boleh negatif.' });
+      return res.status(400).json({ error: 'Monthly limits cannot be negative.' });
     }
     const months = providedMonths
       ? Array.from({ length: 12 }, (_, i) => ({ period_month: i + 1, budget_limit: toMoney(providedMonths.find(ml => Number(ml.period_month) === i + 1)?.budget_limit) }))
@@ -807,7 +807,7 @@ async function createBudget(req, res, next) {
       }
     });
     if (existing) {
-      return res.status(400).json({ error: 'Konfigurasi budget untuk entitas, brand, LOB, dan tahun fiskal ini sudah terdaftar.' });
+      return res.status(400).json({ error: 'A budget for this company, brand, LOB and fiscal year already exists.' });
     }
 
     const budget = await prisma.$transaction(async (tx) => {
@@ -847,7 +847,7 @@ async function updateBudget(req, res, next) {
       return res.status(400).json({ error: 'Anggaran telah dikunci (Locked). Buka kunci terlebih dahulu untuk mengubah.' });
     }
     if (!Array.isArray(monthly_limits) || !monthly_limits.length) {
-      return res.status(400).json({ error: 'Limit bulanan wajib dikirim.' });
+      return res.status(400).json({ error: 'Monthly limits are required.' });
     }
 
     const current = new Map(existing.monthly_limits.map(m => [m.period_month, m]));
@@ -855,11 +855,11 @@ async function updateBudget(req, res, next) {
     for (const ml of monthly_limits) {
       const month = Number(ml.period_month);
       const value = toMoney(ml.budget_limit);
-      if (!Number.isInteger(month) || month < 1 || month > 12) return res.status(400).json({ error: 'Nomor bulan tidak valid (1-12).' });
-      if (!Number.isFinite(value) || value < 0) return res.status(400).json({ error: 'Limit bulanan tidak boleh negatif.' });
+      if (!Number.isInteger(month) || month < 1 || month > 12) return res.status(400).json({ error: 'Invalid month number (1-12).' });
+      if (!Number.isFinite(value) || value < 0) return res.status(400).json({ error: 'Monthly limits cannot be negative.' });
       const row = current.get(month);
       if (row && toMoney(row.budget_limit) === value) continue;
-      if (row?.is_closed) return res.status(400).json({ error: `Bulan ke-${month} sudah tutup buku; limitnya tidak bisa diubah.` });
+      if (row?.is_closed) return res.status(400).json({ error: `Month ${month} is already closed; its limit cannot be changed.` });
       changes.push({ month, value });
     }
 
@@ -900,7 +900,7 @@ async function validateBudget(req, res, next) {
     const id = parseInt(req.params.id, 10);
     const existing = await findScopedBudget(req, res, id, { monthly_limits: true });
     if (!existing) return;
-    if (existing.validation_status === 'VALIDATED') return res.status(400).json({ error: 'Budget ini sudah divalidasi Finance.' });
+    if (existing.validation_status === 'VALIDATED') return res.status(400).json({ error: 'This budget is already validated by Finance.' });
     const monthlySum = existing.monthly_limits.reduce((s, m) => s + parseFloat(m.budget_limit || 0), 0);
     if (monthlySum <= 0) return res.status(400).json({ error: 'Isi alokasi bulanan terlebih dahulu sebelum divalidasi.' });
 
@@ -927,7 +927,7 @@ async function lockBudget(req, res, next) {
     const existing = await findScopedBudget(req, res, id);
     if (!existing) return;
     if (existing.validation_status !== 'VALIDATED') {
-      return res.status(400).json({ error: 'Budget harus divalidasi Finance terlebih dahulu sebelum dikunci.' });
+      return res.status(400).json({ error: 'The budget must be validated by Finance before it can be locked.' });
     }
     const updated = await prisma.m_marketing_budget.update({
       where: { id },
@@ -972,12 +972,12 @@ async function closeMonth(req, res, next) {
     const month = parseInt(period_month, 10);
 
     if (!month || month < 1 || month > 12) {
-      return res.status(400).json({ error: 'Nomor bulan tidak valid (1-12).' });
+      return res.status(400).json({ error: 'Invalid month number (1-12).' });
     }
     const budget = await findScopedBudget(req, res, id);
     if (!budget) return;
     if (!monthHasEnded(budget.fiscal_year, month)) {
-      return res.status(400).json({ error: 'Bulan ini belum berakhir; tutup buku hanya bisa dilakukan setelah akhir bulan.' });
+      return res.status(400).json({ error: 'This month has not ended yet; it can only be closed after the month ends.' });
     }
 
     const monthlyRecord = await prisma.m_marketing_budget_monthly.findUnique({
@@ -990,9 +990,9 @@ async function closeMonth(req, res, next) {
     });
 
     if (!monthlyRecord) {
-      return res.status(404).json({ error: 'Data alokasi bulan tidak ditemukan.' });
+      return res.status(404).json({ error: 'Monthly allocation not found.' });
     }
-    if (monthlyRecord.is_closed) return res.status(400).json({ error: 'Bulan ini sudah tutup buku.' });
+    if (monthlyRecord.is_closed) return res.status(400).json({ error: 'This month is already closed.' });
 
     const updated = await prisma.m_marketing_budget_monthly.update({
       where: { id: monthlyRecord.id },
@@ -1003,7 +1003,7 @@ async function closeMonth(req, res, next) {
       }
     });
 
-    res.json({ message: `Bulan ke-${month} berhasil ditutup buku.`, data: updated });
+    res.json({ message: `Month ${month} closed.`, data: updated });
   } catch (err) {
     next(err);
   }
@@ -1017,7 +1017,7 @@ async function reopenMonth(req, res, next) {
     const month = parseInt(period_month, 10);
 
     if (!month || month < 1 || month > 12) {
-      return res.status(400).json({ error: 'Nomor bulan tidak valid (1-12).' });
+      return res.status(400).json({ error: 'Invalid month number (1-12).' });
     }
     if (!(await findScopedBudget(req, res, id))) return;
 
@@ -1031,7 +1031,7 @@ async function reopenMonth(req, res, next) {
     });
 
     if (!monthlyRecord) {
-      return res.status(404).json({ error: 'Data alokasi bulan tidak ditemukan.' });
+      return res.status(404).json({ error: 'Monthly allocation not found.' });
     }
 
     const updated = await prisma.m_marketing_budget_monthly.update({
@@ -1043,7 +1043,7 @@ async function reopenMonth(req, res, next) {
       }
     });
 
-    res.json({ message: `Bulan ke-${month} berhasil dibuka kembali.`, data: updated });
+    res.json({ message: `Month ${month} reopened.`, data: updated });
   } catch (err) {
     next(err);
   }
@@ -1086,13 +1086,13 @@ async function createBudgetShift(req, res, next) {
     const shiftAmt = parseFloat(amount);
 
     if (!fromM || !toM || fromM === toM || fromM < 1 || fromM > 12 || toM < 1 || toM > 12) {
-      return res.status(400).json({ error: 'Bulan asal dan tujuan harus valid (1-12) dan berbeda.' });
+      return res.status(400).json({ error: 'Source and target months must be valid (1-12) and different.' });
     }
     if (!shiftAmt || shiftAmt <= 0) {
-      return res.status(400).json({ error: 'Nominal pergeseran harus lebih besar dari 0.' });
+      return res.status(400).json({ error: 'The shift amount must be greater than 0.' });
     }
     if (!reason || !reason.trim()) {
-      return res.status(400).json({ error: 'Alasan pergeseran anggaran wajib diisi.' });
+      return res.status(400).json({ error: 'A reason for the budget shift is required.' });
     }
 
     const budget = await findScopedBudget(req, res, id, {
@@ -1106,7 +1106,7 @@ async function createBudgetShift(req, res, next) {
     const toMonthly = budget.monthly_limits.find(m => m.period_month === toM);
 
     if (!fromMonthly || !toMonthly) {
-      return res.status(404).json({ error: 'Alokasi bulan asal atau tujuan tidak ditemukan.' });
+      return res.status(404).json({ error: 'Source or target month allocation not found.' });
     }
 
     if (fromMonthly.is_closed) {
@@ -1121,7 +1121,7 @@ async function createBudgetShift(req, res, next) {
     const pendingOut = budget.shifts.filter(sh => sh.from_monthly_id === fromMonthly.id).reduce((sum, sh) => sum + Number(sh.amount), 0);
     const freeFrom = toMoney(Number(fromMonthly.budget_limit) - usage.committed[fromM - 1] - pendingOut);
     if (shiftAmt > freeFrom) {
-      return res.status(400).json({ error: `Sisa bebas bulan asal hanya Rp ${Math.max(0, freeFrom).toLocaleString('id-ID')} (setelah dikurangi plan ter-commit dan pergeseran yang masih menunggu).` });
+      return res.status(400).json({ error: `The source month only has Rp ${Math.max(0, freeFrom).toLocaleString('id-ID')} free (after committed plans and pending shifts).` });
     }
 
     // Determine shift type: Intra-Quarter vs Cross-Quarter
@@ -1138,7 +1138,7 @@ async function createBudgetShift(req, res, next) {
       isIntra ? null : resolveApproverContact(prisma, SHIFT_ROLES.HEAD, budget.company_id, masterId)
     ]);
     if (!fcContact || (!isIntra && !headContact)) {
-      return res.status(400).json({ error: `Penerima approval ${!fcContact ? 'Finance Controller' : 'Marketing Manager'} belum diatur untuk PT ini. Atur di Approval Settings > Penerima.` });
+      return res.status(400).json({ error: `No ${!fcContact ? 'Finance Controller' : 'Marketing Manager'} approval recipient is set for this company. Set it in Approval Settings > Automatic Recipients.` });
     }
 
     const fcEmail = fcContact.email;
@@ -1149,7 +1149,7 @@ async function createBudgetShift(req, res, next) {
     // Resolve creator ID dari Master Signer (m_approval_signer)
     const signer = req.user?.email ? await resolveEmployee(req.user.email) : null;
     if (!signer) {
-      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
+      return res.status(403).json({ error: 'Your email is not registered as a Master Signer.' });
     }
     const creatorId = signer.id;
 
@@ -1223,7 +1223,7 @@ async function processShiftDecision(req, res, next) {
     const { action, comment } = req.body; // action: 'APPROVE' | 'REJECT'
 
     if (!['APPROVE', 'REJECT'].includes(action)) {
-      return res.status(400).json({ error: 'Action harus APPROVE atau REJECT.' });
+      return res.status(400).json({ error: 'Action must be APPROVE or REJECT.' });
     }
 
     const shift = await prisma.m_marketing_budget_shift.findUnique({
@@ -1237,17 +1237,17 @@ async function processShiftDecision(req, res, next) {
 
     const shiftBudget = shift ? await prisma.m_marketing_budget.findUnique({ where: { id: shift.marketing_budget_id }, select: { company_id: true } }) : null;
     if (!shift || !shiftBudget) {
-      return res.status(404).json({ error: 'Permohonan pergeseran anggaran tidak ditemukan.' });
+      return res.status(404).json({ error: 'Budget shift request not found.' });
     }
 
     if (shift.status !== 'PENDING') {
-      return res.status(400).json({ error: `Permohonan sudah berstatus ${shift.status}.` });
+      return res.status(400).json({ error: `The request is already ${shift.status}.` });
     }
 
     const currentApprover = shift.approvers.find(a => a.step_number === shift.current_step && a.status === 'PENDING');
 
     if (!currentApprover) {
-      return res.status(400).json({ error: 'Tidak ada approver yang sedang menunggu tindakan.' });
+      return res.status(400).json({ error: 'No approver is waiting to act.' });
     }
 
     // The assigned approver is identified by email (login roles never equal FC/MM);
@@ -1256,13 +1256,13 @@ async function processShiftDecision(req, res, next) {
     const stepRole = LEGACY_SHIFT_ROLES[currentApprover.approver_role] || currentApprover.approver_role;
     const isAssigned = String(currentApprover.approver_email || '').toLowerCase() === String(req.user.email || '').toLowerCase();
     if (userRole !== 'ADMIN' && !isAssigned && !budgetInScope(req, shiftBudget.company_id)) {
-      return res.status(404).json({ error: 'Permohonan pergeseran anggaran tidak ditemukan.' });
+      return res.status(404).json({ error: 'Budget shift request not found.' });
     }
     if (userRole !== 'ADMIN' && !isAssigned && stepRole.toUpperCase() !== userRole) {
-      return res.status(403).json({ error: 'Anda tidak memiliki kewenangan untuk memproses tahap approval ini.' });
+      return res.status(403).json({ error: 'You are not authorized to act on this approval step.' });
     }
     if (action === 'REJECT' && !String(comment || '').trim()) {
-      return res.status(400).json({ error: 'Alasan penolakan wajib diisi.' });
+      return res.status(400).json({ error: 'A reason is required to reject.' });
     }
 
     const updated = await prisma.$transaction(async (tx) => {
@@ -1314,10 +1314,10 @@ async function processShiftDecision(req, res, next) {
         tx.m_marketing_budget_monthly.findUnique({ where: { id: shift.to_monthly_id } })
       ]);
       if (fromNow.is_closed || toNow.is_closed) {
-        throw Object.assign(new Error('Bulan asal atau tujuan sudah tutup buku; pergeseran tidak bisa dieksekusi.'), { status: 400 });
+        throw Object.assign(new Error('The source or target month is closed; the shift cannot be executed.'), { status: 400 });
       }
       if (Number(fromNow.budget_limit) < shiftAmount) {
-        throw Object.assign(new Error('Limit bulan asal sudah tidak mencukupi untuk pergeseran ini.'), { status: 400 });
+        throw Object.assign(new Error('The source month limit is no longer enough for this shift.'), { status: 400 });
       }
       await tx.m_marketing_budget_monthly.update({
         where: { id: shift.from_monthly_id },
@@ -1339,7 +1339,7 @@ async function processShiftDecision(req, res, next) {
       });
     });
 
-    res.json({ message: `Pergeseran anggaran berhasil di-${action.toLowerCase()}.`, data: updated });
+    res.json({ message: `Budget shift ${action === "APPROVE" ? "approved" : "rejected"}.`, data: updated });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     next(err);
@@ -1363,10 +1363,10 @@ async function createApprovalRule(req, res, next) {
   try {
     const { module, min_amount, max_amount, step_number, approver_role, company_id } = req.body;
     if (!module || !step_number || !approver_role) {
-      return res.status(400).json({ error: 'module, step_number, dan approver_role wajib diisi.' });
+      return res.status(400).json({ error: 'module, step_number and approver_role are required.' });
     }
     if (!['MARKETING_PLAN', 'PAYMENT_REQUEST'].includes(module)) {
-      return res.status(400).json({ error: 'module harus MARKETING_PLAN atau PAYMENT_REQUEST.' });
+      return res.status(400).json({ error: 'module must be MARKETING_PLAN or PAYMENT_REQUEST.' });
     }
     const rule = await prisma.approval_rules.create({
       data: {
@@ -1388,7 +1388,7 @@ async function updateApprovalRule(req, res, next) {
     const id = parseInt(req.params.id, 10);
     const { module, min_amount, max_amount, step_number, approver_role, company_id } = req.body;
     const rule = await prisma.approval_rules.findUnique({ where: { id } });
-    if (!rule) return res.status(404).json({ error: 'Approval rule tidak ditemukan.' });
+    if (!rule) return res.status(404).json({ error: 'Approval rule not found.' });
     const updated = await prisma.approval_rules.update({
       where: { id },
       data: {
@@ -1409,9 +1409,9 @@ async function deleteApprovalRule(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
     const rule = await prisma.approval_rules.findUnique({ where: { id } });
-    if (!rule) return res.status(404).json({ error: 'Approval rule tidak ditemukan.' });
+    if (!rule) return res.status(404).json({ error: 'Approval rule not found.' });
     await prisma.approval_rules.delete({ where: { id } });
-    res.json({ message: 'Approval rule berhasil dihapus.' });
+    res.json({ message: 'Approval rule deleted.' });
   } catch (err) { next(err); }
 }
 

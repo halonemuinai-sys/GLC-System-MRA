@@ -16,8 +16,8 @@ const signerUsageInclude = {
 };
 
 const normalizeEmail = email => String(email || '').trim().toLowerCase();
-const TRANSACTION_MESSAGE = 'Approver sudah digunakan dalam transaksi atau riwayat approval dan tidak bisa dihapus. Gunakan Nonaktifkan.';
-const CONFIGURATION_MESSAGE = 'Approver masih digunakan dalam pengaturan penerima otomatis. Ubah penerimanya sebelum menghapus.';
+const TRANSACTION_MESSAGE = 'This approver is used in transactions or approval history and cannot be deleted. Deactivate it instead.';
+const CONFIGURATION_MESSAGE = 'This approver is still used in automatic recipient settings. Change those recipients before deleting.';
 
 async function withSignerUsage(db, signers) {
   if (!signers.length) return [];

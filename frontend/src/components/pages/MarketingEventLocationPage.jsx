@@ -8,14 +8,14 @@ import {
 } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
-import { useLanguage } from '@/lib/LanguageContext';
 import InlineHelp from '@/components/ui/InlineHelp';
 
-const USAGE_FILTERS = [['all', 'Semua'], ['used', 'Dipakai plan'], ['unused', 'Belum dipakai']];
+const USAGE_FILTERS = [['all', 'All'], ['used', 'Used in plans'], ['unused', 'Unused']];
 
 export default function MarketingEventLocationPage() {
-  const { t } = useLanguage();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  // Process-first: nothing is fetched until Load data.
+  const [processed, setProcessed] = useState(false);
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -43,13 +43,13 @@ export default function MarketingEventLocationPage() {
     try {
       setData((await apiClient.get('/api/marketing/event-locations')) || []);
     } catch (err) {
-      setError(err.message || 'Gagal memuat lokasi event.');
+      setError(err.message || 'Failed to load event locations.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (processed) fetchData(); }, [processed, fetchData]);
 
   const isUsed = (item) => item.usage_locked + item.usage_draft > 0;
   const filtered = useMemo(() => {
@@ -71,9 +71,9 @@ export default function MarketingEventLocationPage() {
   }, [name, data, editingItem]);
 
   const stats = [
-    { label: 'Total lokasi', value: data.length, icon: MapPin, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
-    { label: 'Dipakai di plan', value: data.filter(isUsed).length, icon: Link2, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
-    { label: 'Belum dipakai', value: data.filter(d => !isUsed(d)).length, icon: CircleDashed, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
+    { label: 'Total locations', value: data.length, icon: MapPin, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+    { label: 'Used in plans', value: data.filter(isUsed).length, icon: Link2, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
+    { label: 'Unused', value: data.filter(d => !isUsed(d)).length, icon: CircleDashed, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
   ];
 
   const openForm = (item = null) => { setEditingItem(item); setName(item?.name || ''); setFormError(null); setShowDrawer(true); };
@@ -86,10 +86,10 @@ export default function MarketingEventLocationPage() {
       if (editingItem) await apiClient.put(`/api/marketing/event-locations/${editingItem.id}`, { name });
       else await apiClient.post('/api/marketing/event-locations', { name });
       setShowDrawer(false);
-      flash(editingItem ? 'Lokasi event diperbarui.' : 'Lokasi event ditambahkan.');
-      fetchData();
+      flash(editingItem ? 'Event location updated.' : 'Event location added.');
+      if (processed) fetchData(); else setProcessed(true);
     } catch (err) {
-      setFormError(err.message || 'Gagal menyimpan lokasi event.');
+      setFormError(err.message || 'Failed to save the event location.');
     } finally {
       setSubmitting(false);
     }
@@ -102,10 +102,10 @@ export default function MarketingEventLocationPage() {
     try {
       await apiClient.delete(`/api/marketing/event-locations/${deleteTarget.id}${deleteTarget.usage_draft ? '?confirm_draft=1' : ''}`);
       setDeleteTarget(null);
-      flash('Lokasi event dihapus.');
+      flash('Event location deleted.');
       fetchData();
     } catch (err) {
-      setDeleteError(err.message || 'Gagal menghapus lokasi event.');
+      setDeleteError(err.message || 'Failed to delete the event location.');
     } finally {
       setSubmitting(false);
     }
@@ -121,13 +121,15 @@ export default function MarketingEventLocationPage() {
         <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300"><MapPin className="h-4 w-4" />Marketing master data</p>
-            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('marketing_eventloc_title')}</h1>
-            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Daftar tempat pelaksanaan event (venue, mall, hotel) yang dipilih di item Marketing Plan.</p>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Event Locations</h1>
+            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Venues where events take place (venue, mall, hotel), selected on Marketing Plan items.</p>
           </div>
-          {canWrite && <button type="button" onClick={() => openForm()} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-blue-50 cursor-pointer"><Plus className="h-4 w-4" />Tambah lokasi</button>}
+          <div className="flex shrink-0 items-center gap-2"><button type="button" onClick={() => (processed ? fetchData() : setProcessed(true))} disabled={loading} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />{processed ? 'Reload' : 'Load data'}</button>
+          {canWrite && <button type="button" onClick={() => openForm()} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-blue-50 cursor-pointer"><Plus className="h-4 w-4" />Add location</button>}</div>
         </div>
       </motion.div>
 
+      {processed && (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {stats.map(({ label, value, icon: Icon, tone }, i) => (
           <motion.div key={label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, duration: 0.3 }} whileHover={{ y: -2 }} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -136,18 +138,27 @@ export default function MarketingEventLocationPage() {
           </motion.div>
         ))}
       </div>
+      )}
 
       <AnimatePresence>
         {notice && <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">{notice}</motion.div>}
       </AnimatePresence>
-      {error && <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />{error}</span><button type="button" onClick={fetchData} className="inline-flex items-center gap-1 font-semibold hover:underline cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Coba lagi</button></div>}
+      {error && <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />{error}</span><button type="button" onClick={fetchData} className="inline-flex items-center gap-1 font-semibold hover:underline cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Try again</button></div>}
 
+      {!processed ? (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+          <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><MapPin className="h-5 w-5" /></motion.span>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Load event locations</h3>
+          <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-400">Click Load data to see every event location, how often it is used in plans and which ones are locked from deletion.</p>
+          <button type="button" onClick={() => setProcessed(true)} className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Load data</button>
+        </motion.div>
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
           <div className="relative min-w-48 flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <input aria-label="Cari lokasi event" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder={t('marketing_eventloc_search')} className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-9 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" />
-            {search && <button type="button" aria-label="Hapus pencarian" onClick={() => { setSearch(''); setPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
+            <input aria-label="Search event locations" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search location name..." className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-9 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" />
+            {search && <button type="button" aria-label="Clear search" onClick={() => { setSearch(''); setPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
           </div>
           <div className="flex gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">
             {USAGE_FILTERS.map(([key, text]) => (
@@ -157,31 +168,31 @@ export default function MarketingEventLocationPage() {
               </button>
             ))}
           </div>
-          <button type="button" onClick={fetchData} disabled={loading} aria-label="Muat ulang" className={`${actionClass} border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800`}><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /></button>
-          <span aria-live="polite" className="text-[11px] text-slate-400">{filtered.length} lokasi</span>
+          <button type="button" onClick={fetchData} disabled={loading} aria-label="Reload" className={`${actionClass} border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800`}><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /></button>
+          <span aria-live="polite" className="text-[11px] text-slate-400">{filtered.length} {filtered.length === 1 ? 'location' : 'locations'}</span>
         </div>
 
         <div className="overflow-x-auto">
           {loading && !data.length ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin text-blue-500" />Memuat lokasi event...</div>
+            <div className="flex items-center justify-center gap-2 py-16 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin text-blue-500" />Loading event locations...</div>
           ) : (
             <table className="w-full min-w-[560px] table-fixed text-left text-xs">
               <thead className="border-b border-slate-100 bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-950/40">
-                <tr><th className="w-[55%] px-4 py-2.5 font-semibold">{t('marketing_eventloc_colName')}</th><th className="w-[28%] px-3 py-2.5 font-semibold">Penggunaan</th><th className="w-[17%] px-3 py-2.5 text-right font-semibold">Aksi</th></tr>
+                <tr><th className="w-[55%] px-4 py-2.5 font-semibold">Location name</th><th className="w-[28%] px-3 py-2.5 font-semibold">Usage</th><th className="w-[17%] px-3 py-2.5 text-right font-semibold">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {!rows.length && <tr><td colSpan={3} className="px-4 py-14 text-center text-slate-400"><MapPin className="mx-auto mb-2 h-8 w-8 opacity-30" />{data.length ? 'Tidak ada lokasi yang sesuai filter.' : 'Belum ada lokasi event.'}</td></tr>}
+                {!rows.length && <tr><td colSpan={3} className="px-4 py-14 text-center text-slate-400"><MapPin className="mx-auto mb-2 h-8 w-8 opacity-30" />{data.length ? 'No locations match the filters.' : 'No event locations yet.'}</td></tr>}
                 <AnimatePresence initial={false}>
                   {rows.map((item, i) => (
                     <motion.tr key={item.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: Math.min(i, 12) * 0.02, duration: 0.2 }} className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                       <td className="px-4 py-2"><div className="flex items-center gap-2.5"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"><MapPin className="h-3.5 w-3.5" /></span><div className="min-w-0"><p title={item.name} className="truncate font-medium text-slate-800 dark:text-slate-200">{item.name}</p><p className="text-[10px] text-slate-400">#{item.id}</p></div></div></td>
                       <td className="px-3 py-2 text-[10px]">
-                        {!isUsed(item) ? <span className="text-slate-400">Belum dipakai</span> : (
+                        {!isUsed(item) ? <span className="text-slate-400">Unused</span> : (
                           <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
                             {!item.can_delete && <LockKeyhole className="h-3 w-3 shrink-0 text-slate-400" />}
-                            <InlineHelp summary={`${item.usage_locked + item.usage_draft} item plan`} label={`Penggunaan ${item.name}`}>
-                              {item.usage_locked > 0 ? `${item.usage_locked} item di plan yang sudah diajukan/disetujui/ditolak — lokasi terkunci dari penghapusan untuk menjaga riwayat.` : ''}
-                              {item.usage_draft > 0 ? ` ${item.usage_draft} item di plan Draft — referensinya akan dilepas bila lokasi dihapus.` : ''}
+                            <InlineHelp summary={`${item.usage_locked + item.usage_draft} plan ${item.usage_locked + item.usage_draft === 1 ? 'item' : 'items'}`} label={`Usage of ${item.name}`}>
+                              {item.usage_locked > 0 ? `${item.usage_locked} item(s) in submitted, approved or rejected plans — the location is locked from deletion to keep history.` : ''}
+                              {item.usage_draft > 0 ? ` ${item.usage_draft} item(s) in Draft plans — the reference is cleared if the location is deleted.` : ''}
                             </InlineHelp>
                           </span>
                         )}
@@ -189,10 +200,10 @@ export default function MarketingEventLocationPage() {
                       <td className="px-3 py-1.5">
                         {canWrite ? (
                           <div className="flex items-center justify-end gap-0.5">
-                            <button type="button" title={`Ubah ${item.name}`} onClick={() => openForm(item)} className={`${actionClass} hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10`}><Edit3 className="h-3.5 w-3.5" /></button>
-                            <span title={item.can_delete ? `Hapus ${item.name}` : 'Dipakai di plan non-draft — tidak bisa dihapus'}><button type="button" aria-label={`Hapus ${item.name}`} disabled={!item.can_delete} onClick={() => { setDeleteTarget(item); setDeleteError(null); }} className={`${actionClass} enabled:hover:bg-rose-50 enabled:hover:text-rose-600 dark:enabled:hover:bg-rose-500/10`}><Trash2 className="h-3.5 w-3.5" /></button></span>
+                            <button type="button" title={`Edit ${item.name}`} onClick={() => openForm(item)} className={`${actionClass} hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10`}><Edit3 className="h-3.5 w-3.5" /></button>
+                            <span title={item.can_delete ? `Delete ${item.name}` : 'Used in non-draft plans — cannot be deleted'}><button type="button" aria-label={`Delete ${item.name}`} disabled={!item.can_delete} onClick={() => { setDeleteTarget(item); setDeleteError(null); }} className={`${actionClass} enabled:hover:bg-rose-50 enabled:hover:text-rose-600 dark:enabled:hover:bg-rose-500/10`}><Trash2 className="h-3.5 w-3.5" /></button></span>
                           </div>
-                        ) : <span className="block text-right text-[10px] text-slate-400">Lihat saja</span>}
+                        ) : <span className="block text-right text-[10px] text-slate-400">View only</span>}
                       </td>
                     </motion.tr>
                   ))}
@@ -203,19 +214,20 @@ export default function MarketingEventLocationPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-slate-400 dark:border-slate-800">
-          <label className="flex items-center gap-2">Baris per halaman
+          <label className="flex items-center gap-2">Rows per page
             <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">{[25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}</select>
           </label>
           <div className="flex items-center gap-3">
-            <span className="tabular-nums">{filtered.length ? `${start + 1}–${Math.min(start + pageSize, filtered.length)}` : '0'} dari {filtered.length}</span>
+            <span className="tabular-nums">{filtered.length ? `${start + 1}–${Math.min(start + pageSize, filtered.length)}` : '0'} of {filtered.length}</span>
             <div className="flex items-center gap-1">
-              <button type="button" aria-label="Halaman sebelumnya" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronLeft className="h-4 w-4" /></button>
               <span className="min-w-10 text-center tabular-nums">{currentPage} / {totalPages}</span>
-              <button type="button" aria-label="Halaman berikutnya" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronRight className="h-4 w-4" /></button>
+              <button type="button" aria-label="Next page" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>
         </div>
       </div>
+      )}
 
       {/* Form modal */}
       <AnimatePresence>
@@ -224,19 +236,19 @@ export default function MarketingEventLocationPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDrawer(false)} className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm" />
             <motion.form onSubmit={handleSubmit} initial={{ scale: 0.96, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.96, opacity: 0 }} className="relative w-full max-w-md space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
               <div className="flex items-start justify-between">
-                <div><h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{editingItem ? 'Ubah lokasi event' : 'Tambah lokasi event'}</h3><p className="mt-0.5 text-[11px] text-slate-400">Nama dibandingkan tanpa membedakan huruf besar/kecil.</p></div>
-                <button type="button" aria-label="Tutup" onClick={() => setShowDrawer(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4" /></button>
+                <div><h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{editingItem ? 'Edit event location' : 'Add event location'}</h3><p className="mt-0.5 text-[11px] text-slate-400">Names are compared case-insensitively.</p></div>
+                <button type="button" aria-label="Close" onClick={() => setShowDrawer(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4" /></button>
               </div>
               <div>
-                <label htmlFor="eventloc-name" className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Nama lokasi *</label>
-                <input id="eventloc-name" autoFocus maxLength={100} value={name} onChange={e => setName(e.target.value)} placeholder="Contoh: The St. Regis Jakarta, Mall Gandaria City" className={`h-9 w-full rounded-lg border bg-slate-50 px-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/10 dark:bg-slate-950 dark:text-slate-100 ${duplicate ? 'border-amber-400' : 'border-slate-200 focus:border-blue-400 dark:border-slate-700'}`} />
-                {duplicate && <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">Sudah ada lokasi “{duplicate.name}”.</p>}
-                {editingItem && isUsed(editingItem) && <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">Dipakai di {editingItem.usage_locked + editingItem.usage_draft} item plan; nama baru akan terlihat di plan tersebut.</p>}
+                <label htmlFor="eventloc-name" className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Location name *</label>
+                <input id="eventloc-name" autoFocus maxLength={100} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. The St. Regis Jakarta, Mall Gandaria City" className={`h-9 w-full rounded-lg border bg-slate-50 px-3 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/10 dark:bg-slate-950 dark:text-slate-100 ${duplicate ? 'border-amber-400' : 'border-slate-200 focus:border-blue-400 dark:border-slate-700'}`} />
+                {duplicate && <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">Location “{duplicate.name}” already exists.</p>}
+                {editingItem && isUsed(editingItem) && <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">Used in {editingItem.usage_locked + editingItem.usage_draft} plan item(s); the new name will show on those plans.</p>}
               </div>
               {formError && <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="h-4 w-4" />{formError}</div>}
               <div className="flex gap-2">
-                <button type="button" onClick={() => setShowDrawer(false)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Batal</button>
-                <button type="submit" disabled={submitting || !name.trim() || !!duplicate} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Simpan</button>
+                <button type="button" onClick={() => setShowDrawer(false)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Cancel</button>
+                <button type="submit" disabled={submitting || !name.trim() || !!duplicate} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Save</button>
               </div>
             </motion.form>
           </div>
@@ -251,13 +263,13 @@ export default function MarketingEventLocationPage() {
             <motion.div initial={{ scale: 0.96, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.96, opacity: 0 }} className="relative w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><Trash2 className="h-5 w-5" /></span>
               <div>
-                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Hapus lokasi event?</h4>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">“{deleteTarget.name}” akan dihapus permanen.{deleteTarget.usage_draft > 0 && ` Referensinya di ${deleteTarget.usage_draft} item plan Draft akan dikosongkan.`}</p>
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Delete event location?</h4>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">“{deleteTarget.name}” will be deleted permanently.{deleteTarget.usage_draft > 0 && ` Its reference on ${deleteTarget.usage_draft} Draft plan item(s) will be cleared.`}</p>
               </div>
               {deleteError && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{deleteError}</div>}
               <div className="flex gap-2">
-                <button type="button" onClick={() => setDeleteTarget(null)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Batal</button>
-                <button type="button" onClick={handleDeleteConfirm} disabled={submitting} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Hapus</button>
+                <button type="button" onClick={() => setDeleteTarget(null)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Cancel</button>
+                <button type="button" onClick={handleDeleteConfirm} disabled={submitting} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Delete</button>
               </div>
             </motion.div>
           </div>

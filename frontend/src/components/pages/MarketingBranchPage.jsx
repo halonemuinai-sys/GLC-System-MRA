@@ -8,15 +8,15 @@ import {
 } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
-import { useLanguage } from '@/lib/LanguageContext';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import InlineHelp from '@/components/ui/InlineHelp';
 
-const USAGE_FILTERS = [['all', 'Semua'], ['used', 'Dipakai plan'], ['unused', 'Belum dipakai']];
+const USAGE_FILTERS = [['all', 'All'], ['used', 'Used in plans'], ['unused', 'Unused']];
 
 export default function MarketingBranchPage() {
-  const { t } = useLanguage();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  // Process-first: nothing is fetched until Load data.
+  const [processed, setProcessed] = useState(false);
   const [data, setData] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [brands, setBrands] = useState([]);
@@ -55,13 +55,13 @@ export default function MarketingBranchPage() {
       setCompanies(meta?.companies || []);
       setBrands((meta?.brands || []).map(b => ({ ...b, company_name: b.m_company?.name || '' })));
     } catch (err) {
-      setError(err.message || 'Gagal memuat data cabang sasaran.');
+      setError(err.message || 'Failed to load target branches.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (processed) fetchData(); }, [processed, fetchData]);
 
   const brandsFor = (companyId) => brands.filter(b => !companyId || !b.company_id || String(b.company_id) === String(companyId));
   const isUsed = (item) => item.usage_locked + item.usage_draft > 0;
@@ -82,10 +82,10 @@ export default function MarketingBranchPage() {
   const hasActiveFilters = Boolean(search || filterCompany || filterBrand || usageFilter !== 'all');
 
   const stats = [
-    { label: 'Total cabang', value: data.length, icon: Building, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
-    { label: 'Terikat PT / brand', value: data.filter(d => d.company_id || d.brand_id).length, icon: Building2, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
+    { label: 'Total branches', value: data.length, icon: Building, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+    { label: 'Tied to company / brand', value: data.filter(d => d.company_id || d.brand_id).length, icon: Building2, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
     { label: 'Universal', value: data.filter(d => !d.company_id && !d.brand_id).length, icon: Globe, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
-    { label: 'Dipakai di plan', value: data.filter(isUsed).length, icon: Link2, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
+    { label: 'Used in plans', value: data.filter(isUsed).length, icon: Link2, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
   ];
 
   const openForm = (item = null) => {
@@ -105,10 +105,10 @@ export default function MarketingBranchPage() {
       if (editingItem) await apiClient.put(`/api/marketing/branches/${editingItem.id}`, payload);
       else await apiClient.post('/api/marketing/branches', payload);
       setShowDrawer(false);
-      flash(editingItem ? 'Cabang diperbarui.' : 'Cabang ditambahkan.');
-      fetchData();
+      flash(editingItem ? 'Branch updated.' : 'Branch added.');
+      if (processed) fetchData(); else setProcessed(true);
     } catch (err) {
-      setFormError(err.message || 'Gagal menyimpan data cabang.');
+      setFormError(err.message || 'Failed to save the branch.');
     } finally {
       setSubmitting(false);
     }
@@ -122,10 +122,10 @@ export default function MarketingBranchPage() {
     try {
       await apiClient.delete(`/api/marketing/branches/${deleteTarget.id}${draftConfirm ? '?confirm_draft=1' : ''}`);
       setDeleteTarget(null);
-      flash('Cabang dihapus.');
+      flash('Branch deleted.');
       fetchData();
     } catch (err) {
-      setDeleteError(err.message || 'Gagal menghapus cabang.');
+      setDeleteError(err.message || 'Failed to delete the branch.');
     } finally {
       setSubmitting(false);
     }
@@ -144,15 +144,19 @@ export default function MarketingBranchPage() {
           <div>
             <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300"><Building className="h-4 w-4" />Marketing master data</p>
             <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Target Branches</h1>
-            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Cabang/toko sasaran kampanye. Cabang yang terikat PT atau brand hanya muncul di plan untuk PT/brand tersebut; cabang universal muncul di semua plan.</p>
+            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Stores targeted by campaigns. Branches tied to a company or brand only appear on plans for that company or brand; universal branches appear on every plan.</p>
           </div>
+          <div className="flex shrink-0 items-center gap-2">
+          <button type="button" onClick={() => (processed ? fetchData() : setProcessed(true))} disabled={loading} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer"><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />{processed ? 'Reload' : 'Load data'}</button>
           {canWrite && (
-            <button type="button" onClick={() => openForm()} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-blue-50 cursor-pointer"><Plus className="h-4 w-4" />Tambah cabang</button>
+            <button type="button" onClick={() => openForm()} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-semibold text-slate-900 transition-colors hover:bg-blue-50 cursor-pointer"><Plus className="h-4 w-4" />Add branch</button>
           )}
+          </div>
         </div>
       </motion.div>
 
       {/* Stats */}
+      {processed && (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map(({ label: name, value, icon: Icon, tone }, i) => (
           <motion.div key={name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, duration: 0.3 }} whileHover={{ y: -2 }} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -161,24 +165,33 @@ export default function MarketingBranchPage() {
           </motion.div>
         ))}
       </div>
+      )}
 
       <AnimatePresence>
         {notice && <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">{notice}</motion.div>}
       </AnimatePresence>
-      {error && <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />{error}</span><button type="button" onClick={fetchData} className="inline-flex items-center gap-1 font-semibold hover:underline cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Coba lagi</button></div>}
+      {error && <div className="flex items-center justify-between gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />{error}</span><button type="button" onClick={fetchData} className="inline-flex items-center gap-1 font-semibold hover:underline cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Try again</button></div>}
 
       {/* List */}
+      {!processed ? (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+          <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><Building className="h-5 w-5" /></motion.span>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Load target branches</h3>
+          <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-400">Click Load data to see every target branch, which company or brand it belongs to and how often it is used in plans.</p>
+          <button type="button" onClick={() => setProcessed(true)} className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Load data</button>
+        </motion.div>
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="space-y-3 border-b border-slate-100 p-3 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-48 flex-1">
               <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <input aria-label="Cari cabang" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder={t('marketing_branch_search')} className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-9 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" />
-              {search && <button type="button" aria-label="Hapus pencarian" onClick={() => { setSearch(''); setPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
+              <input aria-label="Search branches" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search branch, company or brand..." className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-9 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200" />
+              {search && <button type="button" aria-label="Clear search" onClick={() => { setSearch(''); setPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
             </div>
-            <div className="w-full sm:w-56"><SearchableSelect value={filterCompany} onChange={val => { setFilterCompany(val); setFilterBrand(''); setPage(1); }} options={companies} placeholder="Semua PT" allOptionLabel="Semua PT" searchPlaceholder="Cari PT..." /></div>
-            <div className="w-full sm:w-48"><SearchableSelect value={filterBrand} onChange={val => { setFilterBrand(val); setPage(1); }} options={brandsFor(filterCompany)} placeholder="Semua brand" allOptionLabel="Semua brand" searchPlaceholder="Cari brand..." subtitleKey="company_name" /></div>
-            <button type="button" onClick={fetchData} disabled={loading} aria-label="Muat ulang" className={`${actionClass} border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800`}><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /></button>
+            <div className="w-full sm:w-56"><SearchableSelect value={filterCompany} onChange={val => { setFilterCompany(val); setFilterBrand(''); setPage(1); }} options={companies} placeholder="All companies" allOptionLabel="All companies" searchPlaceholder="Search company..." /></div>
+            <div className="w-full sm:w-48"><SearchableSelect value={filterBrand} onChange={val => { setFilterBrand(val); setPage(1); }} options={brandsFor(filterCompany)} placeholder="All brands" allOptionLabel="All brands" searchPlaceholder="Search brand..." subtitleKey="company_name" /></div>
+            <button type="button" onClick={fetchData} disabled={loading} aria-label="Reload" className={`${actionClass} border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800`}><RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /></button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">
@@ -190,39 +203,39 @@ export default function MarketingBranchPage() {
               ))}
             </div>
             {hasActiveFilters && <button type="button" onClick={resetFilters} className="text-[11px] font-medium text-blue-600 hover:underline dark:text-blue-400 cursor-pointer">Reset filter</button>}
-            <span aria-live="polite" className="ml-auto text-[11px] text-slate-400">{filtered.length} cabang</span>
+            <span aria-live="polite" className="ml-auto text-[11px] text-slate-400">{filtered.length} {filtered.length === 1 ? 'branch' : 'branches'}</span>
           </div>
         </div>
 
         <div className="overflow-x-auto">
           {loading && !data.length ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin text-blue-500" />Memuat data cabang...</div>
+            <div className="flex items-center justify-center gap-2 py-16 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin text-blue-500" />Loading branches...</div>
           ) : (
             <table className="w-full min-w-[820px] table-fixed text-left text-xs">
               <thead className="border-b border-slate-100 bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-950/40">
                 <tr>
-                  <th className="w-[30%] px-4 py-2.5 font-semibold">{t('marketing_branch_colName')}</th>
-                  <th className="w-[25%] px-3 py-2.5 font-semibold">{t('marketing_branch_colCompany')}</th>
-                  <th className="w-[18%] px-3 py-2.5 font-semibold">{t('marketing_branch_colBrand')}</th>
-                  <th className="w-[15%] px-3 py-2.5 font-semibold">Penggunaan</th>
-                  <th className="w-[12%] px-3 py-2.5 text-right font-semibold">Aksi</th>
+                  <th className="w-[30%] px-4 py-2.5 font-semibold">Branch / store</th>
+                  <th className="w-[25%] px-3 py-2.5 font-semibold">Company</th>
+                  <th className="w-[18%] px-3 py-2.5 font-semibold">Brand</th>
+                  <th className="w-[15%] px-3 py-2.5 font-semibold">Usage</th>
+                  <th className="w-[12%] px-3 py-2.5 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {!rows.length && <tr><td colSpan={5} className="px-4 py-14 text-center text-slate-400"><Building className="mx-auto mb-2 h-8 w-8 opacity-30" />{data.length ? 'Tidak ada cabang yang sesuai filter.' : 'Belum ada cabang sasaran.'}{hasActiveFilters && <button type="button" onClick={resetFilters} className="mt-2 block w-full text-[11px] font-medium text-blue-600 hover:underline dark:text-blue-400 cursor-pointer">Reset filter</button>}</td></tr>}
+                {!rows.length && <tr><td colSpan={5} className="px-4 py-14 text-center text-slate-400"><Building className="mx-auto mb-2 h-8 w-8 opacity-30" />{data.length ? 'No branches match the filters.' : 'No target branches yet.'}{hasActiveFilters && <button type="button" onClick={resetFilters} className="mt-2 block w-full text-[11px] font-medium text-blue-600 hover:underline dark:text-blue-400 cursor-pointer">Reset filter</button>}</td></tr>}
                 <AnimatePresence initial={false}>
                   {rows.map((item, i) => (
                     <motion.tr key={item.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: Math.min(i, 12) * 0.02, duration: 0.2 }} className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                       <td className="px-4 py-2"><p title={item.name} className="truncate font-medium text-slate-800 dark:text-slate-200">{item.name}</p><p className="text-[10px] text-slate-400">#{item.id}</p></td>
-                      <td className="px-3 py-2">{item.m_company ? <span title={item.m_company.name} className="inline-flex max-w-full items-center gap-1.5 truncate text-slate-600 dark:text-slate-300"><Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="truncate">{item.m_company.name}</span></span> : <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><Globe className="h-3 w-3" />Semua PT</span>}</td>
-                      <td className="px-3 py-2">{item.m_brand ? <span title={item.m_brand.name} className="inline-flex max-w-full items-center gap-1.5 truncate text-slate-600 dark:text-slate-300"><Tag className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="truncate">{item.m_brand.name}</span></span> : <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"><Globe className="h-3 w-3" />Semua brand</span>}</td>
+                      <td className="px-3 py-2">{item.m_company ? <span title={item.m_company.name} className="inline-flex max-w-full items-center gap-1.5 truncate text-slate-600 dark:text-slate-300"><Building2 className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="truncate">{item.m_company.name}</span></span> : <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"><Globe className="h-3 w-3" />All companies</span>}</td>
+                      <td className="px-3 py-2">{item.m_brand ? <span title={item.m_brand.name} className="inline-flex max-w-full items-center gap-1.5 truncate text-slate-600 dark:text-slate-300"><Tag className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span className="truncate">{item.m_brand.name}</span></span> : <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"><Globe className="h-3 w-3" />All brands</span>}</td>
                       <td className="px-3 py-2 text-[10px]">
-                        {!isUsed(item) ? <span className="text-slate-400">Belum dipakai</span> : (
+                        {!isUsed(item) ? <span className="text-slate-400">Unused</span> : (
                           <span className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-300">
                             {!item.can_delete && <LockKeyhole className="h-3 w-3 shrink-0 text-slate-400" />}
-                            <InlineHelp summary={`${item.usage_locked + item.usage_draft} item plan`} label={`Penggunaan ${item.name}`}>
-                              {item.usage_locked > 0 ? `${item.usage_locked} item di plan yang sudah diajukan/disetujui/ditolak — cabang terkunci dari penghapusan untuk menjaga riwayat. Ubah namanya bila perlu.` : ''}
-                              {item.usage_draft > 0 ? ` ${item.usage_draft} item di plan Draft — referensinya akan dilepas bila cabang dihapus.` : ''}
+                            <InlineHelp summary={`${item.usage_locked + item.usage_draft} plan ${item.usage_locked + item.usage_draft === 1 ? 'item' : 'items'}`} label={`Usage of ${item.name}`}>
+                              {item.usage_locked > 0 ? `${item.usage_locked} item(s) in submitted, approved or rejected plans — the branch is locked from deletion to keep history. Rename it if needed.` : ''}
+                              {item.usage_draft > 0 ? ` ${item.usage_draft} item(s) in Draft plans — the reference is cleared if the branch is deleted.` : ''}
                             </InlineHelp>
                           </span>
                         )}
@@ -230,10 +243,10 @@ export default function MarketingBranchPage() {
                       <td className="px-3 py-1.5">
                         {canWrite ? (
                           <div className="flex items-center justify-end gap-0.5">
-                            <button type="button" title={`Ubah ${item.name}`} onClick={() => openForm(item)} className={`${actionClass} hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10`}><Edit3 className="h-3.5 w-3.5" /></button>
-                            <span title={item.can_delete ? `Hapus ${item.name}` : 'Dipakai di plan non-draft — tidak bisa dihapus'}><button type="button" aria-label={`Hapus ${item.name}`} disabled={!item.can_delete} onClick={() => openDelete(item)} className={`${actionClass} enabled:hover:bg-rose-50 enabled:hover:text-rose-600 dark:enabled:hover:bg-rose-500/10`}><Trash2 className="h-3.5 w-3.5" /></button></span>
+                            <button type="button" title={`Edit ${item.name}`} onClick={() => openForm(item)} className={`${actionClass} hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10`}><Edit3 className="h-3.5 w-3.5" /></button>
+                            <span title={item.can_delete ? `Delete ${item.name}` : 'Used in non-draft plans — cannot be deleted'}><button type="button" aria-label={`Delete ${item.name}`} disabled={!item.can_delete} onClick={() => openDelete(item)} className={`${actionClass} enabled:hover:bg-rose-50 enabled:hover:text-rose-600 dark:enabled:hover:bg-rose-500/10`}><Trash2 className="h-3.5 w-3.5" /></button></span>
                           </div>
-                        ) : <span className="block text-right text-[10px] text-slate-400">Lihat saja</span>}
+                        ) : <span className="block text-right text-[10px] text-slate-400">View only</span>}
                       </td>
                     </motion.tr>
                   ))}
@@ -244,19 +257,20 @@ export default function MarketingBranchPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-slate-400 dark:border-slate-800">
-          <label className="flex items-center gap-2">Baris per halaman
+          <label className="flex items-center gap-2">Rows per page
             <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">{[25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}</select>
           </label>
           <div className="flex items-center gap-3">
-            <span className="tabular-nums">{filtered.length ? `${start + 1}–${Math.min(start + pageSize, filtered.length)}` : '0'} dari {filtered.length}</span>
+            <span className="tabular-nums">{filtered.length ? `${start + 1}–${Math.min(start + pageSize, filtered.length)}` : '0'} of {filtered.length}</span>
             <div className="flex items-center gap-1">
-              <button type="button" aria-label="Halaman sebelumnya" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronLeft className="h-4 w-4" /></button>
               <span className="min-w-10 text-center tabular-nums">{currentPage} / {totalPages}</span>
-              <button type="button" aria-label="Halaman berikutnya" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronRight className="h-4 w-4" /></button>
+              <button type="button" aria-label="Next page" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>
         </div>
       </div>
+      )}
 
       {/* Form drawer */}
       <AnimatePresence>
@@ -265,36 +279,36 @@ export default function MarketingBranchPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDrawer(false)} className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[2px]" />
             <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 260 }} className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
               <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-                <div><h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{editingItem ? 'Ubah cabang sasaran' : 'Tambah cabang sasaran'}</h3><p className="mt-0.5 text-[11px] text-slate-400">Kosongkan PT/brand bila cabang berlaku untuk semua plan.</p></div>
-                <button type="button" aria-label="Tutup" onClick={() => setShowDrawer(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4" /></button>
+                <div><h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{editingItem ? 'Edit target branch' : 'Add target branch'}</h3><p className="mt-0.5 text-[11px] text-slate-400">Leave company/brand empty if the branch applies to every plan.</p></div>
+                <button type="button" aria-label="Close" onClick={() => setShowDrawer(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4" /></button>
               </div>
               <form onSubmit={handleSubmit} className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
                 <div>
-                  <label htmlFor="branch-name" className={label}>Nama cabang / toko *</label>
-                  <input id="branch-name" maxLength={100} autoFocus value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Contoh: Plaza Indonesia, Bali Boutique" className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
+                  <label htmlFor="branch-name" className={label}>Branch / store name *</label>
+                  <input id="branch-name" maxLength={100} autoFocus value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g. Plaza Indonesia, Bali Boutique" className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" />
                 </div>
                 <div>
-                  <span className={label}>PT</span>
+                  <span className={label}>Company</span>
                   <SearchableSelect value={formData.company_id} onChange={companyId => setFormData(prev => {
                     const brand = brands.find(b => String(b.id) === String(prev.brand_id));
                     const keepBrand = !companyId || !brand?.company_id || String(brand.company_id) === String(companyId);
                     return { ...prev, company_id: companyId, brand_id: keepBrand ? prev.brand_id : '' };
-                  })} options={companies} placeholder="Semua PT (universal)" allOptionLabel="Semua PT (universal)" searchPlaceholder="Cari PT..." />
+                  })} options={companies} placeholder="All companies (universal)" allOptionLabel="All companies (universal)" searchPlaceholder="Search company..." />
                 </div>
                 <div>
                   <span className={label}>Brand</span>
                   <SearchableSelect value={formData.brand_id} onChange={brandId => setFormData(prev => {
                     const brand = brands.find(b => String(b.id) === String(brandId));
                     return { ...prev, brand_id: brandId, company_id: brand?.company_id ? String(brand.company_id) : prev.company_id };
-                  })} options={brandsFor(formData.company_id)} placeholder="Semua brand (universal)" allOptionLabel="Semua brand (universal)" searchPlaceholder="Cari brand..." subtitleKey="company_name" />
-                  <p className="mt-1 text-[10px] text-slate-400">Memilih brand otomatis mengisi PT pemilik brand tersebut.</p>
+                  })} options={brandsFor(formData.company_id)} placeholder="All brands (universal)" allOptionLabel="All brands (universal)" searchPlaceholder="Search brand..." subtitleKey="company_name" />
+                  <p className="mt-1 text-[10px] text-slate-400">Choosing a brand fills in the company that owns it.</p>
                 </div>
-                {editingItem && isUsed(editingItem) && <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">Cabang ini dipakai di {editingItem.usage_locked + editingItem.usage_draft} item plan. Perubahan nama akan terlihat di plan tersebut.</p>}
+                {editingItem && isUsed(editingItem) && <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">This branch is used in {editingItem.usage_locked + editingItem.usage_draft} plan item(s). A new name will show on those plans.</p>}
                 {formError && <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="h-4 w-4" />{formError}</div>}
               </form>
               <div className="flex gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
-                <button type="button" onClick={() => setShowDrawer(false)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Batal</button>
-                <button type="button" onClick={handleSubmit} disabled={submitting || !formData.name.trim()} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Simpan</button>
+                <button type="button" onClick={() => setShowDrawer(false)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Cancel</button>
+                <button type="button" onClick={handleSubmit} disabled={submitting || !formData.name.trim()} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Save</button>
               </div>
             </motion.aside>
           </>
@@ -309,13 +323,13 @@ export default function MarketingBranchPage() {
             <motion.div initial={{ scale: 0.96, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.96, opacity: 0 }} className="relative w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><Trash2 className="h-5 w-5" /></span>
               <div>
-                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Hapus cabang?</h4>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">“{deleteTarget.name}” akan dihapus permanen.{draftConfirm > 0 && ` Referensinya di ${draftConfirm} item plan Draft akan dikosongkan.`}</p>
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Delete branch?</h4>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">“{deleteTarget.name}” will be deleted permanently.{draftConfirm > 0 && ` Its reference on ${draftConfirm} Draft plan item(s) will be cleared.`}</p>
               </div>
               {deleteError && <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{deleteError}</div>}
               <div className="flex gap-2">
-                <button type="button" onClick={() => setDeleteTarget(null)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Batal</button>
-                <button type="button" onClick={handleDeleteConfirm} disabled={submitting} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Hapus</button>
+                <button type="button" onClick={() => setDeleteTarget(null)} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Cancel</button>
+                <button type="button" onClick={handleDeleteConfirm} disabled={submitting} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer">{submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Delete</button>
               </div>
             </motion.div>
           </div>
