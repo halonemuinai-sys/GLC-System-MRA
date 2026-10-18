@@ -8,6 +8,7 @@ import Cookies from 'js-cookie';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getLandingPath } from '@/lib/roleLanding';
+import { saveUserRoles } from '@/lib/userRoles';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2,
@@ -200,7 +201,7 @@ export default function LoginPage() {
         
         // Save essential user info in cookies (non-httpOnly for sidebar role checking)
         Cookies.set('glc_user_name', response.user.full_name, { expires: 1 });
-        Cookies.set('glc_user_role', response.user.role, { expires: 1 });
+        saveUserRoles(response.user); // glc_user_role (primary) + glc_user_roles (all roles)
 
         // Redirect to the landing page appropriate for this user's role
         router.refresh();

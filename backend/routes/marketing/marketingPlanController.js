@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const prisma = require('../../api/db');
 const { sendMail } = require('../../api/mailer');
-const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope } = require('./marketingHelper');
+const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope, canManageDoc, seesAllMarketingDocs, hasRole } = require('./marketingHelper');
 const { evaluateLateSubmission, closingWindow } = require('./marketingGovernance');
 
 // Vendor on a plan item: an id from the vendor master, or a typed name. A name that is not in
@@ -298,6 +298,7 @@ async function updatePlan(req, res, next) {
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(existingPlan.company_id)) {
       return res.status(404).json({ error: 'Marketing Plan not found.' });
     }
+    if (!canManageDoc(req, existingPlan.creator_id, employee)) return res.status(403).json({ error: 'Only the plan creator or a Marketing Manager can change this plan.' });
 
     const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason,
       target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes, late_submission_reason } = req.body;
@@ -402,6 +403,8 @@ async function submitPlan(req, res, next) {
     });
     if (!existingPlan) return res.status(404).json({ error: 'Marketing Plan not found.' });
     if (existingPlan.status !== 'DRAFT') return res.status(400).json({ error: 'Hanya rencana berstatus DRAFT yang dapat diajukan.' });
+    if (!req.companyScope?.all && !req.companyScope?.companyIds.includes(existingPlan.company_id)) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!canManageDoc(req, existingPlan.creator_id, employee)) return res.status(403).json({ error: 'Only the plan creator or a Marketing Manager can change this plan.' });
 
     const lateCheck = evaluateLateSubmission(
       existingPlan.event_start_date || existingPlan.start_date,
@@ -525,9 +528,9 @@ async function recallPlan(req, res, next) {
     const hasApprovedStep = existingPlan.approval_history.some(h => h.status === 'APPROVED');
     if (hasApprovedStep) return res.status(400).json({ error: 'Rencana tidak dapat ditarik kembali karena sudah ada step approval yang disetujui.' });
 
-    const userRole = (req.user.role || '').toUpperCase();
-    if (userRole !== 'ADMIN' && existingPlan.creator_id !== employee.id) {
-      return res.status(403).json({ error: 'Anda hanya dapat menarik kembali rencana yang Anda buat sendiri.' });
+    if (!req.companyScope?.all && !req.companyScope?.companyIds.includes(existingPlan.company_id)) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!canManageDoc(req, existingPlan.creator_id, employee)) {
+      return res.status(403).json({ error: 'Only the plan creator or a Marketing Manager can recall this plan.' });
     }
 
     await prisma.$transaction(async (tx) => {
@@ -576,6 +579,8 @@ async function updatePlanActuals(req, res, next) {
     const existingPlan = await prisma.marketing_plans.findUnique({ where: { id: planId } });
     if (!existingPlan) return res.status(404).json({ error: 'Marketing Plan not found.' });
     if (existingPlan.status !== 'APPROVED') return res.status(400).json({ error: 'Data aktual hanya dapat diinput pada rencana berstatus APPROVED.' });
+    if (!req.companyScope?.all && !req.companyScope?.companyIds.includes(existingPlan.company_id)) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!canManageDoc(req, existingPlan.creator_id, employee)) return res.status(403).json({ error: 'Only the plan creator or a Marketing Manager can change this plan.' });
 
     const { actual_sales, actual_leads, actual_reach, actual_impressions, actual_roi_pct, actual_notes } = req.body;
 
@@ -619,6 +624,7 @@ async function revisePlan(req, res, next) {
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(existingPlan.company_id)) {
       return res.status(404).json({ error: 'Marketing Plan not found.' });
     }
+    if (!canManageDoc(req, existingPlan.creator_id, employee)) return res.status(403).json({ error: 'Only the plan creator or a Marketing Manager can change this plan.' });
 
     const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason,
       target_sales, target_leads, target_reach, target_impressions, target_roi_pct, target_notes, late_submission_reason } = req.body;
@@ -843,6 +849,11 @@ async function getPlans(req, res, next) {
       filters.AND = [dateCondition(startFields, { lt: end }), dateCondition(endFields, { gte: start })];
     }
     if (status) filters.status = status;
+    // Marketing staff only list the plans they created; managers, finance, GA and auditors see the whole scope.
+    if (req.user && !seesAllMarketingDocs(req)) {
+      const employee = await resolveEmployee(req.user.email);
+      filters.creator_id = employee?.id || -1;
+    }
     if (search) {
       filters.OR = [
         { title: { contains: search, mode: 'insensitive' } },
@@ -983,6 +994,12 @@ async function getPlanDetail(req, res, next) {
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(plan.company_id)) {
       return res.status(404).json({ error: 'Marketing Plan not found.' });
     }
+    if (!seesAllMarketingDocs(req)) {
+      const employee = await resolveEmployee(req.user.email);
+      const email = String(req.user.email || '').toLowerCase();
+      const isApprover = (plan.approvers || []).some(a => String(a.approver_email || '').toLowerCase() === email);
+      if (!(employee && plan.creator_id === employee.id) && !isApprover) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    }
 
     // Hitung committed_amount (PENDING+APPROVED payments) per item secara batch
     const itemIds = plan.items.map(i => i.id);
@@ -1038,11 +1055,10 @@ async function deletePlan(req, res, next) {
       return res.status(404).json({ error: 'Marketing Plan not found.' });
     }
 
-    const isAdmin = req.user.role?.toLowerCase() === 'admin';
-    const isCreator = employee && plan.creator_id === employee.id;
-
-    if (!isAdmin && !isCreator) {
-      return res.status(403).json({ error: 'Forbidden. Only the creator or admin can delete this plan.' });
+    const isAdmin = hasRole(req, 'admin');
+    if (!req.companyScope?.all && !req.companyScope?.companyIds.includes(plan.company_id)) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!canManageDoc(req, plan.creator_id, employee)) {
+      return res.status(403).json({ error: 'Only the plan creator, a Marketing Manager or an admin can delete this plan.' });
     }
 
     // Hanya admin yang berhak menghapus plan berstatus APPROVED, COMPLETED, atau PENDING_APPROVAL

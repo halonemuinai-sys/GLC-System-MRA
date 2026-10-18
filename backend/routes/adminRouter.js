@@ -7,11 +7,12 @@ const bcrypt = require('bcryptjs');
 // SHARED HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 const { ROLES, buildAccessMap } = require('../api/accessMap');
+const { cleanExtraRoles } = require('../api/roles');
 const { forgetUserState } = require('../api/authMiddleware');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
-const USER_SELECT = { id: true, full_name: true, email: true, phone: true, department: true, position: true, role: true, is_active: true, created_at: true };
+const USER_SELECT = { id: true, full_name: true, email: true, phone: true, department: true, position: true, role: true, extra_roles: true, is_active: true, created_at: true };
 const cleanText = (v, max) => (v === undefined ? undefined : (v === null ? null : String(v).trim().slice(0, max) || null));
 
 // Admin actions are written to audit_log so the audit tab shows who changed what.
@@ -47,7 +48,7 @@ router.get('/users', async (req, res, next) => {
         { position: { contains: search, mode: 'insensitive' } }
       ];
     }
-    if (role) whereClause.role = role;
+    if (role) whereClause.OR = [{ role }, { extra_roles: { has: role } }];
     if (status !== undefined && status !== '') whereClause.is_active = status === 'true';
 
     const users = await prisma.m_user.findMany({
@@ -73,13 +74,14 @@ router.post('/users', async (req, res, next) => {
     if (!EMAIL_REGEX.test(email) || email.length > 150) return res.status(400).json({ error: 'Invalid email format.' });
     if (!ROLES.includes(role)) return res.status(400).json({ error: 'Select a valid role.' });
     if (password.length < MIN_PASSWORD) return res.status(400).json({ error: `Password must be at least ${MIN_PASSWORD} characters.` });
+    const extra_roles = cleanExtraRoles(req.body.extra_roles, role);
 
     const existing = await prisma.m_user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
     if (existing) return res.status(400).json({ error: 'This email is already registered.' });
 
     const newUser = await prisma.m_user.create({
       data: {
-        full_name, email, role,
+        full_name, email, role, extra_roles,
         phone: cleanText(req.body.phone, 30),
         department: cleanText(req.body.department, 100),
         position: cleanText(req.body.position, 100),
@@ -88,7 +90,7 @@ router.post('/users', async (req, res, next) => {
       },
       select: USER_SELECT
     });
-    await logAudit(req, { table: 'm_user', action: 'CREATE', recordId: newUser.id, newData: { email, role, full_name } });
+    await logAudit(req, { table: 'm_user', action: 'CREATE', recordId: newUser.id, newData: { email, role, extra_roles, full_name } });
     res.status(201).json(newUser);
   } catch (err) {
     if (err.code === 'P2002') return res.status(400).json({ error: 'This email is already registered.' });
@@ -123,6 +125,10 @@ router.put('/users/:id', async (req, res, next) => {
       if (!ROLES.includes(role)) return res.status(400).json({ error: 'Select a valid role.' });
       data.role = role;
     }
+    // Additional roles never include admin or the primary role; re-cleaned when the primary role changes.
+    if (req.body.extra_roles !== undefined || data.role !== undefined) {
+      data.extra_roles = cleanExtraRoles(req.body.extra_roles !== undefined ? req.body.extra_roles : current.extra_roles, data.role || current.role);
+    }
     if (req.body.is_active !== undefined) {
       if (typeof req.body.is_active !== 'boolean') return res.status(400).json({ error: 'Invalid active status.' });
       data.is_active = req.body.is_active;
@@ -131,7 +137,8 @@ router.put('/users/:id', async (req, res, next) => {
     // Guard rails: an admin cannot lock themselves out, and the last active admin stays.
     const isSelf = userId === Number(req.user?.id);
     const losesAdmin = current.role === 'admin' && current.is_active && ((data.role && data.role !== 'admin') || data.is_active === false);
-    if (isSelf && (data.is_active === false || (data.role && data.role !== current.role))) {
+    const extraChanged = data.extra_roles !== undefined && JSON.stringify([...data.extra_roles].sort()) !== JSON.stringify([...(current.extra_roles || [])].sort());
+    if (isSelf && (data.is_active === false || (data.role && data.role !== current.role) || extraChanged)) {
       return res.status(400).json({ error: 'You cannot deactivate your own account or change your own role.' });
     }
     if (losesAdmin && (await activeAdminCount(userId)) === 0) {
@@ -141,7 +148,8 @@ router.put('/users/:id', async (req, res, next) => {
     const updatedUser = await prisma.m_user.update({ where: { id: userId }, data, select: USER_SELECT });
     forgetUserState(userId);
 
-    const changed = Object.keys(data).filter(k => data[k] !== undefined && data[k] !== current[k]);
+    const same = (a, b) => (Array.isArray(a) || Array.isArray(b) ? JSON.stringify([...(a || [])].sort()) === JSON.stringify([...(b || [])].sort()) : a === b);
+    const changed = Object.keys(data).filter(k => data[k] !== undefined && !same(data[k], current[k]));
     if (changed.length) {
       await logAudit(req, {
         table: 'm_user', action: 'UPDATE', recordId: userId,
@@ -230,9 +238,11 @@ router.get('/access-map', async (req, res, next) => {
   try {
     const [map, roleCounts] = await Promise.all([
       Promise.resolve(buildAccessMap()),
-      prisma.m_user.groupBy({ by: ['role'], where: { is_active: true }, _count: { _all: true } })
+      prisma.m_user.findMany({ where: { is_active: true }, select: { role: true, extra_roles: true } })
     ]);
-    const users = Object.fromEntries(roleCounts.map(r => [r.role, r._count._all]));
+    // A user counts once for every role they hold (primary + additional).
+    const users = {};
+    for (const u of roleCounts) for (const r of new Set([u.role, ...(u.extra_roles || [])])) users[r] = (users[r] || 0) + 1;
     res.json({ ...map, roles: map.roles.map(r => ({ ...r, active_users: users[r.key] || 0 })) });
   } catch (err) {
     next(err);

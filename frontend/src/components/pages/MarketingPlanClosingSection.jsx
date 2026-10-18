@@ -5,6 +5,7 @@ import {
   Loader2, Save, Send, Check, Ban, Upload, ExternalLink, AlertTriangle, CheckCircle, XCircle, Clock, Receipt, Target, CalendarClock
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { hasRole } from '@/lib/userRoles';
 import Cookies from 'js-cookie';
 import InlineHelp from '@/components/ui/InlineHelp';
 
@@ -63,7 +64,7 @@ async function uploadProof(file) {
 
 // Closing Marketing Plan: biaya final per item vs dibayar (kelebihan / claim) + evaluasi KPI,
 // diajukan ke Marketing Head (tahap 1) lalu Kadiv (tahap 2). Disetujui semua -> plan COMPLETED.
-export default function MarketingPlanClosingSection({ planId, planStatus, userRole, onChanged }) {
+export default function MarketingPlanClosingSection({ planId, planStatus, userRoles = [], onChanged }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -77,8 +78,8 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
   const [decision, setDecision] = useState(null); // null | 'approve' | 'reject'
   const [decisionText, setDecisionText] = useState('');
 
-  const isAdmin = userRole === 'admin' || userRole === 'superadmin';
-  const canEditRole = isAdmin || userRole === 'marketing';
+  const isAdmin = hasRole(userRoles, 'admin');
+  const canEditRole = isAdmin || hasRole(userRoles, 'marketing', 'marketing_manager');
 
   const applyResponse = useCallback((res) => {
     setData(res);

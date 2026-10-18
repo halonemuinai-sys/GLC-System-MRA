@@ -1,5 +1,7 @@
 const prisma = require('../../api/db');
-const { resolveEmployee, FRONTEND_URL } = require('./marketingHelper');
+const { resolveEmployee, FRONTEND_URL, canManageDoc, hasRole, seesAllMarketingDocs } = require('./marketingHelper');
+
+const planInScope = (req, plan) => !req.companyScope || req.companyScope.all || req.companyScope.companyIds.includes(plan.company_id);
 const { sendAmendmentNotifEmail } = require('../../api/mailer');
 
 const AMENDMENT_INCLUDE = {
@@ -15,7 +17,8 @@ async function createAmendment(req, res, next) {
     if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
 
     const plan = await prisma.marketing_plans.findUnique({ where: { id: planId } });
-    if (!plan) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!plan || !planInScope(req, plan)) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!canManageDoc(req, plan.creator_id, employee)) return res.status(403).json({ error: 'Only the plan creator or a Marketing Manager can propose an amendment.' });
     if (!['APPROVED', 'COMPLETED'].includes(plan.status)) {
       return res.status(400).json({ error: 'Amendment hanya bisa dibuat untuk plan berstatus APPROVED atau COMPLETED.' });
     }
@@ -81,6 +84,12 @@ async function createAmendment(req, res, next) {
 async function listAmendments(req, res, next) {
   try {
     const planId = parseInt(req.params.id, 10);
+    const plan = await prisma.marketing_plans.findUnique({ where: { id: planId }, select: { company_id: true, creator_id: true } });
+    if (!plan || !planInScope(req, plan)) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!seesAllMarketingDocs(req)) {
+      const employee = await resolveEmployee(req.user.email);
+      if (!employee || employee.id !== plan.creator_id) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    }
     const amendments = await prisma.marketing_plan_amendments.findMany({
       where: { marketing_plan_id: planId },
       include: AMENDMENT_INCLUDE,
@@ -121,8 +130,8 @@ async function submitAmendment(req, res, next) {
 
     const amendment = await prisma.marketing_plan_amendments.findUnique({ where: { id } });
     if (!amendment) return res.status(404).json({ error: 'Amendment not found.' });
-    if (amendment.creator_id !== employee.id && req.user.role?.toLowerCase() !== 'admin') {
-      return res.status(403).json({ error: 'Hanya pembuat amendment atau admin yang bisa mengajukan.' });
+    if (!canManageDoc(req, amendment.creator_id, employee)) {
+      return res.status(403).json({ error: 'Only the amendment creator or a Marketing Manager can submit it.' });
     }
     if (amendment.status !== 'DRAFT') {
       return res.status(400).json({ error: 'Hanya amendment berstatus DRAFT yang bisa diajukan.' });
@@ -165,9 +174,8 @@ async function reviewAmendment(req, res, next) {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) return res.status(403).json({ error: 'User not found.' });
 
-    const userRole = (req.user.role || '').toLowerCase();
-    if (!['admin', 'manager', 'finance'].includes(userRole)) {
-      return res.status(403).json({ error: 'Hanya admin/manager/finance yang bisa me-review amendment.' });
+    if (!hasRole(req, 'admin', 'manager', 'marketing_manager', 'finance')) {
+      return res.status(403).json({ error: 'Only an admin, manager, Marketing Manager or Finance can review amendments.' });
     }
     if (!['APPROVE', 'REJECT'].includes(action)) {
       return res.status(400).json({ error: 'Action harus APPROVE atau REJECT.' });
@@ -300,8 +308,7 @@ async function deleteAmendment(req, res, next) {
     if (!amendment) return res.status(404).json({ error: 'Amendment not found.' });
     if (amendment.status !== 'DRAFT') return res.status(400).json({ error: 'Hanya amendment DRAFT yang bisa dihapus.' });
 
-    const isAdmin = req.user.role?.toLowerCase() === 'admin';
-    if (!isAdmin && amendment.creator_id !== employee.id) {
+    if (!canManageDoc(req, amendment.creator_id, employee)) {
       return res.status(403).json({ error: 'Anda tidak memiliki akses untuk menghapus amendment ini.' });
     }
 

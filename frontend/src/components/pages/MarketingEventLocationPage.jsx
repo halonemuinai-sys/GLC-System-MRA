@@ -6,8 +6,8 @@ import {
   MapPin, Search, Plus, X, Edit3, Trash2, Loader2, ChevronLeft, ChevronRight,
   AlertTriangle, RefreshCw, LockKeyhole, Link2, CircleDashed
 } from 'lucide-react';
-import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 import InlineHelp from '@/components/ui/InlineHelp';
 
 const USAGE_FILTERS = [['all', 'All'], ['used', 'Used in plans'], ['unused', 'Unused']];
@@ -20,7 +20,8 @@ export default function MarketingEventLocationPage() {
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [canWrite, setCanWrite] = useState(false);
-  useEffect(() => { setCanWrite(['admin', 'marketing'].includes((Cookies.get('glc_user_role') || '').toLowerCase())); }, []);
+  // Master data is maintained by Marketing Managers (and admin); staff can view.
+  useEffect(() => { setCanWrite(hasRole(getUserRoles(), 'admin', 'marketing_manager')); }, []);
 
   const [search, setSearch] = useState('');
   const [usageFilter, setUsageFilter] = useState('all');

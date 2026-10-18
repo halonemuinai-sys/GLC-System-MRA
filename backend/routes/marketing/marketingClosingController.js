@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const prisma = require('../../api/db');
-const { resolveEmployee, FRONTEND_URL } = require('./marketingHelper');
+const { resolveEmployee, FRONTEND_URL, canManageDoc } = require('./marketingHelper');
 const { sendPlanClosingApprovalEmail, sendMail } = require('../../api/mailer');
 const { closingWindow, computeKpi } = require('./marketingGovernance');
 
@@ -134,6 +134,8 @@ async function guardEditable(req, res, planId) {
   const plan = await loadPlan(planId);
   if (!plan || !inScope(req, plan)) { res.status(404).json({ error: 'Marketing Plan not found.' }); return null; }
   if (plan.status !== 'APPROVED') { res.status(400).json({ error: 'Closing hanya bisa diisi untuk plan berstatus APPROVED.' }); return null; }
+  const employee = await resolveEmployee(req.user?.email);
+  if (!canManageDoc(req, plan.creator_id, employee)) { res.status(403).json({ error: 'Only the plan creator or a Marketing Manager can fill in the closing.' }); return null; }
   const existing = await loadClosing(planId);
   if (existing && ['PENDING_APPROVAL', 'APPROVED'].includes(existing.status)) {
     res.status(400).json({ error: 'Closing sedang menunggu / sudah disetujui, tidak bisa diubah.' });

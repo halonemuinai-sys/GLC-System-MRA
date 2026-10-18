@@ -6,8 +6,8 @@ import {
   Scale, Activity, Loader2, AlertTriangle, ChevronDown, ChevronRight, ExternalLink, ShieldCheck,
   CheckCircle2, FileSpreadsheet, BadgeCheck, Clock
 } from 'lucide-react';
-import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 
 const formatIDR = (val) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(val || 0));
@@ -102,10 +102,10 @@ export default function MarketingReconciliationPage() {
   const [expanded, setExpanded] = useState({});
   const [busyKey, setBusyKey] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [userRole, setUserRole] = useState('');
+  const [userRoles, setUserRoles] = useState([]);
 
   useEffect(() => {
-    setUserRole((Cookies.get('glc_user_role') || '').toLowerCase());
+    setUserRoles(getUserRoles());
     apiClient.get('/api/marketing/metadata')
       .then(m => {
         setCompanies(m.companies || []);
@@ -114,7 +114,7 @@ export default function MarketingReconciliationPage() {
       .catch(() => setCompanies([]));
   }, []);
 
-  const isFinance = ['finance', 'admin', 'superadmin'].includes(userRole);
+  const isFinance = hasRole(userRoles, 'finance', 'admin');
   const companyName = companies.find(c => String(c.id) === String(data?.company_id))?.name || '';
 
   async function load() {

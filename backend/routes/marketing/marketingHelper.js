@@ -1,6 +1,17 @@
 const crypto = require('crypto');
 const prisma = require('../../api/db');
 const { sendApprovalMagicLinkEmail, sendPaymentStatusEmail, sendPlanStatusEmail } = require('../../api/mailer');
+const { hasRole } = require('../../api/roles');
+
+// ── Marketing document ownership ────────────────────────────────────────────
+// marketing (staff)  : sees and changes only plans / payments they created.
+// marketing_manager  : sees and changes every document in their company scope.
+// admin              : everything. finance / ga / auditor keep their own read rules.
+const MARKETING_MANAGERS = ['admin', 'marketing_manager'];
+const SEES_ALL_MARKETING_DOCS = ['admin', 'marketing_manager', 'finance', 'ga', 'auditor'];
+const isMarketingManager = req => hasRole(req, MARKETING_MANAGERS);
+const seesAllMarketingDocs = req => hasRole(req, SEES_ALL_MARKETING_DOCS);
+const canManageDoc = (req, creatorId, employee) => isMarketingManager(req) || (!!employee && creatorId === employee.id);
 
 const MAGIC_LINK_EXPIRY_DAYS = 7;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
@@ -337,6 +348,10 @@ async function dispatchPlanStatusEmail(result, task, comment) {
 
 module.exports = {
   applyCompanyScope,
+  isMarketingManager,
+  seesAllMarketingDocs,
+  canManageDoc,
+  hasRole,
   resolveEmployee,
   resolveApproverContact,
   queueMagicLink,

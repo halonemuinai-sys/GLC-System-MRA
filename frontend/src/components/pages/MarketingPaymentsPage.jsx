@@ -9,7 +9,7 @@ import {
   Paperclip, ShieldCheck, Hash, Hourglass
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
-import Cookies from 'js-cookie';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 
 const THIS_YEAR = new Date().getFullYear();
 const FISCAL_YEAR_OPTIONS = [THIS_YEAR - 1, THIS_YEAR, THIS_YEAR + 1, THIS_YEAR + 2].map(String);
@@ -48,7 +48,7 @@ const approvalProgress = (p) => {
   return { done: steps.filter(h => h.status === 'APPROVED').length, pending };
 };
 
-function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
+function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
   const [busy, setBusy] = useState(null);
   const [actionError, setActionError] = useState('');
   const [reviewNote, setReviewNote] = useState('');
@@ -64,10 +64,10 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
   const pendingTask = history.find(h => h.status === 'PENDING');
   const partiallyApproved = history.some(h => h.status === 'APPROVED');
   const isOpen = ['PENDING', 'OVERBUDGET_WARN'].includes(payment.status);
-  const canReview = isClaim && payment.status === 'PENDING' && userRole === 'finance' && pendingTask;
-  const canDelete = isOpen && !partiallyApproved && ['admin', 'marketing'].includes(userRole);
-  const canMarkPaid = payment.status === 'APPROVED' && (['admin', 'ga'].includes(userRole) || (isClaim && userRole === 'finance'));
-  const canSetPo = ['APPROVED', 'PAID'].includes(payment.status) && ['admin', 'ga'].includes(userRole) && !isClaim;
+  const canReview = isClaim && payment.status === 'PENDING' && hasRole(userRoles, 'finance') && pendingTask;
+  const canDelete = isOpen && !partiallyApproved && hasRole(userRoles, 'admin', 'marketing', 'marketing_manager');
+  const canMarkPaid = payment.status === 'APPROVED' && (isClaim ? hasRole(userRoles, 'finance', 'admin', 'ga') : hasRole(userRoles, 'admin', 'ga'));
+  const canSetPo = ['APPROVED', 'PAID'].includes(payment.status) && hasRole(userRoles, 'admin', 'ga') && !isClaim;
 
   // Issued GA purchase orders that contain this payment's plan item.
   useEffect(() => {
@@ -222,7 +222,7 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
 }
 
 export default function MarketingPaymentsPage() {
-  const userRole = useMemo(() => (typeof window !== 'undefined' ? (Cookies.get('glc_user_role') || '').toLowerCase() : ''), []);
+  const userRoles = useMemo(() => getUserRoles(), []);
 
   const [payments, setPayments] = useState([]);
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
@@ -536,7 +536,7 @@ export default function MarketingPaymentsPage() {
       )}
 
       <AnimatePresence>
-        {selectedPayment && <PaymentDetailModal key={selectedPayment.id} payment={selectedPayment} onClose={() => setSelectedPayment(null)} onChanged={onChanged} userRole={userRole} />}
+        {selectedPayment && <PaymentDetailModal key={selectedPayment.id} payment={selectedPayment} onClose={() => setSelectedPayment(null)} onChanged={onChanged} userRoles={userRoles} />}
       </AnimatePresence>
     </div>
   );

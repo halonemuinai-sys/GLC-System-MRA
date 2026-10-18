@@ -6,8 +6,8 @@ import {
   Building, Building2, Tag, Globe, Search, Plus, X, Edit3, Trash2, Loader2,
   ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, LockKeyhole, Link2
 } from 'lucide-react';
-import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import InlineHelp from '@/components/ui/InlineHelp';
 
@@ -23,7 +23,8 @@ export default function MarketingBranchPage() {
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [canWrite, setCanWrite] = useState(false);
-  useEffect(() => { setCanWrite(['admin', 'marketing'].includes((Cookies.get('glc_user_role') || '').toLowerCase())); }, []);
+  // Master data is maintained by Marketing Managers (and admin); staff can view.
+  useEffect(() => { setCanWrite(hasRole(getUserRoles(), 'admin', 'marketing_manager')); }, []);
 
   const [search, setSearch] = useState('');
   const [filterCompany, setFilterCompany] = useState('');

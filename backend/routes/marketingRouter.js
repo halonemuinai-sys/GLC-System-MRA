@@ -13,6 +13,15 @@ const governanceController = require('./marketing/marketingGovernanceController'
 
 const router = express.Router();
 
+// Role groups (a user passes when ANY of their roles is listed).
+const MKT_INPUT = ['admin', 'marketing', 'marketing_manager'];          // create / edit own documents
+const MKT_MANAGE = ['admin', 'marketing_manager'];                      // marketing master data & approval setup
+const FIN = ['admin', 'finance'];                                       // budget control & finance verification
+const OVERVIEW = ['admin', 'marketing_manager', 'finance', 'manager', 'auditor'];
+const DIRECTORY = ['admin', 'ga', 'marketing_manager'];                // shared approver directory (Marketing + GA Berita Acara)
+const MKT_READ = ['admin', 'marketing', 'marketing_manager', 'finance', 'ga', 'manager', 'auditor']; // marketing data (scoped; staff see own docs)
+
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -24,52 +33,52 @@ const upload = multer({
 router.get('/metadata', verifyToken, attachCompanyScope, settingsController.getMetadata);
 
 // Plans CRUD & Submission
-router.post('/plans', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.createPlan);
-router.put('/plans/:id', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.updatePlan);
-router.post('/plans/:id/submit', verifyToken, checkRole(['admin', 'marketing']), planController.submitPlan);
-router.post('/plans/:id/recall', verifyToken, checkRole(['admin', 'marketing']), planController.recallPlan);
-router.put('/plans/:id/actuals', verifyToken, checkRole(['admin', 'marketing']), planController.updatePlanActuals);
-router.put('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.revisePlan);
-router.post('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.revisePlan);
+router.post('/plans', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.createPlan);
+router.put('/plans/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.updatePlan);
+router.post('/plans/:id/submit', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.submitPlan);
+router.post('/plans/:id/recall', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.recallPlan);
+router.put('/plans/:id/actuals', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.updatePlanActuals);
+router.put('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.revisePlan);
+router.post('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.revisePlan);
 // Plan Closing (settlement biaya final vs dibayar + approval 1 approver via magic link)
-router.get('/plans/:id/closing', verifyToken, attachCompanyScope, closingController.getClosing);
-router.put('/plans/:id/closing', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), closingController.saveClosing);
-router.post('/plans/:id/closing/submit', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), closingController.submitClosing);
+router.get('/plans/:id/closing', verifyToken, attachCompanyScope, checkRole(MKT_READ), closingController.getClosing);
+router.put('/plans/:id/closing', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), closingController.saveClosing);
+router.post('/plans/:id/closing/submit', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), closingController.submitClosing);
 router.put('/plans/:id/closing/approve', verifyToken, attachCompanyScope, checkRole(['admin']), closingController.approveClosing);
 router.put('/plans/:id/closing/reject', verifyToken, attachCompanyScope, checkRole(['admin']), closingController.rejectClosing);
-router.put('/plans/:id/closing/settle', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), closingController.settleClosing);
+router.put('/plans/:id/closing/settle', verifyToken, attachCompanyScope, checkRole(FIN), closingController.settleClosing);
 router.get('/closing/magic/:token', closingController.getClosingByToken);
 router.post('/closing/magic/:token', closingController.processClosingByToken);
 
 // Governance: pengingat closing (bell) & Quarterly Plan Alignment
-router.get('/notifications', verifyToken, attachCompanyScope, governanceController.getNotifications);
-router.get('/reports/quarterly-alignment', verifyToken, attachCompanyScope, governanceController.getQuarterlyAlignment);
-router.get('/reports/reconciliation', verifyToken, attachCompanyScope, governanceController.getReconciliation);
-router.get('/plans', verifyToken, attachCompanyScope, planController.getPlans);
-router.get('/plans/:id', verifyToken, attachCompanyScope, planController.getPlanDetail);
-router.post('/plans/:id/duplicate', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), planController.duplicatePlan);
-router.delete('/plans/:id', verifyToken, planController.deletePlan);
+router.get('/notifications', verifyToken, attachCompanyScope, checkRole(MKT_READ), governanceController.getNotifications);
+router.get('/reports/quarterly-alignment', verifyToken, attachCompanyScope, checkRole(MKT_READ), governanceController.getQuarterlyAlignment);
+router.get('/reports/reconciliation', verifyToken, attachCompanyScope, checkRole(['admin', 'finance', 'marketing_manager', 'ga', 'manager', 'auditor']), governanceController.getReconciliation);
+router.get('/plans', verifyToken, attachCompanyScope, checkRole(MKT_READ), planController.getPlans);
+router.get('/plans/:id', verifyToken, attachCompanyScope, checkRole(MKT_READ), planController.getPlanDetail);
+router.post('/plans/:id/duplicate', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.duplicatePlan);
+router.delete('/plans/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.deletePlan);
 
 // Plan Amendments
-router.post('/plans/:id/amendments', verifyToken, checkRole(['admin', 'marketing']), amendmentController.createAmendment);
-router.get('/plans/:id/amendments', verifyToken, amendmentController.listAmendments);
-router.get('/amendments/:id', verifyToken, attachCompanyScope, amendmentController.getAmendmentDetail);
-router.post('/amendments/:id/submit', verifyToken, checkRole(['admin', 'marketing']), amendmentController.submitAmendment);
-router.post('/amendments/:id/review', verifyToken, checkRole(['admin', 'manager', 'finance']), amendmentController.reviewAmendment);
-router.delete('/amendments/:id', verifyToken, amendmentController.deleteAmendment);
+router.post('/plans/:id/amendments', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), amendmentController.createAmendment);
+router.get('/plans/:id/amendments', verifyToken, attachCompanyScope, checkRole(MKT_READ), amendmentController.listAmendments);
+router.get('/amendments/:id', verifyToken, attachCompanyScope, checkRole(MKT_READ), amendmentController.getAmendmentDetail);
+router.post('/amendments/:id/submit', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), amendmentController.submitAmendment);
+router.post('/amendments/:id/review', verifyToken, attachCompanyScope, checkRole(['admin', 'manager', 'marketing_manager', 'finance']), amendmentController.reviewAmendment);
+router.delete('/amendments/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), amendmentController.deleteAmendment);
 
 // Claims: one Finance approval, independent of payment approval rules.
-router.post('/claims', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), claimController.createClaim);
+router.post('/claims', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), claimController.createClaim);
 
 // Payments (Payment Requests)
-router.get('/payments', verifyToken, attachCompanyScope, paymentController.getPayments);
-router.get('/payments/:id', verifyToken, attachCompanyScope, paymentController.getPaymentDetail);
-router.post('/payments', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), paymentController.createPaymentRequest);
-router.put('/payments/:id', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), paymentController.updatePayment);
-router.delete('/payments/:id', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing']), paymentController.deletePayment);
+router.get('/payments', verifyToken, attachCompanyScope, checkRole(MKT_READ), paymentController.getPayments);
+router.get('/payments/:id', verifyToken, attachCompanyScope, checkRole(MKT_READ), paymentController.getPaymentDetail);
+router.post('/payments', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), paymentController.createPaymentRequest);
+router.put('/payments/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), paymentController.updatePayment);
+router.delete('/payments/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), paymentController.deletePayment);
 router.post('/payments/:id/mark-paid', verifyToken, attachCompanyScope, checkRole(['admin', 'ga', 'finance']), paymentController.markPaymentPaid);
-router.post('/payments/:id/set-po', verifyToken, attachCompanyScope, checkRole(['admin', 'ga']), paymentController.setPoNumber);
-router.put('/payments/:id/verify', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), paymentController.verifyPayment);
+router.post('/payments/:id/set-po', verifyToken, attachCompanyScope, checkRole(MKT_MANAGE), paymentController.setPoNumber);
+router.put('/payments/:id/verify', verifyToken, attachCompanyScope, checkRole(FIN), paymentController.verifyPayment);
 
 // Approvals & Tasks
 router.get('/tasks', verifyToken, attachCompanyScope, approvalController.getPendingTasks);
@@ -77,59 +86,59 @@ router.post('/approvals/:id', verifyToken, attachCompanyScope, approvalControlle
 router.get('/history', verifyToken, attachCompanyScope, approvalController.getApprovalHistory);
 router.get('/magic/:token', approvalController.getMagicLinkDetail);
 router.post('/magic/:token', approvalController.processMagicLink);
-router.get('/approvals-overview', verifyToken, attachCompanyScope, approvalController.getApprovalsOverview);
+router.get('/approvals-overview', verifyToken, attachCompanyScope, checkRole(OVERVIEW), approvalController.getApprovalsOverview);
 
 // Approval Contacts (Admin only)
-router.get('/approval-contacts', verifyToken, checkRole(['admin', 'ga']), settingsController.getApprovalContacts);
-router.put('/approval-contacts/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.updateApprovalContact);
-router.post('/approval-contacts', verifyToken, checkRole(['admin', 'ga']), settingsController.createApprovalContact);
-router.delete('/approval-contacts/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.deleteApprovalContact);
+router.get('/approval-contacts', verifyToken, checkRole(MKT_MANAGE), settingsController.getApprovalContacts);
+router.put('/approval-contacts/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.updateApprovalContact);
+router.post('/approval-contacts', verifyToken, checkRole(MKT_MANAGE), settingsController.createApprovalContact);
+router.delete('/approval-contacts/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.deleteApprovalContact);
 
 // Approval Signers — master data approver (Admin & GA, dipakai lintas modul termasuk BAP)
-router.get('/approval-signers', verifyToken, checkRole(['admin', 'ga']), settingsController.getSigners);
-router.post('/approval-signers', verifyToken, checkRole(['admin', 'ga']), settingsController.createSigner);
-router.put('/approval-signers/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.updateSigner);
-router.delete('/approval-signers/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.deleteSigner);
+router.get('/approval-signers', verifyToken, checkRole(DIRECTORY), settingsController.getSigners);
+router.post('/approval-signers', verifyToken, checkRole(DIRECTORY), settingsController.createSigner);
+router.put('/approval-signers/:id', verifyToken, checkRole(DIRECTORY), settingsController.updateSigner);
+router.delete('/approval-signers/:id', verifyToken, checkRole(DIRECTORY), settingsController.deleteSigner);
 
 // File Uploads
 router.post('/upload', verifyToken, upload.single('file'), settingsController.uploadAttachment);
 router.get('/attachments/:id', settingsController.serveAttachment);
 
 // Branches CRUD
-router.get('/branches', verifyToken, settingsController.getBranches);
-router.post('/branches', verifyToken, checkRole(['admin', 'marketing']), settingsController.createBranch);
-router.put('/branches/:id', verifyToken, checkRole(['admin', 'marketing']), settingsController.updateBranch);
-router.delete('/branches/:id', verifyToken, checkRole(['admin', 'marketing']), settingsController.deleteBranch);
+router.get('/branches', verifyToken, checkRole(MKT_READ), settingsController.getBranches);
+router.post('/branches', verifyToken, checkRole(MKT_MANAGE), settingsController.createBranch);
+router.put('/branches/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.updateBranch);
+router.delete('/branches/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.deleteBranch);
 
 // Event Locations CRUD
-router.get('/event-locations', verifyToken, settingsController.getEventLocations);
-router.post('/event-locations', verifyToken, checkRole(['admin', 'marketing']), settingsController.createEventLocation);
-router.put('/event-locations/:id', verifyToken, checkRole(['admin', 'marketing']), settingsController.updateEventLocation);
-router.delete('/event-locations/:id', verifyToken, checkRole(['admin', 'marketing']), settingsController.deleteEventLocation);
+router.get('/event-locations', verifyToken, checkRole(MKT_READ), settingsController.getEventLocations);
+router.post('/event-locations', verifyToken, checkRole(MKT_MANAGE), settingsController.createEventLocation);
+router.put('/event-locations/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.updateEventLocation);
+router.delete('/event-locations/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.deleteEventLocation);
 
 // Budgets Control (read = semua; write/lock = admin + finance)
-router.get('/budgets', verifyToken, attachCompanyScope, settingsController.getBudgets);
-router.get('/budgets/check', verifyToken, attachCompanyScope, settingsController.checkBudgetAvailability);
-router.get('/budgets/:id', verifyToken, attachCompanyScope, settingsController.getBudgetDetail);
-router.post('/budgets', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.createBudget);
-router.put('/budgets/:id', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.updateBudget);
-router.put('/budgets/:id/validate', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.validateBudget);
-router.put('/budgets/:id/lock', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.lockBudget);
-router.put('/budgets/:id/unlock', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.unlockBudget);
+router.get('/budgets', verifyToken, attachCompanyScope, checkRole(MKT_READ), settingsController.getBudgets);
+router.get('/budgets/check', verifyToken, attachCompanyScope, checkRole(MKT_READ), settingsController.checkBudgetAvailability);
+router.get('/budgets/:id', verifyToken, attachCompanyScope, checkRole(MKT_READ), settingsController.getBudgetDetail);
+router.post('/budgets', verifyToken, attachCompanyScope, checkRole(FIN), settingsController.createBudget);
+router.put('/budgets/:id', verifyToken, attachCompanyScope, checkRole(FIN), settingsController.updateBudget);
+router.put('/budgets/:id/validate', verifyToken, attachCompanyScope, checkRole(FIN), settingsController.validateBudget);
+router.put('/budgets/:id/lock', verifyToken, attachCompanyScope, checkRole(FIN), settingsController.lockBudget);
+router.put('/budgets/:id/unlock', verifyToken, attachCompanyScope, checkRole(FIN), settingsController.unlockBudget);
 
 // Month-End Closing & Reopen (admin + finance)
-router.post('/budgets/:id/close-month', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.closeMonth);
-router.post('/budgets/:id/reopen-month', verifyToken, attachCompanyScope, checkRole(['admin', 'finance']), settingsController.reopenMonth);
+router.post('/budgets/:id/close-month', verifyToken, attachCompanyScope, checkRole(FIN), settingsController.closeMonth);
+router.post('/budgets/:id/reopen-month', verifyToken, attachCompanyScope, checkRole(FIN), settingsController.reopenMonth);
 
 // Budget Shifting (Relokasi Anggaran)
-router.get('/budgets/:id/shifts', verifyToken, attachCompanyScope, settingsController.getBudgetShifts);
-router.post('/budgets/:id/shifts', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing', 'finance']), settingsController.createBudgetShift);
+router.get('/budgets/:id/shifts', verifyToken, attachCompanyScope, checkRole(MKT_READ), settingsController.getBudgetShifts);
+router.post('/budgets/:id/shifts', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing', 'marketing_manager', 'finance']), settingsController.createBudgetShift);
 router.post('/budgets/shifts/:shift_id/decision', verifyToken, attachCompanyScope, settingsController.processShiftDecision);
 
 // Approval Rules CRUD (admin & GA)
-router.get('/approval-rules', verifyToken, checkRole(['admin', 'ga']), settingsController.getApprovalRules);
-router.post('/approval-rules', verifyToken, checkRole(['admin', 'ga']), settingsController.createApprovalRule);
-router.put('/approval-rules/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.updateApprovalRule);
-router.delete('/approval-rules/:id', verifyToken, checkRole(['admin', 'ga']), settingsController.deleteApprovalRule);
+router.get('/approval-rules', verifyToken, checkRole(MKT_MANAGE), settingsController.getApprovalRules);
+router.post('/approval-rules', verifyToken, checkRole(MKT_MANAGE), settingsController.createApprovalRule);
+router.put('/approval-rules/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.updateApprovalRule);
+router.delete('/approval-rules/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.deleteApprovalRule);
 
 module.exports = router;

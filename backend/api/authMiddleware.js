@@ -1,20 +1,21 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('./db');
+const { combineRoles } = require('./roles');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'glc-mra-secret-key-2026-auth-token';
 const COMPANY_SCOPE_BYPASS_ROLES = ['admin', 'auditor'];
 
 // Account state is re-read from the DB (cached briefly) so that deactivating a user or
 // changing their role takes effect without waiting for the 24h token to expire.
-const USER_STATE_CACHE = new Map(); // id -> { active, role, at }
+const USER_STATE_CACHE = new Map(); // id -> { active, role, roles, at }
 const USER_STATE_TTL_MS = 30_000;
 
 async function loadUserState(id) {
   const now = Date.now();
   const cached = USER_STATE_CACHE.get(id);
   if (cached && now - cached.at < USER_STATE_TTL_MS) return cached;
-  const user = await prisma.m_user.findUnique({ where: { id }, select: { is_active: true, role: true } });
-  const state = { active: !!user?.is_active, role: user?.role || null, at: now };
+  const user = await prisma.m_user.findUnique({ where: { id }, select: { is_active: true, role: true, extra_roles: true } });
+  const state = { active: !!user?.is_active, role: user?.role || null, roles: combineRoles(user?.role, user?.extra_roles), at: now };
   USER_STATE_CACHE.set(id, state);
   return state;
 }
@@ -51,7 +52,9 @@ const verifyToken = async (req, res, next) => {
     if (!state.active) {
       return res.status(401).json({ error: 'Akun tidak aktif atau sudah dihapus. Silakan hubungi administrator.' });
     }
-    req.user = { ...decoded, role: state.role || decoded.role }; // id, email, role (terkini), full_name
+    // role = primary role; roles = primary + extra roles (all lower-case), both read fresh from the DB.
+    const role = state.role || decoded.role;
+    req.user = { ...decoded, role, roles: state.roles?.length ? state.roles : combineRoles(role) };
     next();
   } catch (err) {
     next(err);
@@ -69,11 +72,10 @@ const checkRole = (allowedRoles) => {
       return res.status(401).json({ error: 'Unauthorized. Session not found.' });
     }
     
-    // Ubah role ke uppercase untuk menghindari ketidakcocokan casing
-    const userRole = req.user.role ? req.user.role.toUpperCase() : '';
-    const rolesUpper = allowedRoles.map(r => r.toUpperCase());
-
-    if (!rolesUpper.includes(userRole)) {
+    // Allowed when ANY of the user's roles (primary + extra) is in the list.
+    const allowed = allowedRoles.map(r => r.toLowerCase());
+    const mine = req.user.roles?.length ? req.user.roles : combineRoles(req.user.role);
+    if (!mine.some(r => allowed.includes(r))) {
       return res.status(403).json({ error: 'Access forbidden. Insufficient permissions.' });
     }
     next();
@@ -93,8 +95,8 @@ const attachCompanyScope = async (req, res, next) => {
     return res.status(401).json({ error: 'Unauthorized. Session not found.' });
   }
 
-  const userRole = req.user.role ? req.user.role.toLowerCase() : '';
-  if (COMPANY_SCOPE_BYPASS_ROLES.includes(userRole)) {
+  const mine = req.user.roles?.length ? req.user.roles : combineRoles(req.user.role);
+  if (mine.some(r => COMPANY_SCOPE_BYPASS_ROLES.includes(r))) {
     req.companyScope = { all: true };
     return next();
   }

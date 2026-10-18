@@ -3,11 +3,7 @@
 // Controllers may apply extra in-code checks (e.g. Finance-only claims, company scope);
 // those are not visible here.
 
-const ROLES = ['admin', 'ga', 'legal', 'compliance', 'legal_compliance', 'marketing', 'finance', 'manager', 'auditor'];
-const ROLE_LABELS = {
-  admin: 'Admin', ga: 'GA', legal: 'Legal', compliance: 'Compliance', legal_compliance: 'Legal & Compliance',
-  marketing: 'Marketing', finance: 'Finance', manager: 'Manager', auditor: 'Auditor'
-};
+const { ROLES, ROLE_LABELS } = require('./roles');
 
 // Mount table mirrors api/index.js.
 const MODULES = [

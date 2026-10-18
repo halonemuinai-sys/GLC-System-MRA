@@ -1,4 +1,10 @@
 const prisma = require('../../api/db');
+const { rolesOf, hasRole } = require('../../api/roles');
+
+// Login roles used for in-app approval matching. The login role marketing_manager shares its name
+// with the approval role MARKETING_MANAGER, but that approval step belongs to the designated
+// recipient (by email), so it is not granted through the login role.
+const approvalRoles = req => rolesOf(req).map(r => r.toUpperCase()).filter(r => r !== 'MARKETING_MANAGER');
 const {
   resolveEmployee,
   executeApprovalDecision,
@@ -51,9 +57,10 @@ const taskAmount = task => parseFloat(task.marketing_plan_id ? task.marketing_pl
 //  - Otherwise: the approval_rules tier for the amount/step, or CFO/CEO for an
 //    overbudget payment escalation step without a tier.
 // Admin may act on everything except claims.
-function canActOnTask(task, { role, email }, rules) {
-  if (task.payment_request?.request_type === 'CLAIM') return role === 'FINANCE' && task.step_number === 1;
-  if (role === 'ADMIN') return true;
+// `roles` = all of the user's roles in upper case (primary + extra).
+function canActOnTask(task, { roles, email }, rules) {
+  if (task.payment_request?.request_type === 'CLAIM') return roles.includes('FINANCE') && task.step_number === 1;
+  if (roles.includes('ADMIN')) return true;
 
   const isPlan = !!task.marketing_plan_id;
   const chainStep = isPlan ? (task.marketing_plan?.approvers || []).find(a => a.step_number === task.step_number) : null;
@@ -62,9 +69,9 @@ function canActOnTask(task, { role, email }, rules) {
   const amount = taskAmount(task);
   const module = isPlan ? 'MARKETING_PLAN' : 'PAYMENT_REQUEST';
   const rule = rules.find(r => r.module === module && r.step_number === task.step_number && Number(r.min_amount) <= amount && (r.max_amount === null || Number(r.max_amount) >= amount));
-  if (rule) return rule.approver_role === role;
+  if (rule) return roles.includes(rule.approver_role);
   const isOverbudgetEscalation = !isPlan && task.payment_request?.status === 'OVERBUDGET_WARN';
-  return isOverbudgetEscalation && role === 'CFO_CEO';
+  return isOverbudgetEscalation && roles.includes('CFO_CEO');
 }
 
 // Who the task is waiting for, for display.
@@ -90,13 +97,13 @@ async function getPendingTasks(req, res, next) {
       return res.status(403).json({ error: 'Your email is not registered as a Master Signer.' });
     }
 
-    const actor = { role: req.user.role.toUpperCase(), email: req.user.email };
+    const actor = { roles: approvalRoles(req), email: req.user.email };
     const pendingTasks = await prisma.approval_history.findMany({ where: { status: 'PENDING' }, include: TASK_INCLUDE, orderBy: { created_at: 'asc' } });
     // Claims are Finance-only and never consult the approval tiers.
     const rules = pendingTasks.some(t => t.payment_request?.request_type !== 'CLAIM') ? await prisma.approval_rules.findMany() : [];
 
     const tasks = pendingTasks
-      .filter(task => (task.marketing_plan || task.payment_request) && (actor.role === 'ADMIN' || inScope(req, taskCompanyId(task)) || isDesignated(task, actor)))
+      .filter(task => (task.marketing_plan || task.payment_request) && (actor.roles.includes('ADMIN') || inScope(req, taskCompanyId(task)) || isDesignated(task, actor)))
       .filter(task => canActOnTask(task, actor, rules))
       .map(task => ({ ...task, waiting_for: waitingFor(task, rules) }));
 
@@ -129,8 +136,8 @@ async function processApproval(req, res, next) {
       return res.status(404).json({ error: 'Pending approval task not found.' });
     }
 
-    const actor = { role: req.user.role.toUpperCase(), email: req.user.email };
-    if (actor.role !== 'ADMIN' && !inScope(req, taskCompanyId(task)) && !isDesignated(task, actor)) {
+    const actor = { roles: approvalRoles(req), email: req.user.email };
+    if (!actor.roles.includes('ADMIN') && !inScope(req, taskCompanyId(task)) && !isDesignated(task, actor)) {
       return res.status(403).json({ error: 'Company outside your access scope.' });
     }
     const rules = task.payment_request?.request_type === 'CLAIM' ? [] : await prisma.approval_rules.findMany();
@@ -164,12 +171,12 @@ async function processApproval(req, res, next) {
 // in their company scope. Limited to the latest 300.
 async function getApprovalHistory(req, res, next) {
   try {
-    const role = req.user.role.toUpperCase();
+    const isAdminUser = hasRole(req, 'admin');
     const employee = await resolveEmployee(req.user.email);
-    if (role !== 'ADMIN' && !employee) return res.json([]);
+    if (!isAdminUser && !employee) return res.json([]);
 
     const records = await prisma.approval_history.findMany({
-      where: { status: { in: ['APPROVED', 'REJECTED'] }, ...(role === 'ADMIN' ? {} : { approver_id: employee.id }) },
+      where: { status: { in: ['APPROVED', 'REJECTED'] }, ...(isAdminUser ? {} : { approver_id: employee.id }) },
       include: {
         approver: { select: { name: true } },
         marketing_plan: { include: { company: true, creator: true } },
@@ -185,7 +192,7 @@ async function getApprovalHistory(req, res, next) {
     });
 
     const history = records
-      .filter(r => (r.marketing_plan || r.payment_request) && (role === 'ADMIN' ? inScope(req, taskCompanyId(r)) : true))
+      .filter(r => (r.marketing_plan || r.payment_request) && (isAdminUser ? inScope(req, taskCompanyId(r)) : true))
       .map(r => {
         const isPlan = !!r.marketing_plan_id;
         return {

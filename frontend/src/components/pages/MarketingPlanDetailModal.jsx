@@ -9,6 +9,7 @@ import {
   TrendingUp, Flag, Copy, Check, Users, Wallet, CreditCard, CircleDollarSign, Megaphone, ArrowUpRight, LayoutDashboard, Target
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { hasRole } from '@/lib/userRoles';
 import Cookies from 'js-cookie';
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
@@ -82,7 +83,7 @@ export default function MarketingPlanDetailModal({
   loadPlans,
   onRevise,
   onEditDraft,
-  userRole,
+  userRoles = [],
   onSuccessMsg
 }) {
   const lang = 'en'; // Marketing Plan UI is English-only
@@ -635,7 +636,7 @@ export default function MarketingPlanDetailModal({
                               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                               {t('budgetBreakdown')}
                             </h4>
-                            {selectedPlan.status === 'APPROVED' && ['admin', 'marketing'].includes(userRole) && !['PENDING_APPROVAL', 'APPROVED'].includes(selectedPlan.closing_status) && (
+                            {selectedPlan.status === 'APPROVED' && hasRole(userRoles, 'admin', 'marketing', 'marketing_manager') && !['PENDING_APPROVAL', 'APPROVED'].includes(selectedPlan.closing_status) && (
                               <button type="button" onClick={() => setIsReimbursementOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700">
                                 <CircleDollarSign className="h-4 w-4" /> Claim Reimbursement
                               </button>
@@ -1051,7 +1052,7 @@ export default function MarketingPlanDetailModal({
                                             </button>
                                           </>
                                         )}
-                                        {am.status === 'PENDING_REVIEW' && ['admin', 'manager', 'finance'].includes(userRole) && (
+                                        {am.status === 'PENDING_REVIEW' && hasRole(userRoles, 'admin', 'manager', 'marketing_manager', 'finance') && (
                                           <>
                                             <button onClick={() => handleReviewAmendment(am.id, 'APPROVE')} disabled={reviewingAmendmentId === am.id}
                                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-[10px] font-bold shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50">
@@ -1357,7 +1358,7 @@ export default function MarketingPlanDetailModal({
                         key={`${selectedPlan.id}-${selectedPlan.actuals_filled_at ? 'actuals' : 'no-actuals'}`}
                         planId={selectedPlan.id}
                         planStatus={selectedPlan.status}
-                        userRole={userRole}
+                        userRoles={userRoles}
                         onChanged={refreshPlanSilently}
                       />
                     )}
@@ -1367,7 +1368,7 @@ export default function MarketingPlanDetailModal({
                   {/* Detail Footer Controls */}
                   <div className="shrink-0 px-4 sm:px-7 py-4 border-t border-slate-200 dark:border-slate-800 flex flex-wrap gap-3 items-center justify-between bg-white dark:bg-slate-900">
                     <div className="flex items-center gap-2">
-                      {selectedPlan.status === 'PENDING_APPROVAL' && (userRole === 'admin' || userRole === 'staff') && (
+                      {selectedPlan.status === 'PENDING_APPROVAL' && hasRole(userRoles, 'admin', 'marketing', 'marketing_manager') && (
                         <button
                           type="button"
                           disabled={recalling}

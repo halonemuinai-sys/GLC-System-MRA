@@ -1,9 +1,9 @@
 const prisma = require('../../api/db');
-const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope } = require('./marketingHelper');
+const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope, canManageDoc, isMarketingManager, seesAllMarketingDocs, hasRole } = require('./marketingHelper');
 
 const OPEN_STATUSES = ['PENDING', 'OVERBUDGET_WARN', 'APPROVED'];
 const inScope = (req, companyId) => req.companyScope?.all || (req.companyScope?.companyIds || []).includes(companyId);
-const isAdmin = req => String(req.user?.role || '').toLowerCase() === 'admin';
+const isAdmin = req => hasRole(req, 'admin');
 
 const PAYMENT_INCLUDE = {
   marketing_plan_item: {
@@ -135,7 +135,6 @@ async function getPayments(req, res, next) {
     const { status, request_type, plan_id, company_id, fiscal_year, search } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
-    const userRole = req.user.role.toUpperCase();
     const employee = await resolveEmployee(req.user.email);
 
     const where = {};
@@ -151,8 +150,8 @@ async function getPayments(req, res, next) {
       ];
     }
 
-    // Non-admin hanya lihat payment milik sendiri atau dari plan yang mereka buat
-    if (userRole !== 'ADMIN' && userRole !== 'AUDITOR' && userRole !== 'GA' && userRole !== 'FINANCE') {
+    // Marketing staff only see their own requests; managers, finance, GA and auditors see the whole scope.
+    if (!seesAllMarketingDocs(req)) {
       where.creator_id = employee?.id || -1;
     }
 
@@ -220,9 +219,9 @@ async function editBlockReason(req, payment) {
   if (!['PENDING', 'OVERBUDGET_WARN'].includes(payment.status)) {
     return { status: 400, error: 'Only undecided requests can be {action}.' };
   }
-  if (!isAdmin(req)) {
+  if (!isMarketingManager(req)) {
     const employee = await resolveEmployee(req.user.email);
-    if (!employee || employee.id !== payment.creator_id) return { status: 403, error: 'Only the requester can {verb} this request.' };
+    if (!employee || employee.id !== payment.creator_id) return { status: 403, error: 'Only the requester or a Marketing Manager can {verb} this request.' };
   }
   if ((payment.approval_history || []).some(h => h.status === 'APPROVED')) {
     return { status: 400, error: 'This request is partially approved and can no longer be {action}.' };
@@ -293,8 +292,9 @@ async function markPaymentPaid(req, res, next) {
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(payment.marketing_plan_item.marketing_plan.company_id)) {
       return res.status(404).json({ error: 'Payment request not found.' });
     }
-    if (req.user.role.toLowerCase() === 'finance' && payment.request_type !== 'CLAIM') {
-      return res.status(403).json({ error: 'Akses ini khusus pembayaran claim.' });
+    // Finance records claim payouts; vendor payments are recorded by GA (or admin).
+    if (payment.request_type !== 'CLAIM' && !hasRole(req, 'admin', 'ga')) {
+      return res.status(403).json({ error: 'Vendor payments are recorded by GA. Finance records reimbursement payouts.' });
     }
 
     if (payment.status !== 'APPROVED') {

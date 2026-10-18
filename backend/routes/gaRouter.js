@@ -1,5 +1,6 @@
 const express = require('express');
 const { verifyToken, checkRole, attachCompanyScope } = require('../api/authMiddleware');
+const { hasRole } = require('../api/roles');
 
 const assetController = require('./ga/gaAssetController');
 const vehicleController = require('./ga/gaVehicleController');
@@ -16,14 +17,20 @@ const marketingPoController = require('./ga/gaMarketingPoController');
 const router = express.Router();
 
 // Role checking definitions
-const allowRead = verifyToken; // Semuanya yang terotentikasi bisa membaca untuk kemudahan dashboard terintegrasi
+// GA data is readable by GA, admin and auditor (including users who hold GA as an extra role).
+const allowRead = [verifyToken, checkRole(['admin', 'ga', 'auditor'])];
+// The vendor master is also used by Legal/Compliance documents, Marketing plans and Finance.
+const allowVendorRead = [verifyToken, checkRole(['admin', 'ga', 'auditor', 'legal', 'compliance', 'legal_compliance', 'marketing', 'marketing_manager', 'finance'])];
+// Bell in the header: users without GA access simply get no GA notifications.
+const gaNotificationsOrEmpty = [verifyToken, (req, res, next) => (hasRole(req, 'admin', 'ga', 'auditor') ? next() : res.json({ total: 0, items: [] }))];
 const allowWrite = [verifyToken, checkRole(['admin', 'ga'])];
 const allowAdminOnly = [verifyToken, checkRole(['admin', 'superadmin'])];
-const allowVendorWrite = [verifyToken, checkRole(['admin', 'ga', 'legal', 'compliance', 'marketing'])];
+// Marketing no longer registers vendors directly: unknown vendors on a plan become Pending for GA.
+const allowVendorWrite = [verifyToken, checkRole(['admin', 'ga', 'legal', 'compliance', 'legal_compliance'])];
 
 // Dashboard Stats & Notifications
 router.get('/dashboard-stats', allowRead, dashboardController.getDashboardStats);
-router.get('/notifications', allowRead, dashboardController.getNotifications);
+router.get('/notifications', gaNotificationsOrEmpty, dashboardController.getNotifications);
 
 // Assets CRUD & Import
 router.get('/assets', allowRead, assetController.getAssets);
@@ -43,7 +50,8 @@ router.get('/assets-statuses', allowRead, assetController.getAssetStatuses);
 
 // Asset Disposals (Berita Acara Penghapusan Aset / BAP)
 router.get('/asset-disposals', allowRead, assetDisposalController.getAssetDisposals);
-router.get('/asset-disposal-signers', allowRead, assetDisposalController.getApprovalSigners);
+// Active approver names/emails for signer pickers (Berita Acara and Marketing closing).
+router.get('/asset-disposal-signers', [verifyToken, checkRole(['admin', 'ga', 'auditor', 'marketing', 'marketing_manager', 'finance', 'manager'])], assetDisposalController.getApprovalSigners);
 router.get('/asset-disposals/:id', allowRead, assetDisposalController.getAssetDisposalDetail);
 router.post('/asset-disposals', allowWrite, assetDisposalController.createAssetDisposal);
 router.put('/asset-disposals/:id/submit', allowWrite, assetDisposalController.submitAssetDisposal);
@@ -67,7 +75,7 @@ router.get('/asset-handovers/magic/:token', assetHandoverController.getHandoverB
 router.post('/asset-handovers/magic/:token', assetHandoverController.processHandoverByToken);
 
 // Marketing purchase orders (basis for NetSuite POs). Scoped to the user's companies.
-const poRead = [verifyToken, checkRole(['admin', 'ga', 'finance', 'marketing', 'auditor']), attachCompanyScope];
+const poRead = [verifyToken, checkRole(['admin', 'ga', 'finance', 'marketing', 'marketing_manager', 'auditor']), attachCompanyScope];
 const poWrite = [verifyToken, checkRole(['admin', 'ga']), attachCompanyScope];
 router.get('/marketing-po/queue', poRead, marketingPoController.getQueue);
 router.get('/marketing-po/vendors', poRead, marketingPoController.getVendorOptions);
@@ -91,8 +99,8 @@ router.put('/vehicles/:id', allowWrite, vehicleController.updateVehicle);
 router.delete('/vehicles/:id', allowWrite, vehicleController.deleteVehicle);
 
 // Vendors CRUD
-router.get('/vendors', allowRead, vendorController.getVendors);
-router.get('/vendors/:id', allowRead, vendorController.getVendorDetail);
+router.get('/vendors', allowVendorRead, vendorController.getVendors);
+router.get('/vendors/:id', allowVendorRead, vendorController.getVendorDetail);
 router.post('/vendors', allowVendorWrite, vendorController.createVendor);
 router.put('/vendors/:id', allowVendorWrite, vendorController.updateVendor);
 router.delete('/vendors/:id', allowVendorWrite, vendorController.deleteVendor);

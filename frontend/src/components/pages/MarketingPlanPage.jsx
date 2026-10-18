@@ -41,7 +41,7 @@ import {
   Megaphone
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
-import Cookies from 'js-cookie';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
 import { CLOSING_WINDOW_BADGE } from '@/lib/marketingGovernance';
@@ -254,7 +254,7 @@ export default function MarketingPlanPage() {
   const [draftPlanId, setDraftPlanId] = useState(null);
 
   // Current user role
-  const userRole = React.useMemo(() => (typeof window !== 'undefined' ? (Cookies.get('glc_user_role') || '').toLowerCase() : ''), []);
+  const userRoles = React.useMemo(() => getUserRoles(), []);
 
   // Fetch Metadata & Plans on mount / filter change
   const loadMetadata = async () => {
@@ -806,11 +806,11 @@ export default function MarketingPlanPage() {
                                         <PlanAction icon={Send} disabled={submitting} onClick={() => handleSubmitDraft(plan.id)}>{t('btnSubmit')}</PlanAction>
                                       </>
                                     )}
-                                    {plan.status === 'PENDING_APPROVAL' && (userRole === 'marketing' || userRole === 'admin') && (
+                                    {plan.status === 'PENDING_APPROVAL' && hasRole(userRoles, 'marketing', 'marketing_manager', 'admin') && (
                                       <PlanAction icon={Undo2} disabled={recallingPlanId === plan.id} onClick={() => handleRecallPlan(plan.id)}>{t('btnRecallTitle')}</PlanAction>
                                     )}
                                     <PlanAction icon={Copy} disabled={submitting} onClick={() => handleDuplicatePlan(plan.id)}>{lang === 'id' ? 'Duplikat campaign' : 'Duplicate campaign'}</PlanAction>
-                                    {(plan.status === 'DRAFT' || plan.status === 'REJECTED' || userRole === 'admin') && (
+                                    {(plan.status === 'DRAFT' || plan.status === 'REJECTED' || hasRole(userRoles, 'admin')) && (
                                       <>
                                         <div role="separator" className="my-1 border-t border-slate-100 dark:border-slate-800" />
                                         <PlanAction icon={Trash2} danger onClick={() => setPlanToDelete(plan)}>{t('btnDeleteTitle')}</PlanAction>
@@ -902,7 +902,7 @@ export default function MarketingPlanPage() {
         loadPlans={loadPlans}
         onRevise={handleRevisePlan}
         onEditDraft={handleEditDraft}
-        userRole={userRole}
+        userRoles={userRoles}
         onSuccessMsg={(msg) => {
           setSuccessMsg(msg);
           setTimeout(() => setSuccessMsg(null), 5000);

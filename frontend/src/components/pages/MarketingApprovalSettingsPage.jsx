@@ -25,6 +25,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 import InlineHelp from '@/components/ui/InlineHelp';
 import { resolveRecipientPreview } from '@/lib/marketingApproverPreview.mjs';
 import MarketingApprovalTiers from './MarketingApprovalTiers';
@@ -51,6 +52,16 @@ const MODULE_LABELS = { MARKETING_PLAN: 'Marketing Plan', PAYMENT_REQUEST: 'Paym
 
 export default function MarketingApprovalSettingsPage() {
   const [activeTab, setActiveTab] = useState('rules');
+  // Tiers and automatic recipients are Marketing setup (admin, Marketing Manager). The approver
+  // directory is shared with GA Berita Acara, so GA can open that tab only.
+  const [canSetup, setCanSetup] = useState(true);
+  useEffect(() => {
+    const roles = getUserRoles();
+    const setup = hasRole(roles, 'admin', 'marketing_manager');
+    setCanSetup(setup);
+    const wanted = new URLSearchParams(window.location.search).get('tab');
+    if (!setup || wanted === 'signers') setActiveTab('signers');
+  }, []);
   const [previewCompanyId, setPreviewCompanyId] = useState('');
 
   const [contacts, setContacts] = useState([]);
@@ -96,7 +107,7 @@ export default function MarketingApprovalSettingsPage() {
     setError(null);
     try {
       const [res, directory] = await Promise.all([
-        apiClient.get('/api/marketing/approval-contacts'),
+        canSetup ? apiClient.get('/api/marketing/approval-contacts') : Promise.resolve({}),
         apiClient.get('/api/marketing/approval-signers'),
       ]);
       setContacts(res.contacts || []);
@@ -108,7 +119,7 @@ export default function MarketingApprovalSettingsPage() {
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, []);
+  }, [canSetup]);
 
   const loadRules = useCallback(async () => {
     setRulesLoading(true);
@@ -124,7 +135,7 @@ export default function MarketingApprovalSettingsPage() {
   }, []);
 
   useEffect(() => { if (processed) loadContacts(); }, [processed, loadContacts]);
-  useEffect(() => { if (processed && activeTab === 'rules') loadRules(); }, [processed, activeTab, loadRules]);
+  useEffect(() => { if (processed && canSetup && activeTab === 'rules') loadRules(); }, [processed, canSetup, activeTab, loadRules]);
   const reloadAll = () => { loadContacts(); if (activeTab === 'rules') loadRules(); };
 
   const handleSaveRule = async () => {
@@ -331,10 +342,10 @@ export default function MarketingApprovalSettingsPage() {
           <div>
           <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300"><Settings className="h-4 w-4" />Approval management</p>
           <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
-            Approval Settings
+            {canSetup ? 'Approval Settings' : 'Approver Directory'}
           </h1>
           <p className="text-slate-400 text-xs mt-2">
-            Set up approval tiers, keep the approver directory, then pick approvers when submitting.
+            {canSetup ? 'Set up approval tiers, keep the approver directory, then pick approvers when submitting.' : 'People who can be picked as signers on Berita Acara (BAP / BAST) and on Marketing approvals.'}
           </p>
           </div>
           <button type="button" onClick={() => (processed ? reloadAll() : setProcessed(true))} disabled={loading || rulesLoading} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer"><RefreshCw className={`h-3.5 w-3.5 ${loading || rulesLoading ? 'animate-spin' : ''}`} />{processed ? 'Reload' : 'Load data'}</button>
@@ -342,13 +353,13 @@ export default function MarketingApprovalSettingsPage() {
       </div>
 
       {/* Tab Toggle */}
-      <nav aria-label="Approval settings" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {canSetup && <nav aria-label="Approval settings" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
           { id: 'rules', icon: ListFilter, title: '1. Tiers & Workflow', caption: 'Budget ranges and role order' },
           { id: 'signers', icon: Users, title: '2. Approver Directory', caption: 'Name, email and position' },
           { id: 'contacts', icon: Mail, title: 'Automatic Recipients', caption: 'Advanced · Suggestions per company' },
         ].map(({ id, icon: Icon, title, caption }) => <button key={id} type="button" aria-pressed={activeTab === id} onClick={() => setActiveTab(id)} className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${activeTab === id ? 'border-blue-200 bg-blue-50/70 dark:border-blue-500/30 dark:bg-blue-500/10' : 'border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800'}`}><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${activeTab === id ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}><Icon className="h-4 w-4" /></span><span><span className={`block text-xs font-semibold ${activeTab === id ? 'text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'}`}>{title}</span><span className="mt-1 block text-[10px] text-slate-400">{caption}</span></span></button>)}
-      </nav>
+      </nav>}
 
       {processed && activeTab === 'contacts' && <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
         <InlineHelp summary="Choose who is suggested automatically for each role." label="When to set automatic recipients">
@@ -380,8 +391,8 @@ export default function MarketingApprovalSettingsPage() {
       {!processed ? (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
           <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><Settings className="h-5 w-5" /></motion.span>
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Load approval settings</h3>
-          <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-400">Pick a section above, then click Load data to fetch the approval tiers, the approver directory and the automatic recipients.</p>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{canSetup ? 'Load approval settings' : 'Load approver directory'}</h3>
+          <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-400">{canSetup ? 'Pick a section above, then click Load data to fetch the approval tiers, the approver directory and the automatic recipients.' : 'Click Load data to see the approvers that can be picked as signers.'}</p>
           <button type="button" onClick={() => setProcessed(true)} className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Load data</button>
         </motion.div>
       ) : (activeTab === 'contacts' || activeTab === 'signers') && loading ? (
@@ -750,7 +761,7 @@ export default function MarketingApprovalSettingsPage() {
           {/* Add/Edit Signer Modal */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-[11px] text-slate-400">
             <InlineHelp summary="Approvers already in use are kept." label="Delete and deactivate rules">Delete is locked for approvers recorded in transactions, approval history or recipient settings, and the server checks again on delete. Deactivating removes the contact from the directory picker for new requests; existing history and documents are kept.</InlineHelp>
-            <button type="button" onClick={() => setActiveTab('contacts')} className="inline-flex items-center gap-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">Set automatic suggestions <ArrowRight className="h-3.5 w-3.5" /></button>
+            {canSetup && <button type="button" onClick={() => setActiveTab('contacts')} className="inline-flex items-center gap-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400">Set automatic suggestions <ArrowRight className="h-3.5 w-3.5" /></button>}
           </div>
           <AnimatePresence>
             {isAddSignerOpen && (

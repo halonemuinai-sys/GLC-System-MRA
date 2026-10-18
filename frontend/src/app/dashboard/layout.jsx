@@ -7,10 +7,13 @@ import { Menu, Sun, Moon, Eye, EyeOff, Briefcase, Scale, ShieldCheck, Calendar, 
 import { Sidebar } from '@/components/layout/Sidebar';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { LanguageProvider } from '@/lib/LanguageContext';
+import { apiClient } from '@/lib/apiClient';
+import { getUserRoles, saveUserRoles, canAccess } from '@/lib/userRoles';
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();
   const [role, setRole] = useState('');
+  const [roles, setRoles] = useState([]);
   const [fullName, setFullName] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [theme, setTheme] = useState('dark');
@@ -23,7 +26,16 @@ export default function DashboardLayout({ children }) {
     const userRole = Cookies.get('glc_user_role') || '';
     const userName = Cookies.get('glc_user_name') || '';
     setRole(userRole.toLowerCase());
+    setRoles(getUserRoles());
     setFullName(userName);
+
+    // Refresh roles from the server so changes made in Admin Panel apply without a new login.
+    apiClient.get('/api/auth/me').then(me => {
+      if (!me?.role) return;
+      saveUserRoles(me);
+      setRole(String(me.role).toLowerCase());
+      setRoles(getUserRoles());
+    }).catch(() => {});
 
     // Read initial theme state
     const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
@@ -63,6 +75,7 @@ export default function DashboardLayout({ children }) {
     Cookies.remove('glc_mra_token');
     Cookies.remove('glc_user_name');
     Cookies.remove('glc_user_role');
+    Cookies.remove('glc_user_roles');
     
     // Redirect to login
     router.refresh();
@@ -98,6 +111,7 @@ export default function DashboardLayout({ children }) {
         open={isMobileOpen} 
         onClose={() => setIsMobileOpen(false)}
         role={role}
+        roles={roles}
         fullName={fullName}
         handleLogout={handleLogout}
       />
@@ -121,16 +135,16 @@ export default function DashboardLayout({ children }) {
           <div className="flex items-center gap-4 ml-auto">
 
             {/* Notification Bells — terpisah per departemen, tampil sesuai role user */}
-            {(role === 'admin' || role === 'auditor' || role === 'ga') && (
+            {canAccess(roles, ['auditor', 'ga']) && (
               <NotificationBell label="GA" endpoint="/api/ga/notifications" icon={Briefcase} color="#6366f1" />
             )}
-            {(role === 'admin' || role === 'auditor' || role === 'legal' || role === 'legal_compliance') && (
+            {canAccess(roles, ['auditor', 'legal', 'legal_compliance']) && (
               <NotificationBell label="Legal" endpoint="/api/legal/notifications" icon={Scale} color="#f43f5e" />
             )}
-            {(role === 'admin' || role === 'auditor' || role === 'compliance' || role === 'legal_compliance') && (
+            {canAccess(roles, ['auditor', 'compliance', 'legal_compliance']) && (
               <NotificationBell label="Compliance" endpoint="/api/compliance/notifications" icon={ShieldCheck} color="#10b981" />
             )}
-            {(role === 'admin' || role === 'auditor' || role === 'marketing') && (
+            {canAccess(roles, ['auditor', 'marketing', 'marketing_manager', 'finance']) && (
               <NotificationBell label="Marketing" endpoint="/api/marketing/notifications" icon={Megaphone} color="#f59e0b" />
             )}
 

@@ -6,8 +6,8 @@ import {
   ShoppingCart, RefreshCw, Loader2, AlertTriangle, CheckCircle2, Search, X, FileSpreadsheet,
   ClipboardList, FileText, Send, CloudUpload, ChevronLeft, ChevronRight, Plus, Lock
 } from 'lucide-react';
-import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import InlineHelp from '@/components/ui/InlineHelp';
 import GaMarketingPoForm, { MONTHS, formatIDR } from './GaMarketingPoForm';
@@ -72,8 +72,7 @@ async function buildNetsuiteWorkbook(pos) {
 }
 
 export default function GaMarketingPoPage() {
-  const role = useMemo(() => (typeof window !== 'undefined' ? (Cookies.get('glc_user_role') || '').toLowerCase() : ''), []);
-  const canWrite = ['admin', 'ga'].includes(role);
+  const canWrite = useMemo(() => hasRole(getUserRoles(), 'admin', 'ga'), []);
 
   const [processed, setProcessed] = useState(false);
   const [tab, setTab] = useState('queue');

@@ -3,13 +3,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence, animate } from 'framer-motion';
 import { Building2, Network, MapPin, AlertTriangle, RefreshCw, Database } from 'lucide-react';
-import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 import InlineHelp from '@/components/ui/InlineHelp';
 import CompanyEntitiesPanel from './CompanyEntitiesPanel';
 import { CompanyHoldingsPanel, CompanyLocationsPanel } from './CompanyGroupsPanels';
 
-const WRITE_ROLES = ['admin', 'ga', 'legal', 'compliance', 'marketing'];
+const WRITE_ROLES = ['admin', 'ga', 'legal', 'compliance', 'marketing', 'marketing_manager'];
 
 function CountUp({ value }) {
   const [display, setDisplay] = useState(0);
@@ -24,7 +24,7 @@ function CountUp({ value }) {
 export default function MasterCompanyPage() {
   const [activeTab, setActiveTab] = useState('companies');
   const [canWrite, setCanWrite] = useState(false);
-  useEffect(() => { setCanWrite(WRITE_ROLES.includes((Cookies.get('glc_user_role') || '').toLowerCase())); }, []);
+  useEffect(() => { setCanWrite(hasRole(getUserRoles(), WRITE_ROLES)); }, []);
 
   // Process-first: nothing is fetched until the user clicks "Load data".
   const [processed, setProcessed] = useState(false);

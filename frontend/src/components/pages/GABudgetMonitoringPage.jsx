@@ -11,7 +11,7 @@ import {
   TrendingUp, BarChart2, Lock
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
-import Cookies from 'js-cookie';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 
 const FISCAL_YEAR_OPTIONS = Array.from({ length: 4 }, (_, i) => String(new Date().getFullYear() - 1 + i));
 
@@ -785,8 +785,7 @@ const TABS = [
 ];
 
 export default function GABudgetMonitoringPage() {
-  const userRole = useMemo(() => (typeof window !== 'undefined' ? (Cookies.get('glc_user_role') || '').toLowerCase() : ''), []);
-  const canMarkPaid = ['admin', 'ga'].includes(userRole);
+  const canMarkPaid = useMemo(() => hasRole(getUserRoles(), 'admin', 'ga'), []);
 
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);

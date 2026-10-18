@@ -1,5 +1,6 @@
 const prisma = require('../../api/db');
 const { resolveEmployee, resolveApproverContact } = require('./marketingHelper');
+const { rolesOf } = require('../../api/roles');
 const { quarterConfigs } = require('./marketingGovernance');
 const { saveUpload, publicUrl } = require('../../api/uploadStorage');
 const { signerUsageInclude, withSignerUsage, normalizeEmail, TRANSACTION_MESSAGE } = require('./marketingSignerUsage');
@@ -1252,13 +1253,15 @@ async function processShiftDecision(req, res, next) {
 
     // The assigned approver is identified by email (login roles never equal FC/MM);
     // admin may act on any step.
-    const userRole = (req.user.role || '').toUpperCase();
+    // MARKETING_MANAGER steps are decided by the assigned email, not by the login role of the same name.
+    const userRoles = rolesOf(req).map(r => r.toUpperCase()).filter(r => r !== 'MARKETING_MANAGER');
+    const isAdminUser = userRoles.includes('ADMIN');
     const stepRole = LEGACY_SHIFT_ROLES[currentApprover.approver_role] || currentApprover.approver_role;
     const isAssigned = String(currentApprover.approver_email || '').toLowerCase() === String(req.user.email || '').toLowerCase();
-    if (userRole !== 'ADMIN' && !isAssigned && !budgetInScope(req, shiftBudget.company_id)) {
+    if (!isAdminUser && !isAssigned && !budgetInScope(req, shiftBudget.company_id)) {
       return res.status(404).json({ error: 'Budget shift request not found.' });
     }
-    if (userRole !== 'ADMIN' && !isAssigned && stepRole.toUpperCase() !== userRole) {
+    if (!isAdminUser && !isAssigned && !userRoles.includes(stepRole.toUpperCase())) {
       return res.status(403).json({ error: 'You are not authorized to act on this approval step.' });
     }
     if (action === 'REJECT' && !String(comment || '').trim()) {

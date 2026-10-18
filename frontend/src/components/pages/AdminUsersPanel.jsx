@@ -8,22 +8,21 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
-export const ROLE_OPTIONS = [
-  ['admin', 'Admin'], ['ga', 'GA'], ['legal', 'Legal'], ['compliance', 'Compliance'], ['legal_compliance', 'Legal & Compliance'],
-  ['marketing', 'Marketing'], ['finance', 'Finance'], ['manager', 'Manager'], ['auditor', 'Auditor'],
-];
-const ROLE_LABELS = Object.fromEntries(ROLE_OPTIONS);
+import { ROLE_OPTIONS, ROLE_LABELS } from '@/lib/userRoles';
 const ROLE_TONE = {
   admin: 'bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300',
   auditor: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300',
   ga: 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300',
   marketing: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300',
+  marketing_manager: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200',
   finance: 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300',
 };
 const SCOPE_BYPASS = ['admin', 'auditor'];
 const STATUS_FILTERS = [['', 'All'], ['true', 'Active'], ['false', 'Inactive']];
 const MIN_PASSWORD = 8;
-const EMPTY_FORM = { full_name: '', email: '', phone: '', department: '', position: '', role: 'ga', password: '' };
+const EMPTY_FORM = { full_name: '', email: '', phone: '', department: '', position: '', role: 'ga', extra_roles: [], password: '' };
+const rolesOfUser = u => [u.role, ...(u.extra_roles || [])].filter(Boolean);
+const bypassesScope = roles => roles.some(r => SCOPE_BYPASS.includes(r));
 
 export default function AdminUsersPanel() {
   const [users, setUsers] = useState([]);
@@ -78,7 +77,7 @@ export default function AdminUsersPanel() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter(u =>
-      (!roleFilter || u.role === roleFilter) &&
+      (!roleFilter || rolesOfUser(u).includes(roleFilter)) &&
       (statusFilter === '' || String(u.is_active) === statusFilter) &&
       (!q || [u.full_name, u.email, u.department, u.position].some(v => String(v || '').toLowerCase().includes(q)))
     );
@@ -89,7 +88,7 @@ export default function AdminUsersPanel() {
   const rows = filtered.slice(start, start + pageSize);
 
   const active = users.filter(u => u.is_active);
-  const noScope = active.filter(u => !SCOPE_BYPASS.includes(u.role) && !u.company_access_count);
+  const noScope = active.filter(u => !bypassesScope(rolesOfUser(u)) && !u.company_access_count);
   const stats = [
     { label: 'Active users', value: active.length, sub: `${users.length - active.length} inactive`, icon: UserCheck, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
     { label: 'Active admins', value: active.filter(u => u.role === 'admin').length, sub: 'At least 1 must stay active', icon: Users, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
@@ -105,7 +104,7 @@ export default function AdminUsersPanel() {
     return groups.filter(g => g.items.length);
   }, [companies, masters, companyFilter]);
 
-  const needsScope = !SCOPE_BYPASS.includes(form.role);
+  const needsScope = !bypassesScope([form.role, ...form.extra_roles]);
   const emailTaken = useMemo(() => {
     const e = form.email.trim().toLowerCase();
     return e && users.some(u => u.email.toLowerCase() === e && u.id !== editing?.id);
@@ -115,13 +114,13 @@ export default function AdminUsersPanel() {
 
   const openForm = async (user = null) => {
     setEditing(user);
-    setForm(user ? { full_name: user.full_name || '', email: user.email || '', phone: user.phone || '', department: user.department || '', position: user.position || '', role: user.role || 'ga', password: '' } : EMPTY_FORM);
+    setForm(user ? { full_name: user.full_name || '', email: user.email || '', phone: user.phone || '', department: user.department || '', position: user.position || '', role: user.role || 'ga', extra_roles: user.extra_roles || [], password: '' } : EMPTY_FORM);
     setCompanyIds([]);
     setCompanyFilter('');
     setFormError(null);
     setShowPassword(false);
     setDrawerOpen(true);
-    if (user && !SCOPE_BYPASS.includes(user.role)) {
+    if (user && !bypassesScope(rolesOfUser(user))) {
       setLoadingAccess(true);
       try {
         setCompanyIds(((await apiClient.get(`/api/admin/users/${user.id}/company-access`)) || []).map(c => c.id));
@@ -142,9 +141,10 @@ export default function AdminUsersPanel() {
       let userId = editing?.id;
       if (editing) {
         const { password, ...payload } = form;
+        if (payload.role === 'admin') payload.extra_roles = [];
         await apiClient.put(`/api/admin/users/${editing.id}`, payload);
       } else {
-        userId = (await apiClient.post('/api/admin/users', form)).id;
+        userId = (await apiClient.post('/api/admin/users', { ...form, extra_roles: form.role === 'admin' ? [] : form.extra_roles })).id;
       }
       if (needsScope) await apiClient.put(`/api/admin/users/${userId}/company-access`, { company_ids: companyIds });
       setDrawerOpen(false);
@@ -243,12 +243,12 @@ export default function AdminUsersPanel() {
               {!loading && !rows.length && <tr><td colSpan={6} className="px-4 py-14 text-center text-slate-400"><Users className="mx-auto mb-2 h-8 w-8 opacity-30" />{users.length ? 'No users match the filters.' : 'No users yet.'}</td></tr>}
               <AnimatePresence initial={false}>
                 {rows.map((u, i) => {
-                  const bypass = SCOPE_BYPASS.includes(u.role);
+                  const bypass = bypassesScope(rolesOfUser(u));
                   return (
                     <motion.tr key={u.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ delay: Math.min(i, 12) * 0.02, duration: 0.2 }} className={`transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40 ${u.is_active ? '' : 'opacity-60'}`}>
                       <td className="px-4 py-2"><div className="flex items-center gap-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{initials(u.full_name)}</span><div className="min-w-0"><p title={u.full_name} className="truncate font-medium text-slate-800 dark:text-slate-200">{u.full_name}{u.is_self && <span className="ml-1.5 rounded bg-blue-50 px-1 py-0.5 text-[9px] font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">You</span>}</p><p title={u.email} className="truncate text-[10px] text-slate-400">{u.email}</p></div></div></td>
                       <td className="px-3 py-2"><p className="truncate text-slate-600 dark:text-slate-300">{u.department || '—'}</p><p className="truncate text-[10px] text-slate-400">{u.position || '—'}</p></td>
-                      <td className="px-3 py-2"><span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium ${ROLE_TONE[u.role] || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{ROLE_LABELS[u.role] || u.role}</span></td>
+                      <td className="px-3 py-2"><span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium ${ROLE_TONE[u.role] || 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>{ROLE_LABELS[u.role] || u.role}</span>{(u.extra_roles || []).length > 0 && <p title={u.extra_roles.map(r => ROLE_LABELS[r] || r).join(', ')} className="mt-0.5 truncate text-[10px] text-slate-400">+ {u.extra_roles.map(r => ROLE_LABELS[r] || r).join(', ')}</p>}</td>
                       <td className="px-3 py-2 text-[11px]">{bypass ? <span className="text-slate-400">All companies</span> : u.company_access_count ? <span className="text-slate-600 dark:text-slate-300">{u.company_access_count} companies</span> : <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400"><AlertTriangle className="h-3 w-3" />Not assigned</span>}</td>
                       <td className="px-3 py-2">{u.is_active ? <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"><span className="h-1 w-1 rounded-full bg-current" />Active</span> : <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"><span className="h-1 w-1 rounded-full bg-current" />Inactive</span>}</td>
                       <td className="px-3 py-1.5"><div className="flex items-center justify-end gap-0.5">
@@ -307,16 +307,29 @@ export default function AdminUsersPanel() {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-3">
-                  <div><label htmlFor="u-role" className={label}>Role *</label><select id="u-role" value={form.role} disabled={editing?.is_self} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} className={`${fieldClass} disabled:opacity-60`}>{ROLE_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>{editing?.is_self && <p className="mt-1 text-[10px] text-slate-400">You cannot change your own role.</p>}</div>
+                  <div><label htmlFor="u-role" className={label}>Role *</label><select id="u-role" value={form.role} disabled={editing?.is_self} onChange={e => setForm(f => ({ ...f, role: e.target.value, extra_roles: f.extra_roles.filter(r => r !== e.target.value) }))} className={`${fieldClass} disabled:opacity-60`}>{ROLE_OPTIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>{editing?.is_self && <p className="mt-1 text-[10px] text-slate-400">You cannot change your own role.</p>}</div>
                   <div><label htmlFor="u-phone" className={label}>Phone</label><input id="u-phone" maxLength={30} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={fieldClass} /></div>
                   <div><label htmlFor="u-dept" className={label}>Department</label><input id="u-dept" maxLength={100} value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} className={fieldClass} /></div>
                   <div><label htmlFor="u-pos" className={label}>Position</label><input id="u-pos" maxLength={100} value={form.position} onChange={e => setForm(f => ({ ...f, position: e.target.value }))} className={fieldClass} /></div>
                 </div>
 
+                {form.role !== 'admin' && (
+                  <fieldset disabled={editing?.is_self} className="disabled:opacity-60">
+                    <legend className={label}>Additional roles</legend>
+                    <p className="mb-2 text-[10px] text-slate-400">Extra menus on top of the main role, e.g. a Marketing user who also works in GA. Admin cannot be added here.</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ROLE_OPTIONS.filter(([v]) => v !== 'admin' && v !== form.role).map(([v, t]) => {
+                        const on = form.extra_roles.includes(v);
+                        return <button key={v} type="button" aria-pressed={on} onClick={() => setForm(f => ({ ...f, extra_roles: on ? f.extra_roles.filter(r => r !== v) : [...f.extra_roles, v] }))} className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer ${on ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'}`}>{t}</button>;
+                      })}
+                    </div>
+                  </fieldset>
+                )}
+
                 <div>
                   <div className="mb-1 flex items-center justify-between"><span className={label}>Company access</span>{needsScope && <span className="text-[10px] text-slate-400">{companyIds.length} selected</span>}</div>
                   {!needsScope ? (
-                    <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">Role {ROLE_LABELS[form.role]} automatically sees every company.</p>
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">Role {[form.role, ...form.extra_roles].filter(r => SCOPE_BYPASS.includes(r)).map(r => ROLE_LABELS[r] || r).join(" + ")} automatically sees every company.</p>
                   ) : loadingAccess ? (
                     <div className="flex items-center gap-2 py-4 text-xs text-slate-400"><Loader2 className="h-4 w-4 animate-spin" />Loading company access...</div>
                   ) : (

@@ -23,8 +23,8 @@ import {
   Undo2,
   Save
 } from 'lucide-react';
-import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import InlineHelp from '@/components/ui/InlineHelp';
 import MarketingBudgetShiftDrawer from './MarketingBudgetShiftDrawer';
@@ -76,9 +76,9 @@ export default function MarketingBudgetPage() {
   const [filter, setFilter] = useState({ company_id: '', brand_id: '', lob_id: '', fiscal_year: String(THIS_YEAR) });
   const [activeBudget, setActiveBudget] = useState(null);
   const [companyBudgets, setCompanyBudgets] = useState([]);
-  const [userRole, setUserRole] = useState('');
-  useEffect(() => { setUserRole((Cookies.get('glc_user_role') || '').toLowerCase()); }, []);
-  const isFinanceRole = ['finance', 'admin', 'superadmin'].includes(userRole);
+  const [userRoles, setUserRoles] = useState([]);
+  useEffect(() => { setUserRoles(getUserRoles()); }, []);
+  const isFinanceRole = hasRole(userRoles, 'finance', 'admin');
   const isValidated = activeBudget?.validation_status === 'VALIDATED';
   const canEditLimits = isFinanceRole && activeBudget && !activeBudget.is_locked;
 

@@ -5,6 +5,7 @@ const { randomBytes } = require('crypto');
 const prisma = require('../api/db');
 const { verifyToken, JWT_SECRET } = require('../api/authMiddleware');
 const { sendPasswordResetEmail } = require('../api/mailer');
+const { combineRoles } = require('../api/roles');
 
 const router = express.Router();
 
@@ -59,7 +60,7 @@ router.post('/login', async (req, res, next) => {
     const { password: _, ...userData } = user;
     res.json({
       token,
-      user: userData
+      user: { ...userData, roles: combineRoles(user.role, user.extra_roles) }
     });
   } catch (err) {
     next(err);
@@ -81,7 +82,7 @@ router.get('/me', verifyToken, async (req, res, next) => {
     }
 
     const { password: _, ...userData } = user;
-    res.json(userData);
+    res.json({ ...userData, roles: combineRoles(user.role, user.extra_roles) });
   } catch (err) {
     next(err);
   }

@@ -49,6 +49,7 @@ import {
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
 import { SidebarLabel, SidebarPopover } from './SidebarOverlays';
+import { canAccess, ROLE_LABELS } from '@/lib/userRoles';
 
 // ─── Per-section accent color map ───────────────────────────────────────────────
 // Sidebar itself is a fixed dark-navy surface (independent of the app's light/dark
@@ -428,17 +429,15 @@ function SidebarContent({
   toggleCollapse,
   onClose,
   role,
+  roles = [],
   fullName,
   handleLogout
 }) {
   const pathname = usePathname();
 
   // Helper to check if role matches allowed list
-  const hasAccess = useCallback((allowedRoles) => {
-    if (!role) return false;
-    if (role === 'admin') return true;
-    return allowedRoles.includes(role);
-  }, [role]);
+  // Any of the user's roles (primary + additional) opens a menu; admin opens everything.
+  const hasAccess = useCallback((allowedRoles) => roles.length > 0 && canAccess(roles, allowedRoles), [roles]);
 
   const dashboardItems = useMemo(() => [
     { name: 'Dashboard GA', path: '/dashboard', icon: LayoutDashboard, allowed: hasAccess(['ga', 'auditor']) },
@@ -502,7 +501,7 @@ function SidebarContent({
           children: [
             { name: 'Monitoring Anggaran', path: '/dashboard/ga/budget-monitoring', icon: CreditCard, allowed: hasAccess(['ga', 'admin', 'auditor']) },
             { name: 'Expenses', path: '/dashboard/expenses', icon: BarChart3, allowed: hasAccess(['ga', 'auditor']) },
-            { name: 'Marketing POs', path: '/dashboard/ga/marketing-po', icon: ShoppingCart, allowed: hasAccess(['ga', 'finance', 'auditor']) },
+            { name: 'Marketing POs', path: '/dashboard/ga/marketing-po', icon: ShoppingCart, allowed: hasAccess(['ga', 'finance', 'marketing_manager', 'auditor']) },
           ]
         },
         {
@@ -511,6 +510,8 @@ function SidebarContent({
           children: [
             { name: 'Documents', path: '/dashboard/documents', icon: FileText, allowed: hasAccess(['ga', 'legal', 'legal_compliance', 'auditor']) },
             { name: 'Berita Acara', path: '/dashboard/berita-acara', icon: FileSignature, allowed: hasAccess(['ga', 'admin', 'auditor']) },
+            // Shared approver directory (signers for BAP/BAST). Marketing Managers and admin reach it via Approval Settings.
+            { name: 'Approver Directory', path: '/dashboard/marketing-approval-settings?tab=signers', icon: UserCheck, allowed: roles.includes('ga') && !roles.includes('admin') && !roles.includes('marketing_manager') },
             { name: 'Insurance', path: '/dashboard/insurances', icon: ShieldCheck, allowed: hasAccess(['ga', 'legal', 'legal_compliance', 'auditor']) },
           ]
         },
@@ -531,9 +532,9 @@ function SidebarContent({
           name: 'Campaign',
           icon: BarChart3,
           children: [
-            { name: 'Marketing Plan', path: '/dashboard/marketing', icon: ClipboardList, allowed: hasAccess(['marketing', 'auditor']) },
-            { name: 'Overview & Analytics', path: '/dashboard/marketing/overview', icon: LineChart, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
-            { name: 'Overview Approval', path: '/dashboard/marketing/approval-overview', icon: ClipboardCheck, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
+            { name: 'Marketing Plan', path: '/dashboard/marketing', icon: ClipboardList, allowed: hasAccess(['marketing', 'marketing_manager', 'auditor']) },
+            { name: 'Overview & Analytics', path: '/dashboard/marketing/overview', icon: LineChart, allowed: hasAccess(['marketing_manager', 'finance', 'manager', 'auditor']) },
+            { name: 'Overview Approval', path: '/dashboard/marketing/approval-overview', icon: ClipboardCheck, allowed: hasAccess(['marketing_manager', 'finance', 'manager', 'auditor']) },
           ]
         },
         {
@@ -541,20 +542,20 @@ function SidebarContent({
           icon: Wallet,
           accent: 'blue',
           children: [
-            { name: 'Budget Control', path: '/dashboard/marketing/budgeting', icon: Wallet, allowed: hasAccess(['marketing', 'finance', 'admin', 'auditor']) },
-            { name: 'Quarterly Alignment', path: '/dashboard/marketing/quarterly-alignment', icon: LineChart, allowed: hasAccess(['marketing', 'finance', 'admin', 'auditor']) },
-            { name: 'Payment Requests', path: '/dashboard/marketing/payments', icon: CreditCard, allowed: hasAccess(['marketing', 'finance', 'admin', 'auditor']) },
-            { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: hasAccess(['marketing', 'finance', 'auditor']) },
-            { name: 'Finance Reconciliation', path: '/dashboard/marketing/reconciliation', icon: Scale, allowed: hasAccess(['finance', 'marketing', 'admin', 'auditor']) },
+            { name: 'Budget Control', path: '/dashboard/marketing/budgeting', icon: Wallet, allowed: hasAccess(['marketing', 'marketing_manager', 'finance', 'auditor']) },
+            { name: 'Quarterly Alignment', path: '/dashboard/marketing/quarterly-alignment', icon: LineChart, allowed: hasAccess(['marketing', 'marketing_manager', 'finance', 'auditor']) },
+            { name: 'Payment Requests', path: '/dashboard/marketing/payments', icon: CreditCard, allowed: hasAccess(['marketing', 'marketing_manager', 'finance', 'ga', 'auditor']) },
+            { name: 'Cost Approvals', path: '/dashboard/approvals', icon: BadgeCheck, allowed: hasAccess(['marketing', 'marketing_manager', 'finance', 'manager', 'auditor']) },
+            { name: 'Finance Reconciliation', path: '/dashboard/marketing/reconciliation', icon: Scale, allowed: hasAccess(['finance', 'marketing_manager', 'manager', 'auditor']) },
           ]
         },
         {
           name: 'Marketing Settings',
           icon: Settings,
           children: [
-            { name: 'Approval Settings', path: '/dashboard/marketing-approval-settings', icon: UserCheck, allowed: hasAccess(['admin', 'ga']) },
-            { name: 'Event Locations', path: '/dashboard/marketing/event-locations', icon: MapPin, allowed: hasAccess(['marketing', 'admin', 'auditor']) },
-            { name: 'Target Branches', path: '/dashboard/marketing/branches', icon: Building, allowed: hasAccess(['marketing', 'admin', 'auditor']) }
+            { name: 'Approval Settings', path: '/dashboard/marketing-approval-settings', icon: UserCheck, allowed: hasAccess(['marketing_manager']) },
+            { name: 'Event Locations', path: '/dashboard/marketing/event-locations', icon: MapPin, allowed: hasAccess(['marketing', 'marketing_manager', 'auditor']) },
+            { name: 'Target Branches', path: '/dashboard/marketing/branches', icon: Building, allowed: hasAccess(['marketing', 'marketing_manager', 'auditor']) }
           ]
         }
       ]
@@ -585,8 +586,8 @@ function SidebarContent({
           name: 'Master Data',
           icon: Database,
           children: [
-            { name: 'Companies', path: '/dashboard/master/companies', icon: Building2, allowed: hasAccess(['ga', 'legal', 'compliance', 'marketing', 'auditor']) },
-            { name: 'Vendors', path: '/dashboard/vendors', icon: Users, allowed: hasAccess(['ga', 'legal', 'compliance', 'marketing', 'auditor']) },
+            { name: 'Companies', path: '/dashboard/master/companies', icon: Building2, allowed: hasAccess(['ga', 'legal', 'compliance', 'marketing', 'marketing_manager', 'auditor']) },
+            { name: 'Vendors', path: '/dashboard/vendors', icon: Users, allowed: hasAccess(['ga', 'legal', 'compliance', 'legal_compliance', 'marketing', 'marketing_manager', 'finance', 'auditor']) },
             { name: 'Brands', path: '/dashboard/master/brands', icon: Tag, allowed: true },
             { name: 'Line of Business', path: '/dashboard/master/lobs', icon: ClipboardList, allowed: true },
           ]
@@ -678,7 +679,7 @@ function SidebarContent({
     ? fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     : 'U';
 
-  const isAdmin = role === 'admin';
+  const isAdmin = roles.includes('admin');
 
   return (
     <div className="flex min-w-0 w-full flex-col h-full bg-[#0f172a] border-r border-white/[0.06] transition-colors overflow-hidden">
@@ -900,7 +901,7 @@ function SidebarContent({
               <div className="space-y-2">
                 <div className="px-2.5 py-1 whitespace-normal break-words [overflow-wrap:anywhere]">
                   <p className="text-xs font-semibold text-white leading-5">{fullName}</p>
-                  <p className="text-[10px] text-slate-400 leading-4 uppercase mt-0.5">Role: {role}</p>
+                  <p className="text-[10px] text-slate-400 leading-4 uppercase mt-0.5">Role: {(roles.length ? roles : [role]).map(r => ROLE_LABELS[r] || r).join(' + ')}</p>
                 </div>
                 <button
                   type="button"
@@ -922,7 +923,7 @@ function SidebarContent({
           <div className="flex-1 min-w-0 flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white whitespace-normal break-words [overflow-wrap:anywhere] leading-5">{fullName}</p>
-              <p className="text-[10px] text-slate-400 whitespace-normal break-words [overflow-wrap:anywhere] leading-4 mt-0.5 uppercase">Role: {role}</p>
+              <p className="text-[10px] text-slate-400 whitespace-normal break-words [overflow-wrap:anywhere] leading-4 mt-0.5 uppercase">Role: {(roles.length ? roles : [role]).map(r => ROLE_LABELS[r] || r).join(' + ')}</p>
             </div>
             <motion.button
               type="button"
@@ -946,7 +947,7 @@ function SidebarContent({
 }
 
 // ─── Main Exported Sidebar Component ─────────────────────────────────────────────
-export function Sidebar({ open, onClose, role, fullName, handleLogout }) {
+export function Sidebar({ open, onClose, role, roles = [], fullName, handleLogout }) {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -974,6 +975,7 @@ export function Sidebar({ open, onClose, role, fullName, handleLogout }) {
           collapsed={collapsed} 
           toggleCollapse={toggleCollapse} 
           role={role}
+          roles={roles}
           fullName={fullName}
           handleLogout={handleLogout}
         />
@@ -1003,6 +1005,7 @@ export function Sidebar({ open, onClose, role, fullName, handleLogout }) {
                 collapsed={false} 
                 onClose={onClose} 
                 role={role}
+                roles={roles}
                 fullName={fullName}
                 handleLogout={handleLogout}
               />
