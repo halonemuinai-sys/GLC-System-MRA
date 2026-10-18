@@ -4,6 +4,26 @@ const { sendMail } = require('../../api/mailer');
 const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope } = require('./marketingHelper');
 const { evaluateLateSubmission, closingWindow } = require('./marketingGovernance');
 
+// Vendor on a plan item: an id from the vendor master, or a typed name. A name that is not in
+// the master is recorded as a Pending vendor (no vendor code) so GA registers and activates it;
+// Pending vendors cannot be used on a purchase order until then.
+async function resolvePlanVendor(tx, value) {
+  const raw = String(value ?? '').trim().replace(/\s+/g, ' ');
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) {
+    const vendor = await tx.vendors.findUnique({ where: { id: parseInt(raw, 10) }, select: { id: true } });
+    if (!vendor) throw Object.assign(new Error('The selected vendor no longer exists. Pick it again.'), { status: 400 });
+    return vendor.id;
+  }
+  if (raw.length > 200) throw Object.assign(new Error('Vendor name is too long (max 200 characters).'), { status: 400 });
+  const existing = await tx.vendors.findFirst({ where: { vendor_name: { equals: raw, mode: 'insensitive' } }, select: { id: true } });
+  if (existing) return existing.id;
+  const created = await tx.vendors.create({
+    data: { vendor_name: raw, status: 'Pending', review_status: 'Requested by Marketing', detail: 'Proposed by Marketing on a plan item. GA to complete and activate.' }
+  });
+  return created.id;
+}
+
 /**
  * Helper function to check if the proposed marketing plan items exceed the locked monthly budget.
  */
@@ -127,30 +147,7 @@ async function createPlan(req, res, next) {
       });
 
       for (const item of items) {
-        let resolvedVendorId = null;
-        if (item.vendor_id) {
-          const rawId = String(item.vendor_id).trim();
-          if (/^\d+$/.test(rawId)) {
-            resolvedVendorId = parseInt(rawId, 10);
-          } else if (rawId) {
-            const existingVendor = await tx.vendors.findFirst({
-              where: { vendor_name: { equals: rawId, mode: 'insensitive' } }
-            });
-            if (existingVendor) {
-              resolvedVendorId = existingVendor.id;
-            } else {
-              const count = await tx.vendors.count();
-              const vendorCode = `VND-MKT-${1000 + count + 1}`;
-              const newVendor = await tx.vendors.create({
-                data: {
-                  vendor_name: rawId,
-                  vendor_code: vendorCode
-                }
-              });
-              resolvedVendorId = newVendor.id;
-            }
-          }
-        }
+        const resolvedVendorId = await resolvePlanVendor(tx, item.vendor_id);
 
         await tx.marketing_plan_items.create({
           data: {
@@ -344,21 +341,7 @@ async function updatePlan(req, res, next) {
 
       await tx.marketing_plan_items.deleteMany({ where: { marketing_plan_id: planId } });
       for (const item of items) {
-        let resolvedVendorId = null;
-        if (item.vendor_id) {
-          const rawId = String(item.vendor_id).trim();
-          if (/^\d+$/.test(rawId)) {
-            resolvedVendorId = parseInt(rawId, 10);
-          } else if (rawId) {
-            const existing = await tx.vendors.findFirst({ where: { vendor_name: { equals: rawId, mode: 'insensitive' } } });
-            if (existing) { resolvedVendorId = existing.id; }
-            else {
-              const count = await tx.vendors.count();
-              const newV = await tx.vendors.create({ data: { vendor_name: rawId, vendor_code: `VND-MKT-${1000 + count + 1}` } });
-              resolvedVendorId = newV.id;
-            }
-          }
-        }
+        const resolvedVendorId = await resolvePlanVendor(tx, item.vendor_id);
         await tx.marketing_plan_items.create({
           data: {
             marketing_plan_id: planId,
@@ -699,27 +682,7 @@ async function revisePlan(req, res, next) {
       });
 
       for (const item of items) {
-        let resolvedVendorId = null;
-        if (item.vendor_id) {
-          const rawId = String(item.vendor_id).trim();
-          if (/^\d+$/.test(rawId)) {
-            resolvedVendorId = parseInt(rawId, 10);
-          } else if (rawId) {
-            const existingVendor = await tx.vendors.findFirst({
-              where: { vendor_name: { equals: rawId, mode: 'insensitive' } }
-            });
-            if (existingVendor) {
-              resolvedVendorId = existingVendor.id;
-            } else {
-              const count = await tx.vendors.count();
-              const vendorCode = `VND-MKT-${1000 + count + 1}`;
-              const newVendor = await tx.vendors.create({
-                data: { vendor_name: rawId, vendor_code: vendorCode }
-              });
-              resolvedVendorId = newVendor.id;
-            }
-          }
-        }
+        const resolvedVendorId = await resolvePlanVendor(tx, item.vendor_id);
 
         await tx.marketing_plan_items.create({
           data: {

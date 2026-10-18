@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  ShoppingCart,
   LayoutDashboard,
   Box,
   Truck,
@@ -501,6 +502,7 @@ function SidebarContent({
           children: [
             { name: 'Monitoring Anggaran', path: '/dashboard/ga/budget-monitoring', icon: CreditCard, allowed: hasAccess(['ga', 'admin', 'auditor']) },
             { name: 'Expenses', path: '/dashboard/expenses', icon: BarChart3, allowed: hasAccess(['ga', 'auditor']) },
+            { name: 'Marketing POs', path: '/dashboard/ga/marketing-po', icon: ShoppingCart, allowed: hasAccess(['ga', 'finance', 'auditor']) },
           ]
         },
         {

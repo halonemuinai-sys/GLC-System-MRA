@@ -622,6 +622,7 @@ model m_company {
   vehicles          vehicles[]
   vendors           vendors[]
   marketing_plans   marketing_plans[]
+  purchase_orders   purchase_orders[]
   marketing_budgets m_marketing_budget[]
   m_branches        m_branch[]
   m_brands          m_brand[]
@@ -876,6 +877,7 @@ model vendors {
   documents              documents[]
   maintenances           maintenances[]
   marketing_plan_items   marketing_plan_items[]
+  purchase_orders        purchase_orders[]
   m_bank                 m_bank?             @relation(fields: [bank_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   m_division             m_division?         @relation(fields: [division_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   m_expense_category     m_expense_category? @relation(fields: [expense_category_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -1113,6 +1115,7 @@ model marketing_plan_items {
 
   payment_requests  payment_requests[]
   closing_items     marketing_plan_closing_items[]
+  po_lines          purchase_order_lines[]
 
   @@schema("marketing_budget")
 }
@@ -1173,6 +1176,7 @@ model payment_requests {
   paid_at                DateTime?              @db.Timestamp(6)
   po_number              String?                @db.VarChar(100) // PO number dari GA
   po_issued_at           DateTime?              @db.Timestamp(6)
+  purchase_order_id      Int?
   finance_verified_at    DateTime?              @db.Timestamp(6)
   finance_verified_by    String?                @db.VarChar(150)
   finance_note           String?
@@ -1182,6 +1186,7 @@ model payment_requests {
 
   marketing_plan_item    marketing_plan_items   @relation(fields: [marketing_plan_item_id], references: [id], onDelete: NoAction)
   creator                m_approval_signer      @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  purchase_order         purchase_orders?       @relation(fields: [purchase_order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   approval_history       approval_history[]
 
   @@schema("marketing_budget")
@@ -1440,3 +1445,58 @@ model attachments {
   @@schema("glc_mra")
 }
 
+// GA purchase orders built from approved Marketing Plan items (basis for NetSuite POs).
+// One PO = one vendor + one company; lines may come from several plans.
+model purchase_orders {
+  id                   Int                    @id @default(autoincrement())
+  po_number            String                 @unique @db.VarChar(50)
+  company_id           Int
+  vendor_id            Int
+  status               String                 @default("DRAFT") @db.VarChar(20) // DRAFT, ISSUED, CLOSED, CANCELLED
+  order_date           DateTime               @default(dbgenerated("CURRENT_DATE")) @db.Date
+  delivery_date        DateTime?              @db.Date
+  payment_terms_days   Int?
+  tax_rate             Decimal                @default(0) @db.Decimal(5, 2)
+  subtotal             Decimal                @default(0) @db.Decimal(18, 2)
+  tax_amount           Decimal                @default(0) @db.Decimal(18, 2)
+  total                Decimal                @default(0) @db.Decimal(18, 2)
+  notes                String?
+  created_by           String?                @db.VarChar(150)
+  issued_at            DateTime?              @db.Timestamp(6)
+  issued_by            String?                @db.VarChar(150)
+  cancelled_at         DateTime?              @db.Timestamp(6)
+  cancelled_by         String?                @db.VarChar(150)
+  cancel_reason        String?
+  netsuite_status      String                 @default("NOT_SENT") @db.VarChar(20) // NOT_SENT, EXPORTED, SYNCED
+  netsuite_ref         String?                @db.VarChar(60)
+  netsuite_exported_at DateTime?              @db.Timestamp(6)
+  created_at           DateTime               @default(now()) @db.Timestamp(6)
+  updated_at           DateTime               @default(now()) @db.Timestamp(6)
+
+  company              m_company              @relation(fields: [company_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendor               vendors                @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lines                purchase_order_lines[]
+  payment_requests     payment_requests[]
+
+  @@index([company_id, status], map: "idx_po_company_status")
+  @@index([vendor_id], map: "idx_po_vendor")
+  @@schema("marketing_budget")
+}
+
+model purchase_order_lines {
+  id                     Int                  @id @default(autoincrement())
+  purchase_order_id      Int
+  marketing_plan_item_id Int
+  description            String               @db.VarChar(255)
+  qty                    Decimal              @default(1) @db.Decimal(12, 2)
+  unit_price             Decimal              @default(0) @db.Decimal(18, 2)
+  amount                 Decimal              @default(0) @db.Decimal(18, 2)
+  created_at             DateTime             @default(now()) @db.Timestamp(6)
+
+  purchase_order         purchase_orders      @relation(fields: [purchase_order_id], references: [id], onDelete: Cascade)
+  marketing_plan_item    marketing_plan_items @relation(fields: [marketing_plan_item_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([purchase_order_id], map: "idx_po_lines_po")
+  @@index([marketing_plan_item_id], map: "idx_po_lines_item")
+  @@schema("marketing_budget")
+}

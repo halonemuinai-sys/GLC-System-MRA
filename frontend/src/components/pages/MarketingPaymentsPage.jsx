@@ -54,6 +54,8 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
   const [reviewNote, setReviewNote] = useState('');
   const [paidNotes, setPaidNotes] = useState('');
   const [poNumber, setPoNumber] = useState(payment.po_number || '');
+  const [poOptions, setPoOptions] = useState(null);
+  const [poChoice, setPoChoice] = useState(payment.purchase_order_id ? String(payment.purchase_order_id) : '');
 
   const plan = payment.marketing_plan_item?.marketing_plan;
   const item = payment.marketing_plan_item;
@@ -66,6 +68,16 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
   const canDelete = isOpen && !partiallyApproved && ['admin', 'marketing'].includes(userRole);
   const canMarkPaid = payment.status === 'APPROVED' && (['admin', 'ga'].includes(userRole) || (isClaim && userRole === 'finance'));
   const canSetPo = ['APPROVED', 'PAID'].includes(payment.status) && ['admin', 'ga'].includes(userRole) && !isClaim;
+
+  // Issued GA purchase orders that contain this payment's plan item.
+  useEffect(() => {
+    if (!canSetPo) return;
+    let alive = true;
+    apiClient.get(`/api/ga/marketing-po/for-item/${payment.marketing_plan_item_id}`)
+      .then(list => { if (alive) setPoOptions(list || []); })
+      .catch(() => { if (alive) setPoOptions([]); });
+    return () => { alive = false; };
+  }, [canSetPo, payment.marketing_plan_item_id]);
   const budget = Number(item?.budget_amount || 0);
   const realized = Number(item?.actual_amount || 0);
 
@@ -170,6 +182,16 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
           {canSetPo && (
             <div className="space-y-2 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
               <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200"><Hash className="h-3.5 w-3.5" />PO number</p>
+              {poOptions === null ? <p className="flex items-center gap-1.5 text-[11px] text-slate-400"><Loader2 className="h-3 w-3 animate-spin" />Looking for purchase orders...</p> : poOptions.length > 0 && (
+                <div className="flex gap-2">
+                  <select aria-label="Purchase order" value={poChoice} onChange={e => setPoChoice(e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-950">
+                    <option value="">Select an issued PO for this item</option>
+                    {poOptions.map(po => <option key={po.id} value={po.id}>{po.po_number} · {po.vendor?.vendor_name} · {formatIDR(po.lines.reduce((sum, l) => sum + Number(l.amount), 0) * (1 + Number(po.tax_rate) / 100))}</option>)}
+                  </select>
+                  <button type="button" disabled={!!busy || !poChoice || poChoice === String(payment.purchase_order_id || '')} onClick={() => run('po-link', () => apiClient.post(`/api/marketing/payments/${payment.id}/set-po`, { purchase_order_id: Number(poChoice) }), 'Payment linked to the purchase order.')} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 cursor-pointer">{busy === 'po-link' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Link</button>
+                </div>
+              )}
+              {poOptions?.length === 0 && <p className="text-[11px] text-slate-400">No issued GA purchase order contains this item yet. Create one in GA → Marketing POs, or enter an existing PO number below.</p>}
               <div className="flex gap-2">
                 <input value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="e.g. PO/MKT/2026/0012" className="h-9 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-950" />
                 <button type="button" disabled={!!busy || !poNumber.trim() || poNumber.trim() === payment.po_number} onClick={() => run('po', () => apiClient.post(`/api/marketing/payments/${payment.id}/set-po`, { po_number: poNumber }), 'PO number saved.')} className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-40 dark:bg-white dark:text-slate-900 cursor-pointer">{busy === 'po' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Save</button>

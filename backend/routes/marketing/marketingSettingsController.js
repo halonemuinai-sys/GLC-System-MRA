@@ -56,7 +56,7 @@ async function getMetadata(req, res, next) {
 
     const vendors = await prisma.vendors.findMany({
       orderBy: { vendor_name: 'asc' },
-      select: { id: true, vendor_code: true, vendor_name: true }
+      select: { id: true, vendor_code: true, vendor_name: true, status: true }
     });
 
     const signers = await prisma.m_approval_signer.findMany({

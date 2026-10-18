@@ -326,7 +326,8 @@ async function setPoNumber(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
     const { po_number } = req.body;
-    if (!po_number || !po_number.trim()) {
+    const purchaseOrderId = req.body.purchase_order_id ? parseInt(req.body.purchase_order_id, 10) : null;
+    if (!purchaseOrderId && (!po_number || !po_number.trim())) {
       return res.status(400).json({ error: 'PO number is required.' });
     }
     const payment = await prisma.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
@@ -334,9 +335,27 @@ async function setPoNumber(req, res, next) {
     if (!['APPROVED', 'PAID'].includes(payment.status)) {
       return res.status(400).json({ error: 'A PO can only be issued for APPROVED or PAID payments.' });
     }
+    let data = { po_number: String(po_number || '').trim(), po_issued_at: new Date(), purchase_order_id: null, updated_at: new Date() };
+    if (purchaseOrderId) {
+      // Link to a GA purchase order: same company, contains this plan item, and the PO line
+      // (incl. tax) still covers this payment together with the other payments on it.
+      const po = await prisma.purchase_orders.findUnique({
+        where: { id: purchaseOrderId },
+        include: { lines: { where: { marketing_plan_item_id: payment.marketing_plan_item_id } }, payment_requests: { where: { id: { not: id }, marketing_plan_item_id: payment.marketing_plan_item_id, status: { not: 'REJECTED' } }, select: { amount: true } } }
+      });
+      if (!po || po.company_id !== payment.marketing_plan_item.marketing_plan.company_id) return res.status(400).json({ error: 'Purchase order not found for this company.' });
+      if (po.status !== 'ISSUED') return res.status(400).json({ error: 'Only issued purchase orders can be linked.' });
+      if (!po.lines.length) return res.status(400).json({ error: 'This purchase order has no line for the payment item.' });
+      const lineTotal = po.lines.reduce((sum, line) => sum + Number(line.amount), 0) * (1 + Number(po.tax_rate) / 100);
+      const used = po.payment_requests.reduce((sum, p) => sum + Number(p.amount), 0);
+      if (Number(payment.amount) > Math.round((lineTotal - used) * 100) / 100 + 0.01) {
+        return res.status(400).json({ error: `The PO line only has Rp ${Math.max(0, Math.round(lineTotal - used)).toLocaleString('id-ID')} left for this item.` });
+      }
+      data = { po_number: po.po_number, po_issued_at: po.issued_at || new Date(), purchase_order_id: po.id, updated_at: new Date() };
+    }
     const updated = await prisma.payment_requests.update({
       where: { id },
-      data: { po_number: po_number.trim(), po_issued_at: new Date(), updated_at: new Date() },
+      data,
       include: PAYMENT_INCLUDE
     });
     res.json(updated);

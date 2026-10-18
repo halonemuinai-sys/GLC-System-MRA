@@ -1,5 +1,5 @@
 const express = require('express');
-const { verifyToken, checkRole } = require('../api/authMiddleware');
+const { verifyToken, checkRole, attachCompanyScope } = require('../api/authMiddleware');
 
 const assetController = require('./ga/gaAssetController');
 const vehicleController = require('./ga/gaVehicleController');
@@ -11,6 +11,7 @@ const itRentalController = require('./ga/gaItRentalController');
 const dashboardController = require('./ga/gaDashboardController');
 const assetDisposalController = require('./ga/gaAssetDisposalController');
 const assetHandoverController = require('./ga/gaAssetHandoverController');
+const marketingPoController = require('./ga/gaMarketingPoController');
 
 const router = express.Router();
 
@@ -64,6 +65,23 @@ router.delete('/asset-handovers/:id', allowWrite, assetHandoverController.delete
 // Approval BAST via magic link email — publik, tanpa login
 router.get('/asset-handovers/magic/:token', assetHandoverController.getHandoverByToken);
 router.post('/asset-handovers/magic/:token', assetHandoverController.processHandoverByToken);
+
+// Marketing purchase orders (basis for NetSuite POs). Scoped to the user's companies.
+const poRead = [verifyToken, checkRole(['admin', 'ga', 'finance', 'marketing', 'auditor']), attachCompanyScope];
+const poWrite = [verifyToken, checkRole(['admin', 'ga']), attachCompanyScope];
+router.get('/marketing-po/queue', poRead, marketingPoController.getQueue);
+router.get('/marketing-po/vendors', poRead, marketingPoController.getVendorOptions);
+router.get('/marketing-po/for-item/:itemId', poRead, marketingPoController.getPosForItem);
+router.post('/marketing-po/netsuite-export', poWrite, marketingPoController.exportForNetsuite);
+router.get('/marketing-po', poRead, marketingPoController.getPurchaseOrders);
+router.get('/marketing-po/:id', poRead, marketingPoController.getPurchaseOrder);
+router.post('/marketing-po', poWrite, marketingPoController.createPurchaseOrder);
+router.put('/marketing-po/:id', poWrite, marketingPoController.updatePurchaseOrder);
+router.post('/marketing-po/:id/issue', poWrite, marketingPoController.issuePurchaseOrder);
+router.post('/marketing-po/:id/cancel', poWrite, marketingPoController.cancelPurchaseOrder);
+router.post('/marketing-po/:id/close', poWrite, marketingPoController.closePurchaseOrder);
+router.put('/marketing-po/:id/netsuite', poWrite, marketingPoController.setNetsuiteRef);
+router.delete('/marketing-po/:id', poWrite, marketingPoController.deletePurchaseOrder);
 
 // Vehicles CRUD
 router.get('/vehicles', allowRead, vehicleController.getVehicles);

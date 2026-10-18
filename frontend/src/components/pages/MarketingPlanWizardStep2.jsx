@@ -238,6 +238,14 @@ export default function MarketingPlanWizardStep2({
                           <option key={v.id} value={v.vendor_name} />
                         ))}
                       </datalist>
+                      {(() => {
+                        // Vendor not in the master (or still pending) → GA must register it before a PO.
+                        const raw = String(item.vendor_id || '').trim();
+                        if (!raw) return null;
+                        const vObj = /^\d+$/.test(raw) ? metadata.vendors.find(v => String(v.id) === raw) : metadata.vendors.find(v => v.vendor_name.toLowerCase() === raw.toLowerCase());
+                        if (vObj && !/^pending$/i.test(vObj.status || '')) return null;
+                        return <p className="mt-1 text-[10px] leading-snug text-amber-600 dark:text-amber-400">{vObj ? 'Waiting for GA registration' : 'Not in vendor master — will be sent to GA to register'}</p>;
+                      })()}
                     </td>
 
                     {/* Qty */}

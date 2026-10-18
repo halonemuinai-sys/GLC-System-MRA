@@ -222,16 +222,31 @@ async function getMagicLinkDetail(req, res, next) {
           include: {
             marketing_plan: {
               include: {
-                company: true,
-                creator: true,
-                items: { include: { m_coa: true, m_brand: true, m_line_business: true, m_branch: true, m_event_location: true, vendors: true } }
+                company: { select: { name: true } },
+                creator: { select: { name: true, position: true } },
+                approvers: { orderBy: { step_number: 'asc' } },
+                items: {
+                  orderBy: [{ period_month: 'asc' }, { id: 'asc' }],
+                  include: {
+                    m_coa: { select: { code: true, name: true } },
+                    m_brand: { select: { name: true } },
+                    m_line_business: { select: { name: true } },
+                    m_branch: { select: { name: true } },
+                    m_event_location: { select: { name: true } },
+                    vendors: { select: { vendor_name: true } }
+                  }
+                }
               }
             },
             payment_request: {
               include: {
-                creator: true,
+                creator: { select: { name: true, position: true } },
                 marketing_plan_item: {
-                  include: { m_coa: true, vendors: true, marketing_plan: { include: { company: true } } }
+                  include: {
+                    m_coa: { select: { code: true, name: true } },
+                    vendors: { select: { vendor_name: true } },
+                    marketing_plan: { select: { id: true, title: true, fiscal_year: true, company: { select: { name: true } } } }
+                  }
                 }
               }
             }
@@ -249,14 +264,91 @@ async function getMagicLinkDetail(req, res, next) {
     if (new Date() > link.expires_at) {
       return res.status(410).json({ error: 'Link approval ini sudah kedaluwarsa.' });
     }
-    if (link.approval_history.status !== 'PENDING') {
+    const task = link.approval_history;
+    if (task.status !== 'PENDING') {
       return res.status(410).json({ error: 'Approval ini sudah diproses melalui jalur lain.' });
+    }
+
+    // Public endpoint: send only what the approval page shows (no vendor bank data,
+    // no internal ids beyond the document number).
+    const plan = task.marketing_plan;
+    const pr = task.payment_request;
+    let doc;
+    let chain;
+    if (plan) {
+      doc = {
+        kind: 'PLAN',
+        id: plan.id,
+        title: plan.title,
+        company: plan.company?.name || null,
+        requester: plan.creator ? { name: plan.creator.name, position: plan.creator.position } : null,
+        amount: Number(plan.total_budget || 0),
+        fiscal_year: plan.fiscal_year,
+        description: plan.description,
+        event_start_date: plan.event_start_date,
+        event_end_date: plan.event_end_date,
+        doc_url: plan.doc_url,
+        late_reason: plan.is_late_submission ? (plan.late_submission_reason || '-') : null,
+        submitted_at: task.created_at,
+        items: plan.items.map(item => ({
+          month: item.period_month,
+          coa: item.m_coa ? `${item.m_coa.code} - ${item.m_coa.name}` : null,
+          brand: item.m_brand?.name || null,
+          lob: item.m_line_business?.name || null,
+          branch: item.m_branch?.name || null,
+          location: item.m_event_location?.name || null,
+          vendor: item.vendors?.vendor_name || null,
+          description: item.description,
+          budget: Number(item.budget_amount || 0)
+        }))
+      };
+      chain = plan.approvers.length
+        ? plan.approvers.map(a => ({ step: a.step_number, name: a.approver_name, role: a.approver_role, status: a.status, action_at: a.action_at, comment: a.comment }))
+        : null;
+    } else {
+      const item = pr.marketing_plan_item;
+      const budget = Number(item?.budget_amount || 0);
+      const realized = Number(item?.actual_amount || 0);
+      doc = {
+        kind: pr.request_type === 'CLAIM' ? 'CLAIM' : 'PAYMENT',
+        id: pr.id,
+        title: pr.title,
+        company: item?.marketing_plan?.company?.name || null,
+        requester: pr.creator ? { name: pr.creator.name, position: pr.creator.position } : null,
+        amount: Number(pr.amount || 0),
+        fiscal_year: item?.marketing_plan?.fiscal_year || null,
+        plan_title: item?.marketing_plan?.title || null,
+        coa: item?.m_coa ? `${item.m_coa.code} - ${item.m_coa.name}` : null,
+        month: item?.period_month || null,
+        vendor: pr.expense_vendor || item?.vendors?.vendor_name || null,
+        payee: pr.reimbursement_payee || null,
+        expense_date: pr.expense_date,
+        notes: pr.notes,
+        doc_url: pr.doc_url,
+        overbudget: pr.status === 'OVERBUDGET_WARN',
+        submitted_at: pr.created_at,
+        budget: item ? { budget, realized, remaining: budget - realized } : null
+      };
+      chain = null;
+    }
+    if (!chain) {
+      const steps = await prisma.approval_history.findMany({
+        where: plan ? { marketing_plan_id: plan.id } : { payment_request_id: pr.id },
+        orderBy: [{ step_number: 'asc' }, { created_at: 'desc' }],
+        include: { approver: { select: { name: true, position: true } } }
+      });
+      // Latest record per step (a step can be re-opened after a rejection cycle).
+      const latest = new Map();
+      for (const h of steps) if (!latest.has(h.step_number)) latest.set(h.step_number, h);
+      chain = [...latest.values()].map(h => ({ step: h.step_number, name: h.approver?.name || null, role: h.approver?.position || null, status: h.status, action_at: h.action_at, comment: h.comment }));
     }
 
     res.json({
       recipientEmail: link.recipient_email,
       expiresAt: link.expires_at,
-      task: link.approval_history
+      step: task.step_number,
+      doc,
+      chain
     });
   } catch (err) {
     next(err);
@@ -272,8 +364,9 @@ async function processMagicLink(req, res, next) {
     if (!action || !['APPROVE', 'REJECT'].includes(action)) {
       return res.status(400).json({ error: 'Action must be APPROVE or REJECT.' });
     }
-    if (action === 'REJECT' && !comment) {
-      return res.status(400).json({ error: 'Komentar wajib diisi untuk penolakan.' });
+    const note = typeof comment === 'string' ? comment.trim() : '';
+    if (action === 'REJECT' && !note) {
+      return res.status(400).json({ error: 'Alasan penolakan wajib diisi.' });
     }
 
     const link = await prisma.approval_magic_links.findUnique({ where: { token } });
@@ -305,7 +398,7 @@ async function processMagicLink(req, res, next) {
     const { result, magicLinkQueue } = await executeApprovalDecision({
       task,
       action,
-      comment,
+      comment: note || null,
       signature,
       actingApproverId,
       consumeMagicLinkId: link.id
@@ -316,7 +409,7 @@ async function processMagicLink(req, res, next) {
       await dispatchMagicLinkEmails(magicLinkQueue, docContext);
     }
     await dispatchPaymentStatusEmail(result, task);
-    await dispatchPlanStatusEmail(result, task, comment);
+    await dispatchPlanStatusEmail(result, task, note || null);
 
     res.json(result);
   } catch (err) {

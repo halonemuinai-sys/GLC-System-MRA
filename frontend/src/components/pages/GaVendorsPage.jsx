@@ -699,9 +699,11 @@ export default function GaVendorsPage() {
                         </td>
                         <td className="p-4">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            vendor.status?.toLowerCase() === 'active' 
-                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
-                              : 'bg-neutral-500/10 text-neutral-500'
+                            ['active', 'aktif'].includes(vendor.status?.toLowerCase())
+                              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                              : vendor.status?.toLowerCase() === 'pending'
+                                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                : 'bg-neutral-500/10 text-neutral-500'
                           }`}>
                             {vendor.status || 'Active'}
                           </span>
@@ -1125,6 +1127,7 @@ export default function GaVendorsPage() {
                       >
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
+                        <option value="Pending">Pending (requested by Marketing)</option>
                       </select>
                     </div>
                   </div>
