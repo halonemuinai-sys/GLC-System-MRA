@@ -16,8 +16,8 @@ import {
 import { apiClient } from '@/lib/apiClient';
 
 const MONTH_NAMES = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
 function InfoTooltip({ content, position = 'top' }) {
@@ -116,19 +116,19 @@ export default function MarketingBudgetShiftDrawer({
     const cleanAmount = parseFloat(amount.replace(/[^0-9]/g, '')) || 0;
 
     if (!fromMonth || !toMonth || fromMonth === toMonth) {
-      setError('Bulan asal dan tujuan harus valid serta berbeda.');
+      setError('Source and target months must be valid and different.');
       return;
     }
     if (cleanAmount <= 0) {
-      setError('Nominal pergeseran harus lebih dari Rp 0.');
+      setError('Shift amount must be greater than Rp 0.');
       return;
     }
     if (cleanAmount > maxAvailable) {
-      setError(`Nominal melebihi sisa alokasi bulan asal (${formatIDR(maxAvailable)}).`);
+      setError(`Amount exceeds the source month's free allocation (${formatIDR(maxAvailable)}).`);
       return;
     }
     if (!reason.trim()) {
-      setError('Alasan pergeseran anggaran wajib diisi.');
+      setError('A reason for the budget shift is required.');
       return;
     }
 
@@ -144,7 +144,7 @@ export default function MarketingBudgetShiftDrawer({
       if (onShiftSuccess) onShiftSuccess();
       onClose();
     } catch (err) {
-      setError(err.message || 'Gagal mengajukan pergeseran anggaran.');
+      setError(err.message || 'Failed to submit the budget shift.');
     } finally {
       setSubmitting(false);
     }
@@ -178,10 +178,10 @@ export default function MarketingBudgetShiftDrawer({
                   <span className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                     <DollarSign className="w-4 h-4" />
                   </span>
-                  Ajukan Pergeseran Anggaran
+                  Request Budget Shift
                 </h2>
                 <p className="text-xs text-neutral-400 dark:text-neutral-500 mt-1">
-                  Relokasi alokasi dana antar bulan sesuai matriks otorisasi COO.
+                  Move allocation between months following the COO authorization matrix.
                 </p>
               </div>
               <button
@@ -206,8 +206,8 @@ export default function MarketingBudgetShiftDrawer({
                 {/* From Month */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider flex items-center">
-                    Bulan Sumber (Asal)
-                    <InfoTooltip content="Bulan yang memiliki sisa alokasi kuota aktif dan belum ditutup bukunya." />
+                    Source month
+                    <InfoTooltip content="Months with free allocation that are not closed yet." />
                   </label>
                   <select
                     value={fromMonth}
@@ -215,11 +215,11 @@ export default function MarketingBudgetShiftDrawer({
                     className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     {availableSourceMonths.length === 0 && (
-                      <option value="">Tidak ada bulan yang memiliki sisa kuota</option>
+                      <option value="">No month has free quota</option>
                     )}
                     {availableSourceMonths.map((m) => (
                       <option key={m.month} value={m.month}>
-                        {MONTH_NAMES[m.month - 1]} (Sisa {formatIDR(m.available)})
+                        {MONTH_NAMES[m.month - 1]} ({formatIDR(m.available)} free)
                       </option>
                     ))}
                   </select>
@@ -233,8 +233,8 @@ export default function MarketingBudgetShiftDrawer({
                 {/* To Month */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider flex items-center">
-                    Bulan Tujuan
-                    <InfoTooltip content="Bulan yang akan menerima penambahan alokasi pagu belanja dari hasil pergeseran." />
+                    Target month
+                    <InfoTooltip content="The month that receives the additional spending allocation." />
                   </label>
                   <select
                     value={toMonth}
@@ -245,7 +245,7 @@ export default function MarketingBudgetShiftDrawer({
                       .filter((m) => m.month !== fromNum)
                       .map((m) => (
                         <option key={m.month} value={m.month}>
-                          {MONTH_NAMES[m.month - 1]} {m.is_closed ? '(Tutup Buku)' : ''}
+                          {MONTH_NAMES[m.month - 1]} {m.is_closed ? '(Closed)' : ''}
                         </option>
                       ))}
                   </select>
@@ -270,21 +270,21 @@ export default function MarketingBudgetShiftDrawer({
                     <div>
                       <p className="font-extrabold uppercase tracking-wider text-[10px]">
                         {isIntraQuarter
-                          ? `Pergeseran Internal Kuartal (Intra-Q${fromQ})`
-                          : `Pergeseran Lintas Kuartal (Cross-Quarter: Q${fromQ} -> Q${toQ})`}
+                          ? `Within-quarter shift (Intra-Q${fromQ})`
+                          : `Cross-quarter shift (Q${fromQ} → Q${toQ})`}
                       </p>
                       <p className="text-[11px] mt-1 leading-relaxed">
                         {isIntraQuarter ? (
                           <>
-                            Bulan asal dan tujuan berada di kuartal yang sama. Sesuai arahan COO,
-                            pergeseran ini hanya membutuhkan <b>1 tahap persetujuan</b> dari{' '}
+                            Both months are in the same quarter. Per COO policy,
+                            this shift needs only <b>1 approval step</b> from the{' '}
                             <b>Financial Controller (FC)</b>.
                           </>
                         ) : (
                           <>
-                            Bulan asal dan tujuan berada di kuartal berbeda. Sesuai arahan COO,
-                            pergeseran ini memerlukan <b>2 tahap persetujuan berjenjang</b>:{' '}
-                            <b>1. Head of Marketing</b> lalu <b>2. Financial Controller (FC)</b>.
+                            The months are in different quarters. Per COO policy,
+                            this shift needs <b>2 sequential approval steps</b>:{' '}
+                            <b>1. Head of Marketing</b> then <b>2. Financial Controller (FC)</b>.
                           </>
                         )}
                       </p>
@@ -296,8 +296,8 @@ export default function MarketingBudgetShiftDrawer({
               {/* Amount Input */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider flex items-center">
-                  Nominal yang Digeser (Rp)
-                  <InfoTooltip content="Nilai dana yang dipindahkan. Tidak boleh melebihi sisa alokasi bulan sumber." />
+                  Amount to shift (Rp)
+                  <InfoTooltip content="Amount to move. It cannot exceed the free allocation of the source month." />
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-neutral-400">
@@ -316,14 +316,14 @@ export default function MarketingBudgetShiftDrawer({
               {/* Reason Textarea */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider flex items-center">
-                  Alasan & Justifikasi Pergeseran
-                  <InfoTooltip content="Penjelasan alasan bisnis atau kebutuhan program kampanye yang membutuhkan tambahan anggaran." />
+                  Reason & justification
+                  <InfoTooltip content="The business reason or campaign need that requires the extra budget." />
                 </label>
                 <textarea
                   rows={4}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="Jelaskan program atau kebutuhan kampanye yang melatarbelakangi penambahan anggaran pada bulan tujuan..."
+                  placeholder="Describe the program or campaign need behind the extra budget in the target month..."
                   className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl p-3 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                 />
               </div>
@@ -335,7 +335,7 @@ export default function MarketingBudgetShiftDrawer({
                   onClick={onClose}
                   className="flex-1 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -349,7 +349,7 @@ export default function MarketingBudgetShiftDrawer({
                     </>
                   ) : (
                     <>
-                      Kirim Permohonan
+                      Submit request
                       <ArrowRight className="w-3.5 h-3.5" />
                     </>
                   )}

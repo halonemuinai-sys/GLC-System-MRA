@@ -117,14 +117,14 @@ async function executeApprovalDecision({ task, action, comment, signature, actin
         where: { id: task.id, status: 'PENDING' },
         data: { status: decision, approver_id: actingApproverId, comment, signature_url: signature || null, action_at: new Date() }
       });
-      if (claimed.count !== 1) throw new Error('Claim sudah diproses.');
+      if (claimed.count !== 1) throw new Error('This claim has already been processed.');
       const updated = await tx.payment_requests.updateMany({
         where: { id: task.payment_request_id, request_type: 'CLAIM', status: 'PENDING' },
         data: { status: decision, updated_at: new Date() }
       });
-      if (updated.count !== 1) throw new Error('Claim sudah diproses.');
+      if (updated.count !== 1) throw new Error('This claim has already been processed.');
       await tx.approval_magic_links.updateMany({ where: { approval_history_id: task.id, used_at: null }, data: { used_at: new Date() } });
-      return { message: 'Keputusan Finance tersimpan.', action, finalStatus: decision, isPlan: false };
+      return { message: 'Finance decision saved.', action, finalStatus: decision, isPlan: false };
     }
     if (consumeMagicLinkId) {
       await tx.approval_magic_links.update({

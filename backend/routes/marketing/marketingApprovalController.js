@@ -87,7 +87,7 @@ async function getPendingTasks(req, res, next) {
   try {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
-      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
+      return res.status(403).json({ error: 'Your email is not registered as a Master Signer.' });
     }
 
     const actor = { role: req.user.role.toUpperCase(), email: req.user.email };
@@ -111,7 +111,7 @@ async function processApproval(req, res, next) {
   try {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
-      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
+      return res.status(403).json({ error: 'Your email is not registered as a Master Signer.' });
     }
 
     const { id } = req.params;
@@ -121,7 +121,7 @@ async function processApproval(req, res, next) {
       return res.status(400).json({ error: 'Action must be APPROVE or REJECT.' });
     }
     if (action === 'REJECT' && (typeof comment !== 'string' || !comment.trim())) {
-      return res.status(400).json({ error: 'Isi alasan penolakan.' });
+      return res.status(400).json({ error: 'Enter a reason for rejecting.' });
     }
 
     const task = await prisma.approval_history.findUnique({ where: { id: parseInt(id, 10) }, include: TASK_INCLUDE });
@@ -136,7 +136,7 @@ async function processApproval(req, res, next) {
     const rules = task.payment_request?.request_type === 'CLAIM' ? [] : await prisma.approval_rules.findMany();
     if (!canActOnTask(task, actor, rules)) {
       const isClaim = task.payment_request?.request_type === 'CLAIM';
-      return res.status(403).json({ error: isClaim ? 'Claim hanya dapat disetujui atau ditolak oleh Finance.' : 'Anda tidak memiliki kewenangan untuk menyetujui tahap approval ini.' });
+      return res.status(403).json({ error: isClaim ? 'Claims can only be approved or rejected by Finance.' : 'You are not authorized to act on this approval step.' });
     }
 
     const { result, magicLinkQueue } = await executeApprovalDecision({

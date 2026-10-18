@@ -43,7 +43,7 @@ async function getQuarterlyAlignment(req, res, next) {
   try {
     const companyId = parseInt(req.query.company_id, 10);
     const fiscalYear = parseInt(req.query.fiscal_year, 10);
-    if (!companyId || !fiscalYear) return res.status(400).json({ error: 'company_id dan fiscal_year wajib diisi.' });
+    if (!companyId || !fiscalYear) return res.status(400).json({ error: 'company_id and fiscal_year are required.' });
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(companyId)) {
       return res.status(403).json({ error: 'Company outside your access scope.' });
     }
@@ -127,7 +127,7 @@ async function getReconciliation(req, res, next) {
   try {
     const companyId = parseInt(req.query.company_id, 10);
     const fiscalYear = parseInt(req.query.fiscal_year, 10);
-    if (!companyId || !fiscalYear) return res.status(400).json({ error: 'company_id dan fiscal_year wajib diisi.' });
+    if (!companyId || !fiscalYear) return res.status(400).json({ error: 'company_id and fiscal_year are required.' });
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(companyId)) {
       return res.status(403).json({ error: 'Company outside your access scope.' });
     }

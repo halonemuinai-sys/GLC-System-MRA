@@ -18,8 +18,8 @@ import {
 import { apiClient } from '@/lib/apiClient';
 
 const MONTH_NAMES = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
 export default function MarketingBudgetShiftHistoryModal({
@@ -45,7 +45,7 @@ export default function MarketingBudgetShiftHistoryModal({
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('id-ID', {
+    return new Date(dateStr).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -83,7 +83,7 @@ export default function MarketingBudgetShiftHistoryModal({
       handleCloseDecision();
       if (onDecisionSuccess) onDecisionSuccess();
     } catch (err) {
-      setError(err.message || `Gagal memproses ${decisionAction.toLowerCase()}.`);
+      setError(err.message || `Failed to process the ${decisionAction.toLowerCase()}.`);
     } finally {
       setSubmitting(false);
     }
@@ -117,10 +117,10 @@ export default function MarketingBudgetShiftHistoryModal({
                 </div>
                 <div>
                   <h2 className="text-sm font-black text-neutral-900 dark:text-white">
-                    Riwayat & Otorisasi Pergeseran Anggaran
+                    Budget Shift History & Approval
                   </h2>
                   <p className="text-[11px] text-neutral-400 dark:text-neutral-500">
-                    Daftar pengajuan relokasi dana antar bulan, rantai penandatangan, dan audit trail.
+                    Reallocation requests between months, their signer chain and audit trail.
                   </p>
                 </div>
               </div>
@@ -137,9 +137,9 @@ export default function MarketingBudgetShiftHistoryModal({
               {shifts.length === 0 ? (
                 <div className="py-16 text-center text-neutral-400 dark:text-neutral-500">
                   <History className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-xs font-bold">Belum ada riwayat pergeseran anggaran.</p>
+                  <p className="text-xs font-bold">No budget shifts yet.</p>
                   <p className="text-[11px] mt-0.5">
-                    Gunakan tombol "Ajukan Pergeseran" untuk memulai realokasi alokasi bulanan.
+                    Use “Request shift” to reallocate between months.
                   </p>
                 </div>
               ) : (
@@ -194,17 +194,17 @@ export default function MarketingBudgetShiftHistoryModal({
                               {isApproved ? (
                                 <>
                                   <CheckCircle2 className="w-3 h-3" />
-                                  Disetujui
+                                  Approved
                                 </>
                               ) : isRejected ? (
                                 <>
                                   <XCircle className="w-3 h-3" />
-                                  Ditolak
+                                  Rejected
                                 </>
                               ) : (
                                 <>
                                   <Clock className="w-3 h-3" />
-                                  Menunggu Otorisasi (Step {s.current_step}/{s.total_steps})
+                                  Awaiting approval (step {s.current_step}/{s.total_steps})
                                 </>
                               )}
                             </span>
@@ -215,13 +215,13 @@ export default function MarketingBudgetShiftHistoryModal({
                                   onClick={() => handleOpenDecision(s, 'APPROVE')}
                                   className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-xs shadow-emerald-600/20"
                                 >
-                                  Setujui
+                                  Approve
                                 </button>
                                 <button
                                   onClick={() => handleOpenDecision(s, 'REJECT')}
                                   className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer shadow-xs shadow-red-600/20"
                                 >
-                                  Tolak
+                                  Reject
                                 </button>
                               </div>
                             )}
@@ -236,7 +236,7 @@ export default function MarketingBudgetShiftHistoryModal({
                         {/* Signers Timeline */}
                         <div className="space-y-1 pt-1">
                           <p className="text-[9px] font-black text-neutral-400 uppercase tracking-wider">
-                            Rantai Penandatangan (Sequential Signers):
+                            Signer chain:
                           </p>
                           <div className="flex flex-wrap gap-2">
                             {s.approvers?.map((app) => (
@@ -275,7 +275,7 @@ export default function MarketingBudgetShiftHistoryModal({
                         {/* Footer Meta */}
                         <div className="text-[10px] text-neutral-400 dark:text-neutral-500 flex items-center justify-between pt-1">
                           <span>
-                            Diajukan oleh: <b className="text-neutral-600 dark:text-neutral-300">{s.creator?.name || s.creator?.email || 'Marketing Team'}</b>
+                            Requested by: <b className="text-neutral-600 dark:text-neutral-300">{s.creator?.name || s.creator?.email || 'Marketing Team'}</b>
                           </span>
                           <span>{formatDate(s.created_at)}</span>
                         </div>
@@ -307,7 +307,7 @@ export default function MarketingBudgetShiftHistoryModal({
                             <XCircle className="w-3.5 h-3.5" />
                           </span>
                         )}
-                        Konfirmasi {decisionAction === 'APPROVE' ? 'Persetujuan' : 'Penolakan'} Pergeseran
+                        Confirm shift {decisionAction === 'APPROVE' ? 'approval' : 'rejection'}
                       </h3>
                       <button onClick={handleCloseDecision} className="text-neutral-400 hover:text-neutral-600">
                         <X className="w-4 h-4" />
@@ -322,21 +322,21 @@ export default function MarketingBudgetShiftHistoryModal({
                     )}
 
                     <p className="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                      Anda akan <b>{decisionAction === 'APPROVE' ? 'menyetujui' : 'menolak'}</b> pergeseran alokasi anggaran sebesar{' '}
-                      <b>{formatIDR(parseFloat(selectedShift.amount))}</b> dari{' '}
-                      <b>{MONTH_NAMES[(selectedShift.from_monthly?.period_month || 1) - 1]}</b> ke{' '}
+                      You are about to <b>{decisionAction === 'APPROVE' ? 'approve' : 'reject'}</b> a budget shift of{' '}
+                      <b>{formatIDR(parseFloat(selectedShift.amount))}</b> from{' '}
+                      <b>{MONTH_NAMES[(selectedShift.from_monthly?.period_month || 1) - 1]}</b> to{' '}
                       <b>{MONTH_NAMES[(selectedShift.to_monthly?.period_month || 1) - 1]}</b>.
                     </p>
 
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-neutral-400 uppercase tracking-wider block">
-                        Komentar / Catatan (Opsional)
+                        Comment (optional — required when rejecting)
                       </label>
                       <textarea
                         rows={3}
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        placeholder="Tuliskan catatan otorisasi..."
+                        placeholder="Write an approval note..."
                         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl p-2.5 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
                       />
                     </div>
@@ -347,7 +347,7 @@ export default function MarketingBudgetShiftHistoryModal({
                         onClick={handleCloseDecision}
                         className="flex-1 px-3 py-2 bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
                       >
-                        Batal
+                        Cancel
                       </button>
                       <button
                         type="button"
@@ -362,12 +362,12 @@ export default function MarketingBudgetShiftHistoryModal({
                         {submitting ? (
                           <>
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            Memproses...
+                            Processing...
                           </>
                         ) : decisionAction === 'APPROVE' ? (
-                          'Setujui Sekarang'
+                          'Approve now'
                         ) : (
-                          'Tolak Pengajuan'
+                          'Reject request'
                         )}
                       </button>
                     </div>

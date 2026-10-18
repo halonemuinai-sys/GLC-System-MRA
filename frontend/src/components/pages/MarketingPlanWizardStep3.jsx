@@ -106,8 +106,8 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
             </span>
           </div>
           <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">
-            <InlineHelp summary={lang === 'id' ? 'Pilih dari direktori atau isi nama dan email manual.' : 'Choose from the directory or enter a name and email.'} label={lang === 'id' ? 'Penjelasan alur persetujuan' : 'About the approval flow'}>
-              {lang === 'id' ? 'Penerima manual hanya disimpan untuk dokumen ini; direktori dan pengaturan PT tidak berubah. Periksa jabatan dan urutannya. Setiap penerima memperoleh tautan approval saat tahapnya tiba.' : 'Manual recipients are saved only on this document; the directory and company settings stay unchanged. Check the roles and order. Each recipient gets an approval link when their turn is reached.'}
+            <InlineHelp summary={lang === 'id' ? 'Pick from the directory or enter a name and email manually.' : 'Choose from the directory or enter a name and email.'} label={lang === 'id' ? 'Penjelasan alur persetujuan' : 'About the approval flow'}>
+              {lang === 'id' ? 'Manual recipients are saved for this document only; the directory and company settings do not change. Check titles and order. Each recipient gets an approval link when their step comes.' : 'Manual recipients are saved only on this document; the directory and company settings stay unchanged. Check the roles and order. Each recipient gets an approval link when their turn is reached.'}
             </InlineHelp>
           </p>
         </div>
@@ -118,10 +118,10 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
               type="button"
               onClick={onUseDefaults}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-[11px] font-bold hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition-all cursor-pointer shadow-sm"
-              title={lang === 'id' ? 'Muat ulang approver rekomendasi dari sistem MRA' : 'Load default MRA recommended signers'}
+              title={lang === 'id' ? 'Reload recommended approvers from the MRA system' : 'Load default MRA recommended signers'}
             >
               <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-              <span>{lang === 'id' ? 'Muat penerima PT' : 'Load company recipients'}</span>
+              <span>{lang === 'id' ? 'Load company recipients' : 'Load company recipients'}</span>
             </button>
           )}
           <button
@@ -130,7 +130,7 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
             className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition-all cursor-pointer shadow-sm shadow-blue-500/15"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>{lang === 'id' ? 'Tambah Penandatangan' : 'Add Signer'}</span>
+            <span>{lang === 'id' ? 'Add Signer' : 'Add Signer'}</span>
           </button>
         </div>
       </div>
@@ -181,7 +181,7 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
                   list={`users-datalist-${idx}`}
                   value={approver.approver_name}
                   onChange={(e) => handleUserSelect(idx, e.target.value)}
-                  placeholder={lang === 'id' ? 'Pilih nama / ketik manual' : 'Choose a name / type manually'}
+                  placeholder={lang === 'id' ? 'Select a name / type manually' : 'Choose a name / type manually'}
                   required
                   className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
                 />
@@ -234,7 +234,7 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
                   type="button"
                   onClick={() => removeApprover(idx)}
                   className="w-8 h-8 rounded-xl flex items-center justify-center text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
-                  title={lang === 'id' ? 'Hapus Penandatangan' : 'Remove Signer'}
+                  title={lang === 'id' ? 'Remove signer' : 'Remove Signer'}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -334,21 +334,21 @@ export default function MarketingPlanWizardStep3({
         <div className="bg-rose-500/10 border border-rose-500/25 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 text-xs font-black">
             <Clock className="w-4 h-4" />
-            <span>{lang === 'id' ? 'Pengajuan Terlambat (Aturan H-3)' : 'Late Submission (H-3 Rule)'}</span>
+            <span>{lang === 'id' ? 'Late Submission (H-3 Rule)' : 'Late Submission (H-3 Rule)'}</span>
           </div>
           <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-semibold">
             {lang === 'id'
-              ? `Plan wajib diajukan minimal 3 bulan sebelum event. Event dimulai ${wizardHeader.event_start_date}, sedangkan batas tepat waktu adalah event mulai ${earliestOnTimeEventDate().toLocaleDateString('id-ID')} atau sesudahnya. Plan tetap bisa diajukan, tapi akan ditandai "Late Submission" dan approver akan melihat alasannya.`
+              ? `Plan wajib diajukan minimal 3 bulan sebelum event. Event dimulai ${wizardHeader.event_start_date}, sedangkan batas tepat waktu adalah event mulai ${earliestOnTimeEventDate().toLocaleDateString('en-GB')} atau sesudahnya. Plan tetap bisa diajukan, tapi akan ditandai "Late Submission" dan approver akan melihat alasannya.`
               : `Plans must be submitted at least 3 months before the event. The event starts ${wizardHeader.event_start_date}; on-time submissions need an event starting ${earliestOnTimeEventDate().toLocaleDateString('en-GB')} or later. You can still submit, but it will be flagged "Late Submission" and approvers will see your reason.`}
           </p>
           <div className="space-y-2 pt-2 border-t border-rose-500/10">
             <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block">
-              {lang === 'id' ? 'Alasan Pengajuan Terlambat (wajib)' : 'Late Submission Reason (required)'}
+              {lang === 'id' ? 'Late Submission Reason (required)' : 'Late Submission Reason (required)'}
             </label>
             <textarea
               rows="3"
               required
-              placeholder={lang === 'id' ? 'Contoh: peluang event mendadak dari mall partner, konfirmasi venue baru didapat...' : 'e.g. sudden event opportunity from partner mall, venue just confirmed...'}
+              placeholder={lang === 'id' ? 'e.g. a sudden event opportunity from a mall partner, venue only just confirmed...' : 'e.g. sudden event opportunity from partner mall, venue just confirmed...'}
               value={wizardHeader.late_submission_reason || ''}
               onChange={(e) => setWizardHeader(prev => ({ ...prev, late_submission_reason: e.target.value }))}
               className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium leading-relaxed resize-none"
@@ -364,12 +364,12 @@ export default function MarketingPlanWizardStep3({
           <AlertTriangle className={`w-5 h-5 mt-0.5 shrink-0 ${thresholdAlert.level === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
           <div className="space-y-1">
             <p className={`text-xs font-black ${thresholdAlert.level === 'critical' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
-              {thresholdAlert.level === 'critical' ? `Anggaran Melampaui 100% (${thresholdAlert.pct}%)` : `Peringatan: Anggaran Mendekati Batas (${thresholdAlert.pct}%)`}
+              {thresholdAlert.level === 'critical' ? `Budget Over 100% (${thresholdAlert.pct}%)` : `Warning: Budget Near Limit (${thresholdAlert.pct}%)`}
             </p>
             <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed font-semibold">
               {thresholdAlert.level === 'critical'
-                ? 'Total anggaran yang direncanakan melebihi plafon yang tersedia. Pengajuan tetap bisa dilanjutkan, namun memerlukan justifikasi dari approver.'
-                : 'Total anggaran mendekati batas plafon. Pastikan anggaran ini telah disetujui sebelum melanjutkan pengajuan.'}
+                ? 'The planned budget exceeds the available ceiling. You can still continue, but approvers will need a justification.'
+                : 'The total budget is close to the ceiling. Make sure it has been agreed before continuing.'}
             </p>
           </div>
         </div>
@@ -387,7 +387,7 @@ export default function MarketingPlanWizardStep3({
           <div className="space-y-1.5 border-t border-amber-500/10 pt-3">
             {overBudgetMonths.map(ob => (
               <div key={ob.month} className="text-[10px] text-neutral-600 dark:text-neutral-400">
-                • {t('monthWord')} <strong>{getMonthName(ob.month, lang)}</strong>: Rp {ob.limit.toLocaleString('id-ID')}, {t('usedWord')} Rp {ob.committed.toLocaleString('id-ID')}, {t('newRequestWord')} Rp {ob.proposed.toLocaleString('id-ID')} ({t('overByWord')} Rp {ob.excess.toLocaleString('id-ID')})
+                • {t('monthWord')} <strong>{getMonthName(ob.month, lang)}</strong>: Rp {ob.limit.toLocaleString('en-GB')}, {t('usedWord')} Rp {ob.committed.toLocaleString('en-GB')}, {t('newRequestWord')} Rp {ob.proposed.toLocaleString('en-GB')} ({t('overByWord')} Rp {ob.excess.toLocaleString('en-GB')})
               </div>
             ))}
           </div>

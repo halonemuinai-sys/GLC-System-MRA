@@ -41,8 +41,8 @@ export default function MarketingPlanWizardModal({
   onSuccess,
   onError
 }) {
-  const { lang } = useLanguage();
-  const t = useCallback((key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key), [lang]);
+  const lang = 'en'; // Marketing Plan UI is English-only
+  const t = useCallback((key, ...args) => typeof mpt.en[key] === 'function' ? mpt.en[key](...args) : (mpt.en[key] ?? key), [lang]);
 
   const prevIsOpenRef = useRef(false);
   const prevActivePlanIdRef = useRef(null);
@@ -434,7 +434,7 @@ export default function MarketingPlanWizardModal({
 
     if (isLateSubmission(wizardHeader.event_start_date) && !wizardHeader.late_submission_reason?.trim()) {
       onError(lang === 'id'
-        ? 'Event kurang dari 3 bulan lagi (aturan H-3). Isi alasan pengajuan terlambat di Step 3.'
+        ? 'The event is less than 3 months away (H-3 rule). Enter the late-submission reason in step 3.'
         : 'The event is less than 3 months away (H-3 rule). Fill in the late submission reason in Step 3.');
       setSubmitting(false);
       return;
@@ -442,7 +442,7 @@ export default function MarketingPlanWizardModal({
 
     if (!wizardHeader.target_notes?.trim()) {
       onError(lang === 'id'
-        ? 'Catatan Target / Indikator Lain wajib diisi pada bagian KPI Targets.'
+        ? 'Target notes / other indicators are required in the KPI Targets section.'
         : 'Target Notes / Other Indicators is required in the KPI Targets section.');
       setSubmitting(false);
       return;
@@ -451,7 +451,7 @@ export default function MarketingPlanWizardModal({
     // Validate DocHub-style signers
     const validApprovers = wizardApprovers.filter(a => a.approver_name?.trim() && a.approver_email?.trim());
     if (validApprovers.length === 0) {
-      onError(lang === 'id' ? 'Minimal 1 penandatangan (approver) wajib ditentukan pada Step 3.' : 'Please define at least 1 signer in Step 3.');
+      onError(lang === 'id' ? 'At least one signer (approver) is required in step 3.' : 'Please define at least 1 signer in Step 3.');
       setSubmitting(false);
       return;
     }
@@ -459,12 +459,12 @@ export default function MarketingPlanWizardModal({
     for (let i = 0; i < wizardApprovers.length; i++) {
       const app = wizardApprovers[i];
       if (!app.approver_name || !app.approver_name.trim()) {
-        onError(lang === 'id' ? `Nama penandatangan pada Step ${i + 1} belum diisi.` : `Signer name at Step ${i + 1} is required.`);
+        onError(lang === 'id' ? `Signer name in step ${i + 1} is empty.` : `Signer name at Step ${i + 1} is required.`);
         setSubmitting(false);
         return;
       }
       if (!app.approver_email || !emailRegex.test(app.approver_email.trim())) {
-        onError(lang === 'id' ? `Format email penandatangan pada Step ${i + 1} ("${app.approver_name}") tidak valid.` : `Email format for signer at Step ${i + 1} is invalid.`);
+        onError(lang === 'id' ? `Signer email format in step ${i + 1} ("${app.approver_name}") is invalid.` : `Email format for signer at Step ${i + 1} is invalid.`);
         setSubmitting(false);
         return;
       }
@@ -526,7 +526,7 @@ export default function MarketingPlanWizardModal({
               </div>
               </div>
               <button
-                aria-label={lang === 'id' ? 'Tutup wizard' : 'Close wizard'}
+                aria-label={lang === 'id' ? 'Close wizard' : 'Close wizard'}
                 onClick={onClose}
                 className="p-2.5 border border-slate-200 dark:border-slate-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl text-neutral-400 hover:text-neutral-800 dark:hover:text-white"
               >
@@ -541,11 +541,11 @@ export default function MarketingPlanWizardModal({
               </div>
             ) : (
               <>
-                <nav aria-label={lang === 'id' ? 'Tahapan pengajuan' : 'Submission steps'} className="shrink-0 border-b border-slate-200/70 bg-white px-3 py-3 sm:px-7 dark:border-slate-800 dark:bg-slate-900">
+                <nav aria-label={lang === 'id' ? 'Submission steps' : 'Submission steps'} className="shrink-0 border-b border-slate-200/70 bg-white px-3 py-3 sm:px-7 dark:border-slate-800 dark:bg-slate-900">
                   <ol className="grid grid-cols-3 gap-2 sm:gap-3">
                     {[
                       { num: 1, label: t('stepGeneralInfo'), icon: FileText, hint: lang === 'id' ? 'Campaign, jadwal & target' : 'Campaign, schedule & targets' },
-                      { num: 2, label: t('stepMonthlyBudget'), icon: Wallet, hint: lang === 'id' ? 'Alokasi biaya per bulan' : 'Monthly expense allocation' },
+                      { num: 2, label: t('stepMonthlyBudget'), icon: Wallet, hint: lang === 'id' ? 'Monthly cost allocation' : 'Monthly expense allocation' },
                       { num: 3, label: 'Review & Submit', icon: ClipboardCheck, hint: lang === 'id' ? 'Ringkasan & persetujuan' : 'Summary & approvals' }
                     ].map(({ num, label, icon: Icon, hint }) => (
                       <li key={num} aria-current={wizardStep === num ? 'step' : undefined}

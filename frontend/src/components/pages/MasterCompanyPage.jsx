@@ -1,555 +1,131 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Building2, Plus } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { motion, AnimatePresence, animate } from 'framer-motion';
+import { Building2, Network, MapPin, AlertTriangle, RefreshCw, Database } from 'lucide-react';
+import Cookies from 'js-cookie';
 import { apiClient } from '@/lib/apiClient';
-import { useLanguage } from '@/lib/LanguageContext';
+import InlineHelp from '@/components/ui/InlineHelp';
+import CompanyEntitiesPanel from './CompanyEntitiesPanel';
+import { CompanyHoldingsPanel, CompanyLocationsPanel } from './CompanyGroupsPanels';
 
-// Import subcomponents
-import MasterCompanyStats from './MasterCompanyStats';
-import MasterCompanyFilters from './MasterCompanyFilters';
-import MasterCompanyTables from './MasterCompanyTables';
-import MasterCompanyDetailDrawer from './MasterCompanyDetailDrawer';
-import MasterCompanyFormDrawers from './MasterCompanyFormDrawers';
+const WRITE_ROLES = ['admin', 'ga', 'legal', 'compliance', 'marketing'];
 
+function CountUp({ value }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const controls = animate(0, value || 0, { duration: 0.8, ease: 'easeOut', onUpdate: setDisplay });
+    return () => controls.stop();
+  }, [value]);
+  return <>{Math.round(display).toLocaleString('en-US')}</>;
+}
+
+// Company setup: legal entities (PT), holdings and physical locations.
 export default function MasterCompanyPage() {
-  const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState('companies'); // 'companies' | 'masters' | 'branches'
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20, totalPages: 1 });
+  const [activeTab, setActiveTab] = useState('companies');
+  const [canWrite, setCanWrite] = useState(false);
+  useEffect(() => { setCanWrite(WRITE_ROLES.includes((Cookies.get('glc_user_role') || '').toLowerCase())); }, []);
+
+  // Process-first: nothing is fetched until the user clicks "Load data".
+  const [processed, setProcessed] = useState(false);
+  const [masters, setMasters] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Group Dropdown values
-  const [masters, setMasters] = useState([]);
-  const [companiesList, setCompaniesList] = useState([]); // original companies for selection
-  const [branchesCount, setBranchesCount] = useState(0);
-  const [mastersLoading, setMastersLoading] = useState(false);
-
-  // Filters
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [filterActive, setFilterActive] = useState('');
-  const [filterSector, setFilterSector] = useState('ALL');
-
-  // Drawers and Modal states
-  const [showCompanyForm, setShowCompanyForm] = useState(false);
-  const [editingCompany, setEditingCompany] = useState(null);
-  const [selectedCompany, setSelectedCompany] = useState(null);
-
-  const [showMasterForm, setShowMasterForm] = useState(false);
-  const [editingMaster, setEditingMaster] = useState(null);
-
-  const [showBranchForm, setShowBranchForm] = useState(false);
-  const [editingBranch, setEditingBranch] = useState(null);
-  const [branchFormError, setBranchFormError] = useState(null);
-
-  const [submitting, setSubmitting] = useState(false);
-
-  // Form States
-  const [companyFormData, setCompanyFormData] = useState({
-    code: '',
-    name: '',
-    npwp: '',
-    address: '',
-    company_master_id: ''
-  });
-
-  const [masterFormData, setMasterFormData] = useState({
-    name: '',
-    sector: 'GENERAL'
-  });
-
-  const [branchFormData, setBranchFormData] = useState({
-    name: '',
-    location: '',
-    sector: 'GENERAL',
-    company_master_id: ''
-  });
-
-  // ── Fetch Dropdowns ──
-  const fetchDropdowns = useCallback(async () => {
+  const loadShared = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setMastersLoading(true);
-      const [resMasters, resCompanies, resBranches] = await Promise.all([
+      const [m, b, c] = await Promise.all([
         apiClient.get('/api/master/companies/master'),
-        apiClient.get('/api/master/companies/all'),
-        apiClient.get('/api/master/companies/branch')
+        apiClient.get('/api/master/companies/branch'),
+        apiClient.get('/api/master/companies', { params: { limit: 1 } }),
       ]);
-      setMasters(resMasters || []);
-      setCompaniesList(resCompanies || []);
-      setBranchesCount(resBranches ? resBranches.length : 0);
+      setMasters(m || []);
+      setBranches(b || []);
+      setSummary(c?.summary || null);
     } catch (err) {
-      console.error('Failed to fetch master company groups:', err);
+      setError(err.message || 'Failed to load company setup.');
     } finally {
-      setMastersLoading(false);
+      setLoading(false);
     }
   }, []);
 
-  // ── Fetch companies (Tab 1) ──
-  const fetchCompanies = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const res = await apiClient.get('/api/master/companies', {
-        params: {
-          page,
-          limit: 20,
-          search: search || undefined,
-          is_active: filterActive || undefined
-        }
-      });
-
-      setData(res.data || []);
-      setMeta(res.meta || { total: 0, page: 1, limit: 20, totalPages: 1 });
-    } catch (err) {
-      setError(err.message || 'Failed to fetch companies');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, filterActive]);
-
-  // ── Fetch company masters (Tab 2) ──
-  const fetchMastersList = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await apiClient.get('/api/master/companies/master');
-      const filtered = res.filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
-      setData(filtered || []);
-      setMeta({ total: filtered.length, page: 1, limit: 100, totalPages: 1 });
-    } catch (err) {
-      setError(err.message || 'Failed to fetch parent groups');
-    } finally {
-      setLoading(false);
-    }
-  }, [search]);
-
-  // ── Fetch branches (Tab 3) ──
-  const fetchBranchesList = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const res = await apiClient.get('/api/master/companies/branch', {
-        params: {
-          search: search || undefined,
-          is_active: filterActive || undefined,
-          sector: filterSector !== 'ALL' ? filterSector : undefined
-        }
-      });
-
-      setData(res || []);
-      setMeta({ total: res.length, page: 1, limit: 100, totalPages: 1 });
-      setBranchesCount(res ? res.length : 0);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch branches');
-    } finally {
-      setLoading(false);
-    }
-  }, [search, filterActive, filterSector]);
-
-  useEffect(() => {
-    fetchDropdowns();
-  }, [fetchDropdowns]);
-
-  useEffect(() => {
-    if (activeTab === 'companies') {
-      fetchCompanies();
-    } else if (activeTab === 'masters') {
-      fetchMastersList();
-    } else {
-      fetchBranchesList();
-    }
-  }, [activeTab, fetchCompanies, fetchMastersList, fetchBranchesList]);
-
-  // Debounce search
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (activeTab === 'companies') setPage(1);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [search, activeTab]);
-
-  // Reset filters on tab change
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setSearch('');
-    setFilterActive('');
-    setFilterSector('ALL');
-    setPage(1);
+  const handleProcess = () => {
+    setProcessed(true);
+    loadShared();
   };
 
-  // ── Stats calculation ──
-  const totalCount = meta.total || 0;
-  const activeCount = data.filter(item => item.is_active !== false).length;
-  const inactiveCount = data.filter(item => item.is_active === false).length;
-
-  // ── Tab 1: Company Handlers ──
-  const openAddCompany = () => {
-    setEditingCompany(null);
-    setCompanyFormData({
-      code: '',
-      name: '',
-      npwp: '',
-      address: '',
-      company_master_id: ''
-    });
-    setShowCompanyForm(true);
-  };
-
-  const openEditCompany = (company) => {
-    setEditingCompany(company);
-    setCompanyFormData({
-      code: company.code || '',
-      name: company.name || '',
-      npwp: company.npwp || '',
-      address: company.address || '',
-      company_master_id: company.company_master_id || ''
-    });
-    setShowCompanyForm(true);
-    setSelectedCompany(null);
-  };
-
-  const handleCompanySubmit = async (e) => {
-    e.preventDefault();
-    if (!companyFormData.name.trim()) return;
-
-    try {
-      setSubmitting(true);
-      const payload = {
-        ...companyFormData,
-        company_master_id: companyFormData.company_master_id ? parseInt(companyFormData.company_master_id) : null
-      };
-
-      if (editingCompany) {
-        await apiClient.put(`/api/master/companies/${editingCompany.id}`, payload);
-      } else {
-        await apiClient.post('/api/master/companies', payload);
-      }
-      setShowCompanyForm(false);
-      setEditingCompany(null);
-      fetchCompanies();
-      fetchDropdowns();
-    } catch (err) {
-      alert(err.message || 'Failed to save company master');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleToggleActiveCompany = async (company) => {
-    try {
-      await apiClient.put(`/api/master/companies/${company.id}`, {
-        is_active: !company.is_active
-      });
-      fetchCompanies();
-    } catch (err) {
-      alert(err.message || 'Failed to toggle status');
-    }
-  };
-
-  const handleCompanyDelete = async (company) => {
-    if (!confirm(`Delete company "${company.name}"?\n\nIf it has related data, the company will only be deactivated.`)) return;
-
-    try {
-      await apiClient.delete(`/api/master/companies/${company.id}`);
-      fetchCompanies();
-      setSelectedCompany(null);
-    } catch (err) {
-      alert(err.message || 'Failed to delete company');
-    }
-  };
-
-  // ── Tab 2: Master Company Group Handlers ──
-  const openAddMaster = () => {
-    setEditingMaster(null);
-    setMasterFormData({
-      name: '',
-      sector: 'GENERAL'
-    });
-    setShowMasterForm(true);
-  };
-
-  const openEditMaster = (master) => {
-    setEditingMaster(master);
-    setMasterFormData({
-      name: master.name,
-      sector: master.sector || 'GENERAL'
-    });
-    setShowMasterForm(true);
-  };
-
-  const handleMasterSubmit = async (e) => {
-    e.preventDefault();
-    if (!masterFormData.name.trim()) return;
-
-    try {
-      setSubmitting(true);
-      if (editingMaster) {
-        await apiClient.put(`/api/master/companies/master/${editingMaster.id}`, masterFormData);
-      } else {
-        await apiClient.post('/api/master/companies/master', masterFormData);
-      }
-      setShowMasterForm(false);
-      setEditingMaster(null);
-      fetchMastersList();
-      fetchDropdowns();
-    } catch (err) {
-      alert(err.message || 'Failed to save master company');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleMasterDelete = async (master) => {
-    if (!confirm(`Delete Parent Entity Group "${master.name}"?`)) return;
-
-    try {
-      await apiClient.delete(`/api/master/companies/master/${master.id}`);
-      fetchMastersList();
-      fetchDropdowns();
-    } catch (err) {
-      alert(err.error || err.message || 'Failed to delete parent group. Make sure it is not linked to any companies.');
-    }
-  };
-
-  // ── Tab 3: Branch Handlers ──
-  const openAddBranch = () => {
-    setEditingBranch(null);
-    setBranchFormError(null);
-    setBranchFormData({
-      name: '',
-      location: '',
-      sector: 'GENERAL',
-      company_master_id: ''
-    });
-    setShowBranchForm(true);
-  };
-
-  const openEditBranch = (branch) => {
-    setEditingBranch(branch);
-    setBranchFormError(null);
-    setBranchFormData({
-      name: branch.name || '',
-      location: branch.location || '',
-      sector: branch.sector || 'GENERAL',
-      company_master_id: branch.company_master_id || ''
-    });
-    setShowBranchForm(true);
-  };
-
-  const handleBranchSubmit = async (e) => {
-    e.preventDefault();
-    setBranchFormError(null);
-
-    if (!String(branchFormData.name || '').trim() || !String(branchFormData.location || '').trim()) {
-      setBranchFormError('Company Name and Location / Physical Branch are required.');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const payload = {
-        ...branchFormData,
-        company_master_id: branchFormData.company_master_id ? parseInt(branchFormData.company_master_id) : null
-      };
-
-      if (editingBranch) {
-        await apiClient.put(`/api/master/companies/branch/${editingBranch.id}`, payload);
-      } else {
-        await apiClient.post('/api/master/companies/branch', payload);
-      }
-      setShowBranchForm(false);
-      setEditingBranch(null);
-      fetchBranchesList();
-    } catch (err) {
-      console.error('Branch save failed:', err);
-      setBranchFormError(err.message || 'Failed to save branch data.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleToggleActiveBranch = async (branch) => {
-    try {
-      await apiClient.put(`/api/master/companies/branch/${branch.id}`, {
-        is_active: !branch.is_active
-      });
-      fetchBranchesList();
-    } catch (err) {
-      alert(err.message || 'Failed to toggle branch status');
-    }
-  };
-
-  const handleBranchDelete = async (branch) => {
-    if (!confirm(`Delete branch "${branch.name} (${branch.location})"?`)) return;
-
-    try {
-      await apiClient.delete(`/api/master/companies/branch/${branch.id}`);
-      fetchBranchesList();
-    } catch (err) {
-      alert(err.message || 'Failed to delete branch');
-    }
-  };
+  const emptyHoldings = masters.filter(m => m.can_delete).length;
+  const activeLocations = branches.filter(b => b.is_active !== false).length;
+  const cards = [
+    { label: 'Active companies', value: summary?.active ?? 0, sub: `${(summary?.total ?? 0) - (summary?.active ?? 0)} inactive`, icon: Building2, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
+    { label: 'Without holding', value: summary?.without_holding ?? 0, sub: 'Holding approval contacts do not apply', icon: AlertTriangle, tone: summary?.without_holding ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300', help: 'Companies not linked to any holding. Approval recipients configured per holding will not reach them, and holding reports leave them out.' },
+    { label: 'Holdings', value: masters.length, sub: emptyHoldings ? `${emptyHoldings} empty` : 'All in use', icon: Network, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
+    { label: 'Active locations', value: activeLocations, sub: `${branches.length - activeLocations} inactive`, icon: MapPin, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+  ];
+  const tabs = [['companies', 'Companies', Building2, summary?.total], ['masters', 'Holdings', Network, masters.length], ['branches', 'Locations', MapPin, branches.length]];
 
   return (
-    <div className="space-y-6 relative pb-10">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <Building2 className="w-6 h-6 text-indigo-500" />
-            {t('masterCompany_title')}
-          </h1>
-          <p className="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
-            Management of parent company legal entities, business group clustering, and physical branch location mapping.
-          </p>
+    <div className="space-y-6 pb-12">
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 to-blue-950 px-5 py-6 text-white sm:px-7">
+        <motion.div aria-hidden="true" animate={{ rotate: 360 }} transition={{ duration: 60, repeat: Infinity, ease: 'linear' }} className="absolute -right-12 -top-24 h-64 w-64 rounded-full border-[36px] border-dashed border-white/[0.04]" />
+        <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300"><Building2 className="h-4 w-4" />Master data</p>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Company &amp; Entity Setup</h1>
+            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Legal entities (PT), the holdings that group them, and the physical locations used by assets and maintenance.</p>
+          </div>
+          {processed && (
+            <button type="button" onClick={loadShared} disabled={loading} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer">
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />Reload
+            </button>
+          )}
         </div>
+      </motion.div>
 
-        <div className="flex items-center gap-2">
-          {/* Add Button */}
-          <motion.button
-            type="button"
-            onClick={
-              activeTab === 'companies' ? openAddCompany :
-              activeTab === 'masters' ? openAddMaster : openAddBranch
-            }
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-600/25 hover:bg-indigo-800 transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            {
-              activeTab === 'companies' ? t('masterCompany_addCompany') :
-              activeTab === 'masters' ? t('masterCompany_addMaster') : t('masterCompany_addBranch')
-            }
-          </motion.button>
-        </div>
+      {processed && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map(({ label, value, sub, icon: Icon, tone, help }, i) => (
+          <motion.div key={label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, duration: 0.3 }} whileHover={{ y: -2 }} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="h-4 w-4" /></span>
+            <div className="min-w-0">
+              <div className="-my-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{help ? <InlineHelp summary={label} label={`About ${label}`}><span className="normal-case tracking-normal">{help}</span></InlineHelp> : label}</div>
+              <p className="mt-0.5 text-base font-semibold tabular-nums text-slate-800 dark:text-slate-100"><CountUp value={value} /></p>
+              <p className="truncate text-[10px] text-slate-400">{sub}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>}
+
+      {processed && error &&<div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="h-4 w-4" />{error}</div>}
+
+      <div role="tablist" className="flex w-fit flex-wrap gap-0.5 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+        {tabs.map(([key, label, Icon, count]) => (
+          <button key={key} type="button" role="tab" aria-selected={activeTab === key} onClick={() => setActiveTab(key)} className={`relative inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition-colors cursor-pointer ${activeTab === key ? 'text-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}>
+            {activeTab === key && <motion.span layoutId="company-setup-tab" transition={{ type: 'spring', stiffness: 500, damping: 35 }} className="absolute inset-0 rounded-lg bg-slate-900 dark:bg-white" />}
+            <span className="relative inline-flex items-center gap-2"><Icon className="h-3.5 w-3.5" />{label}{processed && count !== undefined && <span className={activeTab === key ? 'opacity-70' : 'text-slate-400'}>{count}</span>}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Stats */}
-      <MasterCompanyStats
-        activeTab={activeTab}
-        totalCount={totalCount}
-        activeCount={activeCount}
-        inactiveCount={inactiveCount}
-      />
-
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-neutral-200 dark:border-neutral-800 gap-6">
-        <button
-          onClick={() => handleTabChange('companies')}
-          className={`pb-3 text-xs font-black uppercase tracking-wider transition relative ${
-            activeTab === 'companies'
-              ? 'text-indigo-600 dark:text-indigo-400 font-extrabold'
-              : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
-          }`}
-        >
-          Company Master Data ({companiesList.length || totalCount})
-          {activeTab === 'companies' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
-          )}
-        </button>
-        <button
-          onClick={() => handleTabChange('masters')}
-          className={`pb-3 text-xs font-black uppercase tracking-wider transition relative ${
-            activeTab === 'masters'
-              ? 'text-indigo-600 dark:text-indigo-400 font-extrabold'
-              : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
-          }`}
-        >
-          Parent Entity Group ({masters.length})
-          {activeTab === 'masters' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
-          )}
-        </button>
-        <button
-          onClick={() => handleTabChange('branches')}
-          className={`pb-3 text-xs font-black uppercase tracking-wider transition relative ${
-            activeTab === 'branches'
-              ? 'text-indigo-600 dark:text-indigo-400 font-extrabold'
-              : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300'
-          }`}
-        >
-          Branches & Physical Locations ({branchesCount})
-          {activeTab === 'branches' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"></span>
-          )}
-        </button>
-      </div>
-
-      {/* Filters */}
-      <MasterCompanyFilters
-        activeTab={activeTab}
-        search={search}
-        setSearch={setSearch}
-        filterActive={filterActive}
-        setFilterActive={setFilterActive}
-        filterSector={filterSector}
-        setFilterSector={setFilterSector}
-        t={t}
-      />
-
-      {/* Dynamic Data Tables */}
-      <MasterCompanyTables
-        activeTab={activeTab}
-        data={data}
-        meta={meta}
-        page={page}
-        setPage={setPage}
-        setSelectedCompany={setSelectedCompany}
-        openEditCompany={openEditCompany}
-        handleToggleActiveCompany={handleToggleActiveCompany}
-        handleCompanyDelete={handleCompanyDelete}
-        openEditMaster={openEditMaster}
-        handleMasterDelete={handleMasterDelete}
-        openEditBranch={openEditBranch}
-        handleToggleActiveBranch={handleToggleActiveBranch}
-        handleBranchDelete={handleBranchDelete}
-      />
-
-      {/* Company Profile Detail Drawer */}
-      <MasterCompanyDetailDrawer
-        selectedCompany={selectedCompany}
-        setSelectedCompany={setSelectedCompany}
-        openEditCompany={openEditCompany}
-        handleCompanyDelete={handleCompanyDelete}
-      />
-
-      {/* Add / Edit Form Drawers */}
-      <MasterCompanyFormDrawers
-        showCompanyForm={showCompanyForm}
-        setShowCompanyForm={setShowCompanyForm}
-        editingCompany={editingCompany}
-        setEditingCompany={setEditingCompany}
-        companyFormData={companyFormData}
-        setCompanyFormData={setCompanyFormData}
-        handleCompanySubmit={handleCompanySubmit}
-
-        showMasterForm={showMasterForm}
-        setShowMasterForm={setShowMasterForm}
-        editingMaster={editingMaster}
-        setEditingMaster={setEditingMaster}
-        masterFormData={masterFormData}
-        setMasterFormData={setMasterFormData}
-        handleMasterSubmit={handleMasterSubmit}
-
-        showBranchForm={showBranchForm}
-        setShowBranchForm={setShowBranchForm}
-        editingBranch={editingBranch}
-        setEditingBranch={setEditingBranch}
-        branchFormData={branchFormData}
-        setBranchFormData={setBranchFormData}
-        handleBranchSubmit={handleBranchSubmit}
-        branchFormError={branchFormError}
-
-        companiesList={companiesList}
-        masters={masters}
-        submitting={submitting}
-      />
+      {!processed ? (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+          <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+            {React.createElement(tabs.find(t => t[0] === activeTab)[2], { className: 'h-5 w-5' })}
+          </motion.span>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Load {tabs.find(t => t[0] === activeTab)[1].toLowerCase()} data</h3>
+          <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-400">Pick a tab above, then click Load data to fetch companies, holdings and locations with their usage.</p>
+          <button type="button" onClick={handleProcess} className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer"><Database className="h-3.5 w-3.5" />Load data</button>
+        </motion.div>
+      ) : (
+      <AnimatePresence mode="wait">
+        {activeTab === 'companies' && <CompanyEntitiesPanel key="companies" masters={masters} onChanged={loadShared} canWrite={canWrite} />}
+        {activeTab === 'masters' && <CompanyHoldingsPanel key="masters" masters={masters} loading={loading} onChanged={loadShared} canWrite={canWrite} />}
+        {activeTab === 'branches' && <CompanyLocationsPanel key="branches" branches={branches} masters={masters} loading={loading} error={error} onReload={loadShared} onChanged={loadShared} canWrite={canWrite} />}
+      </AnimatePresence>
+      )}
     </div>
   );
 }

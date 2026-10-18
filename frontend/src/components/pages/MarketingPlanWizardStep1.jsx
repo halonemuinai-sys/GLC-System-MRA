@@ -243,7 +243,7 @@ export default function MarketingPlanWizardStep1({
       <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10"><FileText className="h-4 w-4" /></span>
-          <div><h4 className="text-sm font-semibold text-slate-800 dark:text-white">{lang === 'id' ? 'Identitas campaign' : 'Campaign details'}</h4><p className="mt-1 text-[11px] text-slate-500">{lang === 'id' ? 'Informasi utama, perusahaan, dan lingkup kegiatan.' : 'Key information, company, and campaign scope.'}</p></div>
+          <div><h4 className="text-sm font-semibold text-slate-800 dark:text-white">{lang === 'id' ? 'Identitas campaign' : 'Campaign details'}</h4><p className="mt-1 text-[11px] text-slate-500">{lang === 'id' ? 'Main information, company and activity scope.' : 'Key information, company, and campaign scope.'}</p></div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
         {/* Title */}
@@ -365,7 +365,7 @@ export default function MarketingPlanWizardStep1({
       <div className="mt-5 rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10"><Calendar className="h-4 w-4" /></span>
-          <div><h4 className="text-sm font-semibold text-slate-800 dark:text-white">{lang === 'id' ? 'Jadwal & dokumen pendukung' : 'Schedule & supporting documents'}</h4><p className="mt-1 text-[11px] text-slate-500">{lang === 'id' ? 'Tentukan periode, cabang sasaran, dan lampirkan proposal.' : 'Set dates, target branches, and attach your proposal.'}</p></div>
+          <div><h4 className="text-sm font-semibold text-slate-800 dark:text-white">{lang === 'id' ? 'Schedule & supporting documents' : 'Schedule & supporting documents'}</h4><p className="mt-1 text-[11px] text-slate-500">{lang === 'id' ? 'Set the period and target branches, and attach the proposal.' : 'Set dates, target branches, and attach your proposal.'}</p></div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
         <div className="space-y-2">
@@ -418,7 +418,7 @@ export default function MarketingPlanWizardStep1({
                 <div className="relative shrink-0">
                   <input
                     type="text"
-                    placeholder="Cari Branch / Store Name..."
+                    placeholder="Search branch / store name..."
                     value={branchSearch}
                     onChange={(e) => setBranchSearch(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
@@ -453,7 +453,7 @@ export default function MarketingPlanWizardStep1({
 
                   {filteredBranches.length === 0 ? (
                     <div className="py-4 text-center text-xs text-neutral-400">
-                      Tidak ada cabang ditemukan
+                      No branches found
                     </div>
                   ) : (
                     filteredBranches.map(b => (

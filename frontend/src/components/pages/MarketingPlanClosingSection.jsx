@@ -14,27 +14,27 @@ const formatThousands = (value) => {
   const digits = String(value ?? '').replace(/\D/g, '');
   return digits ? digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
 };
-const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-');
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-');
 
 const STATUS_META = {
   DRAFT: { label: 'Draft', cls: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300' },
-  PENDING_APPROVAL: { label: 'Menunggu Persetujuan', cls: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
-  APPROVED: { label: 'Disetujui', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  REJECTED: { label: 'Ditolak', cls: 'bg-rose-500/10 text-rose-600 dark:text-rose-400' }
+  PENDING_APPROVAL: { label: 'Pending Approval', cls: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  APPROVED: { label: 'Approved', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  REJECTED: { label: 'Rejected', cls: 'bg-rose-500/10 text-rose-600 dark:text-rose-400' }
 };
 
 const STEP_STATUS = {
-  WAITING: { label: 'Menunggu giliran', cls: 'text-neutral-400', icon: Clock },
-  PENDING: { label: 'Sedang ditinjau', cls: 'text-amber-600', icon: Clock },
-  APPROVED: { label: 'Disetujui', cls: 'text-emerald-600', icon: CheckCircle },
-  REJECTED: { label: 'Ditolak', cls: 'text-rose-600', icon: XCircle }
+  WAITING: { label: 'Waiting', cls: 'text-neutral-400', icon: Clock },
+  PENDING: { label: 'In review', cls: 'text-amber-600', icon: Clock },
+  APPROVED: { label: 'Approved', cls: 'text-emerald-600', icon: CheckCircle },
+  REJECTED: { label: 'Rejected', cls: 'text-rose-600', icon: XCircle }
 };
 
 const RATING_META = {
   ACHIEVED: { label: 'Target Tercapai', cls: 'text-emerald-700 dark:text-emerald-400' },
   NEARLY: { label: 'Hampir Tercapai', cls: 'text-amber-700 dark:text-amber-400' },
-  NOT_ACHIEVED: { label: 'Tidak Tercapai', cls: 'text-rose-700 dark:text-rose-400' },
-  NO_TARGET: { label: 'Target KPI belum diisi', cls: 'text-neutral-500' }
+  NOT_ACHIEVED: { label: 'Not Achieved', cls: 'text-rose-700 dark:text-rose-400' },
+  NO_TARGET: { label: 'KPI targets not set', cls: 'text-neutral-500' }
 };
 
 function SettlementBadge({ variance }) {
@@ -43,7 +43,7 @@ function SettlementBadge({ variance }) {
   return <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-neutral-100 text-neutral-500 dark:bg-neutral-800">Pas</span>;
 }
 
-const fmtKpiValue = (row, v) => (v === null || v === undefined ? '-' : row.currency ? formatIDR(v) : Number(v).toLocaleString('id-ID'));
+const fmtKpiValue = (row, v) => (v === null || v === undefined ? '-' : row.currency ? formatIDR(v) : Number(v).toLocaleString('en-GB'));
 
 async function uploadProof(file) {
   const formData = new FormData();
@@ -57,7 +57,7 @@ async function uploadProof(file) {
     body: formData
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json.url) throw new Error(json.error || 'Upload gagal.');
+  if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed.');
   return json.url;
 }
 
@@ -94,7 +94,7 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
     try {
       applyResponse(await apiClient.get(`/api/marketing/plans/${planId}/closing`));
     } catch (e) {
-      setMessage({ type: 'error', text: e.message || 'Gagal memuat closing.' });
+      setMessage({ type: 'error', text: e.message || 'Failed to load closing.' });
     } finally {
       setLoading(false);
     }
@@ -149,7 +149,7 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
       setDecisionText('');
       if (onChanged) onChanged();
     } catch (e) {
-      setMessage({ type: 'error', text: e.message || 'Aksi gagal.' });
+      setMessage({ type: 'error', text: e.message || 'Action failed.' });
     } finally {
       setBusy(null);
     }
@@ -158,10 +158,10 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
   const handleSave = () => run('save', () => apiClient.put(`/api/marketing/plans/${planId}/closing`, payload()), 'Draft closing tersimpan.');
   const handleSubmit = () => run('submit', () => apiClient.post(`/api/marketing/plans/${planId}/closing/submit`, {
     ...payload(), head_signer_id: headId, kadiv_signer_id: kadivId
-  }), 'Closing diajukan. Email approval dikirim ke Marketing Head (tahap 1).');
+  }), 'Closing submitted. Approval email sent to the Marketing Head (step 1).');
   const handleApprove = () => run('approve', () => apiClient.put(`/api/marketing/plans/${planId}/closing/approve`, { comment: decisionText.trim() }),
-    closing?.current_step < steps.length ? 'Tahap disetujui. Diteruskan ke approver berikutnya.' : 'Closing disetujui. Plan sekarang COMPLETED.');
-  const handleReject = () => run('reject', () => apiClient.put(`/api/marketing/plans/${planId}/closing/reject`, { rejection_reason: decisionText.trim() }), 'Closing ditolak dan dikembalikan ke pengaju.');
+    closing?.current_step < steps.length ? 'Step approved. Forwarded to the next approver.' : 'Closing approved. The plan is now COMPLETED.');
+  const handleReject = () => run('reject', () => apiClient.put(`/api/marketing/plans/${planId}/closing/reject`, { rejection_reason: decisionText.trim() }), 'Closing rejected and returned to the requester.');
 
   async function handleUpload(id, file) {
     if (!file) return;
@@ -185,11 +185,11 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
         <div>
           <h4 className="text-xs font-black text-neutral-800 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
             <Receipt className="w-4 h-4 text-indigo-500" />
-            Closing & Pertanggungjawaban Biaya
+            Closing & Cost Accountability
           </h4>
           <p className="text-[11px] text-neutral-500 mt-1 max-w-xl">
-            <InlineHelp summary="Lengkapi biaya final, lalu ajukan closing." label="Penjelasan biaya final dan alur closing">
-              Isi biaya final setiap item setelah event. Lebih kecil dari yang dibayar = <strong>kelebihan dana</strong> (dikembalikan), lebih besar = <strong>claim</strong>. Diajukan ke <strong>Marketing Head</strong> (evaluasi KPI) lalu <strong>Kadiv</strong>; plan otomatis COMPLETED setelah keduanya setuju.
+            <InlineHelp summary="Complete the final costs, then submit the closing." label="About final costs and the closing flow">
+              Enter the final cost of each item after the event. Lower than paid = <strong>excess funds</strong> (to be returned), higher = <strong>claim</strong>. Submitted to <strong>Marketing Head</strong> (evaluasi KPI) lalu <strong>Kadiv</strong>; the plan becomes COMPLETED once both approve.
             </InlineHelp>
           </p>
         </div>
@@ -204,9 +204,9 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
               : 'bg-neutral-50 dark:bg-neutral-950 text-neutral-500'
         }`}>
           <CalendarClock className="w-4 h-4 flex-shrink-0" />
-          {win.state === 'NOT_YET' && <InlineHelp summary={`Closing dibuka ${fmtDate(win.opens_at)}. Batas ${fmtDate(win.due_at)}.`} label="Penjelasan periode closing">Closing dibuka M+1 dan jatuh tempo M+3 setelah event. Draft sudah bisa disiapkan sebelum periode closing dibuka.</InlineHelp>}
-          {win.state === 'OPEN' && <InlineHelp summary={`Batas closing ${fmtDate(win.due_at)} - sisa ${win.days_left} hari.`} label="Penjelasan batas closing">Closing jatuh tempo M+3 setelah event.</InlineHelp>}
-          {win.state === 'OVERDUE' && <InlineHelp summary={`Terlambat ${Math.abs(win.days_left)} hari. Batas ${fmtDate(win.due_at)}.`} label="Penjelasan closing terlambat">Closing tetap bisa diajukan setelah batas M+3, tetapi tercatat sebagai overdue.</InlineHelp>}
+          {win.state === 'NOT_YET' && <InlineHelp summary={`Closing dibuka ${fmtDate(win.opens_at)}. Batas ${fmtDate(win.due_at)}.`} label="Penjelasan periode closing">Closing opens at M+1 and is due at M+3 after the event. A draft can be prepared before the closing window opens.</InlineHelp>}
+          {win.state === 'OPEN' && <InlineHelp summary={`Closing due ${fmtDate(win.due_at)} - ${win.days_left} days left.`} label="Penjelasan batas closing">Closing is due M+3 after the event.</InlineHelp>}
+          {win.state === 'OVERDUE' && <InlineHelp summary={`${Math.abs(win.days_left)} days overdue. Due ${fmtDate(win.due_at)}.`} label="About late closing">Closing can still be submitted after the M+3 deadline, but it is recorded as overdue.</InlineHelp>}
         </div>
       )}
 
@@ -233,28 +233,28 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
       {status === 'APPROVED' && (
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium">
           <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          Closing selesai pada {fmtDate(closing.approved_at)}.
+          Closing completed on {fmtDate(closing.approved_at)}.
         </div>
       )}
       {status === 'REJECTED' && (
         <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-rose-500/10 text-rose-700 dark:text-rose-400 text-[11px] font-medium">
           <XCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-          <span>Closing ditolak: "{closing.rejection_reason}". Perbaiki lalu ajukan ulang.</span>
+          <span>Closing rejected: “{closing.rejection_reason}”. Fix it and submit again.</span>
         </div>
       )}
       {legacyCompleted && (
         <div className="px-3 py-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 text-neutral-500 text-[11px]">
-          <InlineHelp summary="Plan selesai tanpa data closing." label="Penjelasan data closing lama">Plan ini ditutup sebelum fitur closing tersedia. Ringkasan di bawah memakai realisasi pembayaran.</InlineHelp>
+          <InlineHelp summary="Plan completed without closing data." label="About legacy closing data">This plan was closed before the closing feature existed. The summary below uses paid actuals.</InlineHelp>
         </div>
       )}
       {editable && !data.actuals_filled && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[11px]">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" /> Isi hasil event sebelum mengajukan closing.
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" /> Enter the event results before submitting the closing.
         </div>
       )}
       {editable && data.unsettled_payments > 0 && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[11px]">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" /> Masih ada {data.unsettled_payments} payment request yang belum PAID/REJECTED.
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" /> {data.unsettled_payments} payment requests are not PAID/REJECTED yet.
         </div>
       )}
 
@@ -265,11 +265,11 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
             <tr className="bg-neutral-50 dark:bg-neutral-950/40 text-neutral-400 text-[10px] font-bold uppercase tracking-wider">
               <th className="p-3 text-left">Item</th>
               <th className="p-3 text-right">Budget</th>
-              <th className="p-3 text-right">Dibayar</th>
-              <th className="p-3 text-right w-36">Biaya Final</th>
-              <th className="p-3 text-right">Selisih</th>
-              <th className="p-3 text-left w-44">Catatan</th>
-              <th className="p-3 text-left">Bukti</th>
+              <th className="p-3 text-right">Paid</th>
+              <th className="p-3 text-right w-36">Final Cost</th>
+              <th className="p-3 text-right">Variance</th>
+              <th className="p-3 text-left w-44">Notes</th>
+              <th className="p-3 text-left">Proof</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
@@ -299,7 +299,7 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
                   <td className="p-3 text-right whitespace-nowrap">{r.final_amount === null ? <span className="text-neutral-300">-</span> : <SettlementBadge variance={r.variance} />}</td>
                   <td className="p-3">
                     {editable ? (
-                      <input value={r.note} onChange={e => updateRow(r.plan_item_id, { note: e.target.value })} placeholder="Keterangan selisih" className={inputCls} />
+                      <input value={r.note} onChange={e => updateRow(r.plan_item_id, { note: e.target.value })} placeholder="Variance notes" className={inputCls} />
                     ) : (
                       <span className="text-neutral-500">{r.note || '-'}</span>
                     )}
@@ -308,13 +308,13 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
                     <div className="flex items-center gap-1.5">
                       {r.proof_url && (
                         <a href={r.proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:underline">
-                          <ExternalLink className="w-3 h-3" /> Lihat
+                          <ExternalLink className="w-3 h-3" /> View
                         </a>
                       )}
                       {editable && (
                         <label className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer border ${proofMissing ? 'border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30' : 'border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800'}`}>
                           {uploadingId === r.plan_item_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                          {r.proof_url ? 'Ganti' : proofMissing ? 'Wajib' : 'Upload'}
+                          {r.proof_url ? 'Ganti' : proofMissing ? 'Required' : 'Upload'}
                           <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => handleUpload(r.plan_item_id, e.target.files?.[0])} />
                         </label>
                       )}
@@ -331,24 +331,24 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-800">
-          <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total Dibayar</p>
+          <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total Paid</p>
           <p className="text-sm font-extrabold text-neutral-800 dark:text-white mt-0.5">{formatIDR(totalPaid)}</p>
         </div>
         <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-100 dark:border-neutral-800">
-          <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total Biaya Final</p>
+          <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Total Final Cost</p>
           <p className="text-sm font-extrabold text-neutral-800 dark:text-white mt-0.5">{legacyCompleted ? '-' : formatIDR(totalFinal)}</p>
         </div>
         <div className={`p-3 rounded-xl border ${totalVariance > 0 ? 'bg-amber-500/5 border-amber-500/20' : totalVariance < 0 ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-neutral-50 dark:bg-neutral-950 border-neutral-100 dark:border-neutral-800'}`}>
-          <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Hasil Closing</p>
+          <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Closing Result</p>
           {legacyCompleted ? (
             <p className="text-sm font-extrabold text-neutral-500 mt-0.5">-</p>
           ) : (
             <>
               <p className={`text-sm font-extrabold mt-0.5 ${totalVariance > 0 ? 'text-amber-700 dark:text-amber-400' : totalVariance < 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-neutral-600'}`}>
-                {totalVariance > 0 ? `Claim ${formatIDR(totalVariance)}` : totalVariance < 0 ? `Kelebihan ${formatIDR(Math.abs(totalVariance))}` : 'Pas / Tidak ada selisih'}
+                {totalVariance > 0 ? `Claim ${formatIDR(totalVariance)}` : totalVariance < 0 ? `Excess ${formatIDR(Math.abs(totalVariance))}` : 'Exact / No variance'}
               </p>
               <p className="text-[10px] text-neutral-400 mt-0.5">
-                {totalVariance > 0 ? 'Kekurangan dana yang perlu diganti (reimburse).' : totalVariance < 0 ? 'Sisa dana yang harus dikembalikan.' : 'Biaya final sama dengan yang dibayar.'}
+                {totalVariance > 0 ? 'Shortfall to be reimbursed.' : totalVariance < 0 ? 'Remaining funds to be returned.' : 'Final cost equals the amount paid.'}
               </p>
             </>
           )}
@@ -394,9 +394,9 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
       {/* Notes */}
       {(editable || closing?.notes) && (
         <div>
-          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Catatan Closing</label>
+          <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Closing Notes</label>
           {editable ? (
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Ringkasan pertanggungjawaban, rencana pengembalian / claim..." className={`${inputCls} resize-none`} />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Accountability summary, refund / claim plan..." className={`${inputCls} resize-none`} />
           ) : (
             <p className="text-xs text-neutral-600 dark:text-neutral-400">{closing.notes}</p>
           )}
@@ -416,23 +416,23 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
             <div>
               <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Tahap 1 · Marketing Head (evaluasi KPI)</label>
               <select value={headId} onChange={e => setHeadId(e.target.value)} className={selectCls}>
-                <option value="">-- Pilih Marketing Head --</option>
+                <option value="">-- Select Marketing Head --</option>
                 {signers.map(s => <option key={s.id} value={s.id}>{s.name}{s.position ? ` (${s.position})` : ''}</option>)}
               </select>
             </div>
             <div>
               <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block mb-1">Tahap 2 · Kadiv</label>
               <select value={kadivId} onChange={e => setKadivId(e.target.value)} className={selectCls}>
-                <option value="">-- Pilih Kadiv --</option>
+                <option value="">-- Select Division Head --</option>
                 {signers.map(s => <option key={s.id} value={s.id}>{s.name}{s.position ? ` (${s.position})` : ''}</option>)}
               </select>
             </div>
           </div>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <p className="text-[10px] text-neutral-400">
-              {missingFinal > 0 ? `${missingFinal} item belum diisi biaya final. ` : ''}
-              {missingProof > 0 ? `${missingProof} item dengan selisih belum ada bukti. ` : ''}
-              {sameApprover ? 'Marketing Head dan Kadiv harus orang berbeda.' : ''}
+              {missingFinal > 0 ? `${missingFinal} items have no final cost yet. ` : ''}
+              {missingProof > 0 ? `${missingProof} items with a variance have no proof yet. ` : ''}
+              {sameApprover ? 'Marketing Head and Division Head must be different people.' : ''}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -441,7 +441,7 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
                 className="flex items-center gap-1.5 px-3.5 py-2 border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 rounded-xl text-xs font-bold disabled:opacity-50"
               >
                 {busy === 'save' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                Simpan Draft
+                Save Draft
               </button>
               <button
                 onClick={handleSubmit}
@@ -449,7 +449,7 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
                 className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold disabled:opacity-50"
               >
                 {busy === 'submit' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                Ajukan Closing
+                Submit Closing
               </button>
             </div>
           </div>
@@ -460,7 +460,7 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
       {status === 'PENDING_APPROVAL' && isAdmin && currentStep && (
         <div className="pt-3 border-t border-neutral-100 dark:border-neutral-800 space-y-2">
           <p className="text-[10px] text-neutral-400">
-            Keputusan atas nama tahap aktif: <strong>Tahap {currentStep.step_number} · {currentStep.role_label}</strong> ({currentStep.signer?.name}).
+            Decision on behalf of the active step: <strong>Tahap {currentStep.step_number} · {currentStep.role_label}</strong> ({currentStep.signer?.name}).
           </p>
           {decision ? (
             <div className="flex items-center gap-2">
@@ -468,17 +468,17 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
                 autoFocus
                 value={decisionText}
                 onChange={e => setDecisionText(e.target.value)}
-                placeholder={decision === 'reject' ? 'Alasan penolakan (wajib)...' : 'Catatan evaluasi (opsional)...'}
+                placeholder={decision === 'reject' ? 'Rejection reason (required)...' : 'Evaluation notes (optional)...'}
                 className={inputCls}
               />
-              <button onClick={() => { setDecision(null); setDecisionText(''); }} className="px-3 py-2 text-xs font-bold text-neutral-500">Batal</button>
+              <button onClick={() => { setDecision(null); setDecisionText(''); }} className="px-3 py-2 text-xs font-bold text-neutral-500">Cancel</button>
               <button
                 onClick={decision === 'reject' ? handleReject : handleApprove}
                 disabled={!!busy || (decision === 'reject' && !decisionText.trim())}
                 className={`flex items-center gap-1.5 px-3.5 py-2 text-white rounded-xl text-xs font-bold disabled:opacity-50 whitespace-nowrap ${decision === 'reject' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
               >
                 {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                {decision === 'reject' ? 'Kirim Penolakan' : 'Konfirmasi Setuju'}
+                {decision === 'reject' ? 'Send Rejection' : 'Confirm Approval'}
               </button>
             </div>
           ) : (

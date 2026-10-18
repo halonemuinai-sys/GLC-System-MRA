@@ -21,14 +21,13 @@ import {
   UserCheck
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
-import { useLanguage } from '@/lib/LanguageContext';
 
 const formatIDR = (val) => {
   if (val === undefined || val === null) return 'Rp 0';
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(val));
 };
 const formatDate = (value, withTime = false) => value
-  ? new Date(value).toLocaleDateString('id-ID', withTime ? { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric' })
+  ? new Date(value).toLocaleDateString('en-GB', withTime ? { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric' })
   : '—';
 const ROLE_LABELS = { MARKETING_MANAGER: 'Marketing Manager', FINANCE_CONTROLLER: 'Finance Controller', VP_DIRECTOR: 'VP Director', BU_DIRECTOR: 'BU Director', CFO_CEO: 'CFO / CEO', FINANCE: 'Finance' };
 
@@ -64,10 +63,11 @@ const TYPE_BADGE = {
 const ageTone = (days) => days > 7 ? 'text-rose-600 dark:text-rose-400' : days > 3 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400';
 
 export default function CostApprovalsPage() {
-  const { t } = useLanguage();
   const [tasks, setTasks] = useState([]);
   const [historyList, setHistoryList] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  // Process-first: the queue is fetched only after Load data.
+  const [processed, setProcessed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [modalError, setModalError] = useState(null);
@@ -94,13 +94,13 @@ export default function CostApprovalsPage() {
       setTasks(taskRes || []);
       setHistoryList(historyRes || []);
     } catch (err) {
-      setError(err.message || 'Gagal memuat tugas approval.');
+      setError(err.message || 'Failed to load approval tasks.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => { if (processed) loadAll(); }, [processed, loadAll]);
 
   const pendingRows = useMemo(() => tasks.map(toRow), [tasks]);
   const historyRows = useMemo(() => historyList.map(h => ({ ...h, company: h.companyName || '—', creator: h.creatorName })), [historyList]);
@@ -137,21 +137,21 @@ export default function CostApprovalsPage() {
   const handleDecision = async (action) => {
     if (submitting || !activeTask) return;
     if (action === 'REJECT' && !comment.trim()) {
-      setModalError('Alasan penolakan wajib diisi.');
+      setModalError('A reason is required to reject.');
       return;
     }
-    if (action === 'APPROVE' && !confirm('Setujui pengajuan ini?')) return;
+    if (action === 'APPROVE' && !confirm('Approve this request?')) return;
     setSubmitting(true);
     setModalError(null);
     try {
       const res = await apiClient.post(`/api/marketing/approvals/${activeTask.id}`, { action, comment: comment.trim() || null });
-      setSuccessMsg(res.message || (action === 'APPROVE' ? 'Pengajuan disetujui.' : 'Pengajuan ditolak.'));
+      setSuccessMsg(res.message || (action === 'APPROVE' ? 'Request approved.' : 'Request rejected.'));
       setActiveTask(null);
       setComment('');
       loadAll();
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      setModalError(err.message || 'Gagal memproses persetujuan.');
+      setModalError(err.message || 'Failed to process the decision.');
     } finally {
       setSubmitting(false);
     }
@@ -160,10 +160,10 @@ export default function CostApprovalsPage() {
   const fieldClass = 'h-9 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200';
   const actionClass = 'inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-35';
   const summaryCards = [
-    { label: t('costApprovals_kpiPending'), value: kpis.pendingCount, hint: kpis.staleCount ? `${kpis.staleCount} menunggu > 3 hari` : 'Semua masih baru', icon: Clock, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
-    { label: t('costApprovals_kpiValue'), value: formatIDR(kpis.totalPendingValue), hint: 'Total nilai menunggu keputusan', icon: DollarSign, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
-    { label: t('costApprovals_kpiOverbudget'), value: kpis.overbudgetCount, hint: 'Melebihi sisa anggaran CoA', icon: TrendingDown, tone: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' },
-    { label: t('costApprovals_kpiApproved'), value: kpis.approvedCount, hint: `${kpis.rejectedCount} ditolak`, icon: CheckCircle, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
+    { label: 'Pending tasks', value: kpis.pendingCount, hint: kpis.staleCount ? `${kpis.staleCount} waiting > 3 days` : 'All recent', icon: Clock, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
+    { label: 'Pending value', value: formatIDR(kpis.totalPendingValue), hint: 'Total value awaiting a decision', icon: DollarSign, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
+    { label: 'Overbudget', value: kpis.overbudgetCount, hint: 'Exceeds the remaining CoA budget', icon: TrendingDown, tone: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' },
+    { label: 'Approved (history)', value: kpis.approvedCount, hint: `${kpis.rejectedCount} rejected`, icon: CheckCircle, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
   ];
 
   return (
@@ -174,16 +174,17 @@ export default function CostApprovalsPage() {
         <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300"><BadgeCheck className="h-4 w-4" />Approval management</p>
-            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{t('costApprovals_title')}</h1>
-            <p className="mt-1.5 max-w-xl text-xs text-slate-300">{t('costApprovals_subtitle')}</p>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Cost & Budget Approvals</h1>
+            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Authorize marketing plans, payment requests and claims assigned to you in the approval chain.</p>
           </div>
-          <button type="button" onClick={loadAll} disabled={loading} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />{t('costApprovals_refresh')}
+          <button type="button" onClick={() => (processed ? loadAll() : setProcessed(true))} disabled={loading} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />{processed ? 'Reload' : 'Load data'}
           </button>
         </div>
       </div>
 
       {/* Summary */}
+      {processed && (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map(({ label, value, hint, icon: Icon, tone }) => (
           <div key={label} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -196,6 +197,7 @@ export default function CostApprovalsPage() {
           </div>
         ))}
       </div>
+      )}
 
       {successMsg && (
         <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
@@ -210,63 +212,71 @@ export default function CostApprovalsPage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5 text-xs w-fit dark:border-slate-700 dark:bg-slate-900">
-        {[['pending', `Menunggu Keputusan (${pendingRows.length})`, Clock], ['history', `Riwayat (${historyRows.length})`, Check]].map(([key, label, Icon]) => (
+        {[['pending', processed ? `Awaiting decision (${pendingRows.length})` : 'Awaiting decision', Clock], ['history', processed ? `History (${historyRows.length})` : 'History', Check]].map(([key, label, Icon]) => (
           <button key={key} type="button" aria-pressed={activeTab === key} onClick={() => switchTab(key)} className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors cursor-pointer ${activeTab === key ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'}`}><Icon className="h-3.5 w-3.5" />{label}</button>
         ))}
       </div>
 
       {/* List */}
+      {!processed ? (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+          <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><BadgeCheck className="h-5 w-5" /></motion.span>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Load your approval queue</h3>
+          <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-400">Click Load data to fetch the plans, payment requests and claims waiting for your decision, plus your decision history.</p>
+          <button type="button" onClick={() => setProcessed(true)} className="mt-4 inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Load data</button>
+        </motion.div>
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-3 dark:border-slate-800">
           <div className="relative min-w-48 flex-1">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <input aria-label="Cari pengajuan" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Cari judul, pengaju, PT, atau komentar..." className={`${fieldClass} w-full pl-9 pr-9`} />
-            {search && <button type="button" aria-label="Hapus pencarian" onClick={() => { setSearch(''); setPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
+            <input aria-label="Search requests" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Search title, requester, company or comment..." className={`${fieldClass} w-full pl-9 pr-9`} />
+            {search && <button type="button" aria-label="Clear search" onClick={() => { setSearch(''); setPage(1); }} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
           </div>
-          <select aria-label="Filter jenis dokumen" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} className={`${fieldClass} bg-white px-3 dark:bg-slate-900`}>
-            <option value="">Semua dokumen</option>
+          <select aria-label="Document type" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }} className={`${fieldClass} bg-white px-3 dark:bg-slate-900`}>
+            <option value="">All documents</option>
             <option value="Marketing Plan">Marketing Plan</option>
             <option value="Payment Request">Payment Request</option>
             <option value="Claim">Claim</option>
           </select>
-          <select aria-label="Filter PT" value={companyFilter} onChange={e => { setCompanyFilter(e.target.value); setPage(1); }} className={`${fieldClass} max-w-56 bg-white px-3 dark:bg-slate-900`}>
-            <option value="">Semua PT</option>
+          <select aria-label="Company" value={companyFilter} onChange={e => { setCompanyFilter(e.target.value); setPage(1); }} className={`${fieldClass} max-w-56 bg-white px-3 dark:bg-slate-900`}>
+            <option value="">All companies</option>
             {companies.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <span aria-live="polite" className="text-[11px] text-slate-400">{filtered.length} dokumen</span>
+          <span aria-live="polite" className="text-[11px] text-slate-400">{filtered.length} {filtered.length === 1 ? 'document' : 'documents'}</span>
         </div>
 
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin text-blue-500" />Memuat antrian persetujuan...</div>
+            <div className="flex items-center justify-center gap-2 py-16 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin text-blue-500" />Loading approval queue...</div>
           ) : activeTab === 'pending' ? (
             <table className="w-full min-w-[900px] table-fixed text-left text-xs">
               <thead className="border-b border-slate-100 bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-950/40">
                 <tr>
-                  <th className="w-[15%] px-4 py-2.5 font-semibold">Dokumen</th>
-                  <th className="w-[26%] px-3 py-2.5 font-semibold">Pengajuan</th>
-                  <th className="w-[17%] px-3 py-2.5 font-semibold">PT</th>
-                  <th className="w-[14%] px-3 py-2.5 text-right font-semibold">Nilai</th>
+                  <th className="w-[15%] px-4 py-2.5 font-semibold">Document</th>
+                  <th className="w-[26%] px-3 py-2.5 font-semibold">Request</th>
+                  <th className="w-[17%] px-3 py-2.5 font-semibold">Company</th>
+                  <th className="w-[14%] px-3 py-2.5 text-right font-semibold">Amount</th>
                   <th className="w-[11%] px-3 py-2.5 font-semibold">Status</th>
-                  <th className="w-[9%] px-3 py-2.5 font-semibold">Menunggu</th>
-                  <th className="w-[8%] px-3 py-2.5 text-right font-semibold">Aksi</th>
+                  <th className="w-[9%] px-3 py-2.5 font-semibold">Waiting</th>
+                  <th className="w-[8%] px-3 py-2.5 text-right font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                 {!rows.length && (
                   <tr><td colSpan={7} className="px-4 py-14 text-center text-slate-400">
-                    {pendingRows.length ? 'Tidak ada pengajuan yang sesuai filter.' : <span className="inline-flex flex-col items-center gap-2"><CheckCircle className="h-8 w-8 text-emerald-500/80" />Tidak ada pengajuan yang menunggu keputusan Anda.</span>}
+                    {pendingRows.length ? 'No requests match the filters.' : <span className="inline-flex flex-col items-center gap-2"><CheckCircle className="h-8 w-8 text-emerald-500/80" />Nothing is waiting for your decision.</span>}
                   </td></tr>
                 )}
                 {rows.map(row => (
                   <tr key={row.id} className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                     <td className="px-4 py-2">
                       <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium ${TYPE_BADGE[row.type]}`}>{row.type}</span>
-                      <p className="mt-1 text-[10px] text-slate-400">Tahap {row.step}</p>
+                      <p className="mt-1 text-[10px] text-slate-400">Step {row.step}</p>
                     </td>
                     <td className="px-3 py-2">
                       <p title={row.title} className="truncate font-medium text-slate-800 dark:text-slate-200">{row.title || '—'}</p>
-                      <p className="truncate text-[10px] text-slate-400">Diajukan {row.creator || 'N/A'} · {formatDate(row.createdAt)}</p>
+                      <p className="truncate text-[10px] text-slate-400">By {row.creator || 'N/A'} · {formatDate(row.createdAt)}</p>
                     </td>
                     <td title={row.company} className="truncate px-3 py-2 text-slate-500 dark:text-slate-400">{row.company}</td>
                     <td className="px-3 py-2 text-right font-medium tabular-nums text-slate-800 dark:text-slate-100">{formatIDR(row.amount)}</td>
@@ -274,12 +284,12 @@ export default function CostApprovalsPage() {
                       <div className="flex flex-wrap gap-1">
                         {row.overbudget ? <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><span className="h-1 w-1 rounded-full bg-current" />Overbudget</span>
                           : <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"><span className="h-1 w-1 rounded-full bg-current" />Normal</span>}
-                        {row.late && <span title="Diajukan kurang dari H-3 bulan" className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">Late</span>}
+                        {row.late && <span title="Submitted less than 3 days before the month (H-3)" className="inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">Late</span>}
                       </div>
                     </td>
-                    <td className={`px-3 py-2 font-medium tabular-nums ${ageTone(row.ageDays)}`}>{row.ageDays === 0 ? 'Hari ini' : `${row.ageDays} hari`}</td>
+                    <td className={`px-3 py-2 font-medium tabular-nums ${ageTone(row.ageDays)}`}>{row.ageDays === 0 ? 'Today' : `${row.ageDays} ${row.ageDays === 1 ? 'day' : 'days'}`}</td>
                     <td className="px-3 py-1.5 text-right">
-                      <button type="button" onClick={() => openTask(row.task)} className="inline-flex h-8 items-center rounded-lg bg-blue-600 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-blue-700 cursor-pointer">Proses</button>
+                      <button type="button" onClick={() => openTask(row.task)} className="inline-flex h-8 items-center rounded-lg bg-blue-600 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-blue-700 cursor-pointer">Review</button>
                     </td>
                   </tr>
                 ))}
@@ -289,34 +299,34 @@ export default function CostApprovalsPage() {
             <table className="w-full min-w-[960px] table-fixed text-left text-xs">
               <thead className="border-b border-slate-100 bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-950/40">
                 <tr>
-                  <th className="w-[14%] px-4 py-2.5 font-semibold">Dokumen</th>
-                  <th className="w-[24%] px-3 py-2.5 font-semibold">Pengajuan</th>
-                  <th className="w-[15%] px-3 py-2.5 font-semibold">PT</th>
-                  <th className="w-[13%] px-3 py-2.5 text-right font-semibold">Nilai</th>
-                  <th className="w-[10%] px-3 py-2.5 font-semibold">Keputusan</th>
+                  <th className="w-[14%] px-4 py-2.5 font-semibold">Document</th>
+                  <th className="w-[24%] px-3 py-2.5 font-semibold">Request</th>
+                  <th className="w-[15%] px-3 py-2.5 font-semibold">Company</th>
+                  <th className="w-[13%] px-3 py-2.5 text-right font-semibold">Amount</th>
+                  <th className="w-[10%] px-3 py-2.5 font-semibold">Decision</th>
                   <th className={`${showApprover ? 'w-[12%]' : 'w-[0%] hidden'} px-3 py-2.5 font-semibold`}>Approver</th>
-                  <th className="px-3 py-2.5 font-semibold">Komentar</th>
-                  <th className="w-[11%] px-3 py-2.5 font-semibold">Waktu</th>
+                  <th className="px-3 py-2.5 font-semibold">Comment</th>
+                  <th className="w-[11%] px-3 py-2.5 font-semibold">Time</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {!rows.length && <tr><td colSpan={8} className="px-4 py-14 text-center text-slate-400">{historyRows.length ? 'Tidak ada riwayat yang sesuai filter.' : 'Belum ada riwayat keputusan approval.'}</td></tr>}
+                {!rows.length && <tr><td colSpan={8} className="px-4 py-14 text-center text-slate-400">{historyRows.length ? 'No history matches the filters.' : 'No approval decisions yet.'}</td></tr>}
                 {rows.map(hist => (
                   <tr key={hist.id} className="transition-colors hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
                     <td className="px-4 py-2">
                       <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium ${TYPE_BADGE[hist.type] || TYPE_BADGE['Payment Request']}`}>{hist.type}</span>
-                      {hist.step && <p className="mt-1 text-[10px] text-slate-400">Tahap {hist.step}</p>}
+                      {hist.step && <p className="mt-1 text-[10px] text-slate-400">Step {hist.step}</p>}
                     </td>
                     <td className="px-3 py-2">
                       <p title={hist.title} className="truncate font-medium text-slate-800 dark:text-slate-200">{hist.title || '—'}</p>
-                      <p className="truncate text-[10px] text-slate-400">Diajukan {hist.creator || 'N/A'}</p>
+                      <p className="truncate text-[10px] text-slate-400">By {hist.creator || 'N/A'}</p>
                     </td>
                     <td title={hist.company} className="truncate px-3 py-2 text-slate-500 dark:text-slate-400">{hist.company}</td>
                     <td className="px-3 py-2 text-right font-medium tabular-nums text-slate-800 dark:text-slate-100">{formatIDR(hist.amount)}</td>
                     <td className="px-3 py-2">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${hist.action === 'REJECTED' ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'}`}><span className="h-1 w-1 rounded-full bg-current" />{hist.action === 'REJECTED' ? 'Ditolak' : 'Disetujui'}</span>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${hist.action === 'REJECTED' ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'}`}><span className="h-1 w-1 rounded-full bg-current" />{hist.action === 'REJECTED' ? 'Rejected' : 'Approved'}</span>
                     </td>
-                    <td title={hist.approverName || ''} className={`${showApprover ? '' : 'hidden'} truncate px-3 py-2 text-slate-500 dark:text-slate-400`}>{hist.mine ? 'Anda' : hist.approverName || '—'}</td>
+                    <td title={hist.approverName || ''} className={`${showApprover ? '' : 'hidden'} truncate px-3 py-2 text-slate-500 dark:text-slate-400`}>{hist.mine ? 'You' : hist.approverName || '—'}</td>
                     <td title={hist.comment || ''} className="truncate px-3 py-2 text-slate-500 dark:text-slate-400">{hist.comment || '—'}</td>
                     <td className="px-3 py-2 tabular-nums text-slate-400">{formatDate(hist.date, true)}</td>
                   </tr>
@@ -327,21 +337,22 @@ export default function CostApprovalsPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-slate-400 dark:border-slate-800">
-          <label className="flex items-center gap-2">Baris per halaman
+          <label className="flex items-center gap-2">Rows per page
             <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
               {[25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
           <div className="flex items-center gap-3">
-            <span className="tabular-nums">{filtered.length ? `${start + 1}–${Math.min(start + pageSize, filtered.length)}` : '0'} dari {filtered.length}</span>
+            <span className="tabular-nums">{filtered.length ? `${start + 1}–${Math.min(start + pageSize, filtered.length)}` : '0'} of {filtered.length}</span>
             <div className="flex items-center gap-1">
-              <button type="button" aria-label="Halaman sebelumnya" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronLeft className="h-4 w-4" /></button>
               <span className="min-w-10 text-center tabular-nums">{currentPage} / {totalPages}</span>
-              <button type="button" aria-label="Halaman berikutnya" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronRight className="h-4 w-4" /></button>
+              <button type="button" aria-label="Next page" disabled={currentPage >= totalPages} onClick={() => setPage(currentPage + 1)} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>
         </div>
       </div>
+      )}
 
       {/* Decision modal */}
       <AnimatePresence>
@@ -382,12 +393,12 @@ function DecisionModal({ task, comment, setComment, error, submitting, onClose, 
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium ${TYPE_BADGE[row.type]}`}>{row.type}</span>
-              <span className="text-[10px] text-slate-400">Tahap {row.step}{waiting?.role ? ` · ${ROLE_LABELS[waiting.role] || waiting.role}` : ''}</span>
+              <span className="text-[10px] text-slate-400">Step {row.step}{waiting?.role ? ` · ${ROLE_LABELS[waiting.role] || waiting.role}` : ''}</span>
             </div>
             <h3 className="mt-1.5 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{row.title}</h3>
           </div>
           <div className="shrink-0 text-right">
-            <p className={label}>{row.isPlan ? 'Total anggaran' : 'Nominal'}</p>
+            <p className={label}>{row.isPlan ? 'Total budget' : 'Amount'}</p>
             <p className="text-lg font-semibold tabular-nums text-slate-900 dark:text-white">{formatIDR(row.amount)}</p>
           </div>
         </div>
@@ -396,26 +407,26 @@ function DecisionModal({ task, comment, setComment, error, submitting, onClose, 
           {error && <div className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="h-4 w-4" />{error}</div>}
 
           <div className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:grid-cols-2 dark:border-slate-800 dark:bg-slate-950/40">
-            <Field name="PT">{row.company}</Field>
-            <Field name="Diajukan oleh">{row.creator}</Field>
+            <Field name="Company">{row.company}</Field>
+            <Field name="Requested by">{row.creator}</Field>
             {row.isPlan ? <>
-              <Field name="Tahun fiskal">{plan?.fiscal_year}</Field>
-              <Field name="Tanggal pengajuan">{formatDate(task.created_at)}</Field>
-              <Field name="Deskripsi" wide>{plan?.description}</Field>
-              {plan?.is_late_submission && <Field name="Alasan pengajuan terlambat (H-3)" wide><span className="text-amber-700 dark:text-amber-300">{plan.late_submission_reason || '—'}</span></Field>}
+              <Field name="Fiscal year">{plan?.fiscal_year}</Field>
+              <Field name="Request date">{formatDate(task.created_at)}</Field>
+              <Field name="Description" wide>{plan?.description}</Field>
+              {plan?.is_late_submission && <Field name="Late submission reason (H-3)" wide><span className="text-amber-700 dark:text-amber-300">{plan.late_submission_reason || '—'}</span></Field>}
             </> : <>
-              <Field name="Campaign induk">{item?.marketing_plan?.title}</Field>
+              <Field name="Parent campaign">{item?.marketing_plan?.title}</Field>
               <Field name="CoA">{item?.m_coa ? `${item.m_coa.code} - ${item.m_coa.name}` : null}</Field>
               {pr?.request_type === 'CLAIM' && <>
-                <Field name="Penerima reimbursement">{pr.reimbursement_payee}</Field>
-                <Field name="Tanggal transaksi">{pr.expense_date ? new Date(pr.expense_date).toLocaleDateString('id-ID', { timeZone: 'UTC' }) : null}</Field>
+                <Field name="Reimbursement payee">{pr.reimbursement_payee}</Field>
+                <Field name="Transaction date">{pr.expense_date ? new Date(pr.expense_date).toLocaleDateString('en-GB', { timeZone: 'UTC' }) : null}</Field>
                 <Field name="Vendor">{pr.expense_vendor}</Field>
               </>}
-              {pr?.notes && <Field name="Catatan" wide>{pr.notes}</Field>}
+              {pr?.notes && <Field name="Notes" wide>{pr.notes}</Field>}
             </>}
             {(plan?.doc_url || pr?.doc_url) && (
-              <Field name={row.isPlan ? 'Proposal' : 'Lampiran'} wide>
-                <a href={plan?.doc_url || pr?.doc_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-medium text-blue-600 hover:underline dark:text-blue-400"><Paperclip className="h-3.5 w-3.5" />Lihat dokumen</a>
+              <Field name={row.isPlan ? 'Proposal' : 'Attachment'} wide>
+                <a href={plan?.doc_url || pr?.doc_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-medium text-blue-600 hover:underline dark:text-blue-400"><Paperclip className="h-3.5 w-3.5" />View document</a>
               </Field>
             )}
           </div>
@@ -423,13 +434,13 @@ function DecisionModal({ task, comment, setComment, error, submitting, onClose, 
           {/* Budget impact for payment / claim */}
           {!row.isPlan && item && (
             <div>
-              <p className={`${label} mb-2`}>Dampak ke anggaran item</p>
+              <p className={`${label} mb-2`}>Impact on the item budget</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
-                  ['Anggaran', budget, ''],
-                  ['Sudah terealisasi', realized, ''],
-                  ['Sisa saat ini', remaining, remaining < 0 ? 'text-rose-600 dark:text-rose-400' : ''],
-                  ['Sisa setelah disetujui', afterApproval, afterApproval < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'],
+                  ['Budget', budget, ''],
+                  ['Realized', realized, ''],
+                  ['Remaining now', remaining, remaining < 0 ? 'text-rose-600 dark:text-rose-400' : ''],
+                  ['Remaining after approval', afterApproval, afterApproval < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'],
                 ].map(([name, value, tone]) => (
                   <div key={name} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                     <p className="text-[10px] text-slate-400">{name}</p>
@@ -440,7 +451,7 @@ function DecisionModal({ task, comment, setComment, error, submitting, onClose, 
               {row.overbudget && (
                 <div className="mt-2 flex gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] leading-relaxed text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>Pengajuan ini melebihi sisa anggaran sebesar <strong>{formatIDR(Math.abs(afterApproval))}</strong>. Menyetujuinya akan melampaui alokasi dan memerlukan eskalasi ke CFO/CEO.</span>
+                  <span>This request exceeds the remaining budget by <strong>{formatIDR(Math.abs(afterApproval))}</strong>. Approving it goes over the allocation and requires CFO/CEO escalation.</span>
                 </div>
               )}
             </div>
@@ -449,7 +460,7 @@ function DecisionModal({ task, comment, setComment, error, submitting, onClose, 
           {/* Approver chain for plans */}
           {row.isPlan && chain.length > 0 && (
             <div>
-              <p className={`${label} mb-2`}>Alur persetujuan</p>
+              <p className={`${label} mb-2`}>Approval flow</p>
               <ol className="flex flex-wrap gap-2">
                 {chain.map(step => {
                   const current = step.step_number === task.step_number;
@@ -471,17 +482,17 @@ function DecisionModal({ task, comment, setComment, error, submitting, onClose, 
           {/* Plan items */}
           {row.isPlan && (
             <div>
-              <p className={`${label} mb-2`}>Rincian anggaran ({plan?.items?.length || 0} item)</p>
+              <p className={`${label} mb-2`}>Budget breakdown ({plan?.items?.length || 0} {plan?.items?.length === 1 ? 'item' : 'items'})</p>
               <div className="max-h-56 overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400 dark:bg-slate-950">
-                    <tr><th className="px-3 py-2 font-semibold">Bulan</th><th className="px-3 py-2 font-semibold">CoA</th><th className="px-3 py-2 font-semibold">Brand / LOB</th><th className="px-3 py-2 text-right font-semibold">Anggaran</th></tr>
+                    <tr><th className="px-3 py-2 font-semibold">Month</th><th className="px-3 py-2 font-semibold">CoA</th><th className="px-3 py-2 font-semibold">Brand / LOB</th><th className="px-3 py-2 text-right font-semibold">Budget</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {!plan?.items?.length && <tr><td colSpan={4} className="px-3 py-6 text-center text-slate-400">Tidak ada item.</td></tr>}
+                    {!plan?.items?.length && <tr><td colSpan={4} className="px-3 py-6 text-center text-slate-400">No items.</td></tr>}
                     {plan?.items?.map(it => (
                       <tr key={it.id}>
-                        <td className="px-3 py-2 text-slate-500">{new Date(2000, it.period_month - 1, 1).toLocaleDateString('id-ID', { month: 'short' })}</td>
+                        <td className="px-3 py-2 text-slate-500">{new Date(2000, it.period_month - 1, 1).toLocaleDateString('en-GB', { month: 'short' })}</td>
                         <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{it.m_coa ? `${it.m_coa.code} - ${it.m_coa.name}` : '—'}</td>
                         <td className="px-3 py-2 text-slate-500">{it.m_brand?.name || '—'} / {it.m_line_business?.name || '—'}</td>
                         <td className="px-3 py-2 text-right font-medium tabular-nums text-slate-800 dark:text-slate-100">{formatIDR(it.budget_amount)}</td>
@@ -494,17 +505,17 @@ function DecisionModal({ task, comment, setComment, error, submitting, onClose, 
           )}
 
           <div>
-            <label htmlFor="approval-comment" className={label}>Komentar</label>
-            <textarea id="approval-comment" rows={3} value={comment} onChange={e => setComment(e.target.value)} placeholder="Wajib diisi jika menolak. Opsional untuk persetujuan." className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+            <label htmlFor="approval-comment" className={label}>Comment</label>
+            <textarea id="approval-comment" rows={3} value={comment} onChange={e => setComment(e.target.value)} placeholder="Required when rejecting. Optional when approving." className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
           </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
-          <button type="button" onClick={onClose} disabled={submitting} className="h-9 rounded-lg border border-slate-200 px-4 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Batal</button>
+          <button type="button" onClick={onClose} disabled={submitting} className="h-9 rounded-lg border border-slate-200 px-4 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Cancel</button>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => onDecision('REJECT')} disabled={submitting} title={comment.trim() ? 'Tolak pengajuan' : 'Isi komentar untuk menolak'} className="h-9 rounded-lg border border-rose-200 px-4 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:text-rose-400 dark:hover:bg-rose-500/10 cursor-pointer">Tolak</button>
+            <button type="button" onClick={() => onDecision('REJECT')} disabled={submitting} title={comment.trim() ? 'Reject request' : 'Add a comment to reject'} className="h-9 rounded-lg border border-rose-200 px-4 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:text-rose-400 dark:hover:bg-rose-500/10 cursor-pointer">Reject</button>
             <button type="button" onClick={() => onDecision('APPROVE')} disabled={submitting} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">
-              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}Setujui
+              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}Approve
             </button>
           </div>
         </div>

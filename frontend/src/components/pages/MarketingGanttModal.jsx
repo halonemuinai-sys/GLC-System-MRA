@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo, useRef, useId } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Tooltip } from '@base-ui/react/tooltip';
 import { CalendarDays, X, ChevronLeft, ChevronRight, Search, Download, Layers, Wallet, CheckCircle2, ArrowUpRight, SlidersHorizontal, RotateCcw } from 'lucide-react';
-import { useLanguage } from '@/lib/LanguageContext';
 import { formatIDR, formatIDRCompact, STATUS_CONFIG, MONTHS_SHORT } from './MarketingGanttUtils';
 import { timelineRange, calendarPosition, buildTimelineSvg } from '@/lib/marketingTimeline.mjs';
 
@@ -49,8 +48,7 @@ function CampaignBubble({ row, totalWidth, formatDate, isId }) {
 }
 
 export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
-  const { lang, t } = useLanguage();
-  const isId = lang === 'id';
+  const isId = false; // English-only, like the rest of Marketing
   const reducedMotion = useReducedMotion();
   const titleId = useId();
   const [search, setSearch] = useState('');
@@ -134,7 +132,7 @@ export default function MarketingGanttModal({ plans, fiscalYear, onClose }) {
       <div className="relative flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-blue-300 sm:flex"><CalendarDays className="h-5 w-5" /></span>
-          <div className="min-w-0"><p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-blue-300">Marketing calendar</p><h2 id={titleId} className="truncate text-base font-semibold tracking-tight sm:text-xl">{t('marketing_ganttTitle')} {fiscalYear}</h2></div>
+          <div className="min-w-0"><p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-blue-300">Marketing calendar</p><h2 id={titleId} className="truncate text-base font-semibold tracking-tight sm:text-xl">Campaign Timeline {fiscalYear}</h2></div>
         </div>
         <div className="flex items-center gap-3"><span className="hidden rounded-lg border border-white/10 px-2 py-1 text-[10px] text-slate-400 sm:inline">ESC</span><button ref={closeRef} type="button" onClick={onClose} aria-label={isId ? 'Tutup timeline' : 'Close timeline'} className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"><X className="h-4 w-4" /></button></div>
       </div>

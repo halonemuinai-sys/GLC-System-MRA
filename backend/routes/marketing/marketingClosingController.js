@@ -386,8 +386,8 @@ async function settleClosing(req, res, next) {
     const plan = await loadPlan(planId);
     if (!plan || !inScope(req, plan)) return res.status(404).json({ error: 'Marketing Plan not found.' });
     const closing = await loadClosing(planId);
-    if (!closing || closing.status !== 'APPROVED') return res.status(400).json({ error: 'Settlement hanya untuk closing yang sudah disetujui.' });
-    if (closing.settled_at) return res.status(400).json({ error: 'Closing ini sudah ditandai settled.' });
+    if (!closing || closing.status !== 'APPROVED') return res.status(400).json({ error: 'Settlement is only for approved closings.' });
+    if (closing.settled_at) return res.status(400).json({ error: 'This closing is already marked as settled.' });
 
     await prisma.marketing_plan_closings.update({
       where: { id: closing.id },

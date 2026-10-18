@@ -16,24 +16,24 @@ const FISCAL_YEAR_OPTIONS = [THIS_YEAR - 1, THIS_YEAR, THIS_YEAR + 1, THIS_YEAR 
 
 const formatIDR = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(val || 0));
 const formatDate = (value, withTime = false) => value
-  ? new Date(value).toLocaleString('id-ID', withTime ? { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric' })
+  ? new Date(value).toLocaleString('en-GB', withTime ? { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric' })
   : '—';
 
 const STATUS_CONFIG = {
-  PENDING: { label: 'Menunggu', cls: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400', icon: Clock },
+  PENDING: { label: 'Pending', cls: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400', icon: Clock },
   OVERBUDGET_WARN: { label: 'Overbudget', cls: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400', icon: AlertCircle },
-  APPROVED: { label: 'Disetujui', cls: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400', icon: CheckCircle },
-  PAID: { label: 'Dibayar', cls: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400', icon: Banknote },
-  REJECTED: { label: 'Ditolak', cls: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400', icon: XCircle },
+  APPROVED: { label: 'Approved', cls: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400', icon: CheckCircle },
+  PAID: { label: 'Paid', cls: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400', icon: Banknote },
+  REJECTED: { label: 'Rejected', cls: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400', icon: XCircle },
 };
-const STATUS_TABS = [['', 'Semua'], ['PENDING', 'Menunggu'], ['OVERBUDGET_WARN', 'Overbudget'], ['APPROVED', 'Siap dibayar'], ['PAID', 'Dibayar'], ['REJECTED', 'Ditolak']];
+const STATUS_TABS = [['', 'All'], ['PENDING', 'Pending'], ['OVERBUDGET_WARN', 'Overbudget'], ['APPROVED', 'Ready to pay'], ['PAID', 'Paid'], ['REJECTED', 'Rejected']];
 
 function StatusBadge({ status }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
   return <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${cfg.cls}`}><span className="h-1 w-1 rounded-full bg-current" />{cfg.label}</span>;
 }
 
-function CountUp({ value, format = (v) => Math.round(v).toLocaleString('id-ID') }) {
+function CountUp({ value, format = (v) => Math.round(v).toLocaleString('en-US') }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
     const controls = animate(0, value, { duration: 0.8, ease: 'easeOut', onUpdate: setDisplay });
@@ -77,7 +77,7 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
       onChanged(message);
       onClose();
     } catch (err) {
-      setActionError(err.message || 'Aksi gagal diproses.');
+      setActionError(err.message || 'Action failed.');
     } finally {
       setBusy(null);
     }
@@ -94,13 +94,13 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
             <div className="flex flex-wrap items-center gap-2">
               <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ${isClaim ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}`}>{isClaim ? 'Reimbursement' : 'Payment Request'}</span>
               <StatusBadge status={payment.status} />
-              {payment.finance_verified_at && <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><ShieldCheck className="h-3 w-3" />Terverifikasi Finance</span>}
+              {payment.finance_verified_at && <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><ShieldCheck className="h-3 w-3" />Finance verified</span>}
             </div>
             <h3 className="mt-1.5 truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{payment.title}</h3>
             <p className="text-[11px] text-slate-400">#{payment.id} · {plan?.company?.name || '—'}</p>
           </div>
           <div className="shrink-0 text-right">
-            <p className={label}>Nominal</p>
+            <p className={label}>Amount</p>
             <p className="text-lg font-semibold tabular-nums text-slate-900 dark:text-white">{formatIDR(payment.amount)}</p>
           </div>
         </div>
@@ -111,41 +111,41 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
           <div className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:grid-cols-2 dark:border-slate-800 dark:bg-slate-950/40">
             {[
               ['Marketing Plan', plan?.title],
-              ['CoA / Bulan', item?.m_coa ? `${item.m_coa.code} - ${item.m_coa.name} · ${new Date(2000, (item.period_month || 1) - 1, 1).toLocaleDateString('id-ID', { month: 'short' })}` : null],
-              ['Diajukan oleh', payment.creator?.name],
-              ['Tanggal pengajuan', formatDate(payment.created_at)],
-              ...(payment.po_number ? [['Nomor PO', `${payment.po_number} · ${formatDate(payment.po_issued_at)}`]] : []),
-              ...(payment.paid_at ? [['Dibayar', formatDate(payment.paid_at)]] : []),
-              ...(isClaim ? [['Penerima reimbursement', payment.reimbursement_payee], ['Tanggal transaksi', payment.expense_date ? new Date(payment.expense_date).toLocaleDateString('id-ID', { timeZone: 'UTC' }) : null], ['Vendor / tempat', payment.expense_vendor]] : []),
+              ['CoA / Month', item?.m_coa ? `${item.m_coa.code} - ${item.m_coa.name} · ${new Date(2000, (item.period_month || 1) - 1, 1).toLocaleDateString('en-GB', { month: 'short' })}` : null],
+              ['Requested by', payment.creator?.name],
+              ['Request date', formatDate(payment.created_at)],
+              ...(payment.po_number ? [['PO number', `${payment.po_number} · ${formatDate(payment.po_issued_at)}`]] : []),
+              ...(payment.paid_at ? [['Paid', formatDate(payment.paid_at)]] : []),
+              ...(isClaim ? [['Reimbursement payee', payment.reimbursement_payee], ['Transaction date', payment.expense_date ? new Date(payment.expense_date).toLocaleDateString('en-GB', { timeZone: 'UTC' }) : null], ['Vendor / place', payment.expense_vendor]] : []),
             ].map(([name, value]) => (
               <div key={name}><p className={label}>{name}</p><p className="mt-0.5 text-xs text-slate-800 dark:text-slate-200">{value || '—'}</p></div>
             ))}
-            {payment.notes && <div className="sm:col-span-2"><p className={label}>Catatan</p><p className="mt-0.5 whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300">{payment.notes}</p></div>}
-            {payment.doc_url && <div className="sm:col-span-2"><a href={payment.doc_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"><Paperclip className="h-3.5 w-3.5" />Lihat dokumen pendukung</a></div>}
+            {payment.notes && <div className="sm:col-span-2"><p className={label}>Notes</p><p className="mt-0.5 whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300">{payment.notes}</p></div>}
+            {payment.doc_url && <div className="sm:col-span-2"><a href={payment.doc_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"><Paperclip className="h-3.5 w-3.5" />View supporting document</a></div>}
           </div>
 
           {item && (
             <div>
-              <p className={`${label} mb-2`}>Anggaran item</p>
+              <p className={`${label} mb-2`}>Item budget</p>
               <div className="grid grid-cols-3 gap-2">
-                {[['Anggaran', budget, ''], ['Terealisasi (paid)', realized, ''], ['Sisa', budget - realized, budget - realized < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400']].map(([name, value, tone]) => (
+                {[['Budget', budget, ''], ['Realized (paid)', realized, ''], ['Remaining', budget - realized, budget - realized < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400']].map(([name, value, tone]) => (
                   <div key={name} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><p className="text-[10px] text-slate-400">{name}</p><p className={`mt-0.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100 ${tone}`}>{formatIDR(value)}</p></div>
                 ))}
               </div>
-              {payment.status === 'OVERBUDGET_WARN' && <p className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />Pengajuan melebihi sisa anggaran item (termasuk pengajuan lain yang masih berjalan). Setelah tier normal, diperlukan eskalasi CFO/CEO.</p>}
+              {payment.status === 'OVERBUDGET_WARN' && <p className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />This request exceeds the remaining budget of this item (including other in-flight requests). After the normal tier, CFO/CEO escalation is required.</p>}
             </div>
           )}
 
           {history.length > 0 && (
             <div>
-              <p className={`${label} mb-2`}>Alur persetujuan</p>
+              <p className={`${label} mb-2`}>Approval flow</p>
               <ol className="space-y-2">
                 {history.map((h, idx) => (
                   <motion.li key={h.id} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * idx }} className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2 dark:border-slate-800">
                     <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${h.status === 'APPROVED' ? 'bg-emerald-500 text-white' : h.status === 'REJECTED' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'}`}>{h.step_number}</span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">
-                        {h.status === 'PENDING' ? (isClaim ? 'Menunggu Finance' : `Menunggu approval tahap ${h.step_number}`) : `${h.status === 'APPROVED' ? 'Disetujui' : 'Ditolak'} oleh ${h.approver?.name || '—'}`}
+                        {h.status === 'PENDING' ? (isClaim ? 'Awaiting Finance' : `Awaiting step ${h.step_number} approval`) : `${h.status === 'APPROVED' ? 'Approved' : 'Rejected'} by ${h.approver?.name || '—'}`}
                       </p>
                       {(h.comment || h.action_at) && <p className="truncate text-[10px] text-slate-400">{[h.action_at && formatDate(h.action_at, true), h.comment].filter(Boolean).join(' · ')}</p>}
                     </div>
@@ -158,41 +158,41 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRole }) {
 
           {canReview && (
             <div className="space-y-2 rounded-xl border border-blue-200 p-4 dark:border-blue-500/30">
-              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">Keputusan Finance untuk reimbursement</p>
-              <textarea aria-label="Catatan keputusan Finance" value={reviewNote} onChange={e => setReviewNote(e.target.value)} placeholder="Catatan (wajib jika ditolak)" rows={2} className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-950" />
+              <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">Finance decision on this reimbursement</p>
+              <textarea aria-label="Finance decision note" value={reviewNote} onChange={e => setReviewNote(e.target.value)} placeholder="Note (required when rejecting)" rows={2} className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-950" />
               <div className="flex gap-2">
-                <button type="button" disabled={!!busy} onClick={() => { if (!reviewNote.trim()) { setActionError('Isi alasan penolakan.'); return; } run('reject', () => apiClient.post(`/api/marketing/approvals/${pendingTask.id}`, { action: 'REJECT', comment: reviewNote }), 'Reimbursement ditolak.'); }} className="h-9 flex-1 rounded-lg border border-rose-200 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10 cursor-pointer">Tolak</button>
-                <button type="button" disabled={!!busy} onClick={() => run('approve', () => apiClient.post(`/api/marketing/approvals/${pendingTask.id}`, { action: 'APPROVE', comment: reviewNote }), 'Reimbursement disetujui. Menunggu pembayaran.')} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{busy === 'approve' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Setujui</button>
+                <button type="button" disabled={!!busy} onClick={() => { if (!reviewNote.trim()) { setActionError('Enter a reason for rejecting.'); return; } run('reject', () => apiClient.post(`/api/marketing/approvals/${pendingTask.id}`, { action: 'REJECT', comment: reviewNote }), 'Reimbursement rejected.'); }} className="h-9 flex-1 rounded-lg border border-rose-200 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10 cursor-pointer">Reject</button>
+                <button type="button" disabled={!!busy} onClick={() => run('approve', () => apiClient.post(`/api/marketing/approvals/${pendingTask.id}`, { action: 'APPROVE', comment: reviewNote }), 'Reimbursement approved. Awaiting payment.')} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{busy === 'approve' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Approve</button>
               </div>
             </div>
           )}
 
           {canSetPo && (
             <div className="space-y-2 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200"><Hash className="h-3.5 w-3.5" />Nomor PO</p>
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200"><Hash className="h-3.5 w-3.5" />PO number</p>
               <div className="flex gap-2">
-                <input value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="Contoh: PO/MKT/2026/0012" className="h-9 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-950" />
-                <button type="button" disabled={!!busy || !poNumber.trim() || poNumber.trim() === payment.po_number} onClick={() => run('po', () => apiClient.post(`/api/marketing/payments/${payment.id}/set-po`, { po_number: poNumber }), 'Nomor PO tersimpan.')} className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-40 dark:bg-white dark:text-slate-900 cursor-pointer">{busy === 'po' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Simpan</button>
+                <input value={poNumber} onChange={e => setPoNumber(e.target.value)} placeholder="e.g. PO/MKT/2026/0012" className="h-9 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-950" />
+                <button type="button" disabled={!!busy || !poNumber.trim() || poNumber.trim() === payment.po_number} onClick={() => run('po', () => apiClient.post(`/api/marketing/payments/${payment.id}/set-po`, { po_number: poNumber }), 'PO number saved.')} className="inline-flex h-9 items-center gap-2 rounded-lg bg-slate-900 px-4 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-40 dark:bg-white dark:text-slate-900 cursor-pointer">{busy === 'po' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Save</button>
               </div>
             </div>
           )}
 
           {canMarkPaid && (
             <div className="space-y-2 rounded-xl border border-emerald-200 p-4 dark:border-emerald-500/30">
-              <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300"><Banknote className="h-3.5 w-3.5" />Catat pembayaran</p>
-              <textarea value={paidNotes} onChange={e => setPaidNotes(e.target.value)} placeholder="Catatan pembayaran (opsional), mis. no. transfer" rows={2} className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-950" />
-              <button type="button" disabled={!!busy} onClick={() => { if (confirm(`Tandai ${formatIDR(payment.amount)} sudah dibayar? Nilai ini akan masuk ke realisasi anggaran.`)) run('paid', () => apiClient.post(`/api/marketing/payments/${payment.id}/mark-paid`, { paid_notes: paidNotes }), 'Pembayaran tercatat sebagai PAID.'); }} className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer">{busy === 'paid' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}Konfirmasi pembayaran</button>
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300"><Banknote className="h-3.5 w-3.5" />Record payment</p>
+              <textarea value={paidNotes} onChange={e => setPaidNotes(e.target.value)} placeholder="Payment note (optional), e.g. transfer reference" rows={2} className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-950" />
+              <button type="button" disabled={!!busy} onClick={() => { if (confirm(`Mark ${formatIDR(payment.amount)} as paid? This amount will be added to the budget actuals.`)) run('paid', () => apiClient.post(`/api/marketing/payments/${payment.id}/mark-paid`, { paid_notes: paidNotes }), 'Payment recorded as PAID.'); }} className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer">{busy === 'paid' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}Confirm payment</button>
             </div>
           )}
         </div>
 
         <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-5 py-3 dark:border-slate-800">
           {canDelete ? (
-            <button type="button" disabled={!!busy} onClick={() => { if (confirm('Hapus pengajuan ini? Tindakan tidak bisa dibatalkan.')) run('delete', () => apiClient.delete(`/api/marketing/payments/${payment.id}`), 'Pengajuan dihapus.'); }} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10 cursor-pointer">
-              {busy === 'delete' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}Hapus
+            <button type="button" disabled={!!busy} onClick={() => { if (confirm('Delete this request? This cannot be undone.')) run('delete', () => apiClient.delete(`/api/marketing/payments/${payment.id}`), 'Request deleted.'); }} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10 cursor-pointer">
+              {busy === 'delete' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}Delete
             </button>
-          ) : <span className="text-[10px] text-slate-400">{isOpen && partiallyApproved ? 'Sudah disetujui sebagian — tidak bisa dihapus.' : ''}</span>}
-          <button type="button" onClick={onClose} className="h-9 rounded-lg border border-slate-200 px-4 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Tutup</button>
+          ) : <span className="text-[10px] text-slate-400">{isOpen && partiallyApproved ? 'Partially approved — it can no longer be deleted.' : ''}</span>}
+          <button type="button" onClick={onClose} className="h-9 rounded-lg border border-slate-200 px-4 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Close</button>
         </div>
       </motion.div>
     </div>
@@ -205,7 +205,9 @@ export default function MarketingPaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
   const [summary, setSummary] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  // Process-first: nothing is fetched until Load data; later filter changes reload automatically.
+  const [processed, setProcessed] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
@@ -236,13 +238,16 @@ export default function MarketingPaymentsPage() {
       setMeta({ total: res?.total || 0, totalPages: res?.totalPages || 1 });
       setSummary(res?.summary || {});
     } catch (err) {
-      setError(err.message || 'Gagal memuat data payment.');
+      setError(err.message || 'Failed to load payment requests.');
     } finally {
       setLoading(false);
     }
   }, [baseParams, status, page, pageSize]);
 
-  useEffect(() => { loadPayments(); }, [loadPayments]);
+  useEffect(() => {
+    if (!processed) return;
+    loadPayments();
+  }, [processed, loadPayments]);
 
   const onChanged = (msg) => {
     setSuccessMsg(msg);
@@ -253,10 +258,10 @@ export default function MarketingPaymentsPage() {
   const sum = (keys, field) => keys.reduce((s, k) => s + (summary[k]?.[field] || 0), 0);
   const allKeys = Object.keys(STATUS_CONFIG);
   const kpis = [
-    { label: 'Total pengajuan', value: sum(allKeys, 'count'), sub: formatIDR(sum(allKeys, 'amount')), icon: CreditCard, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
-    { label: 'Menunggu approval', value: sum(['PENDING', 'OVERBUDGET_WARN'], 'count'), sub: `${formatIDR(sum(['PENDING', 'OVERBUDGET_WARN'], 'amount'))} · ${summary.OVERBUDGET_WARN?.count || 0} overbudget`, icon: Clock, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
-    { label: 'Siap dibayar', value: summary.APPROVED?.count || 0, sub: formatIDR(summary.APPROVED?.amount || 0), icon: CheckCircle, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
-    { label: 'Sudah dibayar', value: summary.PAID?.count || 0, sub: formatIDR(summary.PAID?.amount || 0), icon: Banknote, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
+    { label: 'Total requests', value: sum(allKeys, 'count'), sub: formatIDR(sum(allKeys, 'amount')), icon: CreditCard, tone: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+    { label: 'Awaiting approval', value: sum(['PENDING', 'OVERBUDGET_WARN'], 'count'), sub: `${formatIDR(sum(['PENDING', 'OVERBUDGET_WARN'], 'amount'))} · ${summary.OVERBUDGET_WARN?.count || 0} overbudget`, icon: Clock, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
+    { label: 'Ready to pay', value: summary.APPROVED?.count || 0, sub: formatIDR(summary.APPROVED?.amount || 0), icon: CheckCircle, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
+    { label: 'Paid', value: summary.PAID?.count || 0, sub: formatIDR(summary.PAID?.amount || 0), icon: Banknote, tone: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400' },
   ];
 
   // Export every matching row, not only the current page.
@@ -275,18 +280,18 @@ export default function MarketingPaymentsPage() {
       ws.columns = [
         { header: 'No', key: 'no', width: 5 },
         { header: 'ID', key: 'id', width: 7 },
-        { header: 'Jenis', key: 'type', width: 15 },
-        { header: 'Judul', key: 'title', width: 32 },
-        { header: 'Perusahaan', key: 'company', width: 26 },
+        { header: 'Type', key: 'type', width: 15 },
+        { header: 'Title', key: 'title', width: 32 },
+        { header: 'Company', key: 'company', width: 26 },
         { header: 'Marketing Plan', key: 'plan', width: 30 },
         { header: 'CoA', key: 'coa', width: 26 },
-        { header: 'Jumlah (Rp)', key: 'amount', width: 16 },
+        { header: 'Amount (Rp)', key: 'amount', width: 16 },
         { header: 'Status', key: 'status', width: 13 },
-        { header: 'No. PO', key: 'po', width: 18 },
-        { header: 'Verifikasi Finance', key: 'verified', width: 18 },
-        { header: 'Dibuat oleh', key: 'creator', width: 20 },
-        { header: 'Tanggal', key: 'date', width: 13 },
-        { header: 'Dibayar', key: 'paid', width: 13 },
+        { header: 'PO number', key: 'po', width: 18 },
+        { header: 'Finance verified', key: 'verified', width: 18 },
+        { header: 'Created by', key: 'creator', width: 20 },
+        { header: 'Date', key: 'date', width: 13 },
+        { header: 'Paid', key: 'paid', width: 13 },
       ];
       ws.getRow(1).eachCell(cell => { cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }; });
       all.forEach((p, i) => ws.addRow({
@@ -300,10 +305,10 @@ export default function MarketingPaymentsPage() {
         amount: Number(p.amount),
         status: STATUS_CONFIG[p.status]?.label || p.status,
         po: p.po_number || '-',
-        verified: p.finance_verified_at ? new Date(p.finance_verified_at).toLocaleDateString('id-ID') : '-',
+        verified: p.finance_verified_at ? new Date(p.finance_verified_at).toLocaleDateString('en-GB') : '-',
         creator: p.creator?.name || '-',
-        date: new Date(p.created_at).toLocaleDateString('id-ID'),
-        paid: p.paid_at ? new Date(p.paid_at).toLocaleDateString('id-ID') : '-',
+        date: new Date(p.created_at).toLocaleDateString('en-GB'),
+        paid: p.paid_at ? new Date(p.paid_at).toLocaleDateString('en-GB') : '-',
       }));
       ws.getColumn('amount').numFmt = '#,##0';
       ws.views = [{ state: 'frozen', ySplit: 1 }];
@@ -315,7 +320,7 @@ export default function MarketingPaymentsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError('Gagal export: ' + err.message);
+      setError('Export failed: ' + err.message);
     } finally {
       setExporting(false);
     }
@@ -335,13 +340,13 @@ export default function MarketingPaymentsPage() {
           <div>
             <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300"><CreditCard className="h-4 w-4" />Marketing finance</p>
             <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Payment Requests</h1>
-            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Pengajuan pembayaran dan reimbursement campaign: dari approval, nomor PO, sampai tercatat dibayar.</p>
+            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Campaign payment and reimbursement requests: from approval and PO number to recorded payment.</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <button type="button" onClick={handleExportExcel} disabled={exporting || !meta.total} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-50 cursor-pointer">
+            <button type="button" onClick={handleExportExcel} disabled={exporting || !processed || !meta.total} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-50 cursor-pointer">
               {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}Export Excel
             </button>
-            <button type="button" aria-label="Muat ulang" onClick={loadPayments} disabled={loading} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/5 text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer">
+            <button type="button" aria-label={processed ? 'Reload' : 'Load data'} title={processed ? 'Reload' : 'Load data'} onClick={() => (processed ? loadPayments() : setProcessed(true))} disabled={loading} className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/5 text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
@@ -349,6 +354,7 @@ export default function MarketingPaymentsPage() {
       </motion.div>
 
       {/* KPI */}
+      {processed && (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map(({ label, value, sub, icon: Icon, tone }, i) => (
           <motion.div key={label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.06 * i, duration: 0.3 }} whileHover={{ y: -2 }} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -361,6 +367,7 @@ export default function MarketingPaymentsPage() {
           </motion.div>
         ))}
       </div>
+      )}
 
       <AnimatePresence>
         {successMsg && (
@@ -372,20 +379,38 @@ export default function MarketingPaymentsPage() {
       {error && <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-medium text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="h-4 w-4" />{error}</div>}
 
       {/* List */}
+      {!processed ? (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center dark:border-slate-800 dark:bg-slate-900">
+          <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"><CreditCard className="h-5 w-5" /></motion.span>
+          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Load payment requests</h3>
+          <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-400">Pick the request type and fiscal year, then click Load data. Search and status filters apply instantly afterwards.</p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <select aria-label="Request type" value={requestType} onChange={e => setRequestType(e.target.value)} className={fieldClass}>
+              <option value="">All types</option>
+              <option value="PAYMENT">Payment Request</option>
+              <option value="CLAIM">Reimbursement</option>
+            </select>
+            <select aria-label="Fiscal year" value={fiscalYear} onChange={e => setFiscalYear(e.target.value)} className={fieldClass}>
+              {FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>FY {y}</option>)}
+            </select>
+            <button type="button" onClick={() => setProcessed(true)} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer"><RefreshCw className="h-3.5 w-3.5" />Load data</button>
+          </div>
+        </motion.div>
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="space-y-3 border-b border-slate-100 p-3 dark:border-slate-800">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-48 flex-1">
               <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <input aria-label="Cari pengajuan" value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Cari judul, plan, PT, pembuat, atau no. PO..." className={`${fieldClass} w-full bg-slate-50 pl-9 pr-9 dark:bg-slate-950`} />
-              {searchInput && <button type="button" aria-label="Hapus pencarian" onClick={() => setSearchInput('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
+              <input aria-label="Search requests" value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search title, plan, company, creator or PO number..." className={`${fieldClass} w-full bg-slate-50 pl-9 pr-9 dark:bg-slate-950`} />
+              {searchInput && <button type="button" aria-label="Clear search" onClick={() => setSearchInput('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
             </div>
-            <select aria-label="Jenis pengajuan" value={requestType} onChange={e => { setRequestType(e.target.value); setPage(1); }} className={fieldClass}>
-              <option value="">Semua jenis</option>
+            <select aria-label="Request type" value={requestType} onChange={e => { setRequestType(e.target.value); setPage(1); }} className={fieldClass}>
+              <option value="">All types</option>
               <option value="PAYMENT">Payment Request</option>
               <option value="CLAIM">Reimbursement</option>
             </select>
-            <select aria-label="Tahun fiskal" value={fiscalYear} onChange={e => { setFiscalYear(e.target.value); setPage(1); }} className={fieldClass}>
+            <select aria-label="Fiscal year" value={fiscalYear} onChange={e => { setFiscalYear(e.target.value); setPage(1); }} className={fieldClass}>
               {FISCAL_YEAR_OPTIONS.map(y => <option key={y} value={y}>FY {y}</option>)}
             </select>
           </div>
@@ -405,22 +430,22 @@ export default function MarketingPaymentsPage() {
 
         <div className="overflow-x-auto">
           {loading && !payments.length ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin text-blue-500" />Memuat pengajuan...</div>
+            <div className="flex items-center justify-center gap-2 py-16 text-xs text-slate-400"><Loader2 className="h-5 w-5 animate-spin text-blue-500" />Loading requests...</div>
           ) : (
             <table className={`w-full min-w-[980px] table-fixed text-left text-xs transition-opacity ${loading ? 'opacity-60' : ''}`}>
               <thead className="border-b border-slate-100 bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 dark:border-slate-800 dark:bg-slate-950/40">
                 <tr>
-                  <th className="w-[28%] px-4 py-2.5 font-semibold">Pengajuan</th>
-                  <th className="w-[16%] px-3 py-2.5 font-semibold">PT</th>
-                  <th className="w-[13%] px-3 py-2.5 text-right font-semibold">Nominal</th>
+                  <th className="w-[28%] px-4 py-2.5 font-semibold">Request</th>
+                  <th className="w-[16%] px-3 py-2.5 font-semibold">Company</th>
+                  <th className="w-[13%] px-3 py-2.5 text-right font-semibold">Amount</th>
                   <th className="w-[13%] px-3 py-2.5 font-semibold">Status</th>
                   <th className="w-[13%] px-3 py-2.5 font-semibold">Approval</th>
-                  <th className="w-[11%] px-3 py-2.5 font-semibold">Diajukan</th>
-                  <th className="w-[6%] px-3 py-2.5 text-right font-semibold">Aksi</th>
+                  <th className="w-[11%] px-3 py-2.5 font-semibold">Requested</th>
+                  <th className="w-[6%] px-3 py-2.5 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {!payments.length && <tr><td colSpan={7} className="px-4 py-14 text-center text-slate-400"><CreditCard className="mx-auto mb-2 h-8 w-8 opacity-30" />{search || status || requestType ? 'Tidak ada pengajuan yang sesuai filter.' : `Belum ada payment request di FY ${fiscalYear}.`}</td></tr>}
+                {!payments.length && <tr><td colSpan={7} className="px-4 py-14 text-center text-slate-400"><CreditCard className="mx-auto mb-2 h-8 w-8 opacity-30" />{search || status || requestType ? 'No requests match the filters.' : `No payment requests in FY ${fiscalYear} yet.`}</td></tr>}
                 <AnimatePresence initial={false}>
                   {payments.map((p, i) => {
                     const plan = p.marketing_plan_item?.marketing_plan;
@@ -441,7 +466,7 @@ export default function MarketingPaymentsPage() {
                           <StatusBadge status={p.status} />
                           <div className="mt-1 flex flex-wrap gap-1">
                             {p.po_number && <span title={`PO ${p.po_number}`} className="truncate rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">PO</span>}
-                            {p.finance_verified_at && <span title="Terverifikasi Finance" className="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">Verified</span>}
+                            {p.finance_verified_at && <span title="Finance verified" className="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">Verified</span>}
                           </div>
                         </td>
                         <td className="px-3 py-2.5">
@@ -450,7 +475,7 @@ export default function MarketingPaymentsPage() {
                               <div className="flex items-center gap-0.5">
                                 {(p.approval_history || []).map(h => <span key={h.id} className={`h-1.5 w-4 rounded-full ${h.status === 'APPROVED' ? 'bg-emerald-500' : h.status === 'REJECTED' ? 'bg-rose-500' : 'animate-pulse bg-amber-400'}`} />)}
                               </div>
-                              <p className="mt-1 text-[10px] text-slate-400">{pending ? `Tahap ${pending.step_number} berjalan` : `${done}/${totalSteps} disetujui`}</p>
+                              <p className="mt-1 text-[10px] text-slate-400">{pending ? `Step ${pending.step_number} in progress` : `${done}/${totalSteps} approved`}</p>
                             </>
                           ) : <span className="text-slate-300 dark:text-slate-600">—</span>}
                         </td>
@@ -459,7 +484,7 @@ export default function MarketingPaymentsPage() {
                           <p className="text-[10px] tabular-nums text-slate-400">{formatDate(p.created_at)}</p>
                         </td>
                         <td className="px-3 py-2 text-right">
-                          <button type="button" title="Lihat detail" onClick={e => { e.stopPropagation(); setSelectedPayment(p); }} className={`${actionClass} hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10`}><Eye className="h-4 w-4" /></button>
+                          <button type="button" title="View details" onClick={e => { e.stopPropagation(); setSelectedPayment(p); }} className={`${actionClass} hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10`}><Eye className="h-4 w-4" /></button>
                         </td>
                       </motion.tr>
                     );
@@ -471,21 +496,22 @@ export default function MarketingPaymentsPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-slate-400 dark:border-slate-800">
-          <label className="flex items-center gap-2">Baris per halaman
+          <label className="flex items-center gap-2">Rows per page
             <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
               {[25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
           <div className="flex items-center gap-3">
-            <span className="tabular-nums">{meta.total ? `${rangeStart}–${rangeEnd}` : '0'} dari {meta.total}</span>
+            <span className="tabular-nums">{meta.total ? `${rangeStart}–${rangeEnd}` : '0'} of {meta.total}</span>
             <div className="flex items-center gap-1">
-              <button type="button" aria-label="Halaman sebelumnya" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" aria-label="Previous page" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronLeft className="h-4 w-4" /></button>
               <span className="min-w-10 text-center tabular-nums">{page} / {meta.totalPages}</span>
-              <button type="button" aria-label="Halaman berikutnya" disabled={page >= meta.totalPages} onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronRight className="h-4 w-4" /></button>
+              <button type="button" aria-label="Next page" disabled={page >= meta.totalPages} onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))} className={`${actionClass} hover:bg-slate-100 dark:hover:bg-slate-800`}><ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>
         </div>
       </div>
+      )}
 
       <AnimatePresence>
         {selectedPayment && <PaymentDetailModal key={selectedPayment.id} payment={selectedPayment} onClose={() => setSelectedPayment(null)} onChanged={onChanged} userRole={userRole} />}

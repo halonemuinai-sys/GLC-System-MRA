@@ -22,7 +22,7 @@ const PAYMENT_INCLUDE = {
 async function createPaymentRequest(req, res, next) {
   try {
     const employee = await resolveEmployee(req.user.email);
-    if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
+    if (!employee) return res.status(403).json({ error: 'Your email is not registered as a Master Signer.' });
 
     const { marketing_plan_item_id, notes, doc_url } = req.body;
     const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
@@ -31,7 +31,7 @@ async function createPaymentRequest(req, res, next) {
       return res.status(400).json({ error: 'marketing_plan_item_id, title, and amount are required.' });
     }
     if (!Number.isFinite(itemAmt) || itemAmt <= 0) {
-      return res.status(400).json({ error: 'Nominal pengajuan harus lebih dari 0.' });
+      return res.status(400).json({ error: 'The request amount must be greater than 0.' });
     }
 
     const planItem = await prisma.marketing_plan_items.findUnique({
@@ -65,7 +65,7 @@ async function createPaymentRequest(req, res, next) {
         status: { in: [...OPEN_STATUSES, 'PAID'] }
       }
     });
-    if (duplicate) return res.status(400).json({ error: `Potensi tagihan ganda: sudah ada pengajuan "${duplicate.title}" dengan nominal yang sama pada item ini (status ${duplicate.status}).` });
+    if (duplicate) return res.status(400).json({ error: `Possible duplicate billing: request "${duplicate.title}" with the same amount already exists on this item (status ${duplicate.status}).` });
 
     if (itemAmt > 50000000) {
       const pks = await prisma.documents.findFirst({
@@ -77,7 +77,7 @@ async function createPaymentRequest(req, res, next) {
         }
       });
       if (!pks) {
-        return res.status(400).json({ error: 'Pengajuan di atas Rp 50 Juta wajib memiliki lampiran Perjanjian Kerja Sama (PKS) aktif di modul Legal!' });
+        return res.status(400).json({ error: 'Requests above Rp 50,000,000 require an active cooperation agreement (PKS) in the Legal module.' });
       }
     }
 
@@ -90,7 +90,7 @@ async function createPaymentRequest(req, res, next) {
       orderBy: { step_number: 'asc' }
     });
     if (!approvalRules.length && !isOverbudget) {
-      return res.status(400).json({ error: 'Belum ada tier approval Payment Request untuk nominal ini. Atur di Approval Settings.' });
+      return res.status(400).json({ error: 'No Payment Request approval tier covers this amount yet. Set one up in Approval Settings.' });
     }
 
     const magicLinkQueue = [];
@@ -218,14 +218,14 @@ async function getPaymentDetail(req, res, next) {
 // Edit/delete is only for the requester (or admin) while nothing has been approved yet.
 async function editBlockReason(req, payment) {
   if (!['PENDING', 'OVERBUDGET_WARN'].includes(payment.status)) {
-    return { status: 400, error: 'Hanya pengajuan yang belum diputuskan yang bisa {action}.' };
+    return { status: 400, error: 'Only undecided requests can be {action}.' };
   }
   if (!isAdmin(req)) {
     const employee = await resolveEmployee(req.user.email);
-    if (!employee || employee.id !== payment.creator_id) return { status: 403, error: 'Hanya pembuat pengajuan yang bisa {action}.' };
+    if (!employee || employee.id !== payment.creator_id) return { status: 403, error: 'Only the requester can {verb} this request.' };
   }
   if ((payment.approval_history || []).some(h => h.status === 'APPROVED')) {
-    return { status: 400, error: 'Pengajuan sudah disetujui sebagian dan tidak bisa {action}.' };
+    return { status: 400, error: 'This request is partially approved and can no longer be {action}.' };
   }
   return null;
 }
@@ -240,15 +240,15 @@ async function updatePayment(req, res, next) {
       return res.status(404).json({ error: 'Payment request not found.' });
     }
     if (payment.request_type === 'CLAIM') {
-      return res.status(400).json({ error: 'Claim yang sudah diajukan tidak bisa diedit. Batalkan lalu ajukan ulang.' });
+      return res.status(400).json({ error: 'A submitted claim cannot be edited. Delete it and submit again.' });
     }
 
     const editBlock = await editBlockReason(req, payment);
-    if (editBlock) return res.status(editBlock.status).json({ error: editBlock.error.replace('{action}', 'diubah') });
+    if (editBlock) return res.status(editBlock.status).json({ error: editBlock.error.replace('{action}', 'edited').replace('{verb}', 'edit') });
 
     const { notes, doc_url } = req.body;
     const title = req.body.title === undefined ? undefined : String(req.body.title).trim();
-    if (title === '') return res.status(400).json({ error: 'Judul tidak boleh kosong.' });
+    if (title === '') return res.status(400).json({ error: 'Title cannot be empty.' });
     const updated = await prisma.payment_requests.update({
       where: { id },
       data: { title, notes, doc_url, updated_at: new Date() },
@@ -269,7 +269,7 @@ async function deletePayment(req, res, next) {
     }
 
     const deleteBlock = await editBlockReason(req, payment);
-    if (deleteBlock) return res.status(deleteBlock.status).json({ error: deleteBlock.error.replace('{action}', 'dihapus') });
+    if (deleteBlock) return res.status(deleteBlock.status).json({ error: deleteBlock.error.replace('{action}', 'deleted').replace('{verb}', 'delete') });
 
     await prisma.$transaction([
       prisma.approval_history.deleteMany({ where: { payment_request_id: id } }),
@@ -298,7 +298,7 @@ async function markPaymentPaid(req, res, next) {
     }
 
     if (payment.status !== 'APPROVED') {
-      return res.status(400).json({ error: 'Hanya payment yang sudah APPROVED yang bisa ditandai PAID.' });
+      return res.status(400).json({ error: 'Only APPROVED payments can be marked as PAID.' });
     }
 
     const updated = await prisma.$transaction(async (tx) => {
@@ -309,7 +309,7 @@ async function markPaymentPaid(req, res, next) {
           notes: paid_notes ? `${payment.notes || ''}\n[PAID] ${paid_notes}`.trim() : payment.notes
         }
       });
-      if (claimed.count !== 1) throw new Error('Pembayaran sudah diproses.');
+      if (claimed.count !== 1) throw new Error('This payment has already been processed.');
       await tx.marketing_plan_items.update({
         where: { id: payment.marketing_plan_item_id },
         data: { actual_amount: { increment: payment.amount } }
@@ -327,12 +327,12 @@ async function setPoNumber(req, res, next) {
     const id = parseInt(req.params.id, 10);
     const { po_number } = req.body;
     if (!po_number || !po_number.trim()) {
-      return res.status(400).json({ error: 'Nomor PO wajib diisi.' });
+      return res.status(400).json({ error: 'PO number is required.' });
     }
     const payment = await prisma.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
     if (!payment || !inScope(req, payment.marketing_plan_item.marketing_plan.company_id)) return res.status(404).json({ error: 'Payment request not found.' });
     if (!['APPROVED', 'PAID'].includes(payment.status)) {
-      return res.status(400).json({ error: 'PO hanya bisa diterbitkan untuk payment berstatus APPROVED atau PAID.' });
+      return res.status(400).json({ error: 'A PO can only be issued for APPROVED or PAID payments.' });
     }
     const updated = await prisma.payment_requests.update({
       where: { id },
@@ -351,7 +351,7 @@ async function verifyPayment(req, res, next) {
     const payment = await prisma.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
     if (!payment || !inScope(req, payment.marketing_plan_item.marketing_plan.company_id)) return res.status(404).json({ error: 'Payment request not found.' });
     if (verified && !['APPROVED', 'PAID'].includes(payment.status)) {
-      return res.status(400).json({ error: 'Hanya payment berstatus APPROVED atau PAID yang bisa diverifikasi.' });
+      return res.status(400).json({ error: 'Only APPROVED or PAID payments can be verified.' });
     }
     const updated = await prisma.payment_requests.update({
       where: { id },

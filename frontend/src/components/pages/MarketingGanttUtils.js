@@ -7,13 +7,13 @@ export const formatIDR = (val) => {
 
 export const formatIDRCompact = (val) => {
   const n = Number(val || 0);
-  if (n >= 1_000_000_000) return `Rp ${(n / 1_000_000_000).toFixed(1)}M`;
-  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(0)}Jt`;
-  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}Rb`;
+  if (n >= 1_000_000_000) return `Rp ${(n / 1_000_000_000).toFixed(1)}B`;
+  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(0)}M`;
+  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}K`;
   return `Rp ${n}`;
 };
 
-export const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+export const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const MONTHS_FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 export const CURRENT_YEAR = new Date().getFullYear();
 

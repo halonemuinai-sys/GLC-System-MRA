@@ -202,10 +202,10 @@ export default function MarketingPlanQuickModal({
       formDataUpload.append('folder', 'marketing');
 
       const data = await apiClient.postForm('/api/marketing/upload', formDataUpload);
-      if (!data.url) throw new Error('Upload belum menghasilkan tautan dokumen.');
+      if (!data.url) throw new Error('The upload did not return a document link.');
       setFormData(prev => ({ ...prev, doc_url: data.url }));
     } catch (err) {
-      setUploadError(err.message || 'Gagal mengunggah file.');
+      setUploadError(err.message || 'Failed to upload the file.');
     } finally {
       setUploading(false);
     }
@@ -245,36 +245,36 @@ export default function MarketingPlanQuickModal({
     if (submitting || uploading) return;
     setErrMessage(null);
     if (!formData.title.trim()) {
-      setErrMessage('Judul campaign wajib diisi.');
+      setErrMessage('Campaign title is required.');
       return;
     }
     if (!formData.company_id) {
-      setErrMessage('Pilih Perusahaan (PT).');
+      setErrMessage('Select a company (PT).');
       return;
     }
     if (!Number.isSafeInteger(Number(formData.total_budget)) || Number(formData.total_budget) <= 0) {
-      setErrMessage('Total anggaran harus lebih dari 0.');
+      setErrMessage('Total budget must be greater than 0.');
       return;
     }
     if (!formData.coa_id) {
-      setErrMessage('Pilih Kategori Anggaran / COA.');
+      setErrMessage('Select a budget category / COA.');
       return;
     }
     if (!formData.start_date || !formData.end_date || !Number.isFinite(Date.parse(formData.start_date)) || !Number.isFinite(Date.parse(formData.end_date))) {
-      setErrMessage('Tanggal kegiatan wajib diisi.');
+      setErrMessage('Activity date is required.');
       return;
     }
     if (formData.end_date < formData.start_date) {
-      setErrMessage('Tanggal selesai tidak boleh sebelum tanggal mulai.');
+      setErrMessage('End date cannot be before the start date.');
       return;
     }
     if (Number(formData.start_date.slice(0, 4)) !== Number(formData.fiscal_year)) {
-      setErrMessage('Tahun anggaran harus sesuai dengan tanggal mulai kegiatan.');
+      setErrMessage('Budget year must match the activity start date.');
       return;
     }
 
     if (!saveAsDraft && isLateSubmission(formData.start_date) && !formData.late_submission_reason.trim()) {
-      setErrMessage('Event kurang dari 3 bulan lagi (aturan H-3). Isi alasan pengajuan terlambat.');
+      setErrMessage('The event is less than 3 months away (H-3 rule). Enter a late-submission reason.');
       return;
     }
 
@@ -283,7 +283,7 @@ export default function MarketingPlanQuickModal({
       const validApprovers = approvers.filter(a => a.approver_name?.trim() && a.approver_email?.trim());
       if (validApprovers.length === 0) {
         setApproverEditorOpen(true);
-        setErrMessage('Minimal 1 penandatangan (approver) wajib ditentukan untuk mengajukan approval.');
+        setErrMessage('At least one signer (approver) is required to submit for approval.');
         return;
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -291,12 +291,12 @@ export default function MarketingPlanQuickModal({
         const app = approvers[i];
         if (!app.approver_name?.trim()) {
           setApproverEditorOpen(true);
-          setErrMessage(`Nama penandatangan pada Step ${i + 1} belum diisi.`);
+          setErrMessage(`Signer name in step ${i + 1} is empty.`);
           return;
         }
         if (!app.approver_email?.trim() || !emailRegex.test(app.approver_email.trim())) {
           setApproverEditorOpen(true);
-          setErrMessage(`Email penandatangan pada Step ${i + 1} ("${app.approver_name || ''}") tidak valid.`);
+          setErrMessage(`Signer email in step ${i + 1} ("${app.approver_name || ''}") is invalid.`);
           return;
         }
       }
@@ -345,7 +345,7 @@ export default function MarketingPlanQuickModal({
       if (onSuccess) onSuccess(res);
       onClose();
     } catch (err) {
-      const msg = err.message || 'Gagal menyimpan Quick Campaign.';
+      const msg = err.message || 'Failed to save the quick campaign.';
       setErrMessage(msg);
       if (onError) onError(msg);
     } finally {
@@ -386,18 +386,18 @@ export default function MarketingPlanQuickModal({
                     <h3 id="quick-campaign-title" className="font-semibold text-white text-base flex flex-wrap items-center gap-2">
                       Quick Marketing Campaign
                       <span className="text-[9px] bg-white/10 text-blue-200 font-medium px-2 py-0.5 rounded-md border border-white/10">
-                        1 pos anggaran
+                        1 budget line
                       </span>
                     </h3>
                     <p className="mt-1 text-[11px] text-slate-400">
-                      Isi kebutuhan, nominal, lalu ajukan.
+                      Fill in the need and amount, then submit.
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={onClose}
                   disabled={submitting || uploading}
-                  aria-label="Tutup Quick Campaign"
+                  aria-label="Close quick campaign"
                   className="p-2 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
                 >
                   <X className="w-4 h-4" />
@@ -414,8 +414,8 @@ export default function MarketingPlanQuickModal({
                 )}
 
                 <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                  <InlineHelp summary="Untuk kebutuhan sederhana, tanpa wizard." label="Kapan menggunakan Quick Campaign?">
-                    Cocok untuk satu kategori biaya, misalnya cetak brosur Rp5 juta atau kebutuhan campaign kecil lainnya. Tidak ada batas nominal khusus. Anggaran dicatat pada bulan mulai kegiatan. Untuk beberapa kategori atau alokasi bulanan, gunakan Buat Marketing Plan. Approval dan aturan pengajuan tetap berlaku.
+                  <InlineHelp summary="For simple needs, without the wizard." label="Kapan menggunakan Quick Campaign?">
+                    Best for a single cost category, e.g. printing brochures for Rp5 million or another small campaign need. There is no special amount limit. The budget is recorded in the month the activity starts. For several categories or monthly allocations, use Create Marketing Plan. Approval and submission rules still apply.
                   </InlineHelp>
                 </div>
                 {/* Judul Campaign */}
@@ -425,7 +425,7 @@ export default function MarketingPlanQuickModal({
                   </label>
                   <input
                     type="text"
-                    aria-label="Nama kegiatan"
+                    aria-label="Activity name"
                     required
                     placeholder="Contoh: Cetak brosur promo toko"
                     value={formData.title}
@@ -457,15 +457,15 @@ export default function MarketingPlanQuickModal({
                         });
                         setApprovers(getDefaultApproversForCompany(strVal));
                       }}
-                      placeholder="Pilih Perusahaan..."
+                      placeholder="Select company..."
                     />
                   </div>
                   <div>
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                      Tahun Fiskal *
+                      Fiscal Year *
                     </label>
                     <select
-                      aria-label="Tahun anggaran"
+                      aria-label="Budget year"
                       value={formData.fiscal_year}
                       onChange={(e) => setFormData({ ...formData, fiscal_year: e.target.value })}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-colors text-xs font-semibold"
@@ -483,11 +483,11 @@ export default function MarketingPlanQuickModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                      {multiDay ? 'Tanggal mulai *' : 'Tanggal kegiatan *'}
+                      {multiDay ? 'Start date *' : 'Activity date *'}
                     </label>
                     <input
                       type="date"
-                      aria-label={multiDay ? 'Tanggal mulai' : 'Tanggal kegiatan'}
+                      aria-label={multiDay ? 'Start date' : 'Activity date'}
                       value={formData.start_date}
                       onChange={(e) => {
                         const date = e.target.value;
@@ -498,34 +498,34 @@ export default function MarketingPlanQuickModal({
                   </div>
                   {multiDay ? <div>
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                      Tanggal Selesai *
+                      End Date *
                     </label>
                     <input
                       type="date"
-                      aria-label="Tanggal selesai"
+                      aria-label="End date"
                       min={formData.start_date}
                       value={formData.end_date}
                       onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs"
                     />
-                  </div> : <label className="flex items-center gap-2 self-end rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400 cursor-pointer"><input type="checkbox" checked={multiDay} onChange={() => setMultiDay(true)} className="accent-blue-600" />Kegiatan lebih dari satu hari</label>}
+                  </div> : <label className="flex items-center gap-2 self-end rounded-xl border border-dashed border-slate-200 px-3 py-2.5 text-[11px] text-slate-500 dark:border-slate-700 dark:text-slate-400 cursor-pointer"><input type="checkbox" checked={multiDay} onChange={() => setMultiDay(true)} className="accent-blue-600" />Multi-day activity</label>}
                 </div>
-                {multiDay && <button type="button" onClick={() => { setMultiDay(false); setFormData(prev => ({ ...prev, end_date: prev.start_date })); }} className="text-[10px] font-medium text-blue-600 hover:underline dark:text-blue-400">Jadikan satu hari</button>}
+                {multiDay && <button type="button" onClick={() => { setMultiDay(false); setFormData(prev => ({ ...prev, end_date: prev.start_date })); }} className="text-[10px] font-medium text-blue-600 hover:underline dark:text-blue-400">Make it one day</button>}
 
                 {isLateSubmission(formData.start_date) && (
                   <div className="bg-rose-500/10 border border-rose-500/25 rounded-xl p-3 space-y-2">
                     <div className="text-[11px] font-medium text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5" />
-                      <InlineHelp summary="Tambahkan alasan pengajuan dekat hari kegiatan." label="Aturan waktu pengajuan">
-                        Pengajuan kurang dari 3 bulan sebelum kegiatan ditandai Late Submission. Alasan wajib diisi saat diajukan, dan boleh dilengkapi nanti jika disimpan sebagai draft.
+                      <InlineHelp summary="Add a reason for submitting close to the activity date." label="Submission timing rule">
+                        Requests made less than 3 months before the activity are flagged as Late Submission. A reason is required when submitting and can be added later if saved as a draft.
                       </InlineHelp>
                     </div>
                     <textarea
                       rows={1}
-                      aria-label="Alasan pengajuan dekat hari kegiatan"
+                      aria-label="Reason for submitting close to the activity date"
                       value={formData.late_submission_reason}
                       onChange={(e) => setFormData({ ...formData, late_submission_reason: e.target.value })}
-                      placeholder="Contoh: Kebutuhan promo tambahan dari toko"
+                      placeholder="e.g. Additional promo need from the store"
                       className="w-full bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-rose-500 text-xs resize-none"
                     />
                   </div>
@@ -535,7 +535,7 @@ export default function MarketingPlanQuickModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                      Total Anggaran (IDR) *
+                      Total Budget (IDR) *
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">
@@ -544,7 +544,7 @@ export default function MarketingPlanQuickModal({
                       <input
                         type="text"
                         inputMode="numeric"
-                        aria-label="Total anggaran dalam rupiah"
+                        aria-label="Total budget in rupiah"
                         required
                         placeholder="5.000.000"
                         value={formatThousands(formData.total_budget)}
@@ -557,28 +557,28 @@ export default function MarketingPlanQuickModal({
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5">
                       {[1000000, 3000000, 5000000].map(amount => <button key={amount} type="button" onClick={() => setFormData(prev => ({ ...prev, total_budget: String(amount) }))} aria-pressed={Number(formData.total_budget) === amount} className={`rounded-lg border px-2 py-1 text-[10px] font-medium transition-colors ${Number(formData.total_budget) === amount ? 'border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800'}`}>Rp{amount / 1000000} juta</button>)}
-                      <span className="text-[10px] text-slate-400">atau ketik nominal</span>
+                      <span className="text-[10px] text-slate-400">or type an amount</span>
                     </div>
                   </div>
 
                   <div>
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                      Kategori Anggaran / COA *
+                      Budget Category / COA *
                     </label>
                     <select
-                      aria-label="Kategori biaya atau COA"
+                      aria-label="Cost category or COA"
                       value={formData.coa_id}
                       onChange={(e) => setFormData({ ...formData, coa_id: e.target.value })}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs"
                     >
-                      <option value="">-- Pilih COA --</option>
+                      <option value="">-- Select COA --</option>
                       {(metadata.coas || []).map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.code ? `${c.code} - ${c.name}` : c.name}
                         </option>
                       ))}
                     </select>
-                    <p className="mt-2 text-[10px] text-slate-400">{formData.start_date ? `Alokasi ${new Date(`${formData.start_date}T00:00:00`).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })} · 1 pos biaya` : 'Pilih tanggal untuk menentukan bulan alokasi.'}</p>
+                    <p className="mt-2 text-[10px] text-slate-400">{formData.start_date ? `Allocated to ${new Date(`${formData.start_date}T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })} · 1 cost line` : 'Pick a date to set the allocation month.'}</p>
                   </div>
                 </div>
 
@@ -601,7 +601,7 @@ export default function MarketingPlanQuickModal({
                           metadata.brands.push(newBrand);
                         }
                       }}
-                      placeholder="Semua / Tidak Spesifik"
+                      placeholder="All / Not specific"
                     />
                   </div>
 
@@ -614,7 +614,7 @@ export default function MarketingPlanQuickModal({
                       onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
                       className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs font-medium"
                     >
-                      <option value="">Global Sales (Semua Cabang)</option>
+                      <option value="">Global Sales (All Branches)</option>
                       {(() => {
                         const allBranches = metadata.branches || [];
                         let list = allBranches.filter((br) => {
@@ -640,7 +640,7 @@ export default function MarketingPlanQuickModal({
                 {/* Catatan / Deskripsi */}
                 <div>
                   <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                    Catatan / Deskripsi Singkat
+                    Notes / Short Description
                   </label>
                   <textarea
                     rows={2}
@@ -654,14 +654,14 @@ export default function MarketingPlanQuickModal({
                 {/* Link Proposal / Dokumen & Upload */}
                 <div>
                   <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                    Proposal / Dokumen Pendukung (Upload atau Link)
+                    Proposal / Supporting Document (Upload or Link)
                   </label>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <Paperclip className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" />
                       <input
                         type="url"
-                        placeholder="https://drive.google.com/... atau upload file"
+                        placeholder="https://drive.google.com/... or upload a file"
                         value={formData.doc_url}
                         onChange={(e) => setFormData({ ...formData, doc_url: e.target.value })}
                         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-9 pr-3 py-2 text-neutral-900 dark:text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 text-xs"
@@ -702,11 +702,11 @@ export default function MarketingPlanQuickModal({
                 </details>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-950/40">
-                  <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200"><Users className="h-4 w-4 text-blue-500" />Alur approval</span><button type="button" aria-expanded={approverEditorOpen} aria-controls="quick-approver-editor" onClick={() => setApproverEditorOpen(prev => !prev)} className="text-[11px] font-medium text-blue-600 hover:underline dark:text-blue-400">{approverEditorOpen ? 'Tutup pengaturan' : 'Lihat / ubah'}</button></div>
+                  <div className="flex items-center justify-between gap-3"><span className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200"><Users className="h-4 w-4 text-blue-500" />Alur approval</span><button type="button" aria-expanded={approverEditorOpen} aria-controls="quick-approver-editor" onClick={() => setApproverEditorOpen(prev => !prev)} className="text-[11px] font-medium text-blue-600 hover:underline dark:text-blue-400">{approverEditorOpen ? 'Close settings' : 'View / edit'}</button></div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {approvers.map((approver, index) => <React.Fragment key={index}>{index > 0 && <ArrowRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />}<span title={`${approver.approver_role || 'Approver'} · ${approver.approver_email || 'Email belum diisi'}`} className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[10px] ${approver.approver_name && approver.approver_email ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-500/10 dark:text-amber-400'}`}><span className="text-slate-400">{index + 1}.</span>{approver.approver_name || approver.approver_role || 'Lengkapi approver'}</span></React.Fragment>)}
+                    {approvers.map((approver, index) => <React.Fragment key={index}>{index > 0 && <ArrowRight className="h-3 w-3 text-slate-300 dark:text-slate-600" />}<span title={`${approver.approver_role || 'Approver'} · ${approver.approver_email || 'Email not set'}`} className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[10px] ${approver.approver_name && approver.approver_email ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300' : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-500/10 dark:text-amber-400'}`}><span className="text-slate-400">{index + 1}.</span>{approver.approver_name || approver.approver_role || 'Lengkapi approver'}</span></React.Fragment>)}
                   </div>
-                  {approvers.some(approver => !approver.approver_name || !approver.approver_email) && <button type="button" onClick={() => setApproverEditorOpen(true)} className="mt-2 text-[10px] font-medium text-amber-600 hover:underline dark:text-amber-400">Lengkapi approver sebelum diajukan</button>}
+                  {approvers.some(approver => !approver.approver_name || !approver.approver_email) && <button type="button" onClick={() => setApproverEditorOpen(true)} className="mt-2 text-[10px] font-medium text-amber-600 hover:underline dark:text-amber-400">Complete the approvers before submitting</button>}
                 </div>
 
                 <div id="quick-approver-editor" hidden={!approverEditorOpen}>
@@ -724,7 +724,7 @@ export default function MarketingPlanQuickModal({
                             Berurutan
                           </span>
                         </h4>
-                        <div className="text-[10px] text-neutral-400 dark:text-neutral-500"><InlineHelp summary="Persetujuan sesuai urutan." label="Cara kerja approval">Pengajuan dikirim melalui email ke approver pertama. Setelah disetujui, sistem meneruskan ke approver berikutnya.</InlineHelp></div>
+                        <div className="text-[10px] text-neutral-400 dark:text-neutral-500"><InlineHelp summary="Approvals follow the order below." label="How approval works">The request is emailed to the first approver. Once approved, the system forwards it to the next approver.</InlineHelp></div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -732,7 +732,7 @@ export default function MarketingPlanQuickModal({
                         type="button"
                         onClick={() => setApprovers(getDefaultApproversForCompany(formData.company_id))}
                         className="px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white text-[10px] font-bold hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all flex items-center gap-1 cursor-pointer"
-                        title="Muat ulang penandatangan rekomendasi sistem untuk PT ini"
+                        title="Reload the system's recommended signers for this company"
                       >
                         <RotateCcw className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                         <span>Rekomendasi PT</span>
@@ -743,7 +743,7 @@ export default function MarketingPlanQuickModal({
                         className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-sm shadow-blue-500/15"
                       >
                         <Plus className="w-3 h-3" />
-                        <span>Tambah</span>
+                        <span>Add</span>
                       </button>
                     </div>
                   </div>
@@ -765,7 +765,7 @@ export default function MarketingPlanQuickModal({
                               disabled={idx === 0}
                               onClick={() => handleMoveApprover(idx, -1)}
                               className="p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
-                              title="Pindah ke atas"
+                              title="Move up"
                             >
                               <ArrowUp className="w-2.5 h-2.5" />
                             </button>
@@ -774,7 +774,7 @@ export default function MarketingPlanQuickModal({
                               disabled={idx === approvers.length - 1}
                               onClick={() => handleMoveApprover(idx, 1)}
                               className="p-0.5 rounded hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
-                              title="Pindah ke bawah"
+                              title="Move down"
                             >
                               <ArrowDown className="w-2.5 h-2.5" />
                             </button>
@@ -791,7 +791,7 @@ export default function MarketingPlanQuickModal({
                               list={`quick-users-datalist-${idx}`}
                               value={app.approver_name}
                               onChange={(e) => handleApproverUserSelect(idx, e.target.value)}
-                              placeholder="Pilih / ketik nama"
+                              placeholder="Select / type a name"
                               required
                               className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
                             />
@@ -839,7 +839,7 @@ export default function MarketingPlanQuickModal({
                                 type="button"
                                 onClick={() => handleRemoveApprover(idx)}
                                 className="mt-3.5 p-1.5 rounded-lg text-neutral-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all cursor-pointer"
-                                title="Hapus Penandatangan"
+                                title="Remove signer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -855,7 +855,7 @@ export default function MarketingPlanQuickModal({
 
               {/* Modal Footer Actions */}
               <div className="shrink-0 p-4 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/40 flex flex-wrap items-center justify-between gap-3">
-                <div><p className="text-[10px] text-slate-400">Total pengajuan · 1 pos</p><p className="mt-0.5 text-base font-semibold tabular-nums text-slate-900 dark:text-white">{formatIDR(formData.total_budget || 0)}</p></div>
+                <div><p className="text-[10px] text-slate-400">Request total · 1 line</p><p className="mt-0.5 text-base font-semibold tabular-nums text-slate-900 dark:text-white">{formatIDR(formData.total_budget || 0)}</p></div>
 
                 <div className="flex items-center gap-2">
                   <button
@@ -867,7 +867,7 @@ export default function MarketingPlanQuickModal({
                     {submitting && submitMode === 'draft' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : null}
-                    Simpan Draft
+                    Save Draft
                   </button>
 
                   <button
@@ -881,7 +881,7 @@ export default function MarketingPlanQuickModal({
                     ) : (
                       <Zap className="w-3.5 h-3.5" />
                     )}
-                    Ajukan Campaign
+                    Submit Campaign
                   </button>
                 </div>
               </div>

@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useId } from 'react';
+import React, { useState, useCallback, useMemo, useId } from 'react';
 import Link from 'next/link';
 import { BarChart3, TrendingUp, Wallet, Layers, RefreshCw, Loader2, AlertTriangle, FileSpreadsheet, ArrowUpRight, CalendarDays, Building2, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import MarketingBudgetComparison from './MarketingBudgetComparison';
 import { apiClient } from '@/lib/apiClient';
-import { useLanguage } from '@/lib/LanguageContext';
 import InlineHelp from '@/components/ui/InlineHelp';
 import MarketingGanttChart from './MarketingGanttChart';
 import { formatIDR, formatIDRCompact, CURRENT_YEAR } from './MarketingGanttUtils';
@@ -60,10 +59,11 @@ function MetricCard({ label, value, detail, help, icon: Icon, tone, progress }) 
 }
 
 export default function MarketingOverviewPage() {
-  const { lang, t } = useLanguage();
-  const isId = lang === 'id';
+  // English-only page; nothing is fetched until the user clicks Load data.
+  const isId = false;
   const [plans, setPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [processed, setProcessed] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
   const [fiscalYear, setFiscalYear] = useState(String(CURRENT_YEAR));
@@ -88,17 +88,16 @@ export default function MarketingOverviewPage() {
       setFiscalYear(year);
       setUpdatedAt(new Date());
     } catch (err) {
-      if (!signal?.aborted) setError(err.message || 'Gagal memuat data.');
+      if (!signal?.aborted) setError(err.message || 'Failed to load data.');
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    loadPlans(String(CURRENT_YEAR), controller.signal);
-    return () => controller.abort();
-  }, [loadPlans]);
+  const handleProcess = (year) => {
+    setProcessed(true);
+    loadPlans(year);
+  };
 
   const stats = useMemo(() => {
     const result = { budget: 0, actual: 0, approved: 0, pending: 0, rejected: 0, draft: 0, completed: 0, companies: [] };
@@ -131,10 +130,10 @@ export default function MarketingOverviewPage() {
       const wb = new ExcelJS.Workbook();
       const ws = wb.addWorksheet('Marketing Plans');
       ws.columns = [
-        { header: 'No', key: 'no', width: 5 }, { header: 'Judul Campaign', key: 'title', width: 45 },
-        { header: 'Perusahaan', key: 'company', width: 30 }, { header: 'Status', key: 'status', width: 22 },
-        { header: 'Total Budget (Rp)', key: 'budget', width: 22 }, { header: 'Realisasi (Rp)', key: 'actual', width: 20 },
-        { header: 'Sisa (Rp)', key: 'remaining', width: 20 }, { header: 'Burn Rate (%)', key: 'burn', width: 16 },
+        { header: 'No', key: 'no', width: 5 }, { header: 'Campaign Title', key: 'title', width: 45 },
+        { header: 'Company', key: 'company', width: 30 }, { header: 'Status', key: 'status', width: 22 },
+        { header: 'Total Budget (Rp)', key: 'budget', width: 22 }, { header: 'Paid (Rp)', key: 'actual', width: 20 },
+        { header: 'Remaining (Rp)', key: 'remaining', width: 20 }, { header: 'Burn Rate (%)', key: 'burn', width: 16 },
         { header: 'Fiscal Year', key: 'fy', width: 12 },
       ];
       ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -155,7 +154,7 @@ export default function MarketingOverviewPage() {
       anchor.download = `marketing-plans-${fiscalYear}.xlsx`;
       anchor.click();
       URL.revokeObjectURL(url);
-    } catch (err) { alert(`Gagal export: ${err.message}`); }
+    } catch (err) { alert(`Export failed: ${err.message}`); }
     finally { setExporting(false); }
   };
 
@@ -171,7 +170,7 @@ export default function MarketingOverviewPage() {
         <div className="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
             <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-300"><BarChart3 className="h-4 w-4" /> Marketing intelligence</p>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('marketing_overview_title')}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Marketing Overview</h1>
             <p className="mt-2 text-xs leading-relaxed text-slate-400 sm:text-sm">{isId ? 'Pantau anggaran, realisasi, dan perjalanan campaign.' : 'Track budgets, paid expenses, and campaign timelines.'}</p>
           </div>
           <Link href="/dashboard/marketing" className="inline-flex min-h-11 w-fit items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 text-xs font-semibold text-white transition-colors hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400">
@@ -179,23 +178,23 @@ export default function MarketingOverviewPage() {
           </Link>
         </div>
         <div className="relative mt-6 flex flex-wrap gap-x-5 gap-y-2 border-t border-white/10 pt-4 text-[11px] text-slate-300">
-          <span className="inline-flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-blue-300" />{isId ? 'Tahun fiskal' : 'Fiscal year'} {fiscalYear}</span>
-          <span className="inline-flex items-center gap-2"><Layers className="h-3.5 w-3.5 text-blue-300" />{loading || error ? '—' : plans.length} campaign</span>
-          <span className="inline-flex items-center gap-2"><Building2 className="h-3.5 w-3.5 text-blue-300" />{loading || error ? '—' : stats.companies.length} {isId ? 'perusahaan' : 'companies'}</span>
+          <span className="inline-flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-blue-300" />{isId ? 'Tahun fiskal' : 'Fiscal year'} {processed ? fiscalYear : '—'}</span>
+          <span className="inline-flex items-center gap-2"><Layers className="h-3.5 w-3.5 text-blue-300" />{!processed || loading || error ? '—' : plans.length} campaigns</span>
+          <span className="inline-flex items-center gap-2"><Building2 className="h-3.5 w-3.5 text-blue-300" />{!processed || loading || error ? '—' : stats.companies.length} {isId ? 'perusahaan' : 'companies'}</span>
         </div>
       </header>
 
       <div className={`${panel} flex flex-col justify-between gap-3 p-3 sm:flex-row sm:items-center sm:px-4`}>
-        <form className="flex flex-wrap items-center gap-2" onSubmit={event => { event.preventDefault(); if (!loading) loadPlans(draftYear); }}>
+        <form className="flex flex-wrap items-center gap-2" onSubmit={event => { event.preventDefault(); if (!loading) handleProcess(draftYear); }}>
           <SlidersHorizontal className="mr-1 hidden h-4 w-4 text-slate-400 sm:block" />
           <label htmlFor="marketing-overview-year" className="text-xs font-medium text-slate-500 dark:text-slate-400">{isId ? 'Periode' : 'Period'}</label>
           <select id="marketing-overview-year" value={draftYear} disabled={loading} onChange={event => setDraftYear(event.target.value)} className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
             {years.map(year => <option key={year} value={year}>{year}</option>)}
           </select>
           <button type="submit" disabled={loading} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-50">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />{isId ? 'Proses data' : 'Apply'}
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />{processed ? 'Apply' : 'Load data'}
           </button>
-          {draftYear !== fiscalYear && !loading && <span className="text-[11px] text-amber-600 dark:text-amber-400">{isId ? 'Filter belum diterapkan' : 'Filter not applied'}</span>}
+          {processed && draftYear !== fiscalYear && !loading && <span className="text-[11px] text-amber-600 dark:text-amber-400">{isId ? 'Filter belum diterapkan' : 'Filter not applied'}</span>}
         </form>
         <div className="flex items-center justify-between gap-3">
           <span aria-live="polite" className="text-[10px] text-slate-400">{updatedAt && !error && !loading ? `${isId ? 'Diperbarui' : 'Updated'} ${updatedAt.toLocaleTimeString(isId ? 'id-ID' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
@@ -205,13 +204,20 @@ export default function MarketingOverviewPage() {
         </div>
       </div>
 
-      {error && <div role="alert" className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>}
-      {loading ? <div role="status" aria-label={t('loading')} className="space-y-5">
+      {processed && error && <div role="alert" className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>}
+      {!processed ? (
+        <section className={`${panel} flex min-h-[320px] flex-col items-center justify-center border-dashed px-5 py-14 text-center`}>
+          <span className="mb-4 flex h-12 w-12 animate-bounce items-center justify-center rounded-2xl bg-blue-50 text-blue-600 [animation-duration:2.4s] motion-reduce:animate-none dark:bg-blue-500/10 dark:text-blue-400"><BarChart3 className="h-5 w-5" /></span>
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Load the marketing overview</h2>
+          <p className="mt-1.5 max-w-sm text-xs text-slate-500 dark:text-slate-400">Choose a fiscal year above, then click Load data to see budgets, paid expenses and campaign status.</p>
+          <button type="button" onClick={() => handleProcess(draftYear)} className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-xl bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700"><RefreshCw className="h-3.5 w-3.5" />Load data for {draftYear}</button>
+        </section>
+      ) : loading ? <div role="status" aria-label="Loading" className="space-y-5">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map(key => <div key={key} className={`${panel} h-44 animate-pulse motion-reduce:animate-none p-5`}><div className="h-3 w-24 rounded bg-slate-100 dark:bg-slate-800" /><div className="mt-5 h-8 w-36 rounded bg-slate-100 dark:bg-slate-800" /><div className="mt-4 h-2 w-28 rounded bg-slate-100 dark:bg-slate-800" /></div>)}</div>
-        <div className={`${panel} flex h-80 items-center justify-center gap-2 text-xs text-slate-400`}><Loader2 className="h-4 w-4 animate-spin" />{t('loading')}</div>
+        <div className={`${panel} flex h-80 items-center justify-center gap-2 text-xs text-slate-400`}><Loader2 className="h-4 w-4 animate-spin" />Loading...</div>
       </div> : !error && <>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label={isId ? 'Total anggaran' : 'Total budget'} value={compactMoney(stats.budget)} detail={`${plans.length} campaign · ${fiscalYear}`} help={isId ? `Total rencana pada seluruh status: ${formatIDR(stats.budget)}. Grafik kecil merupakan dekorasi, bukan tren historis.` : `Plans across all statuses: ${formatIDR(stats.budget)}. The small graphic is decorative, not historical data.`} icon={Wallet} tone="blue" />
+          <MetricCard label={isId ? 'Total anggaran' : 'Total budget'} value={compactMoney(stats.budget)} detail={`${plans.length} ${plans.length === 1 ? 'campaign' : 'campaigns'} · ${fiscalYear}`} help={isId ? `Total rencana pada seluruh status: ${formatIDR(stats.budget)}. Grafik kecil merupakan dekorasi, bukan tren historis.` : `Plans across all statuses: ${formatIDR(stats.budget)}. The small graphic is decorative, not historical data.`} icon={Wallet} tone="blue" />
           <MetricCard label={isId ? 'Realisasi terbayar' : 'Paid expenses'} value={compactMoney(stats.actual)} detail={`${stats.burn.toFixed(1)}% ${isId ? 'anggaran terserap' : 'of budget used'}`} help={isId ? `Pembayaran yang telah tercatat lunas: ${formatIDR(stats.actual)}.` : `Recorded paid expenses: ${formatIDR(stats.actual)}.`} icon={TrendingUp} tone="emerald" />
           <MetricCard label={isId ? 'Sisa anggaran' : 'Remaining budget'} value={compactMoney(stats.budget - stats.actual)} detail={isId ? 'Anggaran dikurangi pembayaran' : 'Budget less paid expenses'} help={isId ? `Selisih anggaran dan realisasi terbayar: ${formatIDR(stats.budget - stats.actual)}. Belum mengurangi pengajuan yang belum dibayar.` : `Budget less paid expenses: ${formatIDR(stats.budget - stats.actual)}. Unpaid requests are not deducted.`} icon={Wallet} tone="amber" />
           <MetricCard label={isId ? 'Campaign disetujui' : 'Approved campaigns'} value={stats.approved} detail={<div className="flex flex-wrap gap-x-3 gap-y-1">{[[stats.pending, 'pending', 'bg-amber-500'], [stats.completed, isId ? 'selesai' : 'completed', 'bg-blue-500'], [stats.draft, 'draft', 'bg-slate-400'], [stats.rejected, isId ? 'ditolak' : 'rejected', 'bg-rose-400']].map(([count, label, color]) => <span key={label} className="inline-flex items-center gap-1.5"><span className={`h-1.5 w-1.5 rounded-full ${color}`} />{count} {label}</span>)}</div>} help={isId ? 'Persentase menunjukkan campaign berstatus Approved dari seluruh campaign. Completed dihitung terpisah.' : 'Percentage of all campaigns currently Approved. Completed campaigns are counted separately.'} icon={Layers} tone="rose" progress={plans.length ? stats.approved / plans.length * 100 : 0} />
@@ -235,7 +241,7 @@ export default function MarketingOverviewPage() {
                   return <div key={company.id}>
                     <div className="flex items-start justify-between gap-3"><p className="min-w-0 truncate text-xs font-medium" title={company.name}>{company.name}</p><span className="text-[11px] font-semibold tabular-nums text-slate-400">{percentage.toFixed(0)}%</span></div>
                     <div className="my-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-500/80" style={{ width: `${Math.max(0, Math.min(100, percentage))}%` }} /></div>
-                    <div className="flex justify-between gap-2 text-[10px] text-slate-400"><span>{company.count} campaign</span><span title={formatIDR(company.budget)} className="font-medium text-slate-600 dark:text-slate-300">{compactMoney(company.budget)}</span></div>
+                    <div className="flex justify-between gap-2 text-[10px] text-slate-400"><span>{company.count} {company.count === 1 ? 'campaign' : 'campaigns'}</span><span title={formatIDR(company.budget)} className="font-medium text-slate-600 dark:text-slate-300">{compactMoney(company.budget)}</span></div>
                   </div>;
                 })}
               </div>

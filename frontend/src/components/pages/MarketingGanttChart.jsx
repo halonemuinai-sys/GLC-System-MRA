@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Maximize2
 } from 'lucide-react';
-import { useLanguage } from '@/lib/LanguageContext';
 import {
   formatIDR,
   formatIDRCompact,
@@ -24,7 +23,7 @@ function GanttTooltip({ plan, position }) {
   if (!plan) return null;
   const cfg = STATUS_CONFIG[plan.status] || STATUS_CONFIG.DRAFT;
   const StatusIcon = cfg.icon;
-  const fmt = d => d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+  const fmt = d => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
   return (
     <motion.div
       initial={{ opacity: 0, y: 4, scale: 0.97 }}
@@ -42,9 +41,9 @@ function GanttTooltip({ plan, position }) {
         <StatusIcon className="w-2.5 h-2.5" />{cfg.label}
       </span>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-        <div><p className="text-neutral-400 font-medium">Mulai</p><p className="font-bold text-neutral-700 dark:text-neutral-300">{fmt(plan.event_start_date)}</p></div>
-        <div><p className="text-neutral-400 font-medium">Selesai</p><p className="font-bold text-neutral-700 dark:text-neutral-300">{fmt(plan.event_end_date)}</p></div>
-        <div className="col-span-2"><p className="text-neutral-400 font-medium">Anggaran</p><p className="font-black text-indigo-600 dark:text-indigo-400">{formatIDR(plan.total_budget)}</p></div>
+        <div><p className="text-neutral-400 font-medium">Start</p><p className="font-bold text-neutral-700 dark:text-neutral-300">{fmt(plan.event_start_date)}</p></div>
+        <div><p className="text-neutral-400 font-medium">End</p><p className="font-bold text-neutral-700 dark:text-neutral-300">{fmt(plan.event_end_date)}</p></div>
+        <div className="col-span-2"><p className="text-neutral-400 font-medium">Budget</p><p className="font-black text-indigo-600 dark:text-indigo-400">{formatIDR(plan.total_budget)}</p></div>
       </div>
       {plan.creator && (
         <p className="text-[9px] text-neutral-400 border-t border-neutral-100 dark:border-neutral-800 pt-1.5">
@@ -57,7 +56,6 @@ function GanttTooltip({ plan, position }) {
 
 // ── Gantt Chart (compact inline card) ─────────────────────────────────────────
 export default function MarketingGanttChart({ plans, fiscalYear }) {
-  const { t } = useLanguage();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [tooltip, setTooltip] = useState({ plan: null, x: 0, y: 0 });
   const scrollRef = useRef(null);
@@ -102,9 +100,9 @@ export default function MarketingGanttChart({ plans, fiscalYear }) {
           <div className="flex items-center gap-2 min-w-0">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10"><Calendar className="w-4 h-4 text-blue-500 flex-shrink-0" /></span>
             <h2 className="text-sm font-semibold text-slate-800 dark:text-white">
-              {t('marketing_ganttTitle')} {fiscalYear}
+              Campaign Timeline {fiscalYear}
             </h2>
-            <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400 hidden sm:inline">{sorted.length} campaign</span>
+            <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400 hidden sm:inline">{sorted.length} {sorted.length === 1 ? 'campaign' : 'campaigns'}</span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {/* Legend (hidden on small) */}
@@ -116,15 +114,15 @@ export default function MarketingGanttChart({ plans, fiscalYear }) {
               ))}
             </div>
             {/* Scroll */}
-            <button aria-label="Geser timeline ke kiri" onClick={() => scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' })} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500">
+            <button aria-label="Scroll timeline left" onClick={() => scrollRef.current?.scrollBy({ left: -200, behavior: 'smooth' })} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500">
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
-            <button aria-label="Geser timeline ke kanan" onClick={() => scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500">
+            <button aria-label="Scroll timeline right" onClick={() => scrollRef.current?.scrollBy({ left: 200, behavior: 'smooth' })} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-white transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500">
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
             {/* Fullscreen */}
             <button
-              aria-label="Buka timeline layar penuh"
+              aria-label="Open full-screen timeline"
               onClick={() => setIsFullscreen(true)}
               className="flex min-h-9 items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-[11px] font-semibold transition-colors cursor-pointer border border-blue-200/60 dark:border-blue-500/20 ml-0.5 focus-visible:ring-2 focus-visible:ring-blue-500"
             >
@@ -137,7 +135,7 @@ export default function MarketingGanttChart({ plans, fiscalYear }) {
         {sorted.length === 0 ? (
           <div className="py-14 flex flex-col items-center gap-2 text-neutral-400">
             <Calendar className="w-8 h-8 opacity-30" />
-            <p className="text-xs font-medium">Belum ada campaign untuk tahun {fiscalYear}</p>
+            <p className="text-xs font-medium">No campaigns for {fiscalYear}</p>
           </div>
         ) : (
           <div className="flex">

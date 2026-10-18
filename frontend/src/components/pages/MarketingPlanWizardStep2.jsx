@@ -187,7 +187,7 @@ export default function MarketingPlanWizardStep2({
                         if (!mb.limit) return null;
                         const pct = mb.available / mb.limit;
                         const color = pct > 0.3 ? 'text-green-600 dark:text-green-400' : pct > 0.1 ? 'text-amber-500 dark:text-amber-400' : 'text-red-500 dark:text-red-400';
-                        const label = mb.available <= 0 ? 'Habis' : `Sisa ${(mb.available / 1000000).toFixed(1)}jt`;
+                        const label = mb.available <= 0 ? 'Habis' : `${(mb.available / 1000000).toFixed(1)}M left`;
                         return <div className={`text-[9px] font-bold mt-0.5 truncate ${color}`}>{label}</div>;
                       })()}
                     </td>
@@ -327,7 +327,7 @@ export default function MarketingPlanWizardStep2({
           <div className="space-y-1">
             {overBudgetMonths.map(ob => (
               <div key={ob.month} className="text-[10px] text-neutral-700 dark:text-neutral-400 font-medium">
-                • {t('monthWord')} <strong>{getMonthName(ob.month, lang)}</strong>: {t('ceilingWord')} Rp {ob.limit.toLocaleString('id-ID')}, {t('usedWord')} Rp {ob.committed.toLocaleString('id-ID')}, {t('newRequestWord')} Rp {ob.proposed.toLocaleString('id-ID')} ({t('overByWord')} Rp {ob.excess.toLocaleString('id-ID')})
+                • {t('monthWord')} <strong>{getMonthName(ob.month, lang)}</strong>: {t('ceilingWord')} Rp {ob.limit.toLocaleString('en-GB')}, {t('usedWord')} Rp {ob.committed.toLocaleString('en-GB')}, {t('newRequestWord')} Rp {ob.proposed.toLocaleString('en-GB')} ({t('overByWord')} Rp {ob.excess.toLocaleString('en-GB')})
               </div>
             ))}
           </div>

@@ -11,89 +11,109 @@ const allowWrite = [verifyToken, checkRole(['admin', 'ga', 'legal', 'compliance'
 
 /**
  * ==========================================
- * MASTER COMPANY GROUP (MASTER) ENDPOINTS
+ * SHARED HELPERS — companies, holdings, locations
+ * ==========================================
+ */
+const SECTORS = ['GENERAL', 'RETAIL', 'FB', 'MEDIA', 'RADIO'];
+const cleanStr = (v, max) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').slice(0, max) : '');
+const toId = (v) => { const n = parseInt(v, 10); return Number.isInteger(n) && n > 0 ? n : null; };
+
+// Every relation that points at m_company. Used for the usage breakdown and to
+// decide whether a company may be hard-deleted.
+const COMPANY_USAGE = {
+  assets: 'Assets', vehicles: 'Vehicles', device_rentals: 'IT rentals', maintenances: 'Maintenance',
+  vendors: 'Vendors', insurances: 'Insurance', documents: 'Documents', expense_budget: 'GA budgets',
+  legal_documents: 'Legal documents', legal_litigation: 'Litigation', compliance_licenses: 'Licenses',
+  compliance_monitoring: 'Compliance monitoring', compliance_sop: 'SOPs', marketing_plans: 'Marketing plans',
+  marketing_budgets: 'Marketing budgets', m_branches: 'Marketing branches', m_brands: 'Brands',
+  asset_disposals: 'Asset disposals', asset_handovers: 'Asset handovers', user_access: 'User access',
+  approval_role_contacts: 'Approval contacts',
+};
+const COMPANY_COUNT_SELECT = Object.fromEntries(Object.keys(COMPANY_USAGE).map(k => [k, true]));
+const usageSummary = (counts = {}) => {
+  const items = Object.entries(counts).filter(([, n]) => n > 0).map(([key, n]) => ({ key, label: COMPANY_USAGE[key] || key, count: n }));
+  return { items, total: items.reduce((s, i) => s + i.count, 0) };
+};
+
+/**
+ * ==========================================
+ * MASTER COMPANY GROUP (HOLDING) ENDPOINTS
  * ==========================================
  */
 
-// GET /api/master/companies/master — List all company master groupings
+// GET /api/master/companies/master — holdings with how many companies, locations and contacts use them
 router.get('/companies/master', allowRead, async (req, res, next) => {
   try {
     const masters = await prisma.m_company_master.findMany({
-      orderBy: { name: 'asc' }
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { companies: true, branches: true, approval_role_contacts: true } } }
     });
-    res.json(masters);
+    res.json(masters.map(({ _count, ...m }) => ({
+      ...m,
+      company_count: _count.companies,
+      branch_count: _count.branches,
+      contact_count: _count.approval_role_contacts,
+      can_delete: _count.companies + _count.branches + _count.approval_role_contacts === 0
+    })));
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/master/companies/master — Create new company master
+async function parseHolding(body, excludeId) {
+  const name = cleanStr(body.name, 150);
+  const sector = cleanStr(body.sector, 50).toUpperCase();
+  if (!name) return { error: 'Holding name is required.' };
+  if (!SECTORS.includes(sector)) return { error: `Sector must be one of ${SECTORS.join(', ')}.` };
+  const dup = await prisma.m_company_master.findFirst({ where: { name: { equals: name, mode: 'insensitive' }, ...(excludeId ? { NOT: { id: excludeId } } : {}) } });
+  if (dup) return { error: `Holding "${dup.name}" already exists.` };
+  return { data: { name, sector } };
+}
+
+// POST /api/master/companies/master — Create new holding
 router.post('/companies/master', allowWrite, async (req, res, next) => {
   try {
-    const { name, sector } = req.body;
-
-    if (!name || !sector) {
-      return res.status(400).json({ error: 'Name and sector are required.' });
-    }
-
-    const master = await prisma.m_company_master.create({
-      data: {
-        name: name.trim(),
-        sector: sector.toUpperCase().trim()
-      }
-    });
-
-    res.status(201).json(master);
+    const parsed = await parseHolding(req.body || {});
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
+    res.status(201).json(await prisma.m_company_master.create({ data: parsed.data }));
   } catch (err) {
     next(err);
   }
 });
 
-// PUT /api/master/companies/master/:id — Update company master
+// PUT /api/master/companies/master/:id — Update holding; its locations follow the new sector
 router.put('/companies/master/:id', allowWrite, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { name, sector } = req.body;
+    const id = toId(req.params.id);
+    const existing = id ? await prisma.m_company_master.findUnique({ where: { id } }) : null;
+    if (!existing) return res.status(404).json({ error: 'Holding not found.' });
+    const parsed = await parseHolding(req.body || {}, id);
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
 
-    if (!name || !sector) {
-      return res.status(400).json({ error: 'Name and sector are required.' });
-    }
-
-    const master = await prisma.m_company_master.update({
-      where: { id: parseInt(id) },
-      data: {
-        name: name.trim(),
-        sector: sector.toUpperCase().trim()
-      }
-    });
-
+    const [master] = await prisma.$transaction([
+      prisma.m_company_master.update({ where: { id }, data: parsed.data }),
+      prisma.m_company_branch.updateMany({ where: { company_master_id: id }, data: { sector: parsed.data.sector } })
+    ]);
     res.json(master);
   } catch (err) {
     next(err);
   }
 });
 
-// DELETE /api/master/companies/master/:id — Delete company master
+// DELETE /api/master/companies/master/:id — only when nothing is attached
+// (deleting would silently detach its companies and cascade-delete holding-level approval contacts)
 router.delete('/companies/master/:id', allowWrite, async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    // Check if there are branches linked to this master
-    const linkedBranches = await prisma.m_company_branch.count({
-      where: { company_master_id: parseInt(id) }
-    });
-
-    if (linkedBranches > 0) {
-      return res.status(400).json({
-        error: 'Cannot delete master company because it is still linked to branches.'
-      });
+    const id = toId(req.params.id);
+    const master = id ? await prisma.m_company_master.findUnique({ where: { id }, include: { _count: { select: { companies: true, branches: true, approval_role_contacts: true } } } }) : null;
+    if (!master) return res.status(404).json({ error: 'Holding not found.' });
+    const { companies, branches, approval_role_contacts: contacts } = master._count;
+    if (companies + branches + contacts > 0) {
+      const parts = [companies && `${companies} companies`, branches && `${branches} locations`, contacts && `${contacts} approval contacts`].filter(Boolean).join(', ');
+      return res.status(409).json({ error: `"${master.name}" is still used by ${parts}. Move them to another holding first.` });
     }
-
-    await prisma.m_company_master.delete({
-      where: { id: parseInt(id) }
-    });
-
-    res.json({ message: 'Master company deleted.' });
+    await prisma.m_company_master.delete({ where: { id } });
+    res.json({ message: 'Holding deleted.' });
   } catch (err) {
     next(err);
   }
@@ -102,17 +122,24 @@ router.delete('/companies/master/:id', allowWrite, async (req, res, next) => {
 
 /**
  * ==========================================
- * MASTER COMPANY BRANCH (BRANCH) ENDPOINTS
+ * MASTER COMPANY BRANCH (LOCATION) ENDPOINTS
  * ==========================================
  */
 
-// GET /api/master/companies/branch — List all company branches
+const BRANCH_INCLUDE = {
+  m_company_master: true,
+  _count: { select: { assets: true, maintenances: true, device_rentals: true } }
+};
+const withBranchUsage = ({ _count, ...b }) => {
+  const used = (_count?.assets || 0) + (_count?.maintenances || 0) + (_count?.device_rentals || 0);
+  return { ...b, asset_count: _count?.assets || 0, maintenance_count: _count?.maintenances || 0, rental_count: _count?.device_rentals || 0, usage_total: used, can_delete: used === 0 };
+};
+
+// GET /api/master/companies/branch — locations with usage counts
 router.get('/companies/branch', allowRead, async (req, res, next) => {
   try {
     const { search = '', sector, is_active } = req.query;
-
     const where = {};
-
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -120,96 +147,85 @@ router.get('/companies/branch', allowRead, async (req, res, next) => {
         { sector: { contains: search, mode: 'insensitive' } }
       ];
     }
+    if (is_active !== undefined && is_active !== '') where.is_active = is_active === 'true';
+    if (sector && sector !== 'ALL') where.sector = sector.toUpperCase().trim();
 
-    if (is_active !== undefined) {
-      where.is_active = is_active === 'true';
-    }
-
-    if (sector && sector !== 'ALL') {
-      where.sector = sector.toUpperCase().trim();
-    }
-
-    const branches = await prisma.m_company_branch.findMany({
-      where,
-      include: {
-        m_company_master: true
-      },
-      orderBy: [
-        { name: 'asc' },
-        { location: 'asc' }
-      ]
-    });
-
-    res.json(branches);
+    const branches = await prisma.m_company_branch.findMany({ where, include: BRANCH_INCLUDE, orderBy: [{ name: 'asc' }, { location: 'asc' }] });
+    res.json(branches.map(withBranchUsage));
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/master/companies/branch — Create new company branch
+// Location sector always follows its holding when one is set.
+async function parseBranch(body, current = {}) {
+  const name = cleanStr(body.name ?? current.name, 150);
+  const location = cleanStr(body.location ?? current.location, 200);
+  if (!name || !location) return { error: 'Company name and location are required.' };
+  const masterId = body.company_master_id !== undefined ? toId(body.company_master_id) : current.company_master_id ?? null;
+  let sector = cleanStr(body.sector ?? current.sector, 50).toUpperCase();
+  if (masterId) {
+    const master = await prisma.m_company_master.findUnique({ where: { id: masterId } });
+    if (!master) return { error: 'Holding not found.' };
+    sector = master.sector;
+  }
+  if (!SECTORS.includes(sector)) return { error: `Sector must be one of ${SECTORS.join(', ')}.` };
+  const dup = await prisma.m_company_branch.findFirst({
+    where: { name: { equals: name, mode: 'insensitive' }, location: { equals: location, mode: 'insensitive' }, ...(current.id ? { NOT: { id: current.id } } : {}) }
+  });
+  if (dup) return { error: `"${dup.name} — ${dup.location}" already exists.` };
+  return { data: { name, location, sector, company_master_id: masterId } };
+}
+
+// POST /api/master/companies/branch — Create new location
 router.post('/companies/branch', allowWrite, async (req, res, next) => {
   try {
-    const { name, location, sector, company_master_id } = req.body;
-
-    if (!name || !location || !sector) {
-      return res.status(400).json({ error: 'Name, location, and sector are required.' });
-    }
-
-    const branch = await prisma.m_company_branch.create({
-      data: {
-        name: name.trim(),
-        location: location.trim(),
-        sector: sector.toUpperCase().trim(),
-        company_master_id: company_master_id ? parseInt(company_master_id) : null,
-        is_active: true
-      },
-      include: {
-        m_company_master: true
-      }
-    });
-
-    res.status(201).json(branch);
+    const parsed = await parseBranch(req.body || {});
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
+    const branch = await prisma.m_company_branch.create({ data: { ...parsed.data, is_active: true }, include: BRANCH_INCLUDE });
+    res.status(201).json(withBranchUsage(branch));
   } catch (err) {
     next(err);
   }
 });
 
-// PUT /api/master/companies/branch/:id — Update company branch
+// PUT /api/master/companies/branch/:id — Update location (or toggle is_active)
 router.put('/companies/branch/:id', allowWrite, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { name, location, sector, company_master_id, is_active } = req.body;
+    const id = toId(req.params.id);
+    const current = id ? await prisma.m_company_branch.findUnique({ where: { id } }) : null;
+    if (!current) return res.status(404).json({ error: 'Location not found.' });
+    const body = req.body || {};
+    if (body.is_active !== undefined && typeof body.is_active !== 'boolean') return res.status(400).json({ error: 'Invalid active status.' });
 
-    const branch = await prisma.m_company_branch.update({
-      where: { id: parseInt(id) },
-      data: {
-        ...(name !== undefined && { name: name.trim() }),
-        ...(location !== undefined && { location: location.trim() }),
-        ...(sector !== undefined && { sector: sector.toUpperCase().trim() }),
-        ...(company_master_id !== undefined && { company_master_id: company_master_id ? parseInt(company_master_id) : null }),
-        ...(is_active !== undefined && { is_active })
-      },
-      include: {
-        m_company_master: true
-      }
-    });
-
-    res.json(branch);
+    const onlyStatus = Object.keys(body).every(k => k === 'is_active');
+    let data = {};
+    if (!onlyStatus) {
+      const parsed = await parseBranch(body, current);
+      if (parsed.error) return res.status(400).json({ error: parsed.error });
+      data = parsed.data;
+    }
+    if (body.is_active !== undefined) data.is_active = body.is_active;
+    const branch = await prisma.m_company_branch.update({ where: { id }, data, include: BRANCH_INCLUDE });
+    res.json(withBranchUsage(branch));
   } catch (err) {
     next(err);
   }
 });
 
-// DELETE /api/master/companies/branch/:id — Delete company branch
+// DELETE /api/master/companies/branch/:id — only when no asset, maintenance or rental uses it
 router.delete('/companies/branch/:id', allowWrite, async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    await prisma.m_company_branch.delete({
-      where: { id: parseInt(id) }
-    });
-
-    res.json({ message: 'Branch deleted.' });
+    const id = toId(req.params.id);
+    const branch = id ? await prisma.m_company_branch.findUnique({ where: { id }, include: BRANCH_INCLUDE }) : null;
+    if (!branch) return res.status(404).json({ error: 'Location not found.' });
+    const u = withBranchUsage(branch);
+    if (!u.can_delete) {
+      const parts = [u.asset_count && `${u.asset_count} assets`, u.maintenance_count && `${u.maintenance_count} maintenance records`, u.rental_count && `${u.rental_count} IT rentals`].filter(Boolean).join(', ');
+      return res.status(409).json({ error: `"${branch.name} — ${branch.location}" is used by ${parts}. Deactivate it instead.` });
+    }
+    await prisma.m_company_branch.delete({ where: { id } });
+    res.json({ message: 'Location deleted.' });
   } catch (err) {
     next(err);
   }
@@ -218,18 +234,18 @@ router.delete('/companies/branch/:id', allowWrite, async (req, res, next) => {
 
 /**
  * ==========================================
- * MASTER COMPANY (ORIGINAL ENTITAS) ENDPOINTS
+ * MASTER COMPANY (LEGAL ENTITY) ENDPOINTS
  * ==========================================
  */
 
-// GET /api/master/companies — List all companies (Original Master Data)
+// GET /api/master/companies — paginated companies with usage totals
 router.get('/companies', allowRead, async (req, res, next) => {
   try {
-    const { search = '', is_active, page = 1, limit = 20 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const { search = '', is_active, holding } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 20));
 
     const where = {};
-
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
@@ -237,32 +253,34 @@ router.get('/companies', allowRead, async (req, res, next) => {
         { npwp: { contains: search, mode: 'insensitive' } }
       ];
     }
+    if (is_active !== undefined && is_active !== '') where.is_active = is_active === 'true';
+    if (holding === 'none') where.company_master_id = null;
+    else if (toId(holding)) where.company_master_id = toId(holding);
 
-    if (is_active !== undefined) {
-      where.is_active = is_active === 'true';
-    }
-
-    const [data, total] = await Promise.all([
+    const [rows, total, summary] = await Promise.all([
       prisma.m_company.findMany({
         where,
-        include: {
-          m_company_master: true
-        },
+        include: { m_company_master: true, _count: { select: COMPANY_COUNT_SELECT } },
         orderBy: { name: 'asc' },
-        skip,
-        take: parseInt(limit)
+        skip: (page - 1) * limit,
+        take: limit
       }),
-      prisma.m_company.count({ where })
+      prisma.m_company.count({ where }),
+      Promise.all([
+        prisma.m_company.count(),
+        prisma.m_company.count({ where: { is_active: true } }),
+        prisma.m_company.count({ where: { company_master_id: null } }),
+        prisma.m_company_master.count()
+      ])
     ]);
 
     res.json({
-      data,
-      meta: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / parseInt(limit))
-      }
+      data: rows.map(({ _count, ...c }) => {
+        const usage = usageSummary(_count);
+        return { ...c, usage_total: usage.total, can_delete: usage.total === 0 };
+      }),
+      meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) },
+      summary: { total: summary[0], active: summary[1], without_holding: summary[2], holdings: summary[3] }
     });
   } catch (err) {
     next(err);
@@ -283,141 +301,93 @@ router.get('/companies/all', allowRead, async (req, res, next) => {
   }
 });
 
-// GET /api/master/companies/:id — Single company detail
+// GET /api/master/companies/:id — detail with a usage breakdown across every module
 router.get('/companies/:id', allowRead, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const company = await prisma.m_company.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        m_company_master: true,
-        _count: {
-          select: {
-            assets: true,
-            vehicles: true,
-            vendors: true,
-            device_rentals: true,
-            insurances: true,
-            maintenances: true,
-            documents: true,
-            legal_documents: true,
-            expense_budget: true
-          }
-        }
-      }
-    });
-
-    if (!company) {
-      return res.status(404).json({ error: 'Company not found.' });
-    }
-
-    res.json(company);
+    const id = toId(req.params.id);
+    const company = id ? await prisma.m_company.findUnique({ where: { id }, include: { m_company_master: true, _count: { select: COMPANY_COUNT_SELECT } } }) : null;
+    if (!company) return res.status(404).json({ error: 'Company not found.' });
+    const { _count, ...rest } = company;
+    const usage = usageSummary(_count);
+    res.json({ ...rest, usage: usage.items, usage_total: usage.total, can_delete: usage.total === 0 });
   } catch (err) {
     next(err);
   }
 });
+
+// Code: trimmed, upper-case, unique (case-insensitive); empty → null.
+// NPWP: optional; when given it must have 15 or 16 digits (punctuation allowed).
+async function parseCompany(body, current = {}) {
+  const name = cleanStr(body.name ?? current.name, 150);
+  if (!name) return { error: 'Company name is required.' };
+  const rawCode = body.code !== undefined ? body.code : current.code;
+  const code = rawCode ? cleanStr(String(rawCode), 20).toUpperCase().replace(/\s+/g, '') : null;
+  const rawNpwp = body.npwp !== undefined ? body.npwp : current.npwp;
+  const npwp = rawNpwp ? cleanStr(String(rawNpwp), 30) : null;
+  if (npwp && ![15, 16].includes(npwp.replace(/\D/g, '').length)) return { error: 'NPWP must contain 15 or 16 digits.' };
+  const address = body.address !== undefined ? (cleanStr(body.address, 1000) || null) : current.address ?? null;
+  const masterId = body.company_master_id !== undefined ? toId(body.company_master_id) : current.company_master_id ?? null;
+  if (masterId && !(await prisma.m_company_master.findUnique({ where: { id: masterId }, select: { id: true } }))) return { error: 'Holding not found.' };
+
+  const notSelf = current.id ? { NOT: { id: current.id } } : {};
+  if (code) {
+    const dupCode = await prisma.m_company.findFirst({ where: { code: { equals: code, mode: 'insensitive' }, ...notSelf } });
+    if (dupCode) return { error: `Code ${code} is already used by ${dupCode.name}.`, status: 409 };
+  }
+  const dupName = await prisma.m_company.findFirst({ where: { name: { equals: name, mode: 'insensitive' }, ...notSelf } });
+  if (dupName) return { error: `A company named "${dupName.name}" already exists.`, status: 409 };
+  return { data: { name, code, npwp, address, company_master_id: masterId } };
+}
 
 // POST /api/master/companies — Create new company
 router.post('/companies', allowWrite, async (req, res, next) => {
   try {
-    const { code, name, npwp, address, company_master_id } = req.body;
-
-    if (!name) {
-      return res.status(400).json({ error: 'Company name is required.' });
-    }
-
-    const company = await prisma.m_company.create({
-      data: {
-        code: code || null,
-        name: name.trim(),
-        npwp: npwp || null,
-        address: address || null,
-        company_master_id: company_master_id ? parseInt(company_master_id) : null,
-        is_active: true
-      }
-    });
-
-    res.status(201).json(company);
+    const parsed = await parseCompany(req.body || {});
+    if (parsed.error) return res.status(parsed.status || 400).json({ error: parsed.error });
+    res.status(201).json(await prisma.m_company.create({ data: { ...parsed.data, is_active: true } }));
   } catch (err) {
-    // Handle unique constraint violation on code
-    if (err.code === 'P2002') {
-      return res.status(409).json({ error: 'Company code already exists.' });
-    }
+    if (err.code === 'P2002') return res.status(409).json({ error: 'Company code already exists.' });
     next(err);
   }
 });
 
-// PUT /api/master/companies/:id — Update company
+// PUT /api/master/companies/:id — Update company (or toggle is_active)
 router.put('/companies/:id', allowWrite, async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { code, name, npwp, address, company_master_id, is_active } = req.body;
+    const id = toId(req.params.id);
+    const current = id ? await prisma.m_company.findUnique({ where: { id } }) : null;
+    if (!current) return res.status(404).json({ error: 'Company not found.' });
+    const body = req.body || {};
+    if (body.is_active !== undefined && typeof body.is_active !== 'boolean') return res.status(400).json({ error: 'Invalid active status.' });
 
-    const company = await prisma.m_company.update({
-      where: { id: parseInt(id) },
-      data: {
-        ...(code !== undefined && { code }),
-        ...(name !== undefined && { name: name.trim() }),
-        ...(npwp !== undefined && { npwp }),
-        ...(address !== undefined && { address }),
-        ...(company_master_id !== undefined && { company_master_id: company_master_id ? parseInt(company_master_id) : null }),
-        ...(is_active !== undefined && { is_active })
-      }
-    });
-
-    res.json(company);
+    const onlyStatus = Object.keys(body).every(k => k === 'is_active');
+    let data = {};
+    if (!onlyStatus) {
+      const parsed = await parseCompany(body, current);
+      if (parsed.error) return res.status(parsed.status || 400).json({ error: parsed.error });
+      data = parsed.data;
+    }
+    if (body.is_active !== undefined) data.is_active = body.is_active;
+    res.json(await prisma.m_company.update({ where: { id }, data }));
   } catch (err) {
-    if (err.code === 'P2025') {
-      return res.status(404).json({ error: 'Company not found.' });
-    }
-    if (err.code === 'P2002') {
-      return res.status(409).json({ error: 'Company code already exists.' });
-    }
+    if (err.code === 'P2002') return res.status(409).json({ error: 'Company code already exists.' });
     next(err);
   }
 });
 
-// DELETE /api/master/companies/:id — Soft delete (toggle is_active) or Hard delete
+// DELETE /api/master/companies/:id — permanent delete only for an unused company.
+// Used companies are rejected with a breakdown; deactivate them via PUT is_active=false.
 router.delete('/companies/:id', allowWrite, async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    // Check if company has related records
-    const company = await prisma.m_company.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        _count: {
-          select: {
-            assets: true,
-            vehicles: true,
-            vendors: true,
-            device_rentals: true,
-            insurances: true,
-            maintenances: true
-          }
-        }
-      }
-    });
-
-    if (!company) {
-      return res.status(404).json({ error: 'Company not found.' });
+    const id = toId(req.params.id);
+    const company = id ? await prisma.m_company.findUnique({ where: { id }, include: { _count: { select: COMPANY_COUNT_SELECT } } }) : null;
+    if (!company) return res.status(404).json({ error: 'Company not found.' });
+    const usage = usageSummary(company._count);
+    if (usage.total > 0) {
+      const top = usage.items.sort((a, b) => b.count - a.count).slice(0, 4).map(i => `${i.count} ${i.label}`).join(', ');
+      return res.status(409).json({ error: `${company.name} is used by ${top}${usage.items.length > 4 ? ' and more' : ''}. Deactivate it instead.`, usage: usage.items });
     }
-
-    const totalRelated = Object.values(company._count).reduce((a, b) => a + b, 0);
-
-    if (totalRelated > 0) {
-      // Soft delete: just deactivate
-      await prisma.m_company.update({
-        where: { id: parseInt(id) },
-        data: { is_active: false }
-      });
-      return res.json({ 
-        message: `Company deactivated (has ${totalRelated} related records). Use is_active flag to reactivate.` 
-      });
-    }
-
-    // Hard delete if no relations
-    await prisma.m_company.delete({ where: { id: parseInt(id) } });
+    await prisma.m_company.delete({ where: { id } });
     res.json({ message: 'Company deleted.' });
   } catch (err) {
     next(err);
@@ -429,7 +399,7 @@ router.delete('/companies/:id', allowWrite, async (req, res, next) => {
  * SEED: Populate companies & branches from Helpdesk MRA
  * ==========================================
  */
-router.post('/companies/seed', allowWrite, async (req, res, next) => {
+router.post('/companies/seed', verifyToken, checkRole(['admin']), async (req, res, next) => {
   try {
     // 1. Seed Master Company Groupings (PT Induk)
     const masterData = [

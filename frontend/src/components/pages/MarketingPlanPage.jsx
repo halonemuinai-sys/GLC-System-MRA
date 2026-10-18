@@ -158,7 +158,7 @@ function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap,
                     type="text"
                     value={query}
                     onChange={e => setQuery(e.target.value)}
-                    placeholder="Cari perusahaan..."
+                    placeholder="Search company..."
                     className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-7 pr-3 py-1.5 text-xs text-neutral-800 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-indigo-400 transition-colors"
                   />
                   {query && (
@@ -171,7 +171,7 @@ function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap,
             )}
             <div className="py-1.5 max-h-56 overflow-y-auto">
             {filtered.length === 0 ? (
-              <p className="px-4 py-3 text-xs text-neutral-400 text-center">Tidak ditemukan</p>
+              <p className="px-4 py-3 text-xs text-neutral-400 text-center">Not found</p>
             ) : filtered.map((opt) => {
               const isSelected = value === opt.value;
               const color = colorMap?.[opt.value];
@@ -214,8 +214,8 @@ function PlanAction({ icon: Icon, children, danger = false, ...props }) {
 }
 
 export default function MarketingPlanPage() {
-  const { lang } = useLanguage();
-  const t = (key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key);
+  const lang = 'en'; // Marketing Plan UI is English-only
+  const t = (key, ...args) => typeof mpt.en[key] === 'function' ? mpt.en[key](...args) : (mpt.en[key] ?? key);
 
   // State for metadata & data
   const [metadata, setMetadata] = useState({ brands: [], lobs: [], branches: [], event_locations: [], coas: [], companies: [], vendors: [], users: [], defaultApproverContacts: [] });
@@ -399,7 +399,7 @@ export default function MarketingPlanPage() {
     } catch (err) {
       // Aturan H-3: event < 3 bulan lagi -> minta alasan lalu ajukan ulang
       if (err.message?.includes('H-3')) {
-        const reason = window.prompt(`${err.message}\n\nAlasan pengajuan terlambat:`);
+        const reason = window.prompt(`${err.message}\n\nLate submission reason:`);
         if (reason?.trim()) {
           setSubmitting(false);
           return handleSubmitDraft(planId, reason.trim());
@@ -413,15 +413,15 @@ export default function MarketingPlanPage() {
   };
 
   const handleDuplicatePlan = async (planId) => {
-    if (!window.confirm('Duplikat plan ini sebagai Draft baru?')) return;
+    if (!window.confirm('Duplicate this plan as a new Draft?')) return;
     try {
       setSubmitting(true);
       await apiClient.post(`/api/marketing/plans/${planId}/duplicate`);
-      setSuccessMsg('Marketing Plan berhasil diduplikat sebagai Draft baru!');
+      setSuccessMsg('Marketing plan duplicated as a new Draft!');
       loadPlans();
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      alert(err.message || 'Gagal menduplikat plan.');
+      alert(err.message || 'Failed to duplicate the plan.');
     } finally {
       setSubmitting(false);
     }
@@ -572,35 +572,35 @@ export default function MarketingPlanPage() {
             <div>
               <p className="text-xs font-black text-neutral-800 dark:text-white leading-tight">{t('pipelineTitle')}</p>
               <p className="text-[10px] text-neutral-400 leading-tight mt-0.5">
-                {totalPlans > 0 ? `${totalPlans} rencana ditemukan` : 'Belum ada rencana'}
+                {totalPlans > 0 ? `${totalPlans} plans found` : 'No plans yet'}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <FilterDropdown
-              label="Tahun"
+              label="Year"
               value={fiscalYear}
               icon={Calendar}
               options={FISCAL_YEAR_OPTIONS.map(y => ({ value: y, label: y }))}
               onChange={setFiscalYear}
             />
             <FilterDropdown
-              label={lang === 'id' ? 'Semua Kuartal' : 'All Quarters'}
+              label={lang === 'id' ? 'All Quarters' : 'All Quarters'}
               value={quarter}
               icon={Calendar}
               options={[
-                { value: '', label: lang === 'id' ? 'Semua Kuartal' : 'All Quarters' },
+                { value: '', label: lang === 'id' ? 'All Quarters' : 'All Quarters' },
                 ...[1, 2, 3, 4].map(q => ({ value: String(q), label: `Q${q} (${getMonthName(q * 3 - 2, lang).slice(0, 3)} - ${getMonthName(q * 3, lang).slice(0, 3)})` }))
               ]}
               onChange={value => { setQuarter(value); setMonth(''); }}
             />
             <FilterDropdown
-              label={lang === 'id' ? 'Semua Bulan' : 'All Months'}
+              label={lang === 'id' ? 'All Months' : 'All Months'}
               value={month}
               icon={Calendar}
               options={[
-                { value: '', label: lang === 'id' ? 'Semua Bulan' : 'All Months' },
+                { value: '', label: lang === 'id' ? 'All Months' : 'All Months' },
                 ...Array.from({ length: 12 }, (_, i) => i + 1)
                   .filter(m => !quarter || Math.ceil(m / 3) === Number(quarter))
                   .map(m => ({ value: String(m), label: getMonthName(m, lang) }))
@@ -836,7 +836,7 @@ export default function MarketingPlanPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-xs text-neutral-400">
-            Menampilkan <span className="font-semibold text-neutral-700 dark:text-neutral-300">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalPlans)}</span> dari <span className="font-semibold text-neutral-700 dark:text-neutral-300">{totalPlans}</span> plan
+            Menampilkan <span className="font-semibold text-neutral-700 dark:text-neutral-300">{(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, totalPlans)}</span> of <span className="font-semibold text-neutral-700 dark:text-neutral-300">{totalPlans}</span> plan
           </p>
           <div className="flex items-center gap-1">
             <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage <= 1}
@@ -936,7 +936,7 @@ export default function MarketingPlanPage() {
                 </p>
                 {planToDelete.status === 'APPROVED' && (
                   <div className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/30 p-2.5 rounded-xl border border-amber-200/60 dark:border-amber-800/40 text-left">
-                    ⚠️ <strong>Perhatian:</strong> Rencana ini berstatus <strong>APPROVED</strong>. Menghapus rencana ini akan membatalkan alokasi anggarannya. Pastikan belum ada tagihan atau pembayaran yang diproses.
+                    ⚠️ <strong>Perhatian:</strong> This plan is <strong>APPROVED</strong>. Deleting it cancels its budget allocation. Make sure no invoices or payments have been processed.
                   </div>
                 )}
               </div>
@@ -968,7 +968,7 @@ export default function MarketingPlanPage() {
         onClose={() => setIsQuickModalOpen(false)}
         metadata={metadata}
         onSuccess={() => {
-          setSuccessMsg('Quick Campaign berhasil dibuat!');
+          setSuccessMsg('Quick campaign created!');
           loadPlans();
           setTimeout(() => setSuccessMsg(null), 5000);
         }}

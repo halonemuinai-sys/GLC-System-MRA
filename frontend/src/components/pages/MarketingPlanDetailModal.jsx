@@ -50,13 +50,13 @@ function PlanFinancialOverview({ plan, lang }) {
   const remaining = totals.budget - totals.committed - totals.actual;
   const paidPercent = totals.budget > 0 ? totals.actual / totals.budget * 100 : 0;
   const metrics = [
-    { label: lang === 'id' ? 'Total anggaran' : 'Total budget', value: totals.budget, icon: Wallet, tone: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10' },
+    { label: lang === 'id' ? 'Total budget' : 'Total budget', value: totals.budget, icon: Wallet, tone: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10' },
     { label: 'Committed', value: totals.committed, icon: CreditCard, tone: 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/10' },
-    { label: lang === 'id' ? 'Realisasi terbayar' : 'Paid expenses', value: totals.actual, icon: CheckCircle, tone: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/10' },
-    { label: lang === 'id' ? 'Sisa anggaran' : 'Remaining budget', value: remaining, icon: CircleDollarSign, tone: remaining < 0 ? 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-500/10' : 'text-slate-600 bg-slate-100 dark:text-slate-300 dark:bg-slate-800' },
+    { label: lang === 'id' ? 'Paid actuals' : 'Paid expenses', value: totals.actual, icon: CheckCircle, tone: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/10' },
+    { label: lang === 'id' ? 'Remaining budget' : 'Remaining budget', value: remaining, icon: CircleDollarSign, tone: remaining < 0 ? 'text-rose-600 bg-rose-50 dark:text-rose-400 dark:bg-rose-500/10' : 'text-slate-600 bg-slate-100 dark:text-slate-300 dark:bg-slate-800' },
   ];
   return (
-    <section aria-label={lang === 'id' ? 'Ringkasan anggaran' : 'Budget overview'} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section aria-label={lang === 'id' ? 'Budget summary' : 'Budget overview'} className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="grid grid-cols-2 sm:grid-cols-4">
         {metrics.map(({ label, value, icon: Icon, tone }) => (
           <div key={label} className="min-w-0 border-b border-slate-100 px-3 py-2 sm:p-3 sm:border-b-0 [&:nth-child(odd)]:border-r sm:border-r sm:last:border-r-0 dark:border-slate-800">
@@ -66,7 +66,7 @@ function PlanFinancialOverview({ plan, lang }) {
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 bg-slate-50/60 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/30">
-        <span className="text-[11px] text-slate-500 dark:text-slate-400">{lang === 'id' ? 'Serapan anggaran terbayar' : 'Paid budget utilization'}</span>
+        <span className="text-[11px] text-slate-500 dark:text-slate-400">{lang === 'id' ? 'Paid budget absorption' : 'Paid budget utilization'}</span>
         <div className="h-1.5 min-w-20 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.max(0, Math.min(100, paidPercent))}%` }} /></div>
         <span className="text-[11px] font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{paidPercent.toFixed(1)}%</span>
       </div>
@@ -85,8 +85,8 @@ export default function MarketingPlanDetailModal({
   userRole,
   onSuccessMsg
 }) {
-  const { lang } = useLanguage();
-  const t = useCallback((key, ...args) => typeof mpt[lang][key] === 'function' ? mpt[lang][key](...args) : (mpt[lang][key] ?? key), [lang]);
+  const lang = 'en'; // Marketing Plan UI is English-only
+  const t = useCallback((key, ...args) => typeof mpt.en[key] === 'function' ? mpt.en[key](...args) : (mpt.en[key] ?? key), [lang]);
 
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -98,7 +98,7 @@ export default function MarketingPlanDetailModal({
   const detailBody = useRef(null);
   const detailTabs = [
     { id: 'overview', label: lang === 'id' ? 'Ringkasan' : 'Overview', icon: LayoutDashboard },
-    { id: 'costs', label: lang === 'id' ? 'Biaya & Reimbursement' : 'Costs & Reimbursement', icon: Wallet },
+    { id: 'costs', label: lang === 'id' ? 'Costs & Reimbursement' : 'Costs & Reimbursement', icon: Wallet },
     { id: 'approvals', label: lang === 'id' ? 'Persetujuan & Perubahan' : 'Approvals & Changes', icon: Users },
     { id: 'results', label: lang === 'id' ? 'Hasil & Closing' : 'Results & Closing', icon: BarChart2 },
   ];
@@ -133,15 +133,15 @@ export default function MarketingPlanDetailModal({
 
   const handleDuplicatePlan = async () => {
     if (!selectedPlan) return;
-    if (!window.confirm('Duplikat plan ini sebagai Draft baru?')) return;
+    if (!window.confirm('Duplicate this plan as a new Draft?')) return;
     setDuplicating(true);
     try {
       await apiClient.post(`/api/marketing/plans/${selectedPlan.id}/duplicate`);
-      if (onSuccessMsg) onSuccessMsg('Plan berhasil diduplikat sebagai Draft baru.');
+      if (onSuccessMsg) onSuccessMsg('Plan duplicated as a new Draft.');
       loadPlans();
       onClose();
     } catch (err) {
-      alert(err.message || 'Gagal menduplikat plan.');
+      alert(err.message || 'Failed to duplicate the plan.');
     } finally {
       setDuplicating(false);
     }
@@ -374,7 +374,7 @@ export default function MarketingPlanDetailModal({
 
   const handleSubmitAmendmentDraft = async () => {
     if (!selectedPlan || !amendmentTitle || !amendmentJustification || amendmentChanges.length === 0) {
-      setAmendmentError('Judul, justifikasi, dan minimal satu perubahan wajib diisi.');
+      setAmendmentError('Title, justification and at least one change are required.');
       return;
     }
     setSubmittingAmendment(true);
@@ -391,47 +391,47 @@ export default function MarketingPlanDetailModal({
       await apiClient.post(`/api/marketing/plans/${selectedPlan.id}/amendments`, {
         title: amendmentTitle, justification: amendmentJustification, changes
       });
-      setAmendmentMsg('Amendment berhasil disimpan sebagai draft.');
+      setAmendmentMsg('Amendment saved as draft.');
       setShowAmendmentForm(false);
       setAmendmentTitle(''); setAmendmentJustification(''); setAmendmentChanges([]);
       const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
       setSelectedPlan(updated);
       setTimeout(() => setAmendmentMsg(null), 4000);
-    } catch (err) { setAmendmentError(err.message || 'Gagal menyimpan amendment.'); }
+    } catch (err) { setAmendmentError(err.message || 'Failed to save the amendment.'); }
     finally { setSubmittingAmendment(false); }
   };
 
   const handleSubmitAmendment = async (amendmentId) => {
     try {
       await apiClient.post(`/api/marketing/amendments/${amendmentId}/submit`);
-      setAmendmentMsg('Amendment diajukan untuk review.');
+      setAmendmentMsg('Amendment submitted for review.');
       const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
       setSelectedPlan(updated);
       setTimeout(() => setAmendmentMsg(null), 4000);
-    } catch (err) { alert(err.message || 'Gagal mengajukan amendment.'); }
+    } catch (err) { alert(err.message || 'Failed to submit the amendment.'); }
   };
 
   const handleReviewAmendment = async (amendmentId, action) => {
-    const review_comment = action === 'REJECT' ? window.prompt('Alasan penolakan:') : null;
+    const review_comment = action === 'REJECT' ? window.prompt('Rejection reason:') : null;
     if (action === 'REJECT' && !review_comment) return;
     setReviewingAmendmentId(amendmentId);
     try {
       await apiClient.post(`/api/marketing/amendments/${amendmentId}/review`, { action, review_comment });
-      setAmendmentMsg(action === 'APPROVE' ? 'Amendment disetujui dan perubahan diterapkan.' : 'Amendment ditolak.');
+      setAmendmentMsg(action === 'APPROVE' ? 'Amendment approved and changes applied.' : 'Amendment rejected.');
       const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
       setSelectedPlan(updated); loadPlans();
       setTimeout(() => setAmendmentMsg(null), 4000);
-    } catch (err) { alert(err.message || 'Gagal me-review amendment.'); }
+    } catch (err) { alert(err.message || 'Failed to review the amendment.'); }
     finally { setReviewingAmendmentId(null); }
   };
 
   const handleDeleteAmendment = async (amendmentId) => {
-    if (!window.confirm('Hapus amendment ini?')) return;
+    if (!window.confirm('Delete this amendment?')) return;
     try {
       await apiClient.delete(`/api/marketing/amendments/${amendmentId}`);
       const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
       setSelectedPlan(updated);
-    } catch (err) { alert(err.message || 'Gagal menghapus amendment.'); }
+    } catch (err) { alert(err.message || 'Failed to delete the amendment.'); }
   };
 
   return (
@@ -518,9 +518,9 @@ export default function MarketingPlanDetailModal({
                       <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-700 dark:text-rose-400">
                         <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="font-black uppercase tracking-wide text-[10px]">Late Submission (aturan H-3)</p>
+                          <p className="font-black uppercase tracking-wide text-[10px]">Late Submission (H-3 rule)</p>
                           <p className="mt-0.5">
-                            Diajukan {selectedPlan.submitted_at ? new Date(selectedPlan.submitted_at).toLocaleDateString('id-ID') : '-'}, kurang dari 3 bulan sebelum event. Alasan: <strong>{selectedPlan.late_submission_reason || '-'}</strong>
+                            Submitted {selectedPlan.submitted_at ? new Date(selectedPlan.submitted_at).toLocaleDateString('en-GB') : '-'}, less than 3 months before the event. Reason: <strong>{selectedPlan.late_submission_reason || '-'}</strong>
                           </p>
                         </div>
                       </div>
@@ -723,7 +723,7 @@ export default function MarketingPlanDetailModal({
                                                   className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer whitespace-nowrap"
                                                 >
                                                   <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                                                  Realisasi Biaya
+                                                  Cost Actuals
                                                 </button>
                                               ) : selectedPlan.status === 'COMPLETED' ? (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30 whitespace-nowrap">
@@ -750,7 +750,7 @@ export default function MarketingPlanDetailModal({
                                                       <div className="space-y-0.5">
                                                         <p className="font-bold text-neutral-800 dark:text-white">{pr.request_type === 'CLAIM' && <span className="mr-1.5 rounded bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">REIMBURSEMENT</span>}{pr.title}</p>
                                                         <p className="text-neutral-400 font-medium text-[9px]">{t('byLabel')} {pr.creator?.name || 'N/A'}</p>
-                                                        {pr.request_type === 'CLAIM' && pr.reimbursement_payee && <p className="text-[10px] text-slate-500">Penggantian untuk: {pr.reimbursement_payee}{pr.expense_date ? ` / ${new Date(pr.expense_date).toLocaleDateString('id-ID', { timeZone: 'UTC' })}` : ''}</p>}
+                                                        {pr.request_type === 'CLAIM' && pr.reimbursement_payee && <p className="text-[10px] text-slate-500">Reimbursement for: {pr.reimbursement_payee}{pr.expense_date ? ` / ${new Date(pr.expense_date).toLocaleDateString('en-GB', { timeZone: 'UTC' })}` : ''}</p>}
                                                       </div>
                                                       <div className="flex items-center gap-3.5">
                                                         <span className="font-extrabold text-neutral-900 dark:text-white">{formatIDR(pr.amount)}</span>
@@ -809,9 +809,9 @@ export default function MarketingPlanDetailModal({
                           </div>
                           <div>
                             <h4 className="text-sm font-semibold text-slate-800 dark:text-white">
-                              {lang === 'id' ? 'Alur Persetujuan & Penandatangan Dokumen' : 'Approval Chain & Document Signers'}
+                              {lang === 'id' ? 'Approval Flow & Document Signers' : 'Approval Chain & Document Signers'}
                             </h4>
-                            <p className="text-[10px] text-neutral-400">{lang === 'id' ? 'Status dan riwayat persetujuan campaign.' : 'Campaign approval status and history.'}</p>
+                            <p className="text-[10px] text-neutral-400">{lang === 'id' ? 'Campaign approval status and history.' : 'Campaign approval status and history.'}</p>
                           </div>
                         </div>
                         <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-200/60 dark:border-blue-900/30">
@@ -883,10 +883,10 @@ export default function MarketingPlanDetailModal({
                                           {isPending && <Clock className="w-3 h-3" />}
                                           {isRejected && <AlertTriangle className="w-3 h-3" />}
                                           {isWaiting && <Clock className="w-3 h-3 text-neutral-400" />}
-                                          {isApproved ? (lang === 'id' ? 'Disetujui' : 'Approved') :
-                                           isPending ? (lang === 'id' ? 'Menunggu Persetujuan' : 'Pending Signature') :
-                                           isRejected ? (lang === 'id' ? 'Ditolak' : 'Rejected') :
-                                           (lang === 'id' ? 'Menunggu Giliran' : 'Waiting in Queue')}
+                                          {isApproved ? (lang === 'id' ? 'Approved' : 'Approved') :
+                                           isPending ? (lang === 'id' ? 'Pending Approval' : 'Pending Signature') :
+                                           isRejected ? (lang === 'id' ? 'Rejected' : 'Rejected') :
+                                           (lang === 'id' ? 'Waiting' : 'Waiting in Queue')}
                                         </span>
 
                                         {/* Copy Magic Link Button for PENDING step */}
@@ -899,7 +899,7 @@ export default function MarketingPlanDetailModal({
                                                 ? 'bg-emerald-600 text-white shadow-emerald-500/20'
                                                 : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20'
                                             }`}
-                                            title="Salin Magic Link untuk penandatangan ini"
+                                            title="Copy the magic link for this signer"
                                           >
                                             {copiedToken === activeMagicLink ? (
                                               <>
@@ -923,9 +923,9 @@ export default function MarketingPlanDetailModal({
                                         <div className="space-y-1">
                                           {signer.action_at && (
                                             <p className="text-neutral-400">
-                                              {isApproved ? (lang === 'id' ? 'Ditandatangani pada: ' : 'Signed on: ') : (lang === 'id' ? 'Waktu aksi: ' : 'Action date: ')}
+                                              {isApproved ? (lang === 'id' ? 'Signed on: ' : 'Signed on: ') : (lang === 'id' ? 'Waktu aksi: ' : 'Action date: ')}
                                               <span className="font-semibold text-neutral-700 dark:text-neutral-300">
-                                                {new Date(signer.action_at).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                                                {new Date(signer.action_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                                               </span>
                                             </p>
                                           )}
@@ -977,7 +977,7 @@ export default function MarketingPlanDetailModal({
                                         type="button"
                                         onClick={() => handleCopyMagicLink(hist.magic_links[0].token)}
                                         className="p-1 rounded-lg text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
-                                        title="Salin Magic Link"
+                                        title="Copy magic link"
                                       >
                                         <Copy className="w-3.5 h-3.5" />
                                       </button>
@@ -988,7 +988,7 @@ export default function MarketingPlanDetailModal({
                             </div>
                           ) : (
                             <p className="text-xs text-neutral-400 text-center py-3">
-                              {lang === 'id' ? 'Belum ada data alur penandatangan untuk plan ini.' : 'No signer workflow data found.'}
+                              {lang === 'id' ? 'No signer workflow data for this plan yet.' : 'No signer workflow data found.'}
                             </p>
                           )
                         )}
@@ -1033,7 +1033,7 @@ export default function MarketingPlanDetailModal({
                                       <div className="flex items-start justify-between gap-2">
                                         <div>
                                           <p className="text-xs font-bold text-neutral-800 dark:text-white">{am.title}</p>
-                                          <p className="text-[10px] text-neutral-400 mt-0.5">{am.creator?.name} · {new Date(am.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                          <p className="text-[10px] text-neutral-400 mt-0.5">{am.creator?.name} · {new Date(am.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                         </div>
                                         <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${statusColor}`}>{am.status.replace('_', ' ')}</span>
                                       </div>
@@ -1043,7 +1043,7 @@ export default function MarketingPlanDetailModal({
                                           <>
                                             <button onClick={() => handleSubmitAmendment(am.id)}
                                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-[10px] font-bold shadow-sm shadow-emerald-500/25 transition-all cursor-pointer active:scale-95">
-                                              <Send className="w-3 h-3" /> Ajukan Review
+                                              <Send className="w-3 h-3" /> Submit for Review
                                             </button>
                                             <button onClick={() => handleDeleteAmendment(am.id)}
                                               className="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200/60 transition-all cursor-pointer">
@@ -1072,14 +1072,14 @@ export default function MarketingPlanDetailModal({
                                 })}
                               </div>
                             ) : !showAmendmentForm && (
-                              <p className="text-[11px] text-neutral-400 text-center py-4">Belum ada amendment untuk plan ini.</p>
+                              <p className="text-[11px] text-neutral-400 text-center py-4">No amendments for this plan yet.</p>
                             )}
 
                             {/* New amendment form */}
                             {showAmendmentForm ? (
                               <div className="border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 space-y-3 bg-amber-50/30 dark:bg-amber-500/5">
                                 <h5 className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                  <GitMerge className="w-3.5 h-3.5" /> Buat Amendment Baru
+                                  <GitMerge className="w-3.5 h-3.5" /> New Amendment
                                 </h5>
                                 {amendmentError && (
                                   <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-bold px-3 py-2 rounded-lg flex items-center gap-1.5">
@@ -1088,12 +1088,12 @@ export default function MarketingPlanDetailModal({
                                 )}
                                 <div className="space-y-1.5">
                                   <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Judul Amendment</label>
-                                  <input type="text" value={amendmentTitle} onChange={e => setAmendmentTitle(e.target.value)} placeholder="cth: Ganti vendor banner, tambah biaya digital ads"
+                                  <input type="text" value={amendmentTitle} onChange={e => setAmendmentTitle(e.target.value)} placeholder="e.g. Change banner vendor, add digital ads cost"
                                     className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-amber-400 font-semibold" />
                                 </div>
                                 <div className="space-y-1.5">
-                                  <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Justifikasi / Alasan</label>
-                                  <textarea rows={2} value={amendmentJustification} onChange={e => setAmendmentJustification(e.target.value)} placeholder="Jelaskan mengapa perubahan ini diperlukan..."
+                                  <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Justification / Reason</label>
+                                  <textarea rows={2} value={amendmentJustification} onChange={e => setAmendmentJustification(e.target.value)} placeholder="Explain why this change is needed..."
                                     className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-amber-400 resize-none font-medium" />
                                 </div>
 
@@ -1102,7 +1102,7 @@ export default function MarketingPlanDetailModal({
                                   <div className="flex items-center justify-between">
                                     <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Daftar Perubahan</label>
                                     <button onClick={addAmendmentChange} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold transition-all cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-500/20">
-                                      <Plus className="w-3 h-3" /> Tambah Perubahan
+                                      <Plus className="w-3 h-3" /> Add Change
                                     </button>
                                   </div>
                                   {amendmentChanges.map((change, idx) => (
@@ -1111,9 +1111,9 @@ export default function MarketingPlanDetailModal({
                                         <select value={change.action} onChange={e => updateAmendmentChange(idx, 'action', e.target.value)}
                                           className="flex-1 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-bold text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-amber-400">
                                           <option value="CHANGE_VENDOR">Ganti Vendor</option>
-                                          <option value="CHANGE_BUDGET">Ubah Budget</option>
-                                          <option value="ADD_ITEM">Tambah Item Baru</option>
-                                          <option value="REMOVE_ITEM">Hapus Item</option>
+                                          <option value="CHANGE_BUDGET">Change Budget</option>
+                                          <option value="ADD_ITEM">Add New Item</option>
+                                          <option value="REMOVE_ITEM">Remove Item</option>
                                         </select>
                                         <button onClick={() => removeAmendmentChange(idx)} className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all cursor-pointer">
                                           <Trash2 className="w-3 h-3" />
@@ -1122,7 +1122,7 @@ export default function MarketingPlanDetailModal({
                                       {change.action !== 'ADD_ITEM' && (
                                         <select value={change.plan_item_id} onChange={e => updateAmendmentChange(idx, 'plan_item_id', e.target.value)}
                                           className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-amber-400">
-                                          <option value="">— Pilih Item —</option>
+                                          <option value="">— Select Item —</option>
                                           {selectedPlan.items?.map(item => (
                                             <option key={item.id} value={item.id}>{item.m_coa?.code} · {item.m_brand?.name || 'Global'} · {getMonthName(item.period_month, lang)} · {formatIDR(item.budget_amount)}</option>
                                           ))}
@@ -1130,32 +1130,32 @@ export default function MarketingPlanDetailModal({
                                       )}
                                       {change.action === 'CHANGE_VENDOR' && (
                                         <input type="number" value={change.new_vendor_id} onChange={e => updateAmendmentChange(idx, 'new_vendor_id', e.target.value)}
-                                          placeholder="ID Vendor Baru"
+                                          placeholder="New Vendor ID"
                                           className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium focus:outline-none focus:border-amber-400" />
                                       )}
                                       {change.action === 'CHANGE_BUDGET' && (
                                         <input type="number" value={change.budget_delta} onChange={e => updateAmendmentChange(idx, 'budget_delta', e.target.value)}
-                                          placeholder="Delta budget (positif = tambah, negatif = kurang)"
+                                          placeholder="Budget delta (positive = increase, negative = decrease)"
                                           className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium focus:outline-none focus:border-amber-400" />
                                       )}
                                       <input type="text" value={change.change_reason} onChange={e => updateAmendmentChange(idx, 'change_reason', e.target.value)}
-                                        placeholder="Alasan spesifik perubahan ini (opsional)"
+                                        placeholder="Specific reason for this change (optional)"
                                         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium focus:outline-none focus:border-amber-400" />
                                     </div>
                                   ))}
                                   {amendmentChanges.length === 0 && (
-                                    <p className="text-[10px] text-neutral-400 text-center py-2">Klik "Tambah Perubahan" untuk menambahkan item perubahan.</p>
+                                    <p className="text-[10px] text-neutral-400 text-center py-2">Click "Add Change" to add a change item.</p>
                                   )}
                                 </div>
 
                                 <div className="flex items-center justify-end gap-2 pt-1">
                                   <button onClick={() => { setShowAmendmentForm(false); setAmendmentError(null); setAmendmentChanges([]); }}
                                     className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer">
-                                    Batal
+                                    Cancel
                                   </button>
                                   <button onClick={handleSubmitAmendmentDraft} disabled={submittingAmendment}
                                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold shadow-sm shadow-amber-500/25 transition-all cursor-pointer active:scale-95 disabled:opacity-50">
-                                    {submittingAmendment ? <Loader2 className="w-3 h-3 animate-spin" /> : <Flag className="w-3 h-3" />} Simpan Draft
+                                    {submittingAmendment ? <Loader2 className="w-3 h-3 animate-spin" /> : <Flag className="w-3 h-3" />} Save Draft
                                   </button>
                                 </div>
                               </div>
@@ -1179,8 +1179,8 @@ export default function MarketingPlanDetailModal({
                     {!['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
                       <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
                         <BarChart2 className="mx-auto mb-3 h-8 w-8 text-slate-400" />
-                        <h4 className="text-sm font-semibold text-slate-800 dark:text-white">{lang === 'id' ? 'Hasil & closing belum tersedia' : 'Results & closing are not available yet'}</h4>
-                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{lang === 'id' ? 'Tersedia setelah rencana disetujui.' : 'Available once the plan is approved.'}</p>
+                        <h4 className="text-sm font-semibold text-slate-800 dark:text-white">{lang === 'id' ? 'Results & closing not available yet' : 'Results & closing are not available yet'}</h4>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{lang === 'id' ? 'Available after the plan is approved.' : 'Available once the plan is approved.'}</p>
                       </div>
                     )}
                     {/* Post-Campaign Actuals & Completed Plan Performance Report */}
@@ -1192,12 +1192,12 @@ export default function MarketingPlanDetailModal({
                               <h4 className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-1.5">
                                 <BarChart2 className="w-4 h-4 text-indigo-500" />
                                 {selectedPlan.status === 'COMPLETED' 
-                                  ? 'Laporan Hasil Akhir & Evaluasi Kampanye' 
+                                  ? 'Final Results & Campaign Evaluation' 
                                   : t('postCampaignActuals')}
                               </h4>
                               {selectedPlan.status === 'COMPLETED' && (
                                 <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30">
-                                  Tutup Buku & Selesai
+                                  Close Books & Complete
                                 </span>
                               )}
                             </div>
@@ -1221,19 +1221,19 @@ export default function MarketingPlanDetailModal({
                             <div className="space-y-0.5">
                               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualLeads')}</p>
                               <p className="text-xs font-black text-neutral-900 dark:text-white">
-                                {selectedPlan.actual_leads != null ? selectedPlan.actual_leads.toLocaleString('id-ID') : '-'}
+                                {selectedPlan.actual_leads != null ? selectedPlan.actual_leads.toLocaleString('en-GB') : '-'}
                               </p>
                             </div>
                             <div className="space-y-0.5">
                               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualReach')}</p>
                               <p className="text-xs font-black text-neutral-900 dark:text-white">
-                                {selectedPlan.actual_reach != null ? selectedPlan.actual_reach.toLocaleString('id-ID') : '-'}
+                                {selectedPlan.actual_reach != null ? selectedPlan.actual_reach.toLocaleString('en-GB') : '-'}
                               </p>
                             </div>
                             <div className="space-y-0.5">
                               <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">{t('actualImpressions')}</p>
                               <p className="text-xs font-black text-neutral-900 dark:text-white">
-                                {selectedPlan.actual_impressions != null ? selectedPlan.actual_impressions.toLocaleString('id-ID') : '-'}
+                                {selectedPlan.actual_impressions != null ? selectedPlan.actual_impressions.toLocaleString('en-GB') : '-'}
                               </p>
                             </div>
                             <div className="space-y-0.5 col-span-2 md:col-span-1">
@@ -1404,7 +1404,7 @@ export default function MarketingPlanDetailModal({
                         disabled={duplicating}
                         onClick={handleDuplicatePlan}
                         className="px-4 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                        title="Duplikat plan ini sebagai draft baru"
+                        title="Duplicate this plan as a new draft"
                       >
                         {duplicating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
                         Duplikat Plan
@@ -1432,7 +1432,7 @@ export default function MarketingPlanDetailModal({
           onClose={() => setIsReimbursementOpen(false)}
           onSuccess={() => {
             setIsReimbursementOpen(false);
-            onSuccessMsg('Reimbursement diajukan ke Finance.');
+            onSuccessMsg('Reimbursement submitted to Finance.');
             refreshPlanSilently();
           }}
         />
@@ -1480,11 +1480,11 @@ export default function MarketingPlanDetailModal({
                   if (!eventEnd) return null;
                   const isEventPast = new Date() > new Date(eventEnd);
                   if (!isEventPast) return null;
-                  const endLabel = new Date(eventEnd).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                  const endLabel = new Date(eventEnd).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                   return (
                     <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs font-semibold p-3 rounded-xl flex items-start gap-2">
                       <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                      <span>Periode event telah berakhir pada <strong>{endLabel}</strong>. Pengajuan ini akan tercatat sebagai realisasi pasca-event.</span>
+                      <span>The event period ended on <strong>{endLabel}</strong>. This request will be recorded as a post-event actual.</span>
                     </div>
                   );
                 })()}
