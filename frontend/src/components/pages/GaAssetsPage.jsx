@@ -186,6 +186,7 @@ export default function GaAssetsPage() {
   const [categoryId, setCategoryId] = useState('');
   const [locationId, setLocationId] = useState('');
   const [statusId, setStatusId] = useState('');
+  const [conditionId, setConditionId] = useState('');
   const [companyId, setCompanyId] = useState('');
 
   // Temporary filters (bound to UI controls)
@@ -193,6 +194,7 @@ export default function GaAssetsPage() {
   const [tempCategoryId, setTempCategoryId] = useState('');
   const [tempLocationId, setTempLocationId] = useState('');
   const [tempStatusId, setTempStatusId] = useState('');
+  const [tempConditionId, setTempConditionId] = useState('');
   const [tempCompanyId, setTempCompanyId] = useState('');
 
   // Process control
@@ -244,6 +246,7 @@ export default function GaAssetsPage() {
           categoryId: categoryId || undefined,
           locationId: locationId || undefined,
           statusId: statusId || undefined,
+          conditionId: conditionId || undefined,
           companyId: companyId || undefined
         }
       });
@@ -305,7 +308,7 @@ export default function GaAssetsPage() {
     if (hasProcessed) {
       fetchData();
     }
-  }, [page, search, categoryId, locationId, statusId, companyId, hasProcessed]);
+  }, [page, search, categoryId, locationId, statusId, conditionId, companyId, hasProcessed]);
 
   const handleProcessFilter = (e) => {
     if (e) e.preventDefault();
@@ -314,6 +317,7 @@ export default function GaAssetsPage() {
     setCategoryId(tempCategoryId);
     setLocationId(tempLocationId);
     setStatusId(tempStatusId);
+    setConditionId(tempConditionId);
     setCompanyId(tempCompanyId);
     setHasProcessed(true);
   };
@@ -534,7 +538,7 @@ export default function GaAssetsPage() {
           )}
           {hasProcessed && (
             <button
-              onClick={() => handleExportExcel({ search, categoryId, locationId, statusId, companyId, companies, formatIDR, maskNum, setExportingExcel })}
+              onClick={() => handleExportExcel({ search, categoryId, locationId, statusId, conditionId, companyId, companies, formatIDR, maskNum, setExportingExcel })}
               disabled={exportingExcel}
               className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer border border-neutral-200 dark:border-neutral-800 shadow-sm w-fit"
             >
@@ -553,7 +557,7 @@ export default function GaAssetsPage() {
           )}
           {hasProcessed && (
             <button
-              onClick={() => handleExportPDF({ search, categoryId, locationId, statusId, companyId, companies, categories, locations, statuses, formatIDR, maskNum, setExportingPDF })}
+              onClick={() => handleExportPDF({ search, categoryId, locationId, statusId, conditionId, companyId, companies, categories, locations, statuses, conditions, formatIDR, maskNum, setExportingPDF })}
               disabled={exportingPDF}
               className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer border border-neutral-200 dark:border-neutral-800 shadow-sm w-fit"
             >
@@ -682,17 +686,32 @@ export default function GaAssetsPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
-            <div className="w-full sm:w-60">
-              <select
-                value={tempStatusId}
-                onChange={(e) => setTempStatusId(e.target.value)}
-                className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
-              >
-                <option value="">{t('allStatuses')}</option>
-                {statuses.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <div className="w-full sm:w-52">
+                <select
+                  value={tempStatusId}
+                  onChange={(e) => setTempStatusId(e.target.value)}
+                  className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
+                >
+                  <option value="">{t('allStatuses')}</option>
+                  {statuses.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="w-full sm:w-52">
+                <select
+                  value={tempConditionId}
+                  onChange={(e) => setTempConditionId(e.target.value)}
+                  className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
+                >
+                  <option value="">All Condition</option>
+                  {conditions.map((c) => (
+                    <option key={`cond-${c.id}`} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex items-center gap-2.5 w-full sm:w-auto">
@@ -704,11 +723,13 @@ export default function GaAssetsPage() {
                     setTempCategoryId('');
                     setTempLocationId('');
                     setTempStatusId('');
+                    setTempConditionId('');
                     setTempCompanyId('');
                     setSearch('');
                     setCategoryId('');
                     setLocationId('');
                     setStatusId('');
+                    setConditionId('');
                     setCompanyId('');
                     setHasProcessed(false);
                     setData([]);

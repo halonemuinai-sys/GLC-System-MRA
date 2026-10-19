@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 // GET List Assets with pagination, search, & filter
 async function getAssets(req, res, next) {
   try {
-    const { page = 1, limit = 10, search = '', categoryId, locationId, statusId, companyId } = req.query;
+    const { page = 1, limit = 10, search = '', categoryId, locationId, statusId, conditionId, companyId } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const take = parseInt(limit);
 
@@ -24,6 +24,9 @@ async function getAssets(req, res, next) {
     }
     if (statusId) {
       where.status_id = parseInt(statusId);
+    }
+    if (conditionId) {
+      where.condition_id = parseInt(conditionId);
     }
     if (companyId) {
       where.company_id = parseInt(companyId);

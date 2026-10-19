@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { apiClient } from '@/lib/apiClient';
 
-export async function handleExportPDF({ search, categoryId, locationId, statusId, companyId, companies, categories, locations, statuses, formatIDR, maskNum, setExportingPDF }) {
+export async function handleExportPDF({ search, categoryId, locationId, statusId, conditionId, companyId, companies, categories, locations, statuses, conditions = [], formatIDR, maskNum, setExportingPDF }) {
   try {
     setExportingPDF(true);
     
@@ -15,6 +15,7 @@ export async function handleExportPDF({ search, categoryId, locationId, statusId
         categoryId: categoryId || undefined,
         locationId: locationId || undefined,
         statusId: statusId || undefined,
+        conditionId: conditionId || undefined,
         companyId: companyId || undefined
       }
     });
@@ -45,7 +46,7 @@ export async function handleExportPDF({ search, categoryId, locationId, statusId
     doc.setFontSize(10);
     doc.text(`Company: ${companyName}`, 15, 26);
     doc.text(`Generated: ${new Date().toLocaleString('id-ID')}`, 15, 31);
-    doc.text(`Filters - Category: ${categories.find(c => String(c.id) === String(categoryId))?.name || 'All'} | Location: ${locations.find(l => String(l.id) === String(locationId))?.full_name || 'All'} | Status: ${statuses.find(s => String(s.id) === String(statusId))?.name || 'All'}`, 15, 36);
+    doc.text(`Filters - Category: ${categories.find(c => String(c.id) === String(categoryId))?.name || 'All'} | Location: ${locations.find(l => String(l.id) === String(locationId))?.full_name || 'All'} | Status: ${statuses.find(s => String(s.id) === String(statusId))?.name || 'All'} | Condition: ${conditions.find(c => String(c.id) === String(conditionId))?.name || 'All'}`, 15, 36);
     
     doc.setFillColor(79, 70, 229);
     doc.roundedRect(170, 8, 55, 28, 3, 3, 'F');
@@ -193,7 +194,7 @@ export async function handleExportPDF({ search, categoryId, locationId, statusId
   }
 }
 
-export async function handleExportExcel({ search, categoryId, locationId, statusId, companyId, companies, formatIDR, maskNum, setExportingExcel }) {
+export async function handleExportExcel({ search, categoryId, locationId, statusId, conditionId, companyId, companies, formatIDR, maskNum, setExportingExcel }) {
   try {
     setExportingExcel(true);
 
@@ -204,6 +205,7 @@ export async function handleExportExcel({ search, categoryId, locationId, status
         categoryId: categoryId || undefined,
         locationId: locationId || undefined,
         statusId: statusId || undefined,
+        conditionId: conditionId || undefined,
         companyId: companyId || undefined
       }
     });

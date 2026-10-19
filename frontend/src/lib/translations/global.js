@@ -60,6 +60,7 @@ const g = {
     // Filter dropdowns (common across many pages)
     allCompanies: 'All Companies (PT)',
     allStatuses: 'All Statuses',
+    allConditions: 'All Condition',
     allHoldingGroups: 'All Holding Groups',
     allCategories: 'All Categories',
     allLocations: 'All Locations',
@@ -379,6 +380,7 @@ const g = {
     // Filter dropdowns
     allCompanies: 'All Companies (PT)',
     allStatuses: 'All Statuses',
+    allConditions: 'All Condition',
     allHoldingGroups: 'Semua Holding Group',
     allCategories: 'All Categories',
     allLocations: 'Semua Lokasi',
