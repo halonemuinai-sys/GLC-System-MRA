@@ -57,7 +57,7 @@ async function buildNetsuiteWorkbook(pos) {
       ext: po.po_number, vendor: po.vendor?.vendor_code || '', vendor_name: po.vendor?.vendor_name || '', subsidiary: po.company?.name || '',
       date: iso(po.order_date), receive: iso(po.delivery_date), terms: po.payment_terms_days != null ? `Net ${po.payment_terms_days}` : '', memo: po.notes || '',
       account: item?.m_coa?.code || '', account_name: item?.m_coa?.name || '', description: line.description, qty: Number(line.qty), rate: Number(line.unit_price), amount: Number(line.amount),
-      tax: Number(po.tax_rate), department: item?.m_brand?.name || '', class: item?.m_line_business?.name || '', plan: item?.marketing_plan?.title || '',
+      tax_type: po.tax_type || (Number(po.tax_rate) === 2.5 ? 'PPH21_INDIVIDUAL' : Number(po.tax_rate) ? `PPN_${Number(po.tax_rate)}` : 'NONE'), tax: Number(po.tax_rate), department: item?.m_brand?.name || '', class: item?.m_line_business?.name || '', plan: item?.marketing_plan?.title || '',
     });
   }));
   ['rate', 'amount'].forEach(key => { ws.getColumn(key).numFmt = '#,##0'; });

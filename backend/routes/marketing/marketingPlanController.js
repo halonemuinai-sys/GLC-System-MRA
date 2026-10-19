@@ -1075,7 +1075,7 @@ async function getPlanDetail(req, res, next) {
             po_lines: {
               include: {
                 purchase_order: {
-                  select: { id: true, po_number: true, status: true, tax_rate: true, netsuite_status: true, netsuite_ref: true, order_date: true, delivery_date: true, issued_at: true, vendor: { select: { vendor_name: true, vendor_code: true } } }
+                  select: { id: true, po_number: true, status: true, tax_type: true, tax_rate: true, netsuite_status: true, netsuite_ref: true, order_date: true, delivery_date: true, issued_at: true, vendor: { select: { vendor_name: true, vendor_code: true } } }
                 }
               }
             }
@@ -1119,7 +1119,8 @@ async function getPlanDetail(req, res, next) {
     }) : [];
     const committedMap = Object.fromEntries(committedGroups.map(g => [g.marketing_plan_item_id, Number(g._sum.amount || 0)]));
 
-    // GA purchase orders per item (cancelled ones dropped). `available` = line + PPN minus
+    // GA purchase orders per item (cancelled ones dropped). `available` is the vendor
+    // payable after its selected tax treatment, minus linked payment requests.
     // payment requests (not rejected) already linked to that PO for this item.
     const itemsWithVariance = plan.items.map(({ po_lines: poLines = [], ...item }) => ({
       ...item,
@@ -1128,7 +1129,10 @@ async function getPlanDetail(req, res, next) {
         .filter(line => line.purchase_order && line.purchase_order.status !== 'CANCELLED')
         .map(line => {
           const po = line.purchase_order;
-          const lineTotal = Math.round(Number(line.amount) * (1 + Number(po.tax_rate) / 100) * 100) / 100;
+          const taxRate = Number(po.tax_rate || 0);
+          const isPph21 = String(po.tax_type || '').toUpperCase() === 'PPH21_INDIVIDUAL'
+            || (!po.tax_type && taxRate === 2.5);
+          const lineTotal = Math.round(Number(line.amount) * (isPph21 ? 1 - taxRate / 100 : 1 + taxRate / 100) * 100) / 100;
           const used = (item.payment_requests || []).filter(pr => pr.purchase_order_id === po.id && pr.status !== 'REJECTED').reduce((sum, pr) => sum + Number(pr.amount), 0);
           const paid = (item.payment_requests || []).filter(pr => pr.purchase_order_id === po.id && pr.status === 'PAID').reduce((sum, pr) => sum + Number(pr.amount), 0);
           return { ...po, line_description: line.description, line_amount: Number(line.amount), line_total: lineTotal, requested: used, paid, available: Math.max(0, Math.round((lineTotal - used) * 100) / 100) };

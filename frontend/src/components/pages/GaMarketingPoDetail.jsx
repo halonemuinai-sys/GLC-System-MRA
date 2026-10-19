@@ -20,6 +20,9 @@ export const NS_STATUS = {
 };
 export const formatDate = (v) => (v ? new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—');
 
+const taxLabel = po => po.tax_type === 'PPH21_INDIVIDUAL' ? 'PPh 21 individual 2.5%' : po.tax_type === 'PPN_12' ? 'PPN 12%' : po.tax_type === 'PPN_11' ? 'PPN 11%' : Number(po.tax_rate) === 12 ? 'PPN 12%' : Number(po.tax_rate) === 11 ? 'PPN 11%' : Number(po.tax_rate) === 2.5 ? 'PPh 21 individual 2.5%' : 'No tax';
+const isWithholdingTax = po => po.tax_type === 'PPH21_INDIVIDUAL' || (!po.tax_type && Number(po.tax_rate) === 2.5);
+
 export function StatusPill({ status }) {
   const cfg = PO_STATUS[status] || PO_STATUS.DRAFT;
   return <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${cfg.cls}`}><span className="h-1 w-1 rounded-full bg-current" />{cfg.label}</span>;
@@ -88,6 +91,7 @@ export default function GaMarketingPoDetail({ po, canWrite, onClose, onEdit, onC
               [CalendarDays, 'Order date', formatDate(po.order_date)],
               [CalendarDays, 'Delivery date', formatDate(po.delivery_date)],
               [Hash, 'Terms', po.payment_terms_days != null ? `Net ${po.payment_terms_days}` : '—'],
+              [Hash, 'Price entry', po.tax_inclusive ? `Includes ${taxLabel(po)}` : 'Excludes tax'],
               [Building2, 'Vendor code', po.vendor?.vendor_code || 'Missing'],
               [Building2, 'NPWP', po.vendor?.npwp || '—'],
               [CheckCircle2, 'Issued', po.issued_at ? `${formatDate(po.issued_at)} · ${po.issued_by || ''}` : '—'],
@@ -117,8 +121,8 @@ export default function GaMarketingPoDetail({ po, canWrite, onClose, onEdit, onC
                 </tbody>
                 <tfoot className="border-t border-slate-200 text-xs dark:border-slate-700">
                   <tr><td colSpan={3} className="px-3 py-1.5 text-right text-slate-500">Subtotal</td><td className="px-3 py-1.5 text-right tabular-nums">{formatIDR(po.subtotal)}</td></tr>
-                  <tr><td colSpan={3} className="px-3 py-1.5 text-right text-slate-500">PPN {Number(po.tax_rate)}%</td><td className="px-3 py-1.5 text-right tabular-nums">{formatIDR(po.tax_amount)}</td></tr>
-                  <tr><td colSpan={3} className="px-3 py-2 text-right font-semibold">Total</td><td className="px-3 py-2 text-right font-semibold tabular-nums">{formatIDR(po.total)}</td></tr>
+                  <tr><td colSpan={3} className="px-3 py-1.5 text-right text-slate-500">{taxLabel(po)}</td><td className="px-3 py-1.5 text-right tabular-nums">{isWithholdingTax(po) ? `− ${formatIDR(po.tax_amount)}` : formatIDR(po.tax_amount)}</td></tr>
+                  <tr><td colSpan={3} className="px-3 py-2 text-right font-semibold">{isWithholdingTax(po) ? 'Vendor payable' : 'Vendor payable (incl. PPN)'}</td><td className="px-3 py-2 text-right font-semibold tabular-nums">{formatIDR(po.total)}</td></tr>
                 </tfoot>
               </table>
             </div>

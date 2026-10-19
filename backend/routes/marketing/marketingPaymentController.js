@@ -8,12 +8,21 @@ const isAdmin = req => hasRole(req, 'admin');
 const toMoney = value => Math.round(Number(value || 0) * 100) / 100;
 const TAX_EPSILON = 0.01;
 
-// Marketing plan amounts are recorded before PPN. A vendor payment still keeps its
-// gross cash amount, but only its pre-tax portion consumes the campaign item budget.
-// Reimbursements do not have a PO tax breakdown, so their full amount is budget impact.
+// Marketing plan amounts are recorded before PPN. A vendor payment keeps its cash
+// transfer amount, while campaign actuals use the PO base cost: PPN is excluded and
+// PPh 21 withholding is added back to the vendor transfer. Reimbursements use full amount.
+const taxTypeOf = purchaseOrder => String(purchaseOrder?.tax_type || '').toUpperCase()
+  || (Number(purchaseOrder?.tax_rate || 0) === 2.5 ? 'PPH21_INDIVIDUAL' : 'PPN');
+const isPph21Withholding = purchaseOrder => taxTypeOf(purchaseOrder) === 'PPH21_INDIVIDUAL';
 const getBudgetImpact = (amount, purchaseOrder) => {
   const taxRate = Math.max(0, Number(purchaseOrder?.tax_rate || 0));
+  if (isPph21Withholding(purchaseOrder) && taxRate > 0) return toMoney(Number(amount) / (1 - taxRate / 100));
   return taxRate > 0 ? toMoney(Number(amount) / (1 + taxRate / 100)) : toMoney(amount);
+};
+const getPoPayableAmount = (baseAmount, purchaseOrder) => {
+  const taxRate = Math.max(0, Number(purchaseOrder?.tax_rate || 0));
+  const multiplier = isPph21Withholding(purchaseOrder) ? 1 - taxRate / 100 : 1 + taxRate / 100;
+  return toMoney(Number(baseAmount || 0) * multiplier);
 };
 
 const PAYMENT_INCLUDE = {
@@ -26,7 +35,7 @@ const PAYMENT_INCLUDE = {
     }
   },
   creator: { select: { id: true, name: true, email: true } },
-  purchase_order: { select: { id: true, po_number: true, tax_rate: true } },
+  purchase_order: { select: { id: true, po_number: true, tax_type: true, tax_rate: true } },
   approval_history: {
     orderBy: { step_number: 'asc' },
     include: {
@@ -97,7 +106,7 @@ async function createPaymentRequest(req, res, next) {
     }
 
     // No PO = no payment: a vendor payment must use an issued GA purchase order that contains
-    // this item, and stay within that PO line (incl. PPN) minus requests already linked to it.
+    // this item, and stay within that PO vendor-payable amount after its selected tax treatment.
     // Reimbursements (claims) go through /claims and never need a PO.
     const purchaseOrderId = parseInt(req.body.purchase_order_id, 10);
     if (!Number.isInteger(purchaseOrderId)) {
@@ -114,7 +123,7 @@ async function createPaymentRequest(req, res, next) {
       return res.status(400).json({ error: 'This purchase order does not cover the selected item.' });
     }
     if (po.status !== 'ISSUED') return res.status(400).json({ error: `Purchase order ${po.po_number} is ${po.status.toLowerCase()}; only issued POs can be paid.` });
-    const poLineTotal = po.lines.reduce((sum, line) => sum + Number(line.amount), 0) * (1 + Number(po.tax_rate) / 100);
+    const poLineTotal = getPoPayableAmount(po.lines.reduce((sum, line) => sum + Number(line.amount), 0), po);
     const poAvailable = Math.round((poLineTotal - po.payment_requests.reduce((sum, p) => sum + Number(p.amount), 0)) * 100) / 100;
     if (itemAmt > poAvailable + 0.01) {
       return res.status(400).json({ error: `Only Rp ${Math.max(0, Math.round(poAvailable)).toLocaleString('id-ID')} is left on ${po.po_number} for this item.` });
@@ -124,7 +133,7 @@ async function createPaymentRequest(req, res, next) {
     // approved but not yet paid) — actual_amount only grows when a payment is PAID.
     const inFlight = await prisma.payment_requests.findMany({
       where: { marketing_plan_item_id: planItem.id, status: { in: OPEN_STATUSES } },
-      select: { amount: true, purchase_order: { select: { tax_rate: true } } }
+      select: { amount: true, purchase_order: { select: { tax_type: true, tax_rate: true } } }
     });
     const committed = toMoney(inFlight.reduce((total, request) => total + getBudgetImpact(request.amount, request.purchase_order), 0));
     const remainingBudget = toMoney(parseFloat(planItem.budget_amount) - parseFloat(planItem.actual_amount) - committed);
@@ -411,7 +420,7 @@ async function recheckBudget(req, res, next) {
     const item = payment.marketing_plan_item;
     const inFlight = await prisma.payment_requests.findMany({
       where: { marketing_plan_item_id: item.id, id: { not: id }, status: { in: OPEN_STATUSES } },
-      select: { amount: true, purchase_order: { select: { tax_rate: true } } }
+      select: { amount: true, purchase_order: { select: { tax_type: true, tax_rate: true } } }
     });
     const committed = toMoney(inFlight.reduce((total, request) => total + getBudgetImpact(request.amount, request.purchase_order), 0));
     const remainingBudget = toMoney(Number(item.budget_amount) - Number(item.actual_amount) - committed);
@@ -432,7 +441,7 @@ async function recheckBudget(req, res, next) {
     res.json({
       payment: updated,
       budget_impact_amount: budgetImpact,
-      tax_amount: toMoney(Number(payment.amount) - budgetImpact),
+      tax_amount: toMoney(Math.abs(Number(payment.amount) - budgetImpact)),
       remaining_budget: remainingBudget,
       resolved: payment.status === 'OVERBUDGET_WARN' && nextStatus === 'PENDING'
     });
@@ -464,7 +473,7 @@ async function setPoNumber(req, res, next) {
       if (!po || po.company_id !== payment.marketing_plan_item.marketing_plan.company_id) return res.status(400).json({ error: 'Purchase order not found for this company.' });
       if (po.status !== 'ISSUED') return res.status(400).json({ error: 'Only issued purchase orders can be linked.' });
       if (!po.lines.length) return res.status(400).json({ error: 'This purchase order has no line for the payment item.' });
-      const lineTotal = po.lines.reduce((sum, line) => sum + Number(line.amount), 0) * (1 + Number(po.tax_rate) / 100);
+      const lineTotal = getPoPayableAmount(po.lines.reduce((sum, line) => sum + Number(line.amount), 0), po);
       const used = po.payment_requests.reduce((sum, p) => sum + Number(p.amount), 0);
       if (Number(payment.amount) > Math.round((lineTotal - used) * 100) / 100 + 0.01) {
         return res.status(400).json({ error: `The PO line only has Rp ${Math.max(0, Math.round(lineTotal - used)).toLocaleString('id-ID')} left for this item.` });

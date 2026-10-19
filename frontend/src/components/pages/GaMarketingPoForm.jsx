@@ -10,6 +10,14 @@ import InlineHelp from '@/components/ui/InlineHelp';
 
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const formatIDR = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(val || 0));
+const TAX_OPTIONS = [
+  { value: 'NONE', rate: 0, label: 'No tax', kind: 'NONE' },
+  { value: 'PPN_11', rate: 11, label: 'PPN 11%', kind: 'PPN' },
+  { value: 'PPN_12', rate: 12, label: 'PPN 12%', kind: 'PPN' },
+  { value: 'PPH21_INDIVIDUAL', rate: 2.5, label: 'PPh 21 individual 2.5%', kind: 'WITHHOLDING' }
+];
+const taxTypeFromPo = po => po?.tax_type || (Number(po?.tax_rate) === 11 ? 'PPN_11' : Number(po?.tax_rate) === 12 ? 'PPN_12' : Number(po?.tax_rate) === 2.5 ? 'PPH21_INDIVIDUAL' : 'NONE');
+const taxLabel = type => TAX_OPTIONS.find(option => option.value === type)?.label || 'No tax';
 const today = () => new Date().toISOString().slice(0, 10);
 const money = (v) => Math.round(Number(v || 0) * 100) / 100;
 
@@ -19,11 +27,16 @@ export default function GaMarketingPoForm({ seedItems = [], po = null, queue = [
   const queueMap = useMemo(() => new Map(queue.map(item => [item.id, item])), [queue]);
   const first = seedItems[0];
   const marketingVendor = seedItems.find(item => item.vendors)?.vendors || null;
+  const initialTax = TAX_OPTIONS.find(option => option.value === taxTypeFromPo(po)) || TAX_OPTIONS[0];
+  const initialTaxInclusive = Boolean(po?.tax_inclusive && initialTax.kind === 'PPN');
+  const initialPriceMultiplier = initialTaxInclusive ? 1 + initialTax.rate / 100 : 1;
   const [header, setHeader] = useState(() => po ? {
     vendor_id: String(po.vendor_id),
     order_date: po.order_date?.slice(0, 10) || today(),
     delivery_date: po.delivery_date?.slice(0, 10) || '',
+    tax_type: taxTypeFromPo(po),
     tax_rate: Number(po.tax_rate),
+    tax_inclusive: initialTaxInclusive,
     payment_terms_days: po.payment_terms_days ?? '',
     notes: po.notes || ''
   } : {
@@ -32,12 +45,14 @@ export default function GaMarketingPoForm({ seedItems = [], po = null, queue = [
     order_date: today(),
     // Earliest upcoming event date of the selected plans; past events leave it empty.
     delivery_date: seedItems.map(i => i.marketing_plan?.event_start_date?.slice(0, 10)).filter(d => d && d >= today()).sort()[0] || '',
+    tax_type: 'PPN_11',
     tax_rate: 11,
+    tax_inclusive: false,
     payment_terms_days: '',
     notes: ''
   });
   const [lines, setLines] = useState(() => po
-    ? po.lines.map(line => ({ item: line.marketing_plan_item, itemId: line.marketing_plan_item_id, description: line.description, qty: Number(line.qty), unit_price: Number(line.unit_price), ownAmount: Number(line.amount) }))
+    ? po.lines.map(line => ({ item: line.marketing_plan_item, itemId: line.marketing_plan_item_id, description: line.description, qty: Number(line.qty), unit_price: money(Number(line.unit_price) * initialPriceMultiplier), ownAmount: Number(line.amount) }))
     : seedItems.map(item => {
       const qty = Number(item.qty) > 0 ? Number(item.qty) : 1;
       const unit = Number(item.unit_price) > 0 && money(qty * item.unit_price) <= item.remaining ? Number(item.unit_price) : money(item.remaining / qty);
@@ -49,20 +64,44 @@ export default function GaMarketingPoForm({ seedItems = [], po = null, queue = [
   const companyName = po?.company?.name || first?.marketing_plan?.company?.name;
   const companyId = po?.company_id || first?.marketing_plan?.company?.id;
   const vendor = vendors.find(v => String(v.id) === String(header.vendor_id));
+  const selectedTax = TAX_OPTIONS.find(option => option.value === header.tax_type) || TAX_OPTIONS[0];
+  const isPpnTax = selectedTax.kind === 'PPN';
+  const taxInclusive = isPpnTax && header.tax_inclusive;
+  const priceMultiplier = taxInclusive ? 1 + selectedTax.rate / 100 : 1;
 
   // Remaining budget available to each line = queue remaining (other POs) + what this draft already holds.
   const rows = lines.map(line => {
     const queued = queueMap.get(line.itemId);
     const available = money((queued ? queued.remaining : 0) + line.ownAmount);
-    const amount = money(Number(line.qty) * Number(line.unit_price));
-    return { ...line, available, amount, over: amount > available + 0.001, invalid: !(Number(line.qty) > 0) || !(Number(line.unit_price) >= 0) || amount <= 0 || !line.description.trim() };
+    const quotedAmount = money(Number(line.qty) * Number(line.unit_price));
+    const baseAmount = money(quotedAmount / priceMultiplier);
+    return { ...line, available, quotedAmount, amount: baseAmount, over: baseAmount > available + 0.001, invalid: !(Number(line.qty) > 0) || !(Number(line.unit_price) >= 0) || baseAmount <= 0 || !line.description.trim() };
   });
   const subtotal = money(rows.reduce((s, r) => s + r.amount, 0));
-  const tax = money(subtotal * Number(header.tax_rate) / 100);
+  const tax = money(subtotal * selectedTax.rate / 100);
+  const isWithholdingTax = selectedTax.value === 'PPH21_INDIVIDUAL';
+  const payableTotal = money(isWithholdingTax ? subtotal - tax : taxInclusive ? rows.reduce((sum, row) => sum + row.quotedAmount, 0) : subtotal + tax);
   const dateProblem = header.delivery_date && header.delivery_date < header.order_date;
   const hasProblem = !header.vendor_id || !rows.length || rows.some(r => r.over || r.invalid) || dateProblem;
 
   const update = (idx, patch) => setLines(prev => prev.map((line, i) => (i === idx ? { ...line, ...patch } : line)));
+  const preserveBasePrices = (nextTax, nextInclusive) => {
+    setLines(prev => prev.map(line => {
+      const baseUnit = money(Number(line.unit_price) / priceMultiplier);
+      return { ...line, unit_price: money(baseUnit * (nextInclusive ? 1 + nextTax.rate / 100 : 1)) };
+    }));
+  };
+  const changeTaxTreatment = (taxType) => {
+    const nextTax = TAX_OPTIONS.find(option => option.value === taxType) || TAX_OPTIONS[0];
+    const nextInclusive = nextTax.kind === 'PPN' ? taxInclusive : false;
+    preserveBasePrices(nextTax, nextInclusive);
+    setHeader(h => ({ ...h, tax_type: nextTax.value, tax_rate: nextTax.rate, tax_inclusive: nextInclusive }));
+  };
+  const toggleTaxInclusive = () => {
+    const nextInclusive = !taxInclusive;
+    preserveBasePrices(selectedTax, nextInclusive);
+    setHeader(h => ({ ...h, tax_inclusive: nextInclusive }));
+  };
   const save = async (issue) => {
     if (hasProblem || saving) return;
     setSaving(issue ? 'issue' : 'draft');
@@ -72,7 +111,9 @@ export default function GaMarketingPoForm({ seedItems = [], po = null, queue = [
       vendor_id: header.vendor_id,
       order_date: header.order_date,
       delivery_date: header.delivery_date || null,
-      tax_rate: Number(header.tax_rate),
+      tax_type: header.tax_type,
+      tax_rate: selectedTax.rate,
+      tax_inclusive: taxInclusive,
       payment_terms_days: header.payment_terms_days === '' ? null : header.payment_terms_days,
       notes: header.notes,
       lines: rows.map(r => ({ marketing_plan_item_id: r.itemId, description: r.description, qty: r.qty, unit_price: r.unit_price })),
@@ -120,10 +161,11 @@ export default function GaMarketingPoForm({ seedItems = [], po = null, queue = [
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="po-tax" className={label}>Tax (PPN)</label>
-                <select id="po-tax" value={header.tax_rate} onChange={e => setHeader(h => ({ ...h, tax_rate: Number(e.target.value) }))} className={field}>
-                  <option value={0}>No PPN</option><option value={11}>PPN 11%</option><option value={12}>PPN 12%</option>
+                <label htmlFor="po-tax" className={label}>Tax treatment</label>
+                <select id="po-tax" value={header.tax_type} onChange={e => changeTaxTreatment(e.target.value)} className={field}>
+                  {TAX_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
+                {isPpnTax && <button type="button" aria-pressed={taxInclusive} onClick={toggleTaxInclusive} className={`mt-2 inline-flex h-7 w-full items-center justify-center rounded-md border px-2 text-[10px] font-semibold transition-colors cursor-pointer ${taxInclusive ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400'}`}>{taxInclusive ? '✓ Line price includes PPN' : 'Line price excludes PPN'}</button>}
               </div>
               <div>
                 <label htmlFor="po-terms" className={label}>Terms (days)</label>
@@ -140,7 +182,7 @@ export default function GaMarketingPoForm({ seedItems = [], po = null, queue = [
             <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
               <table className="w-full min-w-[640px] table-fixed text-left text-xs">
                 <thead className="bg-slate-50/80 text-[10px] uppercase tracking-wider text-slate-400 dark:bg-slate-900">
-                  <tr><th className="w-[38%] px-3 py-2 font-semibold">Description / plan item</th><th className="w-[12%] px-2 py-2 font-semibold">Qty</th><th className="w-[20%] px-2 py-2 font-semibold">Unit price</th><th className="w-[22%] px-2 py-2 text-right font-semibold">Amount</th><th className="w-[8%] px-2 py-2" /></tr>
+                  <tr><th className="w-[38%] px-3 py-2 font-semibold">Description / plan item</th><th className="w-[12%] px-2 py-2 font-semibold">Qty</th><th className="w-[20%] px-2 py-2 font-semibold">{taxInclusive ? 'Unit price (incl. PPN)' : 'Unit price'}</th><th className="w-[22%] px-2 py-2 text-right font-semibold">{taxInclusive ? 'Plan cost (excl. PPN)' : 'Amount'}</th><th className="w-[8%] px-2 py-2" /></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {rows.map((row, idx) => (
@@ -168,10 +210,10 @@ export default function GaMarketingPoForm({ seedItems = [], po = null, queue = [
               <textarea id="po-notes" rows={4} maxLength={2000} value={header.notes} onChange={e => setHeader(h => ({ ...h, notes: e.target.value }))} placeholder="Delivery instructions, scope or reference for the vendor" className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-900" />
             </div>
             <div className="space-y-2 rounded-xl border border-slate-200 p-4 text-xs dark:border-slate-800">
-              <div className="flex justify-between text-slate-500"><span>Subtotal</span><span className="tabular-nums text-slate-800 dark:text-slate-100">{formatIDR(subtotal)}</span></div>
-              <div className="flex justify-between text-slate-500"><span>PPN {header.tax_rate}%</span><span className="tabular-nums text-slate-800 dark:text-slate-100">{formatIDR(tax)}</span></div>
-              <div className="flex justify-between border-t border-slate-100 pt-2 text-sm font-semibold dark:border-slate-800"><span>Total</span><span className="tabular-nums text-slate-900 dark:text-white">{formatIDR(subtotal + tax)}</span></div>
-              <p className="flex items-start gap-1.5 pt-1 text-[10px] text-slate-400"><Info className="mt-0.5 h-3 w-3 shrink-0" />Payment requests linked to this PO can use up to the line amount plus PPN.</p>
+              <div className="flex justify-between text-slate-500"><span>{taxInclusive ? 'Plan cost (excl. PPN)' : 'Subtotal'}</span><span className="tabular-nums text-slate-800 dark:text-slate-100">{formatIDR(subtotal)}</span></div>
+              <div className="flex justify-between text-slate-500"><span>{taxLabel(selectedTax.value)}</span><span className="tabular-nums text-slate-800 dark:text-slate-100">{isWithholdingTax ? `− ${formatIDR(tax)}` : formatIDR(tax)}</span></div>
+              <div className="flex justify-between border-t border-slate-100 pt-2 text-sm font-semibold dark:border-slate-800"><span>{isWithholdingTax ? 'Vendor payable' : 'Vendor payable (incl. PPN)'}</span><span className="tabular-nums text-slate-900 dark:text-white">{formatIDR(payableTotal)}</span></div>
+              <p className="flex items-start gap-1.5 pt-1 text-[10px] text-slate-400"><Info className="mt-0.5 h-3 w-3 shrink-0" />{isWithholdingTax ? 'PPh 21 is withheld from the vendor transfer; the plan cost remains the pre-tax subtotal.' : taxInclusive ? 'Vendor quotes are entered including PPN. The system automatically derives the pre-tax value for the plan budget and campaign actuals.' : 'PPN is added to the vendor payable and does not consume the campaign plan budget.'}</p>
             </div>
           </div>
           {error && <div role="alert" className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-400"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>}

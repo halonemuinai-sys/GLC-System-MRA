@@ -5,7 +5,13 @@ const { nextDocNumber } = require('./gaDocNumber');
 // basis for the vendor PO in NetSuite. One PO = one vendor + one company (NetSuite subsidiary);
 // lines may come from several plans. The PO subtotal (before tax) counts against item budgets.
 
-const TAX_RATES = [0, 11, 12];
+const TAX_OPTIONS = {
+  NONE: { rate: 0, kind: 'NONE' },
+  PPN_11: { rate: 11, kind: 'PPN' },
+  PPN_12: { rate: 12, kind: 'PPN' },
+  PPH21_INDIVIDUAL: { rate: 2.5, kind: 'WITHHOLDING' }
+};
+const TAX_RATES = Object.values(TAX_OPTIONS).map(option => option.rate);
 const OPEN_PO_STATUSES = ['DRAFT', 'ISSUED', 'CLOSED']; // everything except CANCELLED commits budget
 const PO_PREFIX = 'PO-MKT';
 const MAX_LINES = 100;
@@ -19,10 +25,29 @@ const actor = req => req.user?.email || req.user?.full_name || null;
 const inScope = (req, companyId) => !req.companyScope || req.companyScope.all || req.companyScope.companyIds.includes(Number(companyId));
 const scopeWhere = (req, field = 'company_id') => (!req.companyScope || req.companyScope.all ? {} : { [field]: { in: req.companyScope.companyIds.length ? req.companyScope.companyIds : [-1] } });
 
-function computeTotals(lines, taxRate) {
+function taxTypeForLegacyRate(taxRate) {
+  if (Number(taxRate) === 11) return 'PPN_11';
+  if (Number(taxRate) === 12) return 'PPN_12';
+  if (Number(taxRate) === 2.5) return 'PPH21_INDIVIDUAL';
+  return 'NONE';
+}
+
+function resolveTax(body) {
+  const requestedType = String(body.tax_type || '').trim().toUpperCase();
+  const legacyRate = Number(body.tax_rate ?? 0);
+  const taxType = requestedType || taxTypeForLegacyRate(legacyRate);
+  const tax = TAX_OPTIONS[taxType];
+  if (!tax) throw httpError(400, 'Select a supported tax type: none, PPN 11%, PPN 12%, or PPh 21 individual 2.5%.');
+  if (!requestedType && !TAX_RATES.includes(legacyRate)) throw httpError(400, 'Tax rate must be 0%, 2.5%, 11% or 12%.');
+  if (requestedType && body.tax_rate !== undefined && Number(body.tax_rate) !== tax.rate) throw httpError(400, 'Tax type and tax rate do not match.');
+  return { tax_type: taxType, tax_rate: tax.rate, tax_kind: tax.kind };
+}
+
+function computeTotals(lines, taxRate, taxType = null) {
   const subtotal = toMoney(lines.reduce((sum, line) => sum + toMoney(Number(line.qty) * Number(line.unit_price)), 0));
   const taxAmount = toMoney(subtotal * Number(taxRate) / 100);
-  return { subtotal, tax_amount: taxAmount, total: toMoney(subtotal + taxAmount) };
+  const isWithholding = (taxType || taxTypeForLegacyRate(taxRate)) === 'PPH21_INDIVIDUAL';
+  return { subtotal, tax_amount: taxAmount, total: toMoney(isWithholding ? subtotal - taxAmount : subtotal + taxAmount) };
 }
 
 function parseDate(value) {
@@ -49,10 +74,11 @@ async function committedByItem(db, itemIds, excludePoId = null) {
 async function validatePayload(db, req, body, excludePoId = null) {
   const companyId = parseInt(body.company_id, 10);
   const vendorId = parseInt(body.vendor_id, 10);
-  const taxRate = Number(body.tax_rate ?? 0);
+  const tax = resolveTax(body);
+  const taxRate = tax.tax_rate;
+  const taxInclusive = tax.tax_kind === 'PPN' && body.tax_inclusive === true;
   if (!Number.isInteger(companyId) || !inScope(req, companyId)) throw httpError(400, 'Select a company you have access to.');
   if (!Number.isInteger(vendorId)) throw httpError(400, 'Select a vendor.');
-  if (!TAX_RATES.includes(taxRate)) throw httpError(400, 'Tax rate must be 0%, 11% or 12%.');
   const orderDate = parseDate(body.order_date) ?? new Date(new Date().toISOString().slice(0, 10));
   const deliveryDate = parseDate(body.delivery_date);
   if (orderDate === undefined || deliveryDate === undefined) throw httpError(400, 'Invalid order or delivery date.');
@@ -70,12 +96,15 @@ async function validatePayload(db, req, body, excludePoId = null) {
   const lines = rawLines.map((line, index) => {
     const itemId = parseInt(line.marketing_plan_item_id, 10);
     const qty = Number(line.qty);
-    const unitPrice = Number(line.unit_price);
+    const quotedUnitPrice = Number(line.unit_price);
     const description = typeof line.description === 'string' ? line.description.trim().replace(/\s+/g, ' ') : '';
     if (!Number.isInteger(itemId)) throw httpError(400, `Line ${index + 1}: select a plan item.`);
     if (!description || description.length > 255) throw httpError(400, `Line ${index + 1}: description is required (max 255 characters).`);
     if (!Number.isFinite(qty) || qty <= 0) throw httpError(400, `Line ${index + 1}: quantity must be greater than 0.`);
-    if (!Number.isFinite(unitPrice) || unitPrice < 0) throw httpError(400, `Line ${index + 1}: unit price cannot be negative.`);
+    if (!Number.isFinite(quotedUnitPrice) || quotedUnitPrice < 0) throw httpError(400, `Line ${index + 1}: unit price cannot be negative.`);
+    // When the vendor quote already includes PPN, persist only the pre-tax base so
+    // plan budget checks and campaign realization always use the same net value.
+    const unitPrice = taxInclusive ? toMoney(quotedUnitPrice / (1 + taxRate / 100)) : quotedUnitPrice;
     const amount = toMoney(qty * unitPrice);
     if (amount <= 0) throw httpError(400, `Line ${index + 1}: amount must be greater than 0.`);
     return { marketing_plan_item_id: itemId, description, qty: toMoney(qty), unit_price: toMoney(unitPrice), amount };
@@ -104,12 +133,14 @@ async function validatePayload(db, req, body, excludePoId = null) {
     header: {
       company_id: companyId,
       vendor_id: vendorId,
+      tax_type: tax.tax_type,
+      tax_inclusive: taxInclusive,
       tax_rate: taxRate,
       order_date: orderDate,
       delivery_date: deliveryDate,
       payment_terms_days: terms ?? vendor.top_days ?? null,
       notes: typeof body.notes === 'string' && body.notes.trim() ? body.notes.trim().slice(0, 2000) : null,
-      ...computeTotals(lines, taxRate)
+      ...computeTotals(lines, taxRate, tax.tax_type)
     },
     lines
   };
@@ -290,6 +321,8 @@ async function issuePurchaseOrder(req, res, next) {
     const po = await prisma.$transaction(async tx => {
       await validatePayload(tx, req, {
         ...existing,
+        tax_type: existing.tax_type || taxTypeForLegacyRate(existing.tax_rate),
+        tax_inclusive: false,
         tax_rate: Number(existing.tax_rate),
         order_date: existing.order_date?.toISOString(),
         delivery_date: existing.delivery_date?.toISOString(),
@@ -421,7 +454,7 @@ async function getPosForItem(req, res, next) {
     if (!Number.isInteger(itemId)) return res.json([]);
     const pos = await prisma.purchase_orders.findMany({
       where: { status: 'ISSUED', ...scopeWhere(req), lines: { some: { marketing_plan_item_id: itemId } } },
-      select: { id: true, po_number: true, total: true, tax_rate: true, vendor: { select: { vendor_name: true } }, lines: { where: { marketing_plan_item_id: itemId }, select: { amount: true, description: true } } },
+      select: { id: true, po_number: true, total: true, tax_type: true, tax_rate: true, vendor: { select: { vendor_name: true } }, lines: { where: { marketing_plan_item_id: itemId }, select: { amount: true, description: true } } },
       orderBy: { id: 'desc' }
     });
     res.json(pos);
@@ -445,5 +478,5 @@ module.exports = {
   issuePurchaseOrder, cancelPurchaseOrder, closePurchaseOrder, reopenPurchaseOrder, deletePurchaseOrder,
   exportForNetsuite, setNetsuiteRef, getPosForItem, getVendorOptions,
   // exported for tests
-  computeTotals, validatePayload, TAX_RATES
+  computeTotals, validatePayload, TAX_RATES, TAX_OPTIONS, taxTypeForLegacyRate
 };

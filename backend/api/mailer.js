@@ -34,20 +34,18 @@ async function sendPasswordResetEmail({ to, fullName, resetUrl }) {
   const subject = 'Reset Password - GLC Apps MRA Group';
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1f2937;">
-      <h2 style="color: #4f46e5; margin-bottom: 4px;">Reset Password</h2>
+      <h2 style="color: #0f172a; margin-bottom: 4px;">Reset Password</h2>
       <p>Halo ${greetingName},</p>
       <p>Kami menerima permintaan untuk mereset password akun GLC Apps Anda. Klik tombol di bawah untuk membuat password baru:</p>
       <p style="text-align: center; margin: 24px 0;">
-        <a href="${resetUrl}" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Reset Password</a>
+        <a href="${resetUrl}" style="background: #0f766e; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Reset Password</a>
       </p>
-      <p>Atau salin link berikut ke browser Anda:</p>
-      <p style="word-break: break-all; font-size: 12px; color: #6b7280;">${resetUrl}</p>
       <p style="font-size: 12px; color: #6b7280;">Link ini berlaku selama 1 jam. Jika Anda tidak meminta reset password, abaikan email ini.</p>
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
       <p style="font-size: 11px; color: #9ca3af;">Email otomatis dari sistem GLC Apps - MRA Group. Jangan membalas email ini.</p>
     </div>
   `;
-  const text = `Halo ${greetingName},\n\nKami menerima permintaan untuk mereset password akun GLC Apps Anda.\nBuka link berikut untuk membuat password baru (berlaku 1 jam):\n${resetUrl}\n\nJika Anda tidak meminta reset password, abaikan email ini.`;
+  const text = `Halo ${greetingName},\n\nKami menerima permintaan untuk mereset password akun GLC Apps Anda. Gunakan tombol Reset Password pada email ini. Akses berlaku 1 jam.\n\nJika Anda tidak meminta reset password, abaikan email ini.`;
 
   return sendMail({ to, subject, html, text });
 }
@@ -55,27 +53,31 @@ async function sendPasswordResetEmail({ to, fullName, resetUrl }) {
 async function sendApprovalMagicLinkEmail({ to, approverLabel, docTitle, docAmount, companyName, requesterName, stepNumber, approveUrl }) {
   const subject = `[Approval Diperlukan] ${docTitle}`;
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1f2937;">
-      <h2 style="color: #4f46e5; margin-bottom: 4px;">Persetujuan Anggaran Marketing</h2>
-      <p>Halo ${approverLabel},</p>
-      <p>Pengajuan berikut membutuhkan persetujuan Anda (Step ${stepNumber}):</p>
-      <table style="width: 100%; font-size: 13px; margin: 16px 0; border-collapse: collapse;">
-        <tr><td style="padding: 4px 0; color: #6b7280;">Judul</td><td style="padding: 4px 0; font-weight: bold;">${docTitle}</td></tr>
-        <tr><td style="padding: 4px 0; color: #6b7280;">Perusahaan</td><td style="padding: 4px 0; font-weight: bold;">${companyName || '-'}</td></tr>
-        <tr><td style="padding: 4px 0; color: #6b7280;">Nilai</td><td style="padding: 4px 0; font-weight: bold;">${docAmount}</td></tr>
-        <tr><td style="padding: 4px 0; color: #6b7280;">Diajukan oleh</td><td style="padding: 4px 0; font-weight: bold;">${requesterName || '-'}</td></tr>
-      </table>
-      <p style="text-align: center; margin: 24px 0;">
-        <a href="${approveUrl}" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Tinjau & Setujui</a>
-      </p>
-      <p>Atau salin link berikut ke browser Anda:</p>
-      <p style="word-break: break-all; font-size: 12px; color: #6b7280;">${approveUrl}</p>
-      <p style="font-size: 12px; color: #6b7280;">Link ini berlaku selama 7 hari dan hanya bisa dipakai satu kali. Jika bukan Anda yang dituju, abaikan email ini.</p>
-      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-      <p style="font-size: 11px; color: #9ca3af;">Email otomatis dari sistem GLC Apps - MRA Group. Jangan membalas email ini.</p>
-    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc; margin:0; padding:28px 12px; font-family:Arial,Helvetica,sans-serif; color:#0f172a;">
+      <tr><td align="center">
+        <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:100%; max-width:560px; overflow:hidden; border:1px solid #e2e8f0; border-radius:16px; background:#ffffff;">
+          <tr><td style="padding:22px 26px; background:#0f172a;">
+            <p style="margin:0 0 7px; color:#5eead4; font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;">MRA Retail GLC · Marketing</p>
+            <h1 style="margin:0; color:#ffffff; font-size:20px; line-height:28px; font-weight:700;">Persetujuan diperlukan</h1>
+          </td></tr>
+          <tr><td style="padding:26px;">
+            <p style="margin:0 0 8px; color:#0f172a; font-size:15px; font-weight:700;">Halo, ${escapeHtml(approverLabel)}.</p>
+            <p style="margin:0 0 20px; color:#475569; font-size:14px; line-height:21px;">Pengajuan biaya marketing berikut menunggu keputusan Anda pada tahap ${stepNumber}.</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc;">
+              <tr><td style="padding:14px 16px; border-bottom:1px solid #e2e8f0;"><p style="margin:0 0 4px; color:#64748b; font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase;">Pengajuan</p><p style="margin:0; color:#0f172a; font-size:14px; font-weight:700; line-height:20px;">${escapeHtml(docTitle)}</p></td></tr>
+              <tr><td style="padding:12px 16px; border-bottom:1px solid #e2e8f0;"><span style="color:#64748b; font-size:12px;">Perusahaan</span><span style="float:right; color:#0f172a; font-size:12px; font-weight:700;">${escapeHtml(companyName || '-')}</span></td></tr>
+              <tr><td style="padding:12px 16px; border-bottom:1px solid #e2e8f0;"><span style="color:#64748b; font-size:12px;">Nilai</span><span style="float:right; color:#0f172a; font-size:12px; font-weight:700;">${escapeHtml(docAmount)}</span></td></tr>
+              <tr><td style="padding:12px 16px;"><span style="color:#64748b; font-size:12px;">Diajukan oleh</span><span style="float:right; color:#0f172a; font-size:12px; font-weight:700;">${escapeHtml(requesterName || '-')}</span></td></tr>
+            </table>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px auto 18px;"><tr><td style="border-radius:8px; background:#0f766e;"><a href="${approveUrl}" style="display:inline-block; padding:12px 20px; color:#ffffff; font-size:13px; font-weight:700; text-decoration:none;">Tinjau pengajuan</a></td></tr></table>
+            <p style="margin:0; color:#64748b; font-size:11px; line-height:17px; text-align:center;">Gunakan tombol di atas untuk meninjau dan mengambil keputusan. Akses aman ini berlaku 7 hari dan hanya dapat digunakan sekali.</p>
+          </td></tr>
+          <tr><td style="padding:16px 26px; border-top:1px solid #e2e8f0; background:#f8fafc;"><p style="margin:0; color:#94a3b8; font-size:10px; line-height:16px;">Notifikasi otomatis dari MRA Retail GLC. Mohon tidak membalas email ini.</p></td></tr>
+        </table>
+      </td></tr>
+    </table>
   `;
-  const text = `Halo ${approverLabel},\n\nPengajuan "${docTitle}" (${companyName || '-'}, ${docAmount}) membutuhkan persetujuan Anda di step ${stepNumber}.\nBuka link berikut untuk meninjau dan menyetujui (berlaku 7 hari, sekali pakai):\n${approveUrl}`;
+  const text = `Halo ${approverLabel},\n\nPengajuan biaya marketing "${docTitle}" (${companyName || '-'}, ${docAmount}) membutuhkan persetujuan Anda pada tahap ${stepNumber}. Gunakan tombol Tinjau pengajuan pada email ini. Akses aman berlaku 7 hari dan hanya dapat digunakan sekali.`;
 
   return sendMail({ to, subject, html, text });
 }
@@ -151,7 +153,7 @@ async function sendAmendmentNotifEmail({ to, recipientLabel, docTitle, planTitle
         <p style="font-size: 11px; color: #9ca3af;">Email otomatis dari sistem GLC Apps - MRA Group.</p>
       </div>`
     : `<div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; color: #1f2937;">
-        <h2 style="color: #4f46e5;">Review Amendment Diperlukan</h2>
+        <h2 style="color: #0f172a;">Review Amendment Diperlukan</h2>
         <p>Halo ${recipientLabel},</p>
         <p>Amendment baru membutuhkan review Anda:</p>
         <table style="width: 100%; font-size: 13px; margin: 16px 0; border-collapse: collapse;">
@@ -160,7 +162,7 @@ async function sendAmendmentNotifEmail({ to, recipientLabel, docTitle, planTitle
           <tr><td style="padding: 4px 0; color: #6b7280; vertical-align: top;">Justifikasi</td><td style="padding: 4px 0;">${justification}</td></tr>
         </table>
         <p style="text-align: center; margin: 24px 0;">
-          <a href="${frontendUrl}/dashboard/marketing" style="background: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Tinjau di Aplikasi</a>
+          <a href="${frontendUrl}/dashboard/marketing" style="background: #0f766e; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Tinjau di Aplikasi</a>
         </p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
         <p style="font-size: 11px; color: #9ca3af;">Email otomatis dari sistem GLC Apps - MRA Group. Jangan membalas email ini.</p>
@@ -208,14 +210,12 @@ async function sendAssetDocApprovalEmail({ to, approverName, docTitle, docNumber
       <p style="text-align: center; margin: 24px 0;">
         <a href="${approveUrl}" style="background: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Tinjau & Setujui</a>
       </p>
-      <p>Atau salin link berikut ke browser Anda:</p>
-      <p style="word-break: break-all; font-size: 12px; color: #64748b;">${approveUrl}</p>
-      <p style="font-size: 12px; color: #64748b;">Link ini berlaku selama 7 hari dan hanya bisa dipakai satu kali.</p>
+      <p style="font-size: 12px; color: #64748b; text-align:center;">Gunakan tombol di atas untuk meninjau. Akses berlaku selama 7 hari dan hanya bisa dipakai satu kali.</p>
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
       <p style="font-size: 11px; color: #9ca3af;">Email otomatis dari MRA Hub - GLC Apps. Jangan membalas email ini.</p>
     </div>
   `;
-  const text = `Halo ${approverName},\n\n${docTitle} ${docNumber} (${assets.length} aset) membutuhkan persetujuan Anda.\nBuka link berikut untuk meninjau (berlaku 7 hari, sekali pakai):\n${approveUrl}`;
+  const text = `Halo ${approverName},\n\n${docTitle} ${docNumber} (${assets.length} aset) membutuhkan persetujuan Anda. Gunakan tombol Tinjau & Setujui pada email ini. Akses berlaku 7 hari dan hanya bisa dipakai satu kali.`;
 
   return sendMail({ to, subject, html, text });
 }
@@ -290,14 +290,12 @@ async function sendPlanClosingApprovalEmail({ to, approverName, stepLabel, previ
       <p style="text-align: center; margin: 24px 0;">
         <a href="${approveUrl}" style="background: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; display: inline-block;">Tinjau & Setujui</a>
       </p>
-      <p>Atau salin link berikut ke browser Anda:</p>
-      <p style="word-break: break-all; font-size: 12px; color: #64748b;">${approveUrl}</p>
-      <p style="font-size: 12px; color: #64748b;">Link ini berlaku selama 7 hari dan hanya bisa dipakai satu kali.</p>
+      <p style="font-size: 12px; color: #64748b; text-align:center;">Gunakan tombol di atas untuk meninjau. Akses berlaku selama 7 hari dan hanya bisa dipakai satu kali.</p>
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
       <p style="font-size: 11px; color: #9ca3af;">Email otomatis dari MRA Hub - GLC Apps. Jangan membalas email ini.</p>
     </div>
   `;
-  const text = `Halo ${approverName},\n\n${stepLabel ? `[${stepLabel}] ` : ''}Closing Marketing Plan "${planTitle}" (${companyName}) membutuhkan persetujuan Anda. Hasil: ${settlementLabel}.${kpiScore !== null && kpiScore !== undefined ? ` Skor KPI: ${kpiScore}%.` : ''}\nBuka link berikut untuk meninjau (berlaku 7 hari, sekali pakai):\n${approveUrl}`;
+  const text = `Halo ${approverName},\n\n${stepLabel ? `[${stepLabel}] ` : ''}Closing Marketing Plan "${planTitle}" (${companyName}) membutuhkan persetujuan Anda. Hasil: ${settlementLabel}.${kpiScore !== null && kpiScore !== undefined ? ` Skor KPI: ${kpiScore}%.` : ''} Gunakan tombol Tinjau & Setujui pada email ini. Akses berlaku 7 hari dan hanya bisa dipakai satu kali.`;
 
   return sendMail({ to, subject: `[Approval Diperlukan] Closing Marketing Plan: ${planTitle}`, html, text });
 }

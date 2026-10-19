@@ -20,6 +20,18 @@ const formatDate = (value, withTime = false) => value
   ? new Date(value).toLocaleString('en-GB', withTime ? { day: 'numeric', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', year: 'numeric' })
   : '—';
 
+const poTaxDetails = (purchaseOrder) => {
+  const rate = Math.max(0, Number(purchaseOrder?.tax_rate || 0));
+  const type = String(purchaseOrder?.tax_type || '').toUpperCase();
+  const isPph21 = type === 'PPH21_INDIVIDUAL' || (!type && rate === 2.5);
+  return {
+    rate,
+    isPph21,
+    label: isPph21 ? `PPh 21 ${rate}%` : rate > 0 ? `PPN ${rate}%` : 'No tax',
+    payableForBase: (base) => Number(base || 0) * (isPph21 ? 1 - rate / 100 : 1 + rate / 100),
+  };
+};
+
 const STATUS_CONFIG = {
   PENDING: { label: 'Pending', cls: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400', icon: Clock },
   OVERBUDGET_WARN: { label: 'Overbudget', cls: 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400', icon: AlertCircle },
@@ -83,10 +95,12 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
   }, [canSetPo, payment.marketing_plan_item_id]);
   const budget = Number(item?.budget_amount || 0);
   const realized = Number(item?.actual_amount || 0);
-  const taxRate = Math.max(0, Number(payment.purchase_order?.tax_rate || 0));
+  const { rate: taxRate, isPph21, label: taxLabel } = poTaxDetails(payment.purchase_order);
   const hasPoTax = !isClaim && Boolean(payment.purchase_order_id) && taxRate > 0;
-  const budgetImpact = hasPoTax ? Number(payment.amount || 0) / (1 + taxRate / 100) : Number(payment.amount || 0);
-  const taxAmount = Math.max(0, Number(payment.amount || 0) - budgetImpact);
+  const budgetImpact = hasPoTax
+    ? Number(payment.amount || 0) / (isPph21 ? 1 - taxRate / 100 : 1 + taxRate / 100)
+    : Number(payment.amount || 0);
+  const taxAmount = Math.abs(Number(payment.amount || 0) - budgetImpact);
   const budgetAvailable = budget - realized;
   const canRecheckTax = isOpen && !isClaim && Boolean(payment.purchase_order_id) && taxRate > 0;
   const recipientFor = (historyItem) => historyItem.pending_recipient?.email
@@ -161,8 +175,8 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
                   <div key={name} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><p className="text-[10px] text-slate-400">{name}</p><p className={`mt-0.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100 ${tone}`}>{formatIDR(value)}</p></div>
                 ))}
               </div>
-              {hasPoTax && <div className="mt-2 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50/70 p-3 text-[11px] text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-300" /><span><strong>PO payment composition.</strong> Net {formatIDR(budgetImpact)} + PPN {taxRate}% {formatIDR(taxAmount)} = cash payment {formatIDR(payment.amount)}. PPN is retained on the PO and does not consume the campaign plan budget.</span></div>}
-              {payment.status === 'OVERBUDGET_WARN' && <div className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><div className="min-w-0 flex-1"><p>This request exceeds the available net budget after other open requests. It requires CFO/CEO escalation after the normal approval tier.</p>{hasPoTax && <p className="mt-1 text-rose-600/85 dark:text-rose-300/85">If this warning came only from PPN, recheck it using the PO tax treatment.</p>}</div>{canRecheckTax && <button type="button" disabled={!!busy} onClick={() => run('recheck-tax', () => apiClient.post(`/api/marketing/payments/${payment.id}/recheck-budget`), 'Budget rechecked using the PO tax treatment.')} className="shrink-0 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50 dark:border-rose-400/30 dark:bg-slate-900 dark:text-rose-200 cursor-pointer">{busy === 'recheck-tax' ? 'Checking...' : 'Recheck PPN'}</button>}</div>}
+              {hasPoTax && <div className="mt-2 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50/70 p-3 text-[11px] text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-300" /><span><strong>PO payment composition.</strong> {isPph21 ? <>Campaign cost {formatIDR(budgetImpact)} − {taxLabel} withholding {formatIDR(taxAmount)} = vendor transfer {formatIDR(payment.amount)}. The withholding reduces the vendor transfer; campaign actuals remain at the pre-tax cost.</> : <>Net {formatIDR(budgetImpact)} + {taxLabel} {formatIDR(taxAmount)} = cash payment {formatIDR(payment.amount)}. PPN is retained on the PO and does not consume the campaign plan budget.</>}</span></div>}
+              {payment.status === 'OVERBUDGET_WARN' && <div className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><div className="min-w-0 flex-1"><p>This request exceeds the available net budget after other open requests. It requires CFO/CEO escalation after the normal approval tier.</p>{hasPoTax && <p className="mt-1 text-rose-600/85 dark:text-rose-300/85">If this warning is caused by the tax component, recheck it using the PO tax treatment.</p>}</div>{canRecheckTax && <button type="button" disabled={!!busy} onClick={() => run('recheck-tax', () => apiClient.post(`/api/marketing/payments/${payment.id}/recheck-budget`), 'Budget rechecked using the PO tax treatment.')} className="shrink-0 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50 dark:border-rose-400/30 dark:bg-slate-900 dark:text-rose-200 cursor-pointer">{busy === 'recheck-tax' ? 'Checking...' : 'Recheck tax'}</button>}</div>}
             </div>
           )}
 
@@ -204,7 +218,7 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
                 <div className="flex gap-2">
                   <select aria-label="Purchase order" value={poChoice} onChange={e => setPoChoice(e.target.value)} className="h-9 min-w-0 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-950">
                     <option value="">Select an issued PO for this item</option>
-                    {poOptions.map(po => <option key={po.id} value={po.id}>{po.po_number} · {po.vendor?.vendor_name} · {formatIDR(po.lines.reduce((sum, l) => sum + Number(l.amount), 0) * (1 + Number(po.tax_rate) / 100))}</option>)}
+                    {poOptions.map(po => <option key={po.id} value={po.id}>{po.po_number} · {po.vendor?.vendor_name} · {formatIDR(poTaxDetails(po).payableForBase(po.lines.reduce((sum, l) => sum + Number(l.amount), 0)))}</option>)}
                   </select>
                   <button type="button" disabled={!!busy || !poChoice || poChoice === String(payment.purchase_order_id || '')} onClick={() => run('po-link', () => apiClient.post(`/api/marketing/payments/${payment.id}/set-po`, { purchase_order_id: Number(poChoice) }), 'Payment linked to the purchase order.')} className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-40 cursor-pointer">{busy === 'po-link' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Link</button>
                 </div>
@@ -250,10 +264,10 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
                   <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/40"><p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{payment.title}</p><p className="mt-1 text-[10px] text-slate-400">{payment.po_number || 'No PO'} · {plan?.company?.name || '—'}</p></div>
                   <div className={`grid gap-2 ${hasPoTax ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><p className="text-[10px] text-slate-400">Cash transfer</p><p className="mt-1 text-xs font-semibold tabular-nums text-slate-900 dark:text-white">{formatIDR(payment.amount)}</p></div>
-                    {hasPoTax && <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 dark:border-amber-500/20 dark:bg-amber-500/10"><p className="text-[10px] text-amber-700 dark:text-amber-300">PPN {taxRate}%</p><p className="mt-1 text-xs font-semibold tabular-nums text-amber-800 dark:text-amber-200">{formatIDR(taxAmount)}</p></div>}
+                    {hasPoTax && <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 dark:border-amber-500/20 dark:bg-amber-500/10"><p className="text-[10px] text-amber-700 dark:text-amber-300">{taxLabel}{isPph21 ? ' withheld' : ''}</p><p className="mt-1 text-xs font-semibold tabular-nums text-amber-800 dark:text-amber-200">{formatIDR(taxAmount)}</p></div>}
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-500/20 dark:bg-emerald-500/10"><p className="text-[10px] text-emerald-700 dark:text-emerald-300">Campaign actuals</p><p className="mt-1 text-xs font-semibold tabular-nums text-emerald-800 dark:text-emerald-200">{formatIDR(budgetImpact)}</p></div>
                   </div>
-                  <p className="flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-[11px] leading-relaxed text-blue-800 dark:bg-blue-500/10 dark:text-blue-200"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />You are recording the transfer as Finance. This marks the request as paid and updates campaign actuals {hasPoTax ? 'using its net amount before PPN.' : '.'}</p>
+                  <p className="flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-[11px] leading-relaxed text-blue-800 dark:bg-blue-500/10 dark:text-blue-200"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />You are recording the transfer as Finance. This marks the request as paid and updates campaign actuals {hasPoTax ? (isPph21 ? 'at the pre-withholding campaign cost.' : 'using its net amount before PPN.') : '.'}</p>
                 </div>
                 <div className="flex gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-3 dark:border-slate-800 dark:bg-slate-950/30">
                   <button type="button" onClick={() => setConfirmPayment(false)} disabled={busy === 'paid'} className="h-9 flex-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 cursor-pointer">Review again</button>

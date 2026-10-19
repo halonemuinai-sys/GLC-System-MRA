@@ -1380,7 +1380,14 @@ export default function MarketingPlanDetailModal({
                         <option value="">Select issued PO</option>
                         {issued.map(po => <option key={po.id} value={po.id} disabled={po.available <= 0}>{po.po_number} · {po.vendor?.vendor_name} · {formatIDR(po.available)} left</option>)}
                       </select>
-                      {chosen && <p className="text-[11px] text-slate-500">PO line {formatIDR(chosen.line_total)} incl. PPN {Number(chosen.tax_rate)}% · already requested {formatIDR(chosen.requested)} · <span className="font-semibold text-blue-600 dark:text-blue-400">{formatIDR(chosen.available)} available</span></p>}
+                      {chosen && (() => {
+                        const taxRate = Number(chosen.tax_rate || 0);
+                        const isPph21 = String(chosen.tax_type || '').toUpperCase() === 'PPH21_INDIVIDUAL' || (!chosen.tax_type && taxRate === 2.5);
+                        const taxDescription = isPph21
+                          ? `after PPh 21 ${taxRate}% withholding`
+                          : taxRate > 0 ? `incl. PPN ${taxRate}%` : 'without tax';
+                        return <p className="text-[11px] text-slate-500">PO payable {formatIDR(chosen.line_total)} {taxDescription} · already requested {formatIDR(chosen.requested)} · <span className="font-semibold text-blue-600 dark:text-blue-400">{formatIDR(chosen.available)} available</span></p>;
+                      })()}
                     </div>
                   );
                 })()}
