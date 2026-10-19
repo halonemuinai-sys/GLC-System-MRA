@@ -25,13 +25,13 @@ async function issueApprovalRequest(disposalId, approverSignerId) {
   sendAssetDocApprovalEmail({
     to: disposal.approver.email,
     approverName: disposal.approver.name,
-    docTitle: 'Berita Acara Penghapusan Aset',
+    docTitle: 'Asset Disposal Report (BAP)',
     docNumber: disposal.disposal_number,
     infoRows: [
-      ['Entitas (PT)', disposal.m_company.name],
-      ['Tanggal', new Date(disposal.disposal_date).toLocaleDateString('id-ID')],
-      ['Alasan', disposal.reason],
-      ['Diajukan oleh', disposal.requested_by.full_name]
+      ['Company (PT)', disposal.m_company.name],
+      ['Date', new Date(disposal.disposal_date).toLocaleDateString('en-GB')],
+      ['Reason', disposal.reason],
+      ['Submitted by', disposal.requested_by.full_name]
     ],
     assets: disposal.items.map(it => ({
       asset_code: it.assets.asset_code,

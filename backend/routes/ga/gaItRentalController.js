@@ -28,7 +28,7 @@ async function assignItRentalUser(req, res, next) {
     const hdAssets = await prisma.$queryRawUnsafe(`
       SELECT id, "assetTag", "deviceRef", brand, model
       FROM helpdesk."Asset"
-      WHERE id = $1
+      WHERE id = $1 AND "ownershipType" = 'RENTAL'
       LIMIT 1
     `, rentalId);
 
@@ -43,9 +43,19 @@ async function assignItRentalUser(req, res, next) {
       SELECT id FROM helpdesk."User" WHERE email = $1 LIMIT 1
     `, email);
 
-    const requesterId = (requesterUsers && requesterUsers.length > 0) 
-      ? requesterUsers[0].id 
-      : '50623001'; // Default to Aris Setiyono (IT Admin)
+    if (!requesterUsers || requesterUsers.length === 0) {
+      return res.status(400).json({
+        error: 'Your account is not linked to a Helpdesk user. Contact IT Admin before requesting an allocation.'
+      });
+    }
+    const requesterId = requesterUsers[0].id;
+
+    const targetUsers = await prisma.$queryRawUnsafe(`
+      SELECT id, name FROM helpdesk."User" WHERE id = $1 LIMIT 1
+    `, employeeId);
+    if (!targetUsers || targetUsers.length === 0) {
+      return res.status(400).json({ error: 'The selected employee was not found in Helpdesk.' });
+    }
 
     const existing = await prisma.$queryRawUnsafe(`
       SELECT id FROM helpdesk."ApprovalRequest"
@@ -70,7 +80,7 @@ async function assignItRentalUser(req, res, next) {
       VALUES ($1, 'ASSET_ALLOCATION_REQUESTED', $2, $3, NOW())
     `, logUuid, `Allocation approval requested for Asset Tag ${asset.assetTag} to User ${employeeId} via GA System.`, `${req.user.full_name || req.user.name || 'GA User'} (${req.user.email})`);
 
-    res.json({ success: true, message: 'Allocation request successfully submitted for Admin approval.' });
+    res.json({ success: true, message: `Allocation request for ${targetUsers[0].name} was submitted for IT Admin approval.` });
   } catch (err) {
     next(err);
   }

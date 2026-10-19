@@ -87,7 +87,7 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
                 href="/dashboard/berita-acara?type=bap"
                 className="px-4 py-2.5 bg-[#0f172a] hover:bg-[#1e293b] text-white text-xs font-bold rounded-xl"
               >
-                Open Berita Acara
+                Open Asset Reports
               </Link>
               <button onClick={onClose} className="px-4 py-2.5 text-xs font-bold text-neutral-500 hover:text-neutral-700">Close</button>
             </div>

@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 // SHARED HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 const { ROLES, buildAccessMap } = require('../api/accessMap');
+const { buildMenuAccessMap } = require('../api/menuAccessMap');
 const { cleanExtraRoles } = require('../api/roles');
 const { forgetUserState } = require('../api/authMiddleware');
 
@@ -244,6 +245,21 @@ router.get('/access-map', async (req, res, next) => {
     const users = {};
     for (const u of roleCounts) for (const r of new Set([u.role, ...(u.extra_roles || [])])) users[r] = (users[r] || 0) + 1;
     res.json({ ...map, roles: map.roles.map(r => ({ ...r, active_users: users[r.key] || 0 })) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/menu-access-map — business-level menu visibility by role.
+// This complements the endpoint-level access map. Menu visibility follows roles;
+// the Department field remains an organisational profile field, not an auth guard.
+router.get('/menu-access-map', async (req, res, next) => {
+  try {
+    const users = await prisma.m_user.findMany({
+      where: { is_active: true },
+      select: { role: true, extra_roles: true, department: true }
+    });
+    res.json(buildMenuAccessMap(users));
   } catch (err) {
     next(err);
   }

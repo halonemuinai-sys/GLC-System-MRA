@@ -583,7 +583,7 @@ export default function GaAssetsPage() {
               className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer border border-neutral-200 dark:border-neutral-800 shadow-sm w-fit"
             >
               <FileText className="w-4 h-4 text-amber-500" />
-              Berita Acara
+              Asset Reports
               <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${showBaMenu ? 'rotate-180' : ''}`} />
             </button>
             {showBaMenu && (
@@ -967,7 +967,7 @@ export default function GaAssetsPage() {
         formatIDR={formatIDR}
       />
 
-      {/* Berita Acara: BAP (disposal) & BAST (handover) */}
+      {/* Asset reports: BAP (disposal) & BAST (handover) */}
       <GaAssetDisposalModal isOpen={showDisposalModal} onClose={() => setShowDisposalModal(false)} />
       <GaAssetHandoverModal isOpen={showHandoverModal} onClose={() => setShowHandoverModal(false)} />
     </div>

@@ -11,7 +11,6 @@ import {
   TrendingUp, BarChart2, Lock
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
-import { getUserRoles, hasRole } from '@/lib/userRoles';
 
 const FISCAL_YEAR_OPTIONS = Array.from({ length: 4 }, (_, i) => String(new Date().getFullYear() - 1 + i));
 
@@ -785,7 +784,6 @@ const TABS = [
 ];
 
 export default function GABudgetMonitoringPage() {
-  const canMarkPaid = useMemo(() => hasRole(getUserRoles(), 'admin', 'ga'), []);
 
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -797,10 +795,8 @@ export default function GABudgetMonitoringPage() {
   const [search, setSearch] = useState('');
   
   const [mainView, setMainView] = useState('payments');
-  const [markTarget, setMarkTarget] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
   const [poTarget, setPoTarget] = useState(null);
-  const [marking, setMarking] = useState(false);
 
   const loadPayments = useCallback(async () => {
     setLoading(true);
@@ -822,20 +818,6 @@ export default function GABudgetMonitoringPage() {
   const showSuccess = (msg) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(null), 4000);
-  };
-
-  const handleMarkPaid = async (id, notes) => {
-    setMarking(true);
-    try {
-      await apiClient.post(`/api/marketing/payments/${id}/mark-paid`, { paid_notes: notes });
-      setMarkTarget(null);
-      showSuccess('Pembayaran berhasil dikonfirmasi.');
-      loadPayments();
-    } catch (err) {
-      setError(err.message || 'Gagal mengkonfirmasi pembayaran.');
-    } finally {
-      setMarking(false);
-    }
   };
 
   const filtered = useMemo(() => {
@@ -877,7 +859,7 @@ export default function GABudgetMonitoringPage() {
           </div>
           <div>
             <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight">Monitoring Anggaran</h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Verifikasi & konfirmasi pembayaran Marketing Budget</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Pantau tagihan dan status PO Marketing; Finance mengonfirmasi pembayaran.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -1043,17 +1025,7 @@ export default function GABudgetMonitoringPage() {
                             Buat PO
                           </button>
 
-                          {/* Bayar Action */}
-                          {canMarkPaid && p.status === 'APPROVED' && (
-                            <button
-                              onClick={() => setMarkTarget(p)}
-                              title="Konfirmasi Pembayaran Lunas"
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg shadow-sm transition-all active:scale-95 cursor-pointer"
-                            >
-                              <Check className="w-3 h-3" />
-                              Bayar
-                            </button>
-                          )}
+                          {p.status === 'APPROVED' && <span title="Finance confirms the transfer in Payment Requests" className="inline-flex items-center gap-1 rounded-lg border border-blue-100 bg-blue-50 px-2.5 py-1.5 text-[10px] font-semibold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"><ShieldCheck className="h-3 w-3" />Finance payment check</span>}
                         </div>
                       </td>
                     </motion.tr>
@@ -1089,18 +1061,6 @@ export default function GABudgetMonitoringPage() {
             payment={poTarget}
             onClose={() => setPoTarget(null)}
             onPoGenerated={(msg) => showSuccess(msg)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Mark Paid Modal */}
-      <AnimatePresence>
-        {markTarget && (
-          <MarkPaidModal
-            payment={markTarget}
-            onClose={() => setMarkTarget(null)}
-            onConfirm={handleMarkPaid}
-            loading={marking}
           />
         )}
       </AnimatePresence>

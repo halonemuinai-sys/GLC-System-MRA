@@ -1,5 +1,13 @@
 const prisma = require('../../api/db');
 
+function rentalDurationMonths(startDate, endDate) {
+  if (!startDate || !endDate) return null;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
+  return Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth());
+}
+
 // GET List Device Rentals
 // GET List Device Rentals
 async function getDeviceRentals(req, res, next) {
@@ -46,7 +54,7 @@ async function getDeviceRentals(req, res, next) {
 
     // 4. Map and enrich the helpdeskList to conform to the expected format
     const enrichedList = helpdeskList.map(asset => {
-      const company = companies.find(c => c.id === asset.company_id) || null;
+      const company = companies.find(c => String(c.id) === String(asset.company_id)) || null;
       
       const mapped = {
         id: asset.id, // UUID String
@@ -58,6 +66,7 @@ async function getDeviceRentals(req, res, next) {
         unit_code: asset.unit_code,
         start_rent: asset.start_rent,
         end_rent: asset.end_rent,
+        duration_months: rentalDurationMonths(asset.start_rent, asset.end_rent),
         status: asset.status === 'DISPOSED' ? 'Inactive' : 'Active',
         m_company: company,
         vendors: asset.vendor_name ? { vendor_name: asset.vendor_name } : null,
@@ -84,7 +93,7 @@ async function getDeviceRentals(req, res, next) {
       } else if (nameLower.includes('smartphone') || nameLower.includes('phone') || nameLower.includes('iphone')) {
         mapped.device_type = 'Smartphone';
       } else {
-        mapped.device_type = 'Laptop'; // Fallback default
+        mapped.device_type = 'IT Device';
       }
 
       // Match pending approval
@@ -106,75 +115,26 @@ async function getDeviceRentals(req, res, next) {
   }
 }
 
-// POST Create Device Rental
+// IT Rentals are read from Helpdesk Asset Inventory. Do not create a second,
+// invisible record in the legacy GA table.
 async function createDeviceRental(req, res, next) {
-  try {
-    const data = req.body;
-    if (!data.company_id) {
-      return res.status(400).json({ error: 'Company ID is required.' });
-    }
-
-    const newRental = await prisma.device_rentals.create({
-      data: {
-        company_id: parseInt(data.company_id),
-        vendor_id: data.vendor_id ? parseInt(data.vendor_id) : null,
-        device_type: data.device_type || null,
-        order_id: data.order_id || null,
-        item_name: data.item_name || null,
-        price: data.price ? parseFloat(data.price) : 0,
-        unit_code: data.unit_code || null,
-        duration_months: data.duration_months ? parseInt(data.duration_months) : null,
-        start_rent: data.start_rent ? new Date(data.start_rent) : null,
-        end_rent: data.end_rent ? new Date(data.end_rent) : null,
-        user_id: data.user_id ? parseInt(data.user_id) : null,
-        department: data.department || null,
-        location_id: data.location_id ? parseInt(data.location_id) : null,
-        status: data.status || 'Active'
-      }
-    });
-    res.status(201).json(newRental);
-  } catch (err) {
-    next(err);
-  }
+  return res.status(409).json({
+    error: 'IT rentals are managed in Helpdesk Asset Inventory. Create the rental there so it appears in this dashboard.'
+  });
 }
 
-// PUT Update Device Rental
+// Legacy records must not be edited here because this screen displays Helpdesk data.
 async function updateDeviceRental(req, res, next) {
-  try {
-    const data = req.body;
-    const updated = await prisma.device_rentals.update({
-      where: { id: parseInt(req.params.id) },
-      data: {
-        company_id: data.company_id ? parseInt(data.company_id) : undefined,
-        vendor_id: data.vendor_id !== undefined ? (data.vendor_id ? parseInt(data.vendor_id) : null) : undefined,
-        device_type: data.device_type !== undefined ? data.device_type : undefined,
-        order_id: data.order_id !== undefined ? data.order_id : undefined,
-        item_name: data.item_name !== undefined ? data.item_name : undefined,
-        price: data.price !== undefined ? parseFloat(data.price) : undefined,
-        unit_code: data.unit_code !== undefined ? data.unit_code : undefined,
-        duration_months: data.duration_months !== undefined ? (data.duration_months ? parseInt(data.duration_months) : null) : undefined,
-        start_rent: data.start_rent !== undefined ? (data.start_rent ? new Date(data.start_rent) : null) : undefined,
-        end_rent: data.end_rent !== undefined ? (data.end_rent ? new Date(data.end_rent) : null) : undefined,
-        user_id: data.user_id !== undefined ? (data.user_id ? parseInt(data.user_id) : null) : undefined,
-        department: data.department !== undefined ? data.department : undefined,
-        location_id: data.location_id !== undefined ? (data.location_id ? parseInt(data.location_id) : null) : undefined,
-        status: data.status !== undefined ? data.status : undefined
-      }
-    });
-    res.json(updated);
-  } catch (err) {
-    next(err);
-  }
+  return res.status(409).json({
+    error: 'IT rentals are managed in Helpdesk Asset Inventory. Update the asset there to keep this dashboard in sync.'
+  });
 }
 
-// DELETE Device Rental
+// Same source-of-truth protection for deletes.
 async function deleteDeviceRental(req, res, next) {
-  try {
-    await prisma.device_rentals.delete({ where: { id: parseInt(req.params.id) } });
-    res.json({ message: 'Device rental deleted.' });
-  } catch (err) {
-    next(err);
-  }
+  return res.status(409).json({
+    error: 'IT rentals are managed in Helpdesk Asset Inventory. Remove the rental there to keep this dashboard in sync.'
+  });
 }
 
 module.exports = {

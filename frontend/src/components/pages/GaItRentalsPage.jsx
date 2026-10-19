@@ -5,22 +5,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Laptop, 
   Search, 
-  Plus, 
   X, 
   Calendar, 
   Loader2, 
   User, 
   ShieldAlert,
-  FileText,
   Clock,
   DollarSign,
   Maximize2,
   Activity,
   Eye,
-  EyeOff
+  EyeOff,
+  RefreshCw,
+  Database,
+  Send,
+  ClipboardCheck
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
-import { useLanguage } from '@/lib/LanguageContext';
 import {
   ResponsiveContainer,
   PieChart,
@@ -34,7 +35,7 @@ const CHART_COLORS = [
   '#10b981', // Emerald
   '#f59e0b', // Amber
   '#ef4444', // Rose
-  '#8b5cf6', // Violet
+  '#0ea5e9', // Sky
   '#06b6d4', // Cyan
   '#3b82f6', // Blue
 ];
@@ -47,7 +48,7 @@ const CustomTooltip = ({ active, payload, globalHidePrices }) => {
     return (
       <div className="bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 p-2.5 rounded-xl shadow-xl text-xs">
         <p className="font-bold text-neutral-900 dark:text-neutral-200 capitalize mb-1">{data.name}</p>
-        <p className="text-indigo-500 font-semibold font-mono">Jumlah: {displayVal} unit</p>
+        <p className="text-indigo-500 font-semibold font-mono">{displayVal} units</p>
       </div>
     );
   }
@@ -168,7 +169,7 @@ function SearchingRadarAnimation() {
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute w-44 h-44 rounded-full border border-violet-500/15 dark:border-violet-400/5"
+        className="absolute w-44 h-44 rounded-full border border-sky-500/15 dark:border-sky-400/5"
         animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
       />
@@ -197,7 +198,7 @@ function SearchingRadarAnimation() {
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
       />
       <motion.div
-        className="absolute w-1.5 h-1.5 rounded-full bg-violet-500 bottom-16 right-12 shadow-lg shadow-violet-500/50"
+        className="absolute w-1.5 h-1.5 rounded-full bg-sky-500 bottom-16 right-12 shadow-lg shadow-sky-500/50"
         animate={{ scale: [0.5, 1.2, 0.5], opacity: [0.2, 1, 0.2] }}
         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
       />
@@ -252,7 +253,6 @@ function SearchingRadarAnimation() {
 }
 
 export default function GaItRentalsPage() {
-  const { lang, t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [vendors, setVendors] = useState([]);
@@ -330,7 +330,7 @@ export default function GaItRentalsPage() {
       setData(rentalsList || []);
       return rentalsList || [];
     } catch (err) {
-      setError(err.message || 'Failed to fetch IT rentals');
+      setError(err.message || 'Unable to load IT Rentals from Helpdesk.');
       return [];
     } finally {
       setLoading(false);
@@ -457,7 +457,7 @@ export default function GaItRentalsPage() {
   };
 
   // Filter rentals on client-side (IT Devices only: filter in laptops, PCs, desktops)
-  const itTypes = ['laptop', 'pc', 'desktop', 'computer', 'server', 'ipad', 'tablet', 'imac', 'tab', 'smartphone', 'phone', 'iphone', 'android', 'printer'];
+  const itTypes = ['laptop', 'pc', 'desktop', 'computer', 'server', 'ipad', 'tablet', 'imac', 'tab', 'smartphone', 'phone', 'iphone', 'android', 'printer', 'it device'];
   const filteredRentals = data.filter(rental => {
     const isItType = itTypes.some(t => rental.device_type?.toLowerCase().includes(t));
     if (!isItType) return false; // Skip general rentals here
@@ -543,33 +543,86 @@ export default function GaItRentalsPage() {
   return (
     <div className="space-y-6 relative pb-10">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-neutral-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <Laptop className="w-6 h-6 text-indigo-500" />
-            {t('gaItRentals_title')}
-          </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-0.5">Management of leased IT infrastructure (Laptop, PC Desktop, Server, IT Printer).</p>
-        </div>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f172a] via-[#142644] to-[#1e3a5f] px-6 py-7 shadow-xl shadow-slate-900/10 sm:px-8 sm:py-8">
+        <div className="pointer-events-none absolute -right-10 -top-14 h-52 w-52 rounded-full border border-white/10 bg-blue-400/5" />
+        <div className="pointer-events-none absolute -bottom-24 right-28 h-52 w-52 rounded-full bg-emerald-400/5 blur-3xl" />
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-300/20 bg-blue-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-200">
+              <Database className="h-3 w-3" /> Helpdesk Asset Inventory
+            </span>
+            <h1 className="mt-3 flex items-center gap-2.5 text-2xl font-black tracking-tight text-white sm:text-3xl">
+              <Laptop className="h-6 w-6 text-blue-300" />
+              IT Rentals
+            </h1>
+            <p className="mt-1.5 max-w-xl text-xs leading-relaxed text-slate-300 sm:text-sm">Monitor leased IT devices, request employee allocation, and track the IT Admin approval workflow in one place.</p>
+          </div>
         <div className="flex items-center gap-2.5">
+          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-[10px] font-bold text-emerald-200">
+            <Database className="h-3.5 w-3.5" />
+            Live from Helpdesk
+          </span>
+          <button
+            type="button"
+            onClick={() => hasProcessed && fetchData()}
+            disabled={!hasProcessed || loading}
+            title={hasProcessed ? 'Refresh from Helpdesk' : 'Process data first'}
+            className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
           {hasProcessed && (
             <button
               onClick={() => setShowDashboard(!showDashboard)}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer border border-neutral-200 dark:border-neutral-800 shadow-sm w-fit"
+              className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-white/15"
             >
               {showDashboard ? (
                 <>
-                  <EyeOff className="w-4 h-4 text-neutral-500" />
+                  <EyeOff className="w-4 h-4 text-white/75" />
                   Hide Chart
                 </>
               ) : (
                 <>
-                  <Eye className="w-4 h-4 text-neutral-500" />
+                  <Eye className="w-4 h-4 text-white/75" />
                   Show Chart
                 </>
               )}
             </button>
           )}
+        </div>
+        </div>
+      </div>
+
+      {/* Workflow guide */}
+      <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex flex-col gap-3 border-b border-neutral-100 px-5 py-4 dark:border-neutral-800 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-neutral-800 dark:text-white">Allocation workflow</h2>
+            <p className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">Rental records are maintained in Helpdesk; this workspace manages allocation requests.</p>
+          </div>
+          {hasProcessed && (
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+              <Clock className="h-3 w-3" /> {pendingCount} awaiting IT Admin
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-1 divide-y divide-neutral-100 dark:divide-neutral-800 sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+          {[
+            { icon: Database, title: '1. Sync inventory', copy: 'Rental assets are loaded from Helpdesk.', color: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10' },
+            { icon: Eye, title: '2. Review device', copy: 'Open a device to check lease and current user.', color: 'text-sky-600 bg-sky-50 dark:text-sky-400 dark:bg-sky-500/10' },
+            { icon: Send, title: '3. Request allocation', copy: 'Choose an employee and send the request.', color: 'text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-500/10' },
+            { icon: ClipboardCheck, title: '4. IT Admin approval', copy: 'Helpdesk updates the assignment after approval.', color: 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/10' },
+          ].map((step, index) => {
+            const Icon = step.icon;
+            return <div key={step.title} className="flex min-w-0 items-start gap-3 px-5 py-4">
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${step.color}`}><Icon className="h-4 w-4" /></span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-neutral-800 dark:text-neutral-100">{step.title}</p>
+                <p className="mt-0.5 text-[10px] leading-4 text-neutral-500 dark:text-neutral-400">{step.copy}</p>
+              </div>
+            </div>;
+          })}
         </div>
       </div>
 
@@ -582,7 +635,7 @@ export default function GaItRentalsPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
               <input
                 type="text"
-                placeholder={t('ga_searchItRentals')}
+                placeholder="Search device, asset tag, or contract ID"
                 value={tempSearch}
                 onChange={(e) => setTempSearch(e.target.value)}
                 className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 text-neutral-800 dark:text-white"
@@ -594,7 +647,7 @@ export default function GaItRentalsPage() {
               companies={companies}
               value={tempCompanyId}
               onChange={(val) => setTempCompanyId(val)}
-              placeholder={t('allCompanies')}
+              placeholder="All Companies"
             />
 
             {/* Device Type Dropdown */}
@@ -631,7 +684,7 @@ export default function GaItRentalsPage() {
               onChange={(e) => setTempStatusFilter(e.target.value)}
               className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
             >
-              <option value="">{t('allStatuses')}</option>
+              <option value="">All Statuses</option>
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
             </select>
@@ -659,7 +712,7 @@ export default function GaItRentalsPage() {
                   }}
                   className="w-full sm:w-auto px-4 py-2 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-bold rounded-xl transition-all cursor-pointer text-center"
                 >
-                  {t('resetFilter')}
+                  Reset Filters
                 </button>
               )}
               <button
@@ -667,7 +720,7 @@ export default function GaItRentalsPage() {
                 className="w-full sm:w-auto px-5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/10"
               >
                 <Activity className="w-4 h-4" />
-                {t('processData')}
+                Load Inventory
               </button>
             </div>
           </div>
@@ -689,7 +742,7 @@ export default function GaItRentalsPage() {
               transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             />
             <motion.div 
-              className="absolute w-80 h-80 rounded-full bg-violet-500/5 dark:bg-violet-400/5 -bottom-20 -right-20 blur-3xl"
+              className="absolute w-80 h-80 rounded-full bg-sky-500/5 dark:bg-sky-400/5 -bottom-20 -right-20 blur-3xl"
               animate={{ x: [0, -30, 0], y: [0, 20, 0] }}
               transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
             />
@@ -697,9 +750,9 @@ export default function GaItRentalsPage() {
 
           <div className="relative z-10 flex flex-col items-center max-w-sm mx-auto">
             <SearchingRadarAnimation />
-            <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 mt-4">IT Rental Database Ready to Scan</h3>
+            <h3 className="text-sm font-bold text-neutral-800 dark:text-neutral-200 mt-4">Ready to load live IT rental inventory</h3>
             <p className="text-neutral-500 dark:text-neutral-400 text-[11px] mt-1.5 leading-relaxed">
-              Set the search filter, IT device type, or company entity above, then click <strong>Process Data</strong> to start a real-time database scan.
+              Choose filters if needed, then select <strong>Load Inventory</strong> to retrieve current rental assets from Helpdesk.
             </p>
           </div>
         </motion.div>
@@ -860,7 +913,7 @@ export default function GaItRentalsPage() {
             {loading ? (
               <div className="py-20 flex flex-col items-center justify-center gap-3">
                 <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-                <span className="text-xs text-neutral-400">{t('loading')}</span>
+                <span className="text-xs text-neutral-400">Loading Helpdesk inventory...</span>
               </div>
             ) : error ? (
               <div className="py-20 text-center text-red-500 text-xs">
@@ -915,12 +968,16 @@ export default function GaItRentalsPage() {
                               </div>
                             ) : (
                               <div className="flex flex-col">
-                                <span className="font-semibold text-neutral-800 dark:text-slate-200">
-                                  {rental.assigned_user?.name || '-'}
-                                </span>
-                                <span className="text-[10px] text-neutral-400">
-                                  {rental.assigned_user?.department || ''}
-                                </span>
+                                {rental.assigned_user ? (
+                                  <>
+                                    <span className="font-semibold text-neutral-800 dark:text-slate-200">{rental.assigned_user.name}</span>
+                                    <span className="text-[10px] text-neutral-400">{rental.assigned_user.department || 'Assigned in Helpdesk'}</span>
+                                  </>
+                                ) : (
+                                  <span className="inline-flex w-fit items-center gap-1 rounded-full bg-blue-500/10 px-2 py-1 text-[10px] font-bold text-blue-700 dark:text-blue-400">
+                                    <Send className="h-3 w-3" /> Ready to assign
+                                  </span>
+                                )}
                               </div>
                             )}
                           </td>
@@ -928,16 +985,17 @@ export default function GaItRentalsPage() {
                           <td className="p-4">
                             <span className={`inline-flex items-center gap-1.5 font-medium ${nearEnd ? 'text-red-500 font-bold animate-pulse' : 'text-neutral-500'}`}>
                               <Calendar className="w-3.5 h-3.5" />
-                              {rental.end_rent ? new Date(rental.end_rent).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}
+                              {rental.end_rent ? new Date(rental.end_rent).toLocaleDateString('en-GB', { dateStyle: 'medium' }) : '-'}
                             </span>
                           </td>
                           <td className="p-4 text-center">
                             <button 
+                              type="button"
                               onClick={() => setSelectedRental(rental)}
-                              className="p-1 text-neutral-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg transition-colors cursor-pointer"
-                              title="View Details"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 px-2.5 py-1.5 text-[10px] font-bold text-neutral-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-neutral-700 dark:text-neutral-300 dark:hover:border-blue-900/60 dark:hover:bg-blue-950/30 dark:hover:text-blue-300"
+                              title="Review device and manage allocation"
                             >
-                              <Maximize2 className="w-4 h-4" />
+                              <Maximize2 className="h-3.5 w-3.5" /> Review
                             </button>
                           </td>
                         </motion.tr>
@@ -1010,13 +1068,13 @@ export default function GaItRentalsPage() {
                     <div>
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Start Date</span>
                       <span className="text-xs text-neutral-800 dark:text-slate-200 font-medium">
-                        {selectedRental.start_rent ? new Date(selectedRental.start_rent).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}
+                        {selectedRental.start_rent ? new Date(selectedRental.start_rent).toLocaleDateString('en-GB', { dateStyle: 'medium' }) : '-'}
                       </span>
                     </div>
                     <div>
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">End Date</span>
                       <span className={`text-xs font-bold ${isEndRentNear(selectedRental.end_rent) ? 'text-red-500' : 'text-neutral-800 dark:text-slate-200'}`}>
-                        {selectedRental.end_rent ? new Date(selectedRental.end_rent).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}
+                        {selectedRental.end_rent ? new Date(selectedRental.end_rent).toLocaleDateString('en-GB', { dateStyle: 'medium' }) : '-'}
                       </span>
                     </div>
                   </div>
@@ -1051,16 +1109,24 @@ export default function GaItRentalsPage() {
                       <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider block">Assigned Employee (Helpdesk)</span>
                       {!isEditingUser && !selectedRental.pending_approval && (
                         <button
+                          type="button"
                           onClick={() => {
                             setIsEditingUser(true);
                             setSelectedEmployeeId(selectedRental.assigned_user?.id || '');
                           }}
-                          className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 cursor-pointer"
+                          className="rounded-lg bg-blue-600 px-2.5 py-1.5 text-[10px] font-bold text-white shadow-sm shadow-blue-600/20 transition-colors hover:bg-blue-700"
                         >
-                          Edit Assignment
+                          {selectedRental.assigned_user ? 'Change allocation' : 'Allocate device'}
                         </button>
                       )}
                     </div>
+
+                    {!isEditingUser && !selectedRental.pending_approval && (
+                      <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 text-[10px] leading-4 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300">
+                        <Send className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        Select an employee to send an allocation request. The assignment changes only after IT Admin approves it in Helpdesk.
+                      </div>
+                    )}
 
                     {isEditingUser ? (
                       <form onSubmit={handleAssignUser} className="space-y-3 mt-2">
@@ -1108,9 +1174,9 @@ export default function GaItRentalsPage() {
                           <button
                             type="submit"
                             disabled={submittingUser}
-                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-40 text-[10px]"
+                            className="flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
                           >
-                            {submittingUser ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Request Approval'}
+                            {submittingUser ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="h-3 w-3" />} Request approval
                           </button>
                         </div>
                       </form>

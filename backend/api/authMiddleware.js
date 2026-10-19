@@ -76,7 +76,10 @@ const checkRole = (allowedRoles) => {
     const allowed = allowedRoles.map(r => r.toLowerCase());
     const mine = req.user.roles?.length ? req.user.roles : combineRoles(req.user.role);
     if (!mine.some(r => allowed.includes(r))) {
-      return res.status(403).json({ error: 'Access forbidden. Insufficient permissions.' });
+      const currentRole = req.user.role || (mine.length ? mine.join(', ') : 'unknown');
+      return res.status(403).json({
+        error: `Akses ditolak (403): Role akun Anda ('${currentRole}') tidak memiliki izin untuk aksi ini. Diperlukan salah satu dari role: ${allowedRoles.join(', ')}.`
+      });
     }
     next();
   };

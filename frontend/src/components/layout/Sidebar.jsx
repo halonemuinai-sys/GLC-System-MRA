@@ -510,7 +510,7 @@ function SidebarContent({
           icon: FileText,
           children: [
             { name: 'Documents', path: '/dashboard/documents', icon: FileText, allowed: hasAccess(['ga', 'legal', 'legal_compliance', 'auditor']) },
-            { name: 'Berita Acara', path: '/dashboard/berita-acara', icon: FileSignature, allowed: hasAccess(['ga', 'admin', 'auditor']) },
+            { name: 'Asset Reports', path: '/dashboard/berita-acara', icon: FileSignature, allowed: hasAccess(['ga', 'admin', 'auditor']) },
             // Shared approver directory (signers for BAP/BAST). Marketing Managers and admin reach it via Approval Settings.
             { name: 'Approver Directory', path: '/dashboard/marketing-approval-settings?tab=signers', icon: UserCheck, allowed: roles.includes('ga') && !roles.includes('admin') && !roles.includes('marketing_manager') },
             { name: 'Insurance', path: '/dashboard/insurances', icon: ShieldCheck, allowed: hasAccess(['ga', 'legal', 'legal_compliance', 'auditor']) },

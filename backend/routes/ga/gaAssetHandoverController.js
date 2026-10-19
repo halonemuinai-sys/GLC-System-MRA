@@ -33,15 +33,15 @@ async function issueApprovalRequest(handoverId, approverSignerId) {
   sendAssetDocApprovalEmail({
     to: handover.approver.email,
     approverName: handover.approver.name,
-    docTitle: 'Berita Acara Serah Terima Aset',
+    docTitle: 'Asset Handover Report (BAST)',
     docNumber: handover.handover_number,
     infoRows: [
-      ['Entitas (PT)', handover.m_company.name],
-      ['Tanggal', new Date(handover.handover_date).toLocaleDateString('id-ID')],
-      ['Jenis', handover.handover_type],
-      ['Pihak Pertama', `${handover.giver_name}${handover.giver_position ? ` (${handover.giver_position})` : ''}`],
-      ['Pihak Kedua', `${handover.recipient_name}${handover.recipient_position ? ` (${handover.recipient_position})` : ''}${handover.recipient_department ? ` - ${handover.recipient_department}` : ''}`],
-      ['Diajukan oleh', handover.created_by.full_name]
+      ['Company (PT)', handover.m_company.name],
+      ['Date', new Date(handover.handover_date).toLocaleDateString('en-GB')],
+      ['Type', handover.handover_type],
+      ['Handed over by', `${handover.giver_name}${handover.giver_position ? ` (${handover.giver_position})` : ''}`],
+      ['Received by', `${handover.recipient_name}${handover.recipient_position ? ` (${handover.recipient_position})` : ''}${handover.recipient_department ? ` - ${handover.recipient_department}` : ''}`],
+      ['Submitted by', handover.created_by.full_name]
     ],
     assets: handover.items.map(it => ({
       asset_code: it.assets.asset_code,

@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, Users, Key, Database, Globe } from 'lucide-react';
+import { ShieldAlert, Users, Key, Database, Globe, LayoutPanelTop } from 'lucide-react';
 import AdminUsersPanel from './AdminUsersPanel';
 import AdminAccessMapPanel from './AdminAccessMapPanel';
+import AdminMenuAccessPanel from './AdminMenuAccessPanel';
 import AdminAuditLogPanel from './AdminAuditLogPanel';
 import AdminApiKeysPanel from './AdminApiKeysPanel';
 
@@ -14,6 +15,7 @@ export default function AdminPage() {
 
   const tabs = [
     ['users', 'Users', Users],
+    ['menus', 'Menu Access', LayoutPanelTop],
     ['permissions', 'Access Map', Key],
     ['logs', 'Audit Log', Database],
     ['apikeys', 'API Keys', Globe],
@@ -41,6 +43,7 @@ export default function AdminPage() {
 
       <AnimatePresence mode="wait">
         {activeTab === 'users' && <AdminUsersPanel key="users" />}
+        {activeTab === 'menus' && <AdminMenuAccessPanel key="menus" />}
         {activeTab === 'permissions' && <AdminAccessMapPanel key="permissions" />}
         {activeTab === 'logs' && <AdminAuditLogPanel key="logs" />}
         {activeTab === 'apikeys' && <AdminApiKeysPanel key="apikeys" />}

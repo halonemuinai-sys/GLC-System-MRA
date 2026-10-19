@@ -218,9 +218,9 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
           <div>
             <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-400">
               <FileText className="w-3.5 h-3.5" />
-              General Affairs / Assets / Berita Acara
+              General Affairs / Assets / Asset Reports
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-2">Berita Acara</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-2">Asset Reports</h1>
             <p className="text-slate-400 text-xs sm:text-sm mt-1.5 max-w-lg">
               Official asset reports — disposals (BAP) and handovers (BAST). Approved reports can be previewed and printed.
             </p>

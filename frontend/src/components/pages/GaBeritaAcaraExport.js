@@ -74,7 +74,7 @@ const longDate = (d) => new Date(d).toLocaleDateString('en-GB', { weekday: 'long
 
 export function buildDisposalPDF(disposal) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  drawLetterhead(doc, 'ASSET DISPOSAL REPORT', 'Berita Acara Penghapusan Aset', disposal.m_company?.name);
+  drawLetterhead(doc, 'ASSET DISPOSAL REPORT', 'Asset Disposal Record (BAP)', disposal.m_company?.name);
 
   doc.setTextColor(...INK);
   doc.setFont('helvetica', 'bold');
@@ -115,7 +115,7 @@ export function buildDisposalPDF(disposal) {
 
 export function buildHandoverPDF(handover) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  drawLetterhead(doc, 'ASSET HANDOVER REPORT', 'Berita Acara Serah Terima Aset', handover.m_company?.name);
+  drawLetterhead(doc, 'ASSET HANDOVER REPORT', 'Asset Handover Record (BAST)', handover.m_company?.name);
 
   doc.setTextColor(...INK);
   doc.setFont('helvetica', 'bold');
