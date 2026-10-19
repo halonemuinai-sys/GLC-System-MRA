@@ -465,6 +465,11 @@ async function createBranch(req, res, next) {
   try {
     const parsed = await parseBranchInput(req.body || {});
     if (parsed.error) return res.status(400).json({ error: parsed.error });
+    // Staff (scoped users) can only add branches for a PT they have access to.
+    const scope = req.companyScope;
+    if (scope && !scope.all && (!parsed.data.company_id || !scope.companyIds.includes(parsed.data.company_id))) {
+      return res.status(403).json({ error: 'You can only add branches for a company you have access to.' });
+    }
     if (await findDuplicateBranch(parsed.data)) {
       return res.status(400).json({ error: 'A branch with this name already exists for that company & brand.' });
     }

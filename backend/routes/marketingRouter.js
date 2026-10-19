@@ -38,6 +38,7 @@ router.post('/plans', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), pla
 router.put('/plans/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.updatePlan);
 router.post('/plans/:id/submit', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.submitPlan);
 router.post('/plans/:id/recall', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.recallPlan);
+router.delete('/plans/:id/actuals', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.clearPlanActuals);
 router.put('/plans/:id/actuals', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.updatePlanActuals);
 router.put('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.revisePlan);
 router.post('/plans/:id/revise', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), planController.revisePlan);
@@ -71,6 +72,8 @@ router.delete('/amendments/:id', verifyToken, attachCompanyScope, checkRole(MKT_
 
 // Claims: one Finance approval, independent of payment approval rules.
 router.post('/claims', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), claimController.createClaim);
+router.put('/claims/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), claimController.updateClaim);
+router.delete('/claims/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), claimController.deleteClaim);
 
 // Payments (Payment Requests)
 router.get('/payments', verifyToken, attachCompanyScope, checkRole(MKT_READ), paymentController.getPayments);
@@ -78,7 +81,8 @@ router.get('/payments/:id', verifyToken, attachCompanyScope, checkRole(MKT_READ)
 router.post('/payments', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), paymentController.createPaymentRequest);
 router.put('/payments/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), paymentController.updatePayment);
 router.delete('/payments/:id', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), paymentController.deletePayment);
-router.post('/payments/:id/mark-paid', verifyToken, attachCompanyScope, checkRole(['admin', 'ga', 'finance']), paymentController.markPaymentPaid);
+router.post('/payments/:id/recheck-budget', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), paymentController.recheckBudget);
+router.post('/payments/:id/mark-paid', verifyToken, attachCompanyScope, checkRole(FIN), paymentController.markPaymentPaid);
 router.post('/payments/:id/set-po', verifyToken, attachCompanyScope, checkRole(MKT_MANAGE), paymentController.setPoNumber);
 router.put('/payments/:id/verify', verifyToken, attachCompanyScope, checkRole(FIN), paymentController.verifyPayment);
 
@@ -108,13 +112,14 @@ router.get('/attachments/:id', settingsController.serveAttachment);
 
 // Branches CRUD
 router.get('/branches', verifyToken, checkRole(MKT_READ), settingsController.getBranches);
-router.post('/branches', verifyToken, checkRole(MKT_MANAGE), settingsController.createBranch);
+// Staff may add a branch / event location straight from the plan form; edit & delete stay with managers.
+router.post('/branches', verifyToken, attachCompanyScope, checkRole(MKT_INPUT), settingsController.createBranch);
 router.put('/branches/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.updateBranch);
 router.delete('/branches/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.deleteBranch);
 
 // Event Locations CRUD
 router.get('/event-locations', verifyToken, checkRole(MKT_READ), settingsController.getEventLocations);
-router.post('/event-locations', verifyToken, checkRole(MKT_MANAGE), settingsController.createEventLocation);
+router.post('/event-locations', verifyToken, checkRole(MKT_INPUT), settingsController.createEventLocation);
 router.put('/event-locations/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.updateEventLocation);
 router.delete('/event-locations/:id', verifyToken, checkRole(MKT_MANAGE), settingsController.deleteEventLocation);
 

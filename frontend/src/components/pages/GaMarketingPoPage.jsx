@@ -182,6 +182,16 @@ export default function GaMarketingPoPage() {
     }
   };
 
+  // Deep link from a Marketing Plan (…/marketing-po?po=ID): load the page and open that PO.
+  useEffect(() => {
+    const id = Number(new URLSearchParams(window.location.search).get('po'));
+    if (!id) return;
+    setProcessed(true);
+    setTab('orders');
+    openDetail(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const fieldClass = 'h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200';
   const actionClass = 'inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-35';
   const exportable = pos.filter(po => ['ISSUED', 'CLOSED'].includes(po.status));

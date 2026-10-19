@@ -5,16 +5,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Calendar, Paperclip, FileSpreadsheet, Building, Loader2,
   AlertTriangle, Info, BarChart2, CheckCircle, Clock,
-  GitMerge, Plus, Send, Trash2, ChevronDown, ChevronUp,
-  TrendingUp, Flag, Copy, Check, Users, Wallet, CreditCard, CircleDollarSign, Megaphone, ArrowUpRight, LayoutDashboard, Target
+  Plus, Trash2, ChevronDown,
+  TrendingUp, Copy, Check, Users, Wallet, CreditCard, CircleDollarSign, Megaphone, ArrowUpRight, LayoutDashboard, Target
+, ShoppingCart, Edit3
 } from 'lucide-react';
+import { eventNumber } from '@/lib/eventNumber';
 import { apiClient } from '@/lib/apiClient';
 import { hasRole } from '@/lib/userRoles';
 import Cookies from 'js-cookie';
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
 import MarketingPlanClosingSection from './MarketingPlanClosingSection';
+import PlanPoTracker, { PoActionCell, poSummary } from './MarketingPlanPoTracker';
+import MarketingAmendmentPanel from './MarketingAmendmentPanel';
+import MarketingPlanApprovalLedger from './MarketingPlanApprovalLedger';
+import InlineHelp from '@/components/ui/InlineHelp';
 import MarketingReimbursementModal from './MarketingReimbursementModal';
+import ActionFailureModal from '@/components/ui/ActionFailureModal';
 
 // Helper: Format to IDR Currency
 const formatIDR = (val) => {
@@ -84,7 +91,8 @@ export default function MarketingPlanDetailModal({
   onRevise,
   onEditDraft,
   userRoles = [],
-  onSuccessMsg
+  onSuccessMsg,
+  initialTab = 'costs'
 }) {
   const lang = 'en'; // Marketing Plan UI is English-only
   const t = useCallback((key, ...args) => typeof mpt.en[key] === 'function' ? mpt.en[key](...args) : (mpt.en[key] ?? key), [lang]);
@@ -94,6 +102,13 @@ export default function MarketingPlanDetailModal({
   const [duplicating, setDuplicating] = useState(false);
   const [copiedToken, setCopiedToken] = useState(null);
   const [activeTab, setActiveTab] = useState('costs');
+  const [noClaimClosingRequest, setNoClaimClosingRequest] = useState(0);
+  const [failureModal, setFailureModal] = useState({
+    isOpen: false,
+    title: '',
+    error: null,
+    actionContext: ''
+  });
   const tabId = useId();
   const tabButtons = useRef({});
   const detailBody = useRef(null);
@@ -101,12 +116,12 @@ export default function MarketingPlanDetailModal({
     { id: 'overview', label: lang === 'id' ? 'Ringkasan' : 'Overview', icon: LayoutDashboard },
     { id: 'costs', label: lang === 'id' ? 'Costs & Reimbursement' : 'Costs & Reimbursement', icon: Wallet },
     { id: 'approvals', label: lang === 'id' ? 'Persetujuan & Perubahan' : 'Approvals & Changes', icon: Users },
-    { id: 'results', label: lang === 'id' ? 'Hasil & Closing' : 'Results & Closing', icon: BarChart2 },
+    { id: 'po', label: 'GA Purchase Orders', icon: ShoppingCart },
   ];
 
   useEffect(() => {
-    setActiveTab('costs');
-  }, [isOpen, planId]);
+    setActiveTab(initialTab);
+  }, [isOpen, planId, initialTab]);
 
   const changeTab = (id) => {
     setActiveTab(id);
@@ -142,7 +157,12 @@ export default function MarketingPlanDetailModal({
       loadPlans();
       onClose();
     } catch (err) {
-      alert(err.message || 'Failed to duplicate the plan.');
+      setFailureModal({
+        isOpen: true,
+        title: 'Duplikasi Plan Gagal',
+        error: err,
+        actionContext: 'Duplikasi Marketing Plan'
+      });
     } finally {
       setDuplicating(false);
     }
@@ -159,6 +179,21 @@ export default function MarketingPlanDetailModal({
   // Expense/Payment Request modal state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isReimbursementOpen, setIsReimbursementOpen] = useState(false);
+  const [editingClaim, setEditingClaim] = useState(null);
+  const [claimBusyId, setClaimBusyId] = useState(null);
+  const deleteClaim = async (claim) => {
+    if (!window.confirm(`Delete reimbursement "${claim.title}" (${formatIDR(claim.amount)})? Its additional Others line is removed from the plan.`)) return;
+    setClaimBusyId(claim.id);
+    try {
+      await apiClient.delete(`/api/marketing/claims/${claim.id}`);
+      onSuccessMsg('Reimbursement deleted.');
+      refreshPlanSilently();
+    } catch (err) {
+      setFailureModal({ isOpen: true, title: 'Failed to delete reimbursement', error: err, actionContext: 'Delete reimbursement' });
+    } finally {
+      setClaimBusyId(null);
+    }
+  };
   const [paymentRequestItem, setPaymentRequestItem] = useState(null);
   const [paymentForm, setPaymentForm] = useState({
     title: '',
@@ -174,16 +209,8 @@ export default function MarketingPlanDetailModal({
   // Recalling state
   const [recalling, setRecalling] = useState(false);
 
-  // Amendment state
-  const [showAmendmentPanel, setShowAmendmentPanel] = useState(false);
-  const [showAmendmentForm, setShowAmendmentForm] = useState(false);
-  const [amendmentTitle, setAmendmentTitle] = useState('');
-  const [amendmentJustification, setAmendmentJustification] = useState('');
-  const [amendmentChanges, setAmendmentChanges] = useState([]);
-  const [submittingAmendment, setSubmittingAmendment] = useState(false);
-  const [amendmentError, setAmendmentError] = useState(null);
-  const [amendmentMsg, setAmendmentMsg] = useState(null);
-  const [reviewingAmendmentId, setReviewingAmendmentId] = useState(null);
+  // Amendment form preset from a cost line ({ action, itemId, nonce })
+  const [amendPreset, setAmendPreset] = useState(null);
 
   // Fetch plan details
   const fetchPlanDetail = useCallback(async () => {
@@ -243,9 +270,33 @@ export default function MarketingPlanDetailModal({
       loadPlans();
       setTimeout(() => setActualsMsg(null), 5000);
     } catch (err) {
-      alert(err.message || t('errFailActuals'));
+      setFailureModal({
+        isOpen: true,
+        title: 'Gagal Menyimpan Hasil / Realisasi',
+        error: err,
+        actionContext: 'Penyimpanan Realisasi Event (Actuals)'
+      });
     } finally {
       setSubmittingActuals(false);
+    }
+  };
+
+  const [clearingActuals, setClearingActuals] = useState(false);
+  const handleActualsClear = async () => {
+    if (!selectedPlan || !window.confirm('Delete the post-campaign actuals of this plan? Sales, leads, reach, impressions, ROI and notes will be cleared.')) return;
+    setClearingActuals(true);
+    setActualsMsg(null);
+    try {
+      await apiClient.delete(`/api/marketing/plans/${selectedPlan.id}/actuals`);
+      setActualsForm({ actual_sales: '', actual_leads: '', actual_reach: '', actual_impressions: '', actual_roi_pct: '', actual_notes: '' });
+      setSelectedPlan(await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`));
+      setActualsMsg('Actuals deleted.');
+      loadPlans();
+      setTimeout(() => setActualsMsg(null), 5000);
+    } catch (err) {
+      setFailureModal({ isOpen: true, title: 'Failed to delete actuals', error: err, actionContext: 'Delete post-campaign actuals' });
+    } finally {
+      setClearingActuals(false);
     }
   };
 
@@ -293,7 +344,8 @@ export default function MarketingPlanDetailModal({
 
   const openPaymentRequest = (item) => {
     setPaymentRequestItem(item);
-    setPaymentForm({ title: '', amount: '', notes: '', doc_url: '' });
+    const firstPo = poSummary(item).issued.find(po => po.available > 0);
+    setPaymentForm({ title: firstPo ? `${firstPo.po_number} · ${item.description || item.m_coa?.name || ''}`.trim() : '', amount: firstPo ? String(Math.round(firstPo.available)) : '', notes: '', doc_url: '', purchase_order_id: firstPo ? String(firstPo.id) : '' });
     setPaymentError(null);
     setPaymentUploadError('');
     setIsPaymentModalOpen(true);
@@ -308,6 +360,9 @@ export default function MarketingPlanDetailModal({
       setPaymentError(t('errPayment'));
       return;
     }
+    const chosenPo = poSummary(paymentRequestItem).issued.find(po => String(po.id) === String(paymentForm.purchase_order_id));
+    if (!chosenPo) { setPaymentError('Select the GA purchase order for this payment.'); return; }
+    if (Number(paymentForm.amount) > Number(chosenPo.available) + 0.01) { setPaymentError(`Only ${formatIDR(chosenPo.available)} is left on ${chosenPo.po_number}.`); return; }
 
     setSubmittingPayment(true);
     try {
@@ -316,13 +371,14 @@ export default function MarketingPlanDetailModal({
         title: paymentForm.title,
         amount: Number(paymentForm.amount),
         notes: paymentForm.notes,
-        doc_url: paymentForm.doc_url
+        doc_url: paymentForm.doc_url,
+        purchase_order_id: Number(paymentForm.purchase_order_id)
       };
 
       await apiClient.post('/api/marketing/payments', payload);
       onSuccessMsg(t('successPayment'));
       setIsPaymentModalOpen(false);
-      setPaymentForm({ title: '', amount: '', notes: '', doc_url: '' });
+      setPaymentForm({ title: '', amount: '', notes: '', doc_url: '', purchase_order_id: '' });
       loadPlans();
 
       // Refresh plan details
@@ -346,7 +402,12 @@ export default function MarketingPlanDetailModal({
       loadPlans();
       onClose();
     } catch (err) {
-      alert(err.message || t('errFailRecall'));
+      setFailureModal({
+        isOpen: true,
+        title: 'Recall Plan Gagal',
+        error: err,
+        actionContext: 'Penarikan (Recall) Marketing Plan dari Alur Approval'
+      });
     } finally {
       setRecalling(false);
     }
@@ -361,78 +422,16 @@ export default function MarketingPlanDetailModal({
     } catch (err) { /* abaikan — data akan ter-refresh saat modal dibuka ulang */ }
   };
 
-  const addAmendmentChange = () => {
-    setAmendmentChanges(prev => [...prev, { action: 'CHANGE_VENDOR', plan_item_id: '', new_vendor_id: '', budget_delta: '', change_reason: '', new_item: null }]);
+  const closingPaymentCount = (selectedPlan?.items || []).flatMap(item => item.payment_requests || [])
+    .filter(payment => ['PENDING', 'APPROVED', 'OVERBUDGET_WARN'].includes(payment.status)).length;
+  const canManageClosing = hasRole(userRoles, 'admin', 'marketing', 'marketing_manager');
+  const canOpenClosing = selectedPlan?.status === 'APPROVED' && Boolean(selectedPlan?.actuals_filled_at) && closingPaymentCount === 0;
+  const openResultsAndClosing = () => {
+    changeTab('results');
   };
-
-  const removeAmendmentChange = (idx) => {
-    setAmendmentChanges(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const updateAmendmentChange = (idx, field, value) => {
-    setAmendmentChanges(prev => prev.map((c, i) => i === idx ? { ...c, [field]: value } : c));
-  };
-
-  const handleSubmitAmendmentDraft = async () => {
-    if (!selectedPlan || !amendmentTitle || !amendmentJustification || amendmentChanges.length === 0) {
-      setAmendmentError('Title, justification and at least one change are required.');
-      return;
-    }
-    setSubmittingAmendment(true);
-    setAmendmentError(null);
-    try {
-      const changes = amendmentChanges.map(c => ({
-        action: c.action,
-        plan_item_id: c.plan_item_id ? parseInt(c.plan_item_id, 10) : null,
-        new_vendor_id: c.new_vendor_id ? parseInt(c.new_vendor_id, 10) : null,
-        budget_delta: c.budget_delta ? parseFloat(c.budget_delta) : null,
-        change_reason: c.change_reason || null,
-        new_item: c.action === 'ADD_ITEM' ? c.new_item : null
-      }));
-      await apiClient.post(`/api/marketing/plans/${selectedPlan.id}/amendments`, {
-        title: amendmentTitle, justification: amendmentJustification, changes
-      });
-      setAmendmentMsg('Amendment saved as draft.');
-      setShowAmendmentForm(false);
-      setAmendmentTitle(''); setAmendmentJustification(''); setAmendmentChanges([]);
-      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
-      setSelectedPlan(updated);
-      setTimeout(() => setAmendmentMsg(null), 4000);
-    } catch (err) { setAmendmentError(err.message || 'Failed to save the amendment.'); }
-    finally { setSubmittingAmendment(false); }
-  };
-
-  const handleSubmitAmendment = async (amendmentId) => {
-    try {
-      await apiClient.post(`/api/marketing/amendments/${amendmentId}/submit`);
-      setAmendmentMsg('Amendment submitted for review.');
-      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
-      setSelectedPlan(updated);
-      setTimeout(() => setAmendmentMsg(null), 4000);
-    } catch (err) { alert(err.message || 'Failed to submit the amendment.'); }
-  };
-
-  const handleReviewAmendment = async (amendmentId, action) => {
-    const review_comment = action === 'REJECT' ? window.prompt('Rejection reason:') : null;
-    if (action === 'REJECT' && !review_comment) return;
-    setReviewingAmendmentId(amendmentId);
-    try {
-      await apiClient.post(`/api/marketing/amendments/${amendmentId}/review`, { action, review_comment });
-      setAmendmentMsg(action === 'APPROVE' ? 'Amendment approved and changes applied.' : 'Amendment rejected.');
-      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
-      setSelectedPlan(updated); loadPlans();
-      setTimeout(() => setAmendmentMsg(null), 4000);
-    } catch (err) { alert(err.message || 'Failed to review the amendment.'); }
-    finally { setReviewingAmendmentId(null); }
-  };
-
-  const handleDeleteAmendment = async (amendmentId) => {
-    if (!window.confirm('Delete this amendment?')) return;
-    try {
-      await apiClient.delete(`/api/marketing/amendments/${amendmentId}`);
-      const updated = await apiClient.get(`/api/marketing/plans/${selectedPlan.id}`);
-      setSelectedPlan(updated);
-    } catch (err) { alert(err.message || 'Failed to delete the amendment.'); }
+  const startNoClaimClosing = () => {
+    setNoClaimClosingRequest(request => request + 1);
+    changeTab('results');
   };
 
   return (
@@ -478,6 +477,7 @@ export default function MarketingPlanDetailModal({
                             selectedPlan.status === 'REJECTED' ? 'bg-rose-400/15 text-rose-300' :
                             selectedPlan.status === 'DRAFT' ? 'bg-white/10 text-slate-300' : 'bg-amber-400/15 text-amber-200'
                           }`}>{selectedPlan.status.replace(/_/g, ' ')}</span>
+                          <button type="button" title="Copy event number" onClick={() => navigator.clipboard?.writeText(eventNumber(selectedPlan)).catch(() => {})} className="rounded-md bg-white/10 px-2 py-1 font-mono text-[10px] font-semibold text-white hover:bg-white/20 cursor-pointer">{eventNumber(selectedPlan)}</button>
                         </div>
                         <h3 id={`${tabId}-title`} className="line-clamp-2 text-base sm:text-xl font-semibold tracking-tight leading-snug" title={selectedPlan.title}>{selectedPlan.title}</h3>
                         <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-slate-400">
@@ -627,40 +627,79 @@ export default function MarketingPlanDetailModal({
                       const totalCommitted = selectedPlan.items?.reduce((s, i) => s + Number(i.committed_amount || 0), 0) || 0;
                       const totalActual = selectedPlan.items?.reduce((s, i) => s + Number(i.actual_amount || 0), 0) || 0;
                       const totalRemaining = totalBudget - totalCommitted - totalActual;
-                      const colSpanFull = showAction ? 10 : 9;
+                      const colSpanFull = showAction ? 7 : 6;
+                      const canAmend = selectedPlan.status === 'APPROVED' && !['PENDING_APPROVAL', 'APPROVED'].includes(selectedPlan.closing_status) && hasRole(userRoles, 'admin', 'marketing', 'marketing_manager');
+                      const pendingAmendItems = new Set((selectedPlan.amendments || []).filter(a => ['DRAFT', 'PENDING_REVIEW'].includes(a.status)).flatMap(a => (a.change_items || []).map(ci => ci.plan_item_id)));
+                      const proposeChange = (action, itemId) => setAmendPreset({ action, itemId, nonce: Date.now() });
 
                       return (
                         <div className="space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <h4 className="text-sm font-semibold text-slate-800 dark:text-white flex items-center gap-2">
-                              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                              {t('budgetBreakdown')}
-                            </h4>
-                            {selectedPlan.status === 'APPROVED' && hasRole(userRoles, 'admin', 'marketing', 'marketing_manager') && !['PENDING_APPROVAL', 'APPROVED'].includes(selectedPlan.closing_status) && (
-                              <button type="button" onClick={() => setIsReimbursementOpen(true)} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700">
-                                <CircleDollarSign className="h-4 w-4" /> Claim Reimbursement
-                              </button>
-                            )}
-                          </div>
+                          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-4 py-3.5 dark:border-slate-800 sm:px-5">
+                              <div className="min-w-0">
+                                <h4 className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-white">
+                                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"><FileSpreadsheet className="h-3.5 w-3.5" /></span>
+                                  {t('budgetBreakdown')}
+                                  <InlineHelp label="How transactions work">For vendor bills, wait for GA to issue a PO, then select Request payment on that cost line. Use Claim reimbursement only for an employee expense that was paid personally and was not recorded as a vendor payment. Committed means payment requested or approved; paid means transfer confirmed.</InlineHelp>
+                                </h4>
+                                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Vendor payment: request it on the related line. Personal out-of-pocket expense: submit a reimbursement claim.</p>
+                              </div>
+                              {(canAmend || (canManageClosing && selectedPlan.status === 'APPROVED' && (!selectedPlan.actuals_filled_at || (canOpenClosing && !['PENDING_APPROVAL', 'APPROVED'].includes(selectedPlan.closing_status))))) && (
+                                <div className="flex shrink-0 flex-wrap gap-2">
+                                  {canAmend && <>
+                                    <button type="button" onClick={() => proposeChange('ADD_ITEM')} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-500/40 dark:bg-slate-900 dark:text-amber-300 dark:hover:bg-amber-500/10 cursor-pointer">
+                                      <Plus className="h-3.5 w-3.5" /> Add cost line
+                                    </button>
+                                    <button type="button" onClick={() => setIsReimbursementOpen(true)} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 cursor-pointer">
+                                      <CircleDollarSign className="h-3.5 w-3.5" /> Claim reimbursement
+                                    </button>
+                                  </>}
+                                  {canManageClosing && selectedPlan.status === 'APPROVED' && !selectedPlan.actuals_filled_at && (
+                                    <button type="button" onClick={openResultsAndClosing} title="Required before closing the campaign" className="relative inline-flex h-9 items-center gap-1.5 overflow-visible rounded-xl bg-rose-600 px-3 text-xs font-semibold text-white shadow-sm shadow-rose-500/30 transition-colors hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 cursor-pointer">
+                                      <span aria-hidden="true" className="pointer-events-none absolute -inset-1 rounded-2xl border border-rose-400/80 animate-ping" />
+                                      <Target className="relative h-3.5 w-3.5" /> <span className="relative">Record results</span>
+                                    </button>
+                                  )}
+                                  {canManageClosing && canOpenClosing && !['PENDING_APPROVAL', 'APPROVED'].includes(selectedPlan.closing_status) && (
+                                    <button type="button" onClick={startNoClaimClosing} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20 cursor-pointer">
+                                      <CheckCircle className="h-3.5 w-3.5" /> No claim &amp; close
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
 
-                          <div className="border border-neutral-200 dark:border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
+                            <dl className="grid grid-cols-2 divide-x divide-y divide-slate-100 bg-slate-50/70 dark:divide-slate-800 dark:bg-slate-950/30 sm:grid-cols-4 sm:divide-y-0">
+                              {[
+                                ['Planned', totalBudget, 'text-slate-900 dark:text-white'],
+                                ['Committed', totalCommitted, 'text-amber-600 dark:text-amber-400'],
+                                ['Paid', totalActual, 'text-emerald-600 dark:text-emerald-400'],
+                                ['Available', totalRemaining, totalRemaining < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-blue-600 dark:text-blue-400'],
+                              ].map(([label, amount, tone]) => (
+                                <div key={label} className="px-4 py-2.5 sm:px-5">
+                                  <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</dt>
+                                  <dd className={`mt-0.5 text-sm font-bold tabular-nums ${tone}`}>{formatIDR(amount)}</dd>
+                                </div>
+                              ))}
+                            </dl>
+
                             <div className="overflow-x-auto">
-                              <table className="w-full min-w-[1050px] text-left text-xs bg-white dark:bg-slate-900">
+                              <table className="w-full min-w-[880px] text-left text-xs bg-white dark:bg-slate-900">
                                 <thead>
-                                  <tr className="bg-slate-100/80 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase tracking-wider">
-                                    <th className="px-3 py-2.5">{t('colMonth')}</th>
-                                    <th className="px-3 py-2.5">CoA Account</th>
-                                    <th className="px-3 py-2.5">Brand / LOB</th>
-                                    <th className="px-3 py-2.5">Branch</th>
-                                    <th className="px-3 py-2.5">Vendor</th>
-                                    <th className="px-3 py-2.5 text-right">{t('colBudgetAlloc')}</th>
-                                    <th className="px-3 py-2.5 text-right">Committed</th>
-                                    <th className="px-3 py-2.5 text-right">{t('colRealized')}</th>
-                                    <th className="px-3 py-2.5 text-right">{t('colRemainingBalance')}</th>
-                                    {showAction && <th className="px-3 py-2.5 text-center">{t('colAction')}</th>}
+                                  <tr className="border-y border-slate-100 bg-slate-50/60 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-950/30 dark:text-slate-400">
+                                    <th className="px-4 py-2.5">{t('colMonth')}</th>
+                                    <th className="px-3 py-2.5">Cost line</th>
+                                    <th className="px-3 py-2.5">Vendor & location</th>
+                                    <th className="px-3 py-2.5 text-right">Planned</th>
+                                    <th className="px-3 py-2.5 text-right">Transactions</th>
+                                    <th className="px-3 py-2.5 text-right">Available</th>
+                                    {showAction && <th className="px-4 py-2.5 text-right">Action</th>}
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium text-neutral-700 dark:text-neutral-300">
+                                <tbody className="divide-y divide-slate-100 font-medium text-slate-700 dark:divide-slate-800 dark:text-slate-300">
+                                  {!selectedPlan.items?.length && (
+                                    <tr><td colSpan={colSpanFull} className="px-4 py-10 text-center text-slate-400">No cost lines yet. Add a cost line to prepare this campaign for vendor payment.</td></tr>
+                                  )}
                                   {selectedPlan.items?.map((item, idx) => {
                                     const budget = Number(item.budget_amount || 0);
                                     const committed = Number(item.committed_amount || 0);
@@ -669,71 +708,35 @@ export default function MarketingPlanDetailModal({
 
                                     return (
                                       <React.Fragment key={item.id || idx}>
-                                        <tr className="hover:bg-blue-50/40 dark:hover:bg-blue-500/5 transition-colors">
-                                          <td className="px-3 py-3 font-semibold whitespace-nowrap">{getMonthName(item.period_month, lang)}</td>
-                                          <td className="px-3 py-3">
-                                            <span className="font-black text-neutral-800 dark:text-white whitespace-nowrap">{item.m_coa?.code}</span>
-                                            <p className="text-[10px] text-neutral-400 font-normal mt-0.5">{item.m_coa?.name}</p>
-                                            {item.description?.startsWith('Reimbursement: ') && <p className="mt-1 text-[10px] text-blue-600 dark:text-blue-400">{item.description}</p>}
+                                        <tr className="transition-colors hover:bg-blue-50/35 dark:hover:bg-blue-500/5">
+                                          <td className="px-4 py-3.5 align-top font-semibold whitespace-nowrap text-slate-700 dark:text-slate-200">{getMonthName(item.period_month, lang).slice(0, 3)}</td>
+                                          <td className="px-3 py-3.5 align-top">
+                                            <p className="font-bold text-slate-900 dark:text-white">{item.m_coa?.code || '—'} <span className="font-medium text-slate-500 dark:text-slate-400">· {item.m_coa?.name || item.description || 'Cost item'}</span></p>
+                                            <p className="mt-1 text-[10px] text-slate-400">{item.m_brand?.name || 'No brand'}{item.m_line_business?.name ? ` · ${item.m_line_business.name}` : ''}{item.description?.startsWith('Reimbursement: ') ? ' · Reimbursement' : ''}</p>
                                           </td>
-                                          <td className="px-3 py-3">
-                                            <span className="font-semibold text-neutral-800 dark:text-neutral-200">{item.m_brand?.name || '-'}</span>
-                                            {item.m_line_business && <p className="text-[10px] text-neutral-400 font-normal mt-0.5">{item.m_line_business?.name}</p>}
+                                          <td className="px-3 py-3.5 align-top">
+                                            <p className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-200"><Building className="h-3 w-3 shrink-0 text-slate-400" />{item.vendors?.vendor_name || 'Vendor to be assigned'}</p>
+                                            <p className="mt-1 text-[10px] text-slate-400">{item.m_branch?.name ? `${t('branchPrefix')} ${item.m_branch.name}` : 'Global Sales'}{item.m_event_location?.name ? ` · ${item.m_event_location.name}` : ''}</p>
                                           </td>
-                                          <td className="px-3 py-3">
-                                            <span className="font-semibold text-neutral-800 dark:text-neutral-200 block">
-                                              {item.m_branch?.name ? `${t('branchPrefix')} ${item.m_branch.name}` : 'Global Sales'}
-                                            </span>
-                                            {item.m_event_location?.name && (
-                                              <span className="text-[10px] text-neutral-400 block mt-0.5">
-                                                Event: {item.m_event_location.name}
-                                              </span>
-                                            )}
-                                          </td>
-                                          <td className="px-3 py-3">
-                                            {item.vendors ? (
-                                              <span className="inline-flex items-center gap-1 text-neutral-700 dark:text-neutral-300">
-                                                <Building className="w-3 h-3 text-neutral-400 flex-shrink-0" />
-                                                {item.vendors.vendor_name}
-                                              </span>
-                                            ) : (
-                                              <span className="text-neutral-300 dark:text-neutral-600">-</span>
-                                            )}
-                                          </td>
-                                          <td className="px-3 py-3 text-right">
+                                          <td className="px-3 py-3.5 text-right align-top">
                                             <span className="font-bold text-neutral-900 dark:text-white block whitespace-nowrap">{formatIDR(budget)}</span>
                                             <span className="text-[10px] text-neutral-400 font-normal block mt-0.5 whitespace-nowrap">
                                               {item.qty || 1} × {formatIDR(item.unit_price || budget)}
                                             </span>
                                           </td>
-                                          <td className="px-3 py-3 text-right whitespace-nowrap">
-                                            {committed > 0
-                                              ? <span className="font-bold text-amber-600 dark:text-amber-400">{formatIDR(committed)}</span>
-                                              : <span className="text-neutral-300 dark:text-neutral-600">-</span>}
+                                          <td className="px-3 py-3.5 text-right align-top tabular-nums whitespace-nowrap">
+                                            <p className="text-[10px] text-slate-400">Committed <span className="ml-1 font-semibold text-amber-600 dark:text-amber-400">{committed ? formatIDR(committed) : '—'}</span></p>
+                                            <p className="mt-1 text-[10px] text-slate-400">Paid <span className="ml-1 font-semibold text-emerald-600 dark:text-emerald-400">{formatIDR(actual)}</span></p>
                                           </td>
-                                          <td className="px-3 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{formatIDR(actual)}</td>
-                                          <td className={`px-3 py-3 text-right font-bold whitespace-nowrap ${remaining < 0 ? 'text-red-500' : remaining < budget * 0.15 ? 'text-amber-500' : 'text-neutral-800 dark:text-white'}`}>
+                                          <td className={`px-3 py-3.5 text-right align-top font-bold tabular-nums whitespace-nowrap ${remaining < 0 ? 'text-rose-600 dark:text-rose-400' : remaining < budget * 0.15 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-white'}`}>
                                             {formatIDR(remaining)}
                                           </td>
                                           {showAction && (
-                                            <td className="px-3 py-3 text-center">
-                                              <div className="flex flex-col items-stretch gap-1.5">
-                                              {selectedPlan.status === 'APPROVED' && remaining > 0 ? (
-                                                <button
-                                                  onClick={() => openPaymentRequest(item)}
-                                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black shadow-sm transition-colors cursor-pointer whitespace-nowrap"
-                                                >
-                                                  <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                                                  Cost Actuals
-                                                </button>
-                                              ) : selectedPlan.status === 'COMPLETED' ? (
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-blue-500/10 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200 dark:border-blue-900/30 whitespace-nowrap">
-                                                  <Check className="w-3 h-3 text-blue-600" /> Selesai
-                                                </span>
-                                              ) : (
-                                                <span className="text-neutral-400 text-xs">-</span>
-                                              )}
-                                              </div>
+                                            <td className="px-4 py-3.5 text-right align-top">
+                                              <PoActionCell item={item} planStatus={selectedPlan.status} canRequest={hasRole(userRoles, 'admin', 'marketing', 'marketing_manager')} onRequest={openPaymentRequest} />
+                                              {pendingAmendItems.has(item.id)
+                                                ? <span className="mt-1.5 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">Change in progress</span>
+                                                : canAmend && <button type="button" onClick={() => proposeChange('CHANGE_BUDGET', item.id)} className="mt-1.5 ml-auto flex items-center gap-1 text-[10px] font-semibold text-amber-700 transition-colors hover:text-amber-800 dark:text-amber-300 cursor-pointer"><Edit3 className="h-3 w-3" /> Change</button>}
                                             </td>
                                           )}
                                         </tr>
@@ -768,6 +771,12 @@ export default function MarketingPlanDetailModal({
                                                             <Paperclip className="w-3.5 h-3.5" />
                                                           </a>
                                                         )}
+                                                        {pr.request_type === 'CLAIM' && selectedPlan.status === 'APPROVED' && !['PENDING_APPROVAL', 'APPROVED'].includes(selectedPlan.closing_status) && hasRole(userRoles, 'admin', 'marketing', 'marketing_manager') && (
+                                                          <span className="flex items-center gap-0.5">
+                                                            {pr.status === 'PENDING' && <button type="button" title="Edit reimbursement" onClick={() => { setEditingClaim(pr); setIsReimbursementOpen(true); }} className="rounded-lg p-1 text-slate-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-500/10 cursor-pointer"><Edit3 className="h-3.5 w-3.5" /></button>}
+                                                            {['PENDING', 'REJECTED'].includes(pr.status) && <button type="button" title="Delete reimbursement" disabled={claimBusyId === pr.id} onClick={() => deleteClaim(pr)} className="rounded-lg p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-500/10 cursor-pointer">{claimBusyId === pr.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button>}
+                                                          </span>
+                                                        )}
                                                       </div>
                                                     </div>
                                                   ))}
@@ -781,18 +790,21 @@ export default function MarketingPlanDetailModal({
                                   })}
                                 </tbody>
                                 <tfoot>
-                                  <tr className="border-t-2 border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-950/50">
-                                    <td colSpan={5} className="px-3 py-3 font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider text-xs">Total</td>
-                                    <td className="px-3 py-3 text-right font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{formatIDR(totalBudget)}</td>
-                                    <td className="px-3 py-3 text-right font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{totalCommitted > 0 ? formatIDR(totalCommitted) : '-'}</td>
-                                    <td className="px-3 py-3 text-right font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{formatIDR(totalActual)}</td>
-                                    <td className="px-3 py-3 text-right font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">{formatIDR(totalRemaining)}</td>
+                                  <tr className="border-t-2 border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950/50">
+                                    <td colSpan={3} className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Total</td>
+                                    <td className="px-3 py-3 text-right font-bold tabular-nums text-slate-900 dark:text-white whitespace-nowrap">{formatIDR(totalBudget)}</td>
+                                    <td className="px-3 py-3 text-right text-[10px] tabular-nums whitespace-nowrap"><p className="text-amber-600 dark:text-amber-400">{totalCommitted ? formatIDR(totalCommitted) : '—'}</p><p className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">{formatIDR(totalActual)}</p></td>
+                                    <td className={`px-3 py-3 text-right font-bold tabular-nums whitespace-nowrap ${totalRemaining < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-blue-600 dark:text-blue-400'}`}>{formatIDR(totalRemaining)}</td>
                                     {showAction && <td />}
                                   </tr>
                                 </tfoot>
                               </table>
                             </div>
                           </div>
+
+                          {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
+                            <MarketingAmendmentPanel plan={selectedPlan} metadata={metadata} userRoles={userRoles} preset={amendPreset} onChanged={refreshPlanSilently} />
+                          )}
                         </div>
                       );
                     })()}
@@ -812,7 +824,7 @@ export default function MarketingPlanDetailModal({
                             <h4 className="text-sm font-semibold text-slate-800 dark:text-white">
                               {lang === 'id' ? 'Approval Flow & Document Signers' : 'Approval Chain & Document Signers'}
                             </h4>
-                            <p className="text-[10px] text-neutral-400">{lang === 'id' ? 'Campaign approval status and history.' : 'Campaign approval status and history.'}</p>
+                            <p className="text-[10px] text-neutral-400">Campaign approval first, then every payment, reimbursement and closing approval below.</p>
                           </div>
                         </div>
                         <span className="px-2.5 py-1 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-200/60 dark:border-blue-900/30">
@@ -994,188 +1006,22 @@ export default function MarketingPlanDetailModal({
                           )
                         )}
                       </div>
+
+                      {/* Payments, reimbursements and closing approvals of this campaign */}
+                      <div className="border-t border-neutral-100 p-5 dark:border-neutral-800">
+                        <MarketingPlanApprovalLedger plan={selectedPlan} />
+                      </div>
                     </div>
 
-                    {/* Amendment Section */}
-                    {['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
-                      <div className="space-y-3">
-                        <button
-                          onClick={() => setShowAmendmentPanel(p => !p)}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-neutral-50 dark:bg-neutral-950/40 border border-neutral-200 dark:border-neutral-800 rounded-2xl hover:border-amber-300 dark:hover:border-amber-700/40 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <GitMerge className="w-4 h-4 text-amber-500" />
-                            <span className="text-sm font-semibold text-slate-800 dark:text-white">Amendments / Perubahan Plan</span>
-                            {selectedPlan.amendments?.length > 0 && (
-                              <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-black rounded-full">{selectedPlan.amendments.length}</span>
-                            )}
-                          </div>
-                          {showAmendmentPanel ? <ChevronUp className="w-4 h-4 text-neutral-400" /> : <ChevronDown className="w-4 h-4 text-neutral-400" />}
-                        </button>
-
-                        {showAmendmentPanel && (
-                          <div className="space-y-3 px-1">
-                            {amendmentMsg && (
-                              <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold px-3 py-2 rounded-xl flex items-center gap-1.5">
-                                <CheckCircle className="w-3.5 h-3.5" /> {amendmentMsg}
-                              </div>
-                            )}
-
-                            {/* Existing amendments list */}
-                            {selectedPlan.amendments?.length > 0 ? (
-                              <div className="space-y-2">
-                                {selectedPlan.amendments.map(am => {
-                                  const statusColor = am.status === 'APPROVED' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200/70 dark:border-emerald-500/20'
-                                    : am.status === 'REJECTED' ? 'text-red-600 bg-red-50 dark:bg-red-500/10 border-red-200/70 dark:border-red-500/20'
-                                    : am.status === 'PENDING_REVIEW' ? 'text-amber-600 bg-amber-50 dark:bg-amber-500/10 border-amber-200/70 dark:border-amber-500/20'
-                                    : 'text-neutral-500 bg-neutral-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800';
-                                  return (
-                                    <div key={am.id} className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-3.5 space-y-2">
-                                      <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                          <p className="text-xs font-bold text-neutral-800 dark:text-white">{am.title}</p>
-                                          <p className="text-[10px] text-neutral-400 mt-0.5">{am.creator?.name} · {new Date(am.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
-                                        </div>
-                                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${statusColor}`}>{am.status.replace('_', ' ')}</span>
-                                      </div>
-                                      <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed">{am.justification}</p>
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        {am.status === 'DRAFT' && (
-                                          <>
-                                            <button onClick={() => handleSubmitAmendment(am.id)}
-                                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-[10px] font-bold shadow-sm shadow-emerald-500/25 transition-all cursor-pointer active:scale-95">
-                                              <Send className="w-3 h-3" /> Submit for Review
-                                            </button>
-                                            <button onClick={() => handleDeleteAmendment(am.id)}
-                                              className="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 border border-transparent hover:border-red-200/60 transition-all cursor-pointer">
-                                              <Trash2 className="w-3.5 h-3.5" />
-                                            </button>
-                                          </>
-                                        )}
-                                        {am.status === 'PENDING_REVIEW' && hasRole(userRoles, 'admin', 'manager', 'marketing_manager', 'finance') && (
-                                          <>
-                                            <button onClick={() => handleReviewAmendment(am.id, 'APPROVE')} disabled={reviewingAmendmentId === am.id}
-                                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-700 text-white text-[10px] font-bold shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50">
-                                              {reviewingAmendmentId === am.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} Setujui
-                                            </button>
-                                            <button onClick={() => handleReviewAmendment(am.id, 'REJECT')} disabled={reviewingAmendmentId === am.id}
-                                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200/70 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-bold transition-all cursor-pointer active:scale-95 disabled:opacity-50">
-                                              <X className="w-3 h-3" /> Tolak
-                                            </button>
-                                          </>
-                                        )}
-                                        {am.review_comment && (
-                                          <p className="w-full text-[10px] text-neutral-400 italic mt-1">"{am.review_comment}"</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : !showAmendmentForm && (
-                              <p className="text-[11px] text-neutral-400 text-center py-4">No amendments for this plan yet.</p>
-                            )}
-
-                            {/* New amendment form */}
-                            {showAmendmentForm ? (
-                              <div className="border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 space-y-3 bg-amber-50/30 dark:bg-amber-500/5">
-                                <h5 className="text-xs font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                  <GitMerge className="w-3.5 h-3.5" /> New Amendment
-                                </h5>
-                                {amendmentError && (
-                                  <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-[10px] font-bold px-3 py-2 rounded-lg flex items-center gap-1.5">
-                                    <AlertTriangle className="w-3 h-3" /> {amendmentError}
-                                  </div>
-                                )}
-                                <div className="space-y-1.5">
-                                  <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Judul Amendment</label>
-                                  <input type="text" value={amendmentTitle} onChange={e => setAmendmentTitle(e.target.value)} placeholder="e.g. Change banner vendor, add digital ads cost"
-                                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-amber-400 font-semibold" />
-                                </div>
-                                <div className="space-y-1.5">
-                                  <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">Justification / Reason</label>
-                                  <textarea rows={2} value={amendmentJustification} onChange={e => setAmendmentJustification(e.target.value)} placeholder="Explain why this change is needed..."
-                                    className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-amber-400 resize-none font-medium" />
-                                </div>
-
-                                {/* Changes list */}
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Daftar Perubahan</label>
-                                    <button onClick={addAmendmentChange} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-amber-600 dark:text-amber-400 text-[9px] font-bold transition-all cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-500/20">
-                                      <Plus className="w-3 h-3" /> Add Change
-                                    </button>
-                                  </div>
-                                  {amendmentChanges.map((change, idx) => (
-                                    <div key={idx} className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-3 space-y-2 bg-white dark:bg-neutral-900">
-                                      <div className="flex items-center gap-2">
-                                        <select value={change.action} onChange={e => updateAmendmentChange(idx, 'action', e.target.value)}
-                                          className="flex-1 bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-bold text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-amber-400">
-                                          <option value="CHANGE_VENDOR">Ganti Vendor</option>
-                                          <option value="CHANGE_BUDGET">Change Budget</option>
-                                          <option value="ADD_ITEM">Add New Item</option>
-                                          <option value="REMOVE_ITEM">Remove Item</option>
-                                        </select>
-                                        <button onClick={() => removeAmendmentChange(idx)} className="w-6 h-6 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all cursor-pointer">
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                      {change.action !== 'ADD_ITEM' && (
-                                        <select value={change.plan_item_id} onChange={e => updateAmendmentChange(idx, 'plan_item_id', e.target.value)}
-                                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-amber-400">
-                                          <option value="">— Select Item —</option>
-                                          {selectedPlan.items?.map(item => (
-                                            <option key={item.id} value={item.id}>{item.m_coa?.code} · {item.m_brand?.name || 'Global'} · {getMonthName(item.period_month, lang)} · {formatIDR(item.budget_amount)}</option>
-                                          ))}
-                                        </select>
-                                      )}
-                                      {change.action === 'CHANGE_VENDOR' && (
-                                        <input type="number" value={change.new_vendor_id} onChange={e => updateAmendmentChange(idx, 'new_vendor_id', e.target.value)}
-                                          placeholder="New Vendor ID"
-                                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium focus:outline-none focus:border-amber-400" />
-                                      )}
-                                      {change.action === 'CHANGE_BUDGET' && (
-                                        <input type="number" value={change.budget_delta} onChange={e => updateAmendmentChange(idx, 'budget_delta', e.target.value)}
-                                          placeholder="Budget delta (positive = increase, negative = decrease)"
-                                          className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium focus:outline-none focus:border-amber-400" />
-                                      )}
-                                      <input type="text" value={change.change_reason} onChange={e => updateAmendmentChange(idx, 'change_reason', e.target.value)}
-                                        placeholder="Specific reason for this change (optional)"
-                                        className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-1.5 text-[10px] font-medium focus:outline-none focus:border-amber-400" />
-                                    </div>
-                                  ))}
-                                  {amendmentChanges.length === 0 && (
-                                    <p className="text-[10px] text-neutral-400 text-center py-2">Click "Add Change" to add a change item.</p>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center justify-end gap-2 pt-1">
-                                  <button onClick={() => { setShowAmendmentForm(false); setAmendmentError(null); setAmendmentChanges([]); }}
-                                    className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all cursor-pointer">
-                                    Cancel
-                                  </button>
-                                  <button onClick={handleSubmitAmendmentDraft} disabled={submittingAmendment}
-                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold shadow-sm shadow-amber-500/25 transition-all cursor-pointer active:scale-95 disabled:opacity-50">
-                                    {submittingAmendment ? <Loader2 className="w-3 h-3 animate-spin" /> : <Flag className="w-3 h-3" />} Save Draft
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              selectedPlan.status === 'APPROVED' && (
-                                <button onClick={() => { setShowAmendmentForm(true); setAmendmentError(null); }}
-                                  className="w-full flex items-center justify-center gap-1.5 py-2.5 border border-dashed border-amber-300 dark:border-amber-700/50 rounded-xl text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all cursor-pointer">
-                                  <Plus className="w-3.5 h-3.5" /> Request Amendment
-                                </button>
-                              )
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
 
                     </section>
 
-                    <section role="tabpanel" id={`${tabId}-panel-results`} aria-labelledby={`${tabId}-tab-results`}
+                    <section role="tabpanel" id={`${tabId}-panel-po`} aria-labelledby={`${tabId}-tab-po`}
+                      hidden={activeTab !== 'po'} tabIndex={0} className="space-y-5 focus-visible:outline-blue-500">
+                      <PlanPoTracker plan={selectedPlan} />
+                    </section>
+
+                    <section role="region" aria-label="Campaign results and closing"
                       hidden={activeTab !== 'results'} tabIndex={0} className="space-y-5 focus-visible:outline-blue-500">
                     {!['APPROVED', 'COMPLETED'].includes(selectedPlan.status) && (
                       <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-10 text-center dark:border-slate-700 dark:bg-slate-900">
@@ -1336,7 +1182,13 @@ export default function MarketingPlanDetailModal({
                               />
                             </div>
 
-                            <div className="flex justify-end">
+                            <div className="flex justify-end gap-2">
+                              {selectedPlan.actuals_filled_at && !['PENDING_APPROVAL', 'APPROVED'].includes(selectedPlan.closing_status) && (
+                                <button type="button" onClick={handleActualsClear} disabled={clearingActuals || submittingActuals} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 px-4 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10 cursor-pointer">
+                                  {clearingActuals ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                  Delete actuals
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={handleActualsSubmit}
@@ -1359,6 +1211,8 @@ export default function MarketingPlanDetailModal({
                         planId={selectedPlan.id}
                         planStatus={selectedPlan.status}
                         userRoles={userRoles}
+                        purchaseOrdersByItem={Object.fromEntries((selectedPlan.items || []).map(item => [item.id, item.purchase_orders || []]))}
+                        noClaimTrigger={noClaimClosingRequest}
                         onChanged={refreshPlanSilently}
                       />
                     )}
@@ -1400,6 +1254,31 @@ export default function MarketingPlanDetailModal({
                         </button>
                       )}
 
+                      {canManageClosing && selectedPlan.status === 'APPROVED' && selectedPlan.actuals_filled_at && closingPaymentCount > 0 && (
+                        <span className="hidden text-[10px] font-medium text-amber-700 dark:text-amber-300 sm:inline">Resolve {closingPaymentCount} payment{closingPaymentCount === 1 ? '' : 's'} before closing</span>
+                      )}
+
+                      {canManageClosing && (canOpenClosing || selectedPlan.closing_status === 'PENDING_APPROVAL' || selectedPlan.closing_status === 'REJECTED') && (
+                        <button
+                          type="button"
+                          onClick={openResultsAndClosing}
+                          className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors cursor-pointer ${selectedPlan.closing_status === 'PENDING_APPROVAL' ? 'bg-slate-700 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" />
+                          {selectedPlan.closing_status === 'PENDING_APPROVAL' ? 'View closing' : selectedPlan.closing_status === 'REJECTED' ? 'Resume closing' : 'Start closing'}
+                        </button>
+                      )}
+
+                      {selectedPlan.status === 'COMPLETED' && (
+                        <button
+                          type="button"
+                          onClick={openResultsAndClosing}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20 cursor-pointer"
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" /> View closing
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         disabled={duplicating}
@@ -1429,11 +1308,12 @@ export default function MarketingPlanDetailModal({
       </AnimatePresence>
 
       {isOpen && isReimbursementOpen && selectedPlan && (
-        <MarketingReimbursementModal plan={selectedPlan} metadata={metadata}
-          onClose={() => setIsReimbursementOpen(false)}
+        <MarketingReimbursementModal plan={selectedPlan} claim={editingClaim}
+          onClose={() => { setIsReimbursementOpen(false); setEditingClaim(null); }}
           onSuccess={() => {
             setIsReimbursementOpen(false);
-            onSuccessMsg('Reimbursement submitted to Finance.');
+            onSuccessMsg(editingClaim ? 'Reimbursement updated.' : 'Reimbursement submitted to Finance.');
+            setEditingClaim(null);
             refreshPlanSilently();
           }}
         />
@@ -1490,12 +1370,20 @@ export default function MarketingPlanDetailModal({
                   );
                 })()}
 
-                <div className="bg-neutral-50 dark:bg-neutral-950 p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1 text-xs">
-                  <div className="text-neutral-400 font-bold uppercase text-[9px] tracking-wider">{t('availableBalance')}</div>
-                  <div className="text-lg font-black text-indigo-600 dark:text-indigo-400">
-                    {formatIDR(Number(paymentRequestItem.budget_amount) - Number(paymentRequestItem.actual_amount))}
-                  </div>
-                </div>
+                {(() => {
+                  const issued = poSummary(paymentRequestItem).issued;
+                  const chosen = issued.find(po => String(po.id) === String(paymentForm.purchase_order_id));
+                  return (
+                    <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-3.5 text-xs dark:border-slate-800 dark:bg-slate-950">
+                      <label htmlFor="payment-po" className="text-[9px] font-bold uppercase tracking-wider text-slate-400">GA purchase order *</label>
+                      <select id="payment-po" value={paymentForm.purchase_order_id} onChange={e => { const po = issued.find(x => String(x.id) === e.target.value); setPaymentForm(prev => ({ ...prev, purchase_order_id: e.target.value, amount: po ? String(Math.round(po.available)) : prev.amount })); }} className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900">
+                        <option value="">Select issued PO</option>
+                        {issued.map(po => <option key={po.id} value={po.id} disabled={po.available <= 0}>{po.po_number} · {po.vendor?.vendor_name} · {formatIDR(po.available)} left</option>)}
+                      </select>
+                      {chosen && <p className="text-[11px] text-slate-500">PO line {formatIDR(chosen.line_total)} incl. PPN {Number(chosen.tax_rate)}% · already requested {formatIDR(chosen.requested)} · <span className="font-semibold text-blue-600 dark:text-blue-400">{formatIDR(chosen.available)} available</span></p>}
+                    </div>
+                  );
+                })()}
 
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -1627,6 +1515,15 @@ export default function MarketingPlanDetailModal({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Pop-up feedback saat terjadi kegagalan (403/401/400/500) */}
+      <ActionFailureModal
+        isOpen={failureModal.isOpen}
+        onClose={() => setFailureModal(prev => ({ ...prev, isOpen: false }))}
+        title={failureModal.title}
+        error={failureModal.error}
+        actionContext={failureModal.actionContext}
+      />
     </>
   );
 }

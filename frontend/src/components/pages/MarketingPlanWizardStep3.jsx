@@ -104,10 +104,13 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
             <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-500/10 text-blue-600 border border-blue-200/60 dark:border-blue-900/30">
               {lang === 'id' ? 'Berurutan' : 'Sequential'}
             </span>
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-rose-50 text-rose-600 border border-rose-200/70 dark:bg-rose-500/10 dark:text-rose-300 dark:border-rose-500/20">
+              {lang === 'id' ? 'Wajib sebelum submit' : 'Required to submit'}
+            </span>
           </div>
           <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1">
             <InlineHelp summary={lang === 'id' ? 'Pick from the directory or enter a name and email manually.' : 'Choose from the directory or enter a name and email.'} label={lang === 'id' ? 'Penjelasan alur persetujuan' : 'About the approval flow'}>
-              {lang === 'id' ? 'Manual recipients are saved for this document only; the directory and company settings do not change. Check titles and order. Each recipient gets an approval link when their step comes.' : 'Manual recipients are saved only on this document; the directory and company settings stay unchanged. Check the roles and order. Each recipient gets an approval link when their turn is reached.'}
+              {lang === 'id' ? 'Setiap langkah wajib memiliki nama, email, dan jabatan. Penerima manual hanya berlaku untuk plan ini; direktori dan pengaturan PT tidak berubah.' : 'Every step needs a signer name, email, and role. Manual recipients apply only to this plan; the directory and company settings are unchanged.'}
             </InlineHelp>
           </p>
         </div>
@@ -186,8 +189,8 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
                   className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
                 />
                 <datalist id={`users-datalist-${idx}`}>
-                  {signers.map(s => (
-                    <option key={s.id} value={s.name}>
+                  {(signers || []).map((s, sIdx) => (
+                    <option key={`signer-${s.id || sIdx}`} value={s.name}>
                       {s.position ? `${s.position} · ${s.email}` : s.email}
                     </option>
                   ))}
@@ -215,13 +218,14 @@ export function WizardApproversSection({ wizardApprovers, setWizardApprovers, si
               {/* Role / Jabatan */}
               <div className="space-y-1">
                 <label className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider block">
-                  {lang === 'id' ? 'Jabatan / Role' : 'Role / Position'}
+                  {lang === 'id' ? 'Jabatan / Role *' : 'Role / Position *'}
                 </label>
                 <input
                   type="text"
                   value={approver.approver_role || ''}
                   onChange={(e) => updateApprover(idx, 'approver_role', e.target.value)}
                   placeholder="e.g. General Manager Retail"
+                  required
                   className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-neutral-800 dark:text-white focus:outline-none focus:border-blue-500 font-medium"
                 />
               </div>

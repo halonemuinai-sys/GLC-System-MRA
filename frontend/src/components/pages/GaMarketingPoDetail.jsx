@@ -30,6 +30,9 @@ export default function GaMarketingPoDetail({ po, canWrite, onClose, onEdit, onC
   const [error, setError] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
   const [showCancel, setShowCancel] = useState(false);
+  const [showCloseReview, setShowCloseReview] = useState(false);
+  const [showReopenReview, setShowReopenReview] = useState(false);
+  const [closeAcknowledged, setCloseAcknowledged] = useState(false);
   const [nsRef, setNsRef] = useState(po.netsuite_ref || '');
 
   const run = async (key, fn, message) => {
@@ -37,6 +40,9 @@ export default function GaMarketingPoDetail({ po, canWrite, onClose, onEdit, onC
     setError(null);
     try {
       const updated = await fn();
+      setShowCloseReview(false);
+      setShowReopenReview(false);
+      setCloseAcknowledged(false);
       onChanged(updated, message);
     } catch (err) {
       setError(err.message || 'Action failed.');
@@ -47,6 +53,14 @@ export default function GaMarketingPoDetail({ po, canWrite, onClose, onEdit, onC
 
   const activePayments = (po.payment_requests || []).filter(p => p.status !== 'REJECTED');
   const paidTotal = (po.payment_requests || []).filter(p => p.status === 'PAID').reduce((s, p) => s + Number(p.amount), 0);
+  const unresolvedPayments = (po.payment_requests || []).filter(p => !['PAID', 'REJECTED'].includes(p.status));
+  const outstandingBalance = Math.max(0, Number(po.total || 0) - paidTotal);
+  const closeReady = po.status === 'ISSUED' && unresolvedPayments.length === 0 && outstandingBalance <= 0.01;
+  const closeBlocker = unresolvedPayments.length
+    ? `${unresolvedPayments.length} payment request${unresolvedPayments.length === 1 ? '' : 's'} still need a final decision.`
+    : outstandingBalance > 0.01
+      ? `${formatIDR(outstandingBalance)} is still unpaid.`
+      : '';
   const label = 'text-[10px] font-semibold uppercase tracking-wider text-slate-400';
 
   return (
@@ -119,6 +133,20 @@ export default function GaMarketingPoDetail({ po, canWrite, onClose, onEdit, onC
             ) : <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-[11px] text-slate-400 dark:border-slate-700">No payment request is linked yet. GA links them from Payment Requests → PO number.</p>}
           </div>
 
+          {['ISSUED', 'CLOSED'].includes(po.status) && (
+            <div className={`rounded-xl border p-3.5 ${po.status === 'CLOSED' || closeReady ? 'border-emerald-200 bg-emerald-50/60 dark:border-emerald-500/20 dark:bg-emerald-500/10' : 'border-amber-200 bg-amber-50/60 dark:border-amber-500/20 dark:bg-amber-500/10'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className={`text-xs font-semibold ${po.status === 'CLOSED' || closeReady ? 'text-emerald-800 dark:text-emerald-200' : 'text-amber-800 dark:text-amber-200'}`}>{po.status === 'CLOSED' ? 'PO closed' : closeReady ? 'Ready to close' : 'Closing check'}</p>
+                  <p className={`mt-0.5 text-[11px] leading-relaxed ${po.status === 'CLOSED' || closeReady ? 'text-emerald-700/80 dark:text-emerald-300/80' : 'text-amber-700/80 dark:text-amber-300/80'}`}>
+                    {po.status === 'CLOSED' ? 'This PO is settled and closed. Reopen it only to correct an early closure or to allow another payment request.' : closeReady ? 'All linked payment requests are settled and paid requests cover the full PO total.' : closeBlocker || 'A payment must be recorded before this PO can be closed.'}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold tabular-nums ${po.status === 'CLOSED' || closeReady ? 'bg-white/80 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-white/80 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'}`}>{formatIDR(Math.max(0, outstandingBalance))} left</span>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">NetSuite mapping</p>
@@ -149,6 +177,32 @@ export default function GaMarketingPoDetail({ po, canWrite, onClose, onEdit, onC
               </div>
             </div>
           )}
+
+          {showCloseReview && po.status === 'ISSUED' && (
+            <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+              <div>
+                <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-100">Confirm PO closure</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/80 dark:text-emerald-200/80">Closing locks this PO from new payment requests. The server checks the latest payment data again when you confirm.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-lg bg-white/80 px-3 py-2 dark:bg-emerald-950/30"><p className="text-[10px] text-slate-400">PO total</p><p className="mt-0.5 font-semibold tabular-nums text-slate-800 dark:text-slate-100">{formatIDR(po.total)}</p></div>
+                <div className="rounded-lg bg-white/80 px-3 py-2 dark:bg-emerald-950/30"><p className="text-[10px] text-slate-400">Paid</p><p className="mt-0.5 font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">{formatIDR(paidTotal)}</p></div>
+              </div>
+              {!closeReady && <p className="text-[11px] font-medium text-rose-700 dark:text-rose-300">Cannot close yet: {closeBlocker || 'payment settlement is incomplete.'}</p>}
+              <label className="flex cursor-pointer items-start gap-2 text-[11px] text-slate-700 dark:text-slate-200"><input type="checkbox" checked={closeAcknowledged} onChange={event => setCloseAcknowledged(event.target.checked)} disabled={!closeReady} className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 accent-emerald-600" /><span>I have reviewed the final payment status and confirm this vendor PO is settled.</span></label>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => { setShowCloseReview(false); setCloseAcknowledged(false); }} className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 cursor-pointer">Back</button>
+                <button type="button" disabled={!closeReady || !closeAcknowledged || !!busy} onClick={() => run('close', () => apiClient.post(`/api/ga/marketing-po/${po.id}/close`), `${po.po_number} closed.`)} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-[11px] font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">{busy === 'close' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Confirm close</button>
+              </div>
+            </div>
+          )}
+
+          {showReopenReview && po.status === 'CLOSED' && (
+            <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
+              <div><p className="text-xs font-semibold text-amber-900 dark:text-amber-100">Reopen for correction</p><p className="mt-1 text-[11px] leading-relaxed text-amber-800/80 dark:text-amber-200/80">Use this only if the PO was closed too early or another payment must be recorded. The PO returns to Issued, then must pass the closing check again.</p></div>
+              <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowReopenReview(false)} className="h-8 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 cursor-pointer">Keep closed</button><button type="button" disabled={!!busy} onClick={() => run('reopen', () => apiClient.post(`/api/ga/marketing-po/${po.id}/reopen`), `${po.po_number} reopened for correction.`)} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-amber-600 px-3 text-[11px] font-semibold text-white hover:bg-amber-700 disabled:opacity-50 cursor-pointer">{busy === 'reopen' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Reopen PO</button></div>
+            </div>
+          )}
         </div>
 
         {canWrite && (
@@ -160,7 +214,8 @@ export default function GaMarketingPoDetail({ po, canWrite, onClose, onEdit, onC
             <div className="flex gap-2">
               {po.status === 'DRAFT' && <button type="button" disabled={!!busy} onClick={onEdit} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 cursor-pointer"><Edit3 className="h-3.5 w-3.5" />Edit</button>}
               {po.status === 'DRAFT' && <button type="button" disabled={!!busy} onClick={() => run('issue', () => apiClient.post(`/api/ga/marketing-po/${po.id}/issue`), `${po.po_number} issued.`)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">{busy === 'issue' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Issue PO</button>}
-              {po.status === 'ISSUED' && <button type="button" disabled={!!busy} onClick={() => run('close', () => apiClient.post(`/api/ga/marketing-po/${po.id}/close`), `${po.po_number} closed.`)} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer">{busy === 'close' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}Close PO</button>}
+              {po.status === 'CLOSED' && <button type="button" disabled={!!busy} onClick={() => setShowReopenReview(true)} title="Reopen a prematurely closed PO before recording another payment" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-amber-200 px-4 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-500/30 dark:text-amber-300 dark:hover:bg-amber-500/10 cursor-pointer"><Send className="h-3.5 w-3.5" />Reopen to correct</button>}
+              {po.status === 'ISSUED' && <span title={closeReady ? 'Review the final settlement before closing.' : closeBlocker || 'A payment must be recorded before this PO can be closed.'}><button type="button" disabled={!!busy || !closeReady} onClick={() => { setShowCloseReview(true); setCloseAcknowledged(false); }} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-4 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"><CheckCircle2 className="h-3.5 w-3.5" />Close PO</button></span>}
             </div>
           </div>
         )}

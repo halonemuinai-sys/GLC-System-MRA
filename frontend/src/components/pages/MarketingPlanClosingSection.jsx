@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Loader2, Save, Send, Check, Ban, Upload, ExternalLink, AlertTriangle, CheckCircle, XCircle, Clock, Receipt, Target, CalendarClock
+  Loader2, Save, Send, Check, Ban, Upload, ExternalLink, AlertTriangle, CheckCircle, CheckCircle2, XCircle, Clock, Receipt, Target, CalendarClock
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { hasRole } from '@/lib/userRoles';
@@ -64,7 +64,10 @@ async function uploadProof(file) {
 
 // Closing Marketing Plan: biaya final per item vs dibayar (kelebihan / claim) + evaluasi KPI,
 // diajukan ke Marketing Head (tahap 1) lalu Kadiv (tahap 2). Disetujui semua -> plan COMPLETED.
-export default function MarketingPlanClosingSection({ planId, planStatus, userRoles = [], onChanged }) {
+const PO_PROOF_PREFIX = '/dashboard/ga/marketing-po?po=';
+const poIdFromProof = url => (String(url || '').startsWith(PO_PROOF_PREFIX) ? Number(String(url).slice(PO_PROOF_PREFIX.length)) : null);
+
+export default function MarketingPlanClosingSection({ planId, planStatus, userRoles = [], purchaseOrdersByItem = {}, noClaimTrigger = 0, onChanged }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -77,6 +80,7 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
   const [message, setMessage] = useState(null); // { type, text }
   const [decision, setDecision] = useState(null); // null | 'approve' | 'reject'
   const [decisionText, setDecisionText] = useState('');
+  const appliedNoClaimTrigger = useRef(0);
 
   const isAdmin = hasRole(userRoles, 'admin');
   const canEditRole = isAdmin || hasRole(userRoles, 'marketing', 'marketing_manager');
@@ -105,6 +109,17 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
   useEffect(() => {
     apiClient.get('/api/ga/asset-disposal-signers').then(setSigners).catch(() => setSigners([]));
   }, []);
+
+  const applyNoClaim = useCallback(() => {
+    setRows(prev => prev.map(row => ({ ...row, final_input: String(Math.round(Number(row.paid || 0))), proof_url: row.proof_url || '' })));
+    setMessage({ type: 'success', text: 'Final costs now match recorded payments. No claim or return is needed; review the approvers and submit the closing.' });
+  }, []);
+
+  useEffect(() => {
+    if (!noClaimTrigger || noClaimTrigger === appliedNoClaimTrigger.current || !data || planStatus !== 'APPROVED' || !canEditRole) return;
+    appliedNoClaimTrigger.current = noClaimTrigger;
+    applyNoClaim();
+  }, [noClaimTrigger, data, planStatus, canEditRole, applyNoClaim]);
 
   if (loading) {
     return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-neutral-400" /></div>;
@@ -163,7 +178,6 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
   const handleApprove = () => run('approve', () => apiClient.put(`/api/marketing/plans/${planId}/closing/approve`, { comment: decisionText.trim() }),
     closing?.current_step < steps.length ? 'Step approved. Forwarded to the next approver.' : 'Closing approved. The plan is now COMPLETED.');
   const handleReject = () => run('reject', () => apiClient.put(`/api/marketing/plans/${planId}/closing/reject`, { rejection_reason: decisionText.trim() }), 'Closing rejected and returned to the requester.');
-
   async function handleUpload(id, file) {
     if (!file) return;
     setUploadingId(id);
@@ -194,7 +208,9 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
             </InlineHelp>
           </p>
         </div>
-        {status && <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${STATUS_META[status].cls}`}>{STATUS_META[status].label}</span>}
+        <div className="flex items-center gap-2">
+          {status && <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${STATUS_META[status].cls}`}>{STATUS_META[status].label}</span>}
+        </div>
       </div>
 
       {/* Closing window (M+1 s/d M+3) */}
@@ -266,7 +282,7 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
             <tr className="bg-neutral-50 dark:bg-neutral-950/40 text-neutral-400 text-[10px] font-bold uppercase tracking-wider">
               <th className="p-3 text-left">Item</th>
               <th className="p-3 text-right">Budget</th>
-              <th className="p-3 text-right">Paid</th>
+              <th className="p-3 text-right"><span className="inline-flex items-center gap-1">Paid<InlineHelp label="What Paid means">Total of payment requests on this item that GA (vendor) or Finance (reimbursement) has confirmed as transferred. Approved but not yet transferred requests are not counted.</InlineHelp></span></th>
               <th className="p-3 text-right w-36">Final Cost</th>
               <th className="p-3 text-right">Variance</th>
               <th className="p-3 text-left w-44">Notes</th>
@@ -286,13 +302,19 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
                   <td className="p-3 text-right font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">{formatIDR(r.paid)}</td>
                   <td className="p-3 text-right">
                     {editable ? (
-                      <input
-                        inputMode="numeric"
-                        value={formatThousands(r.final_input)}
-                        onChange={e => updateRow(r.plan_item_id, { final_input: e.target.value.replace(/\D/g, '') })}
-                        placeholder="0"
-                        className={`${inputCls} text-right`}
-                      />
+                      <>
+                        <input
+                          inputMode="numeric"
+                          value={formatThousands(r.final_input)}
+                          onChange={e => updateRow(r.plan_item_id, { final_input: e.target.value.replace(/\D/g, '') })}
+                          placeholder="Enter final cost"
+                          aria-invalid={r.final_amount === null}
+                          className={`${inputCls} text-right ${r.final_amount === null ? '!border-rose-300 placeholder:text-rose-400' : ''}`}
+                        />
+                        {(purchaseOrdersByItem[r.plan_item_id] || []).length > 0 && (
+                          <button type="button" onClick={() => updateRow(r.plan_item_id, { final_input: String(Math.round((purchaseOrdersByItem[r.plan_item_id] || []).reduce((sum, po) => sum + Number(po.line_total || 0), 0))) })} className="mt-1 text-[10px] font-medium text-blue-600 hover:underline dark:text-blue-400 cursor-pointer">Use PO total</button>
+                        )}
+                      </>
                     ) : (
                       <span className="font-bold text-neutral-800 dark:text-neutral-200 whitespace-nowrap">{r.final_amount === null ? '-' : formatIDR(r.final_amount)}</span>
                     )}
@@ -307,15 +329,25 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
                   </td>
                   <td className="p-3 whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
-                      {r.proof_url && (
-                        <a href={r.proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:underline">
-                          <ExternalLink className="w-3 h-3" /> View
-                        </a>
+                      {r.proof_url && (() => {
+                        const poId = poIdFromProof(r.proof_url);
+                        const po = poId ? (purchaseOrdersByItem[r.plan_item_id] || []).find(x => x.id === poId) : null;
+                        return (
+                          <a href={r.proof_url} target={poId ? undefined : '_blank'} rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline">
+                            <ExternalLink className="w-3 h-3" /> {poId ? (po?.po_number || `PO #${poId}`) : 'View'}
+                          </a>
+                        );
+                      })()}
+                      {editable && (purchaseOrdersByItem[r.plan_item_id] || []).length > 0 && (
+                        <select aria-label={`Use a GA PO as proof for ${r.label}`} value={poIdFromProof(r.proof_url) || ''} onChange={e => e.target.value && updateRow(r.plan_item_id, { proof_url: `${PO_PROOF_PREFIX}${e.target.value}` })} className={`h-7 max-w-36 rounded-lg border px-1.5 text-[10px] font-semibold ${proofMissing ? 'border-rose-300 text-rose-600' : 'border-neutral-200 text-neutral-600 dark:border-neutral-700 dark:text-neutral-300'} bg-white dark:bg-neutral-900`}>
+                          <option value="">Pick GA PO</option>
+                          {(purchaseOrdersByItem[r.plan_item_id] || []).map(po => <option key={po.id} value={po.id}>{po.po_number}</option>)}
+                        </select>
                       )}
                       {editable && (
                         <label className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold cursor-pointer border ${proofMissing ? 'border-rose-300 text-rose-600 bg-rose-50 dark:bg-rose-950/30' : 'border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:bg-neutral-50 dark:hover:bg-neutral-800'}`}>
                           {uploadingId === r.plan_item_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                          {r.proof_url ? 'Ganti' : proofMissing ? 'Required' : 'Upload'}
+                          {r.proof_url ? 'Replace' : proofMissing ? 'Upload (required)' : 'Upload'}
                           <input type="file" accept="image/*,application/pdf" className="hidden" onChange={e => handleUpload(r.plan_item_id, e.target.files?.[0])} />
                         </label>
                       )}
@@ -430,11 +462,21 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
             </div>
           </div>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            <p className="text-[10px] text-neutral-400">
-              {missingFinal > 0 ? `${missingFinal} items have no final cost yet. ` : ''}
-              {missingProof > 0 ? `${missingProof} items with a variance have no proof yet. ` : ''}
-              {sameApprover ? 'Marketing Head and Division Head must be different people.' : ''}
-            </p>
+            {/* Every requirement for Submit Closing, so a disabled button is never a mystery. */}
+            <ul className="space-y-1 text-[11px]">
+              {[
+                [data.actuals_filled, 'Post-campaign actuals saved'],
+                [data.unsettled_payments === 0, data.unsettled_payments ? `${data.unsettled_payments} payment request(s) still need to be paid or rejected` : 'All payment requests paid or rejected'],
+                [!(data.unpaid_po_items || []).length, (data.unpaid_po_items || []).length ? `Not paid yet although GA issued a PO: ${data.unpaid_po_items.map(r => `${r.label} (${r.po_numbers.join(', ')})`).join('; ')} — request payment in Costs first` : 'Items with a GA PO are paid'],
+                [missingFinal === 0, missingFinal ? `Final cost missing for ${liveRows.filter(r => r.final_amount === null).map(r => r.label).join(', ')}` : 'Final cost filled for every item'],
+                [missingProof === 0, missingProof ? `Proof missing for ${missingProof} item(s) with a variance (pick a GA PO or upload)` : 'Proof attached where there is a variance'],
+                [!!headId && !!kadivId && !sameApprover, sameApprover ? 'Marketing Head and Division Head must be different people' : headId && kadivId ? 'Approvers selected' : 'Select the Marketing Head and Division Head'],
+              ].map(([ok, text]) => (
+                <li key={text} className={`flex items-start gap-1.5 ${ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {ok ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}{text}
+                </li>
+              ))}
+            </ul>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSave}
@@ -446,7 +488,7 @@ export default function MarketingPlanClosingSection({ planId, planStatus, userRo
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={!!busy || !headId || !kadivId || sameApprover || missingFinal > 0 || missingProof > 0 || !data.actuals_filled || data.unsettled_payments > 0}
+                disabled={!!busy || !headId || !kadivId || sameApprover || missingFinal > 0 || missingProof > 0 || !data.actuals_filled || data.unsettled_payments > 0 || (data.unpaid_po_items || []).length > 0}
                 className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold disabled:opacity-50"
               >
                 {busy === 'submit' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}

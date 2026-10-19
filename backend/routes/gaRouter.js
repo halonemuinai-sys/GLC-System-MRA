@@ -88,6 +88,7 @@ router.put('/marketing-po/:id', poWrite, marketingPoController.updatePurchaseOrd
 router.post('/marketing-po/:id/issue', poWrite, marketingPoController.issuePurchaseOrder);
 router.post('/marketing-po/:id/cancel', poWrite, marketingPoController.cancelPurchaseOrder);
 router.post('/marketing-po/:id/close', poWrite, marketingPoController.closePurchaseOrder);
+router.post('/marketing-po/:id/reopen', poWrite, marketingPoController.reopenPurchaseOrder);
 router.put('/marketing-po/:id/netsuite', poWrite, marketingPoController.setNetsuiteRef);
 router.delete('/marketing-po/:id', poWrite, marketingPoController.deletePurchaseOrder);
 

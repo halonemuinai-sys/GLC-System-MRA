@@ -352,7 +352,7 @@ export default function MarketingApprovalSettingsPage() {
             {canSetup ? 'Approval Settings' : 'Approver Directory'}
           </h1>
           <p className="text-slate-400 text-xs mt-2">
-            {canSetup ? 'Set up approval tiers, keep the approver directory, then pick approvers when submitting.' : 'People who can be picked as signers on Berita Acara (BAP / BAST) and on Marketing approvals.'}
+            {canSetup ? 'Set up approval tiers, keep the approver directory, then pick approvers when submitting.' : 'People who can be picked as signers on Asset Reports (BAP / BAST) and on Marketing approvals.'}
           </p>
           </div>
           <button type="button" onClick={() => (processed ? reloadAll() : setProcessed(true))} disabled={loading || rulesLoading} className="inline-flex w-fit shrink-0 items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer"><RefreshCw className={`h-3.5 w-3.5 ${loading || rulesLoading ? 'animate-spin' : ''}`} />{processed ? 'Reload' : 'Load data'}</button>

@@ -8,6 +8,7 @@ import {
   FileSpreadsheet, AlertCircle, Check, ChevronLeft, ChevronRight,
   Paperclip, ShieldCheck, Hash, Hourglass
 } from 'lucide-react';
+import { eventNumber } from '@/lib/eventNumber';
 import { apiClient } from '@/lib/apiClient';
 import { getUserRoles, hasRole } from '@/lib/userRoles';
 
@@ -53,6 +54,7 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
   const [actionError, setActionError] = useState('');
   const [reviewNote, setReviewNote] = useState('');
   const [paidNotes, setPaidNotes] = useState('');
+  const [confirmPayment, setConfirmPayment] = useState(false);
   const [poNumber, setPoNumber] = useState(payment.po_number || '');
   const [poOptions, setPoOptions] = useState(null);
   const [poChoice, setPoChoice] = useState(payment.purchase_order_id ? String(payment.purchase_order_id) : '');
@@ -65,8 +67,9 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
   const partiallyApproved = history.some(h => h.status === 'APPROVED');
   const isOpen = ['PENDING', 'OVERBUDGET_WARN'].includes(payment.status);
   const canReview = isClaim && payment.status === 'PENDING' && hasRole(userRoles, 'finance') && pendingTask;
-  const canDelete = isOpen && !partiallyApproved && hasRole(userRoles, 'admin', 'marketing', 'marketing_manager');
-  const canMarkPaid = payment.status === 'APPROVED' && (isClaim ? hasRole(userRoles, 'finance', 'admin', 'ga') : hasRole(userRoles, 'admin', 'ga'));
+  // Reimbursements may also be deleted after Finance rejected them (their extra Others line goes too).
+  const canDelete = (isOpen || (isClaim && payment.status === 'REJECTED')) && !partiallyApproved && hasRole(userRoles, 'admin', 'marketing', 'marketing_manager');
+  const canMarkPaid = payment.status === 'APPROVED' && hasRole(userRoles, 'finance', 'admin');
   const canSetPo = ['APPROVED', 'PAID'].includes(payment.status) && hasRole(userRoles, 'admin', 'ga') && !isClaim;
 
   // Issued GA purchase orders that contain this payment's plan item.
@@ -80,6 +83,20 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
   }, [canSetPo, payment.marketing_plan_item_id]);
   const budget = Number(item?.budget_amount || 0);
   const realized = Number(item?.actual_amount || 0);
+  const taxRate = Math.max(0, Number(payment.purchase_order?.tax_rate || 0));
+  const hasPoTax = !isClaim && Boolean(payment.purchase_order_id) && taxRate > 0;
+  const budgetImpact = hasPoTax ? Number(payment.amount || 0) / (1 + taxRate / 100) : Number(payment.amount || 0);
+  const taxAmount = Math.max(0, Number(payment.amount || 0) - budgetImpact);
+  const budgetAvailable = budget - realized;
+  const canRecheckTax = isOpen && !isClaim && Boolean(payment.purchase_order_id) && taxRate > 0;
+  const recipientFor = (historyItem) => historyItem.pending_recipient?.email
+    || (historyItem.magic_links || []).find(link => !link.used_at)?.recipient_email
+    || historyItem.magic_links?.[0]?.recipient_email
+    || null;
+  const recipientLabel = (historyItem) => {
+    const email = recipientFor(historyItem);
+    return email ? (historyItem.pending_recipient?.name ? `${historyItem.pending_recipient.name} (${email})` : email) : null;
+  };
 
   const run = async (key, fn, message) => {
     setBusy(key);
@@ -139,12 +156,13 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
           {item && (
             <div>
               <p className={`${label} mb-2`}>Item budget</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[['Budget', budget, ''], ['Realized (paid)', realized, ''], ['Remaining', budget - realized, budget - realized < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400']].map(([name, value, tone]) => (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[[hasPoTax ? 'Plan budget (net)' : 'Plan budget', budget, ''], [hasPoTax ? 'Realized (net)' : 'Realized (paid)', realized, ''], [hasPoTax ? 'Available (net)' : 'Remaining', budgetAvailable, budgetAvailable < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'], [hasPoTax ? 'This request (net)' : 'This request', budgetImpact, 'text-blue-600 dark:text-blue-400']].map(([name, value, tone]) => (
                   <div key={name} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><p className="text-[10px] text-slate-400">{name}</p><p className={`mt-0.5 text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-100 ${tone}`}>{formatIDR(value)}</p></div>
                 ))}
               </div>
-              {payment.status === 'OVERBUDGET_WARN' && <p className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />This request exceeds the remaining budget of this item (including other in-flight requests). After the normal tier, CFO/CEO escalation is required.</p>}
+              {hasPoTax && <div className="mt-2 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50/70 p-3 text-[11px] text-blue-800 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-300" /><span><strong>PO payment composition.</strong> Net {formatIDR(budgetImpact)} + PPN {taxRate}% {formatIDR(taxAmount)} = cash payment {formatIDR(payment.amount)}. PPN is retained on the PO and does not consume the campaign plan budget.</span></div>}
+              {payment.status === 'OVERBUDGET_WARN' && <div className="mt-2 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><div className="min-w-0 flex-1"><p>This request exceeds the available net budget after other open requests. It requires CFO/CEO escalation after the normal approval tier.</p>{hasPoTax && <p className="mt-1 text-rose-600/85 dark:text-rose-300/85">If this warning came only from PPN, recheck it using the PO tax treatment.</p>}</div>{canRecheckTax && <button type="button" disabled={!!busy} onClick={() => run('recheck-tax', () => apiClient.post(`/api/marketing/payments/${payment.id}/recheck-budget`), 'Budget rechecked using the PO tax treatment.')} className="shrink-0 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50 dark:border-rose-400/30 dark:bg-slate-900 dark:text-rose-200 cursor-pointer">{busy === 'recheck-tax' ? 'Checking...' : 'Recheck PPN'}</button>}</div>}
             </div>
           )}
 
@@ -157,9 +175,9 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
                     <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${h.status === 'APPROVED' ? 'bg-emerald-500 text-white' : h.status === 'REJECTED' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'}`}>{h.step_number}</span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-700 dark:text-slate-200">
-                        {h.status === 'PENDING' ? (isClaim ? 'Awaiting Finance' : `Awaiting step ${h.step_number} approval`) : `${h.status === 'APPROVED' ? 'Approved' : 'Rejected'} by ${h.approver?.name || '—'}`}
+                        {h.status === 'PENDING' ? (recipientFor(h) ? `Awaiting ${isClaim ? 'Finance' : `step ${h.step_number} approval`} — ${recipientLabel(h)}` : (isClaim ? 'Awaiting Finance assignment' : `Awaiting step ${h.step_number} assignment`)) : `${h.status === 'APPROVED' ? 'Approved' : 'Rejected'} by ${h.approver?.name || '—'}`}
                       </p>
-                      {(h.comment || h.action_at) && <p className="truncate text-[10px] text-slate-400">{[h.action_at && formatDate(h.action_at, true), h.comment].filter(Boolean).join(' · ')}</p>}
+                      {h.status === 'PENDING' ? <p className="truncate text-[10px] text-slate-400">Recipient is set by Approval Settings{recipientFor(h) ? ' and has received the approval link.' : '.'}</p> : (h.comment || h.action_at) && <p className="truncate text-[10px] text-slate-400">{[h.action_at && formatDate(h.action_at, true), h.comment].filter(Boolean).join(' · ')}</p>}
                     </div>
                     {h.status === 'PENDING' ? <Hourglass className="h-3.5 w-3.5 shrink-0 animate-pulse text-amber-500" /> : h.status === 'APPROVED' ? <CheckCircle className="h-3.5 w-3.5 shrink-0 text-emerald-500" /> : <XCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />}
                   </motion.li>
@@ -203,7 +221,7 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
             <div className="space-y-2 rounded-xl border border-emerald-200 p-4 dark:border-emerald-500/30">
               <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300"><Banknote className="h-3.5 w-3.5" />Record payment</p>
               <textarea value={paidNotes} onChange={e => setPaidNotes(e.target.value)} placeholder="Payment note (optional), e.g. transfer reference" rows={2} className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs dark:border-slate-700 dark:bg-slate-950" />
-              <button type="button" disabled={!!busy} onClick={() => { if (confirm(`Mark ${formatIDR(payment.amount)} as paid? This amount will be added to the budget actuals.`)) run('paid', () => apiClient.post(`/api/marketing/payments/${payment.id}/mark-paid`, { paid_notes: paidNotes }), 'Payment recorded as PAID.'); }} className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer">{busy === 'paid' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}Confirm payment</button>
+              <button type="button" disabled={!!busy} onClick={() => setConfirmPayment(true)} className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"><Check className="h-3.5 w-3.5" />Confirm payment</button>
             </div>
           )}
         </div>
@@ -216,6 +234,35 @@ function PaymentDetailModal({ payment, onClose, onChanged, userRoles }) {
           ) : <span className="text-[10px] text-slate-400">{isOpen && partiallyApproved ? 'Partially approved — it can no longer be deleted.' : ''}</span>}
           <button type="button" onClick={onClose} className="h-9 rounded-lg border border-slate-200 px-4 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">Close</button>
         </div>
+
+        <AnimatePresence>
+          {confirmPayment && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+              <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 12 }} transition={{ type: 'spring', stiffness: 360, damping: 28 }} role="dialog" aria-modal="true" aria-labelledby="confirm-payment-title" className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300"><CheckCircle className="h-5 w-5" /></span>
+                    <div><p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">Finance confirmation</p><h4 id="confirm-payment-title" className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white">Confirm vendor payment?</h4></div>
+                  </div>
+                  <button type="button" onClick={() => setConfirmPayment(false)} disabled={busy === 'paid'} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-slate-200 cursor-pointer" aria-label="Close confirmation"><X className="h-4 w-4" /></button>
+                </div>
+                <div className="space-y-4 px-5 py-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/40"><p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{payment.title}</p><p className="mt-1 text-[10px] text-slate-400">{payment.po_number || 'No PO'} · {plan?.company?.name || '—'}</p></div>
+                  <div className={`grid gap-2 ${hasPoTax ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><p className="text-[10px] text-slate-400">Cash transfer</p><p className="mt-1 text-xs font-semibold tabular-nums text-slate-900 dark:text-white">{formatIDR(payment.amount)}</p></div>
+                    {hasPoTax && <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 dark:border-amber-500/20 dark:bg-amber-500/10"><p className="text-[10px] text-amber-700 dark:text-amber-300">PPN {taxRate}%</p><p className="mt-1 text-xs font-semibold tabular-nums text-amber-800 dark:text-amber-200">{formatIDR(taxAmount)}</p></div>}
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-500/20 dark:bg-emerald-500/10"><p className="text-[10px] text-emerald-700 dark:text-emerald-300">Campaign actuals</p><p className="mt-1 text-xs font-semibold tabular-nums text-emerald-800 dark:text-emerald-200">{formatIDR(budgetImpact)}</p></div>
+                  </div>
+                  <p className="flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5 text-[11px] leading-relaxed text-blue-800 dark:bg-blue-500/10 dark:text-blue-200"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />You are recording the transfer as Finance. This marks the request as paid and updates campaign actuals {hasPoTax ? 'using its net amount before PPN.' : '.'}</p>
+                </div>
+                <div className="flex gap-2 border-t border-slate-100 bg-slate-50/70 px-5 py-3 dark:border-slate-800 dark:bg-slate-950/30">
+                  <button type="button" onClick={() => setConfirmPayment(false)} disabled={busy === 'paid'} className="h-9 flex-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 cursor-pointer">Review again</button>
+                  <button type="button" disabled={busy === 'paid'} onClick={() => { setConfirmPayment(false); run('paid', () => apiClient.post(`/api/marketing/payments/${payment.id}/mark-paid`, { paid_notes: paidNotes }), 'Payment recorded as PAID.'); }} className="inline-flex h-9 flex-[1.35] items-center justify-center gap-2 rounded-lg bg-emerald-600 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50 cursor-pointer">{busy === 'paid' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}Confirm as paid</button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );
@@ -424,7 +471,7 @@ export default function MarketingPaymentsPage() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative min-w-48 flex-1">
               <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-              <input aria-label="Search requests" value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search title, plan, company, creator or PO number..." className={`${fieldClass} w-full bg-slate-50 pl-9 pr-9 dark:bg-slate-950`} />
+              <input aria-label="Search requests" value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search title, event no. (EVT-…), plan, company, creator or PO..." className={`${fieldClass} w-full bg-slate-50 pl-9 pr-9 dark:bg-slate-950`} />
               {searchInput && <button type="button" aria-label="Clear search" onClick={() => setSearchInput('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>}
             </div>
             <select aria-label="Request type" value={requestType} onChange={e => { setRequestType(e.target.value); setPage(1); }} className={fieldClass}>
@@ -480,7 +527,7 @@ export default function MarketingPaymentsPage() {
                             {p.request_type === 'CLAIM' && <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">Reimburse</span>}
                             <p title={p.title} className="truncate font-medium text-slate-800 dark:text-slate-200">{p.title}</p>
                           </div>
-                          <p title={plan?.title || ''} className="truncate text-[10px] text-slate-400">#{p.id} · {plan?.title || '—'}</p>
+                          <p title={plan?.title || ''} className="truncate text-[10px] text-slate-400"><span className="font-mono">{eventNumber(plan)}</span> · {plan?.title || '—'}</p>
                         </td>
                         <td title={plan?.company?.name || ''} className="truncate px-3 py-2.5 text-slate-500 dark:text-slate-400">{plan?.company?.name || '—'}</td>
                         <td className="px-3 py-2.5 text-right font-medium tabular-nums text-slate-800 dark:text-slate-100">{formatIDR(p.amount)}</td>

@@ -200,6 +200,7 @@ export default function SearchableBrandSelect({
             <div className="flex-1 overflow-y-auto divide-y divide-neutral-100 dark:divide-neutral-800/40 p-1">
               {/* Option: Default Clear */}
               <button
+                key="brand-clear-option"
                 type="button"
                 onClick={() => {
                   onChange('');
@@ -222,11 +223,11 @@ export default function SearchableBrandSelect({
                   <div className="px-2.5 py-1 text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">
                     Brand Terdaftar pada PT Ini ({matchingCompanyBrands.length})
                   </div>
-                  {matchingCompanyBrands.map((b) => {
+                  {matchingCompanyBrands.map((b, idx) => {
                     const isSelected = String(b.id) === String(value);
                     return (
                       <button
-                        key={b.id}
+                        key={`brand-comp-${b.id || idx}`}
                         type="button"
                         onClick={() => {
                           onChange(String(b.id));
@@ -262,11 +263,11 @@ export default function SearchableBrandSelect({
                       Semua Brand Master Lainnya ({otherMasterBrands.length})
                     </div>
                   )}
-                  {otherMasterBrands.map((b) => {
+                  {otherMasterBrands.map((b, idx) => {
                     const isSelected = String(b.id) === String(value);
                     return (
                       <button
-                        key={b.id}
+                        key={`brand-other-${b.id || idx}`}
                         type="button"
                         onClick={() => {
                           onChange(String(b.id));

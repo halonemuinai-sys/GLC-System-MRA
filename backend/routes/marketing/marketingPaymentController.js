@@ -5,6 +5,16 @@ const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanySc
 const OPEN_STATUSES = ['PENDING', 'OVERBUDGET_WARN', 'APPROVED'];
 const inScope = (req, companyId) => req.companyScope?.all || (req.companyScope?.companyIds || []).includes(companyId);
 const isAdmin = req => hasRole(req, 'admin');
+const toMoney = value => Math.round(Number(value || 0) * 100) / 100;
+const TAX_EPSILON = 0.01;
+
+// Marketing plan amounts are recorded before PPN. A vendor payment still keeps its
+// gross cash amount, but only its pre-tax portion consumes the campaign item budget.
+// Reimbursements do not have a PO tax breakdown, so their full amount is budget impact.
+const getBudgetImpact = (amount, purchaseOrder) => {
+  const taxRate = Math.max(0, Number(purchaseOrder?.tax_rate || 0));
+  return taxRate > 0 ? toMoney(Number(amount) / (1 + taxRate / 100)) : toMoney(amount);
+};
 
 const PAYMENT_INCLUDE = {
   marketing_plan_item: {
@@ -16,8 +26,46 @@ const PAYMENT_INCLUDE = {
     }
   },
   creator: { select: { id: true, name: true, email: true } },
-  approval_history: { orderBy: { step_number: 'asc' }, include: { approver: { select: { name: true } } } }
+  purchase_order: { select: { id: true, po_number: true, tax_rate: true } },
+  approval_history: {
+    orderBy: { step_number: 'asc' },
+    include: {
+      approver: { select: { id: true, name: true, email: true } },
+      magic_links: {
+        orderBy: { created_at: 'desc' },
+        select: { recipient_email: true, expires_at: true, used_at: true }
+      }
+    }
+  }
 };
+
+// approval_history stores the person who acted. For a pending step the actual
+// recipient lives on its magic link, so enrich it with a directory name for the UI.
+async function enrichApprovalRecipients(payments) {
+  const list = Array.isArray(payments) ? payments : [payments];
+  const emails = [...new Set(list.flatMap(payment => (payment?.approval_history || [])
+    .flatMap(history => (history.magic_links || []).map(link => link.recipient_email))
+    .filter(Boolean)
+    .map(email => String(email).trim().toLowerCase())))];
+  if (!emails.length) return Array.isArray(payments) ? payments : payments;
+  const signers = await prisma.m_approval_signer.findMany({
+    where: { email: { in: emails } },
+    select: { name: true, email: true }
+  });
+  const namesByEmail = new Map(signers.map(signer => [String(signer.email).trim().toLowerCase(), signer.name]));
+  const decorate = payment => ({
+    ...payment,
+    approval_history: (payment.approval_history || []).map(history => {
+      const recipient = (history.magic_links || []).find(link => !link.used_at)?.recipient_email
+        || history.magic_links?.[0]?.recipient_email;
+      return recipient ? {
+        ...history,
+        pending_recipient: { email: recipient, name: namesByEmail.get(String(recipient).trim().toLowerCase()) || null }
+      } : history;
+    })
+  });
+  return Array.isArray(payments) ? payments.map(decorate) : decorate(payments);
+}
 
 // POST /payments — buat payment request baru
 async function createPaymentRequest(req, res, next) {
@@ -48,15 +96,40 @@ async function createPaymentRequest(req, res, next) {
       return res.status(400).json({ error: 'Cannot request payment on an unapproved marketing plan.' });
     }
 
+    // No PO = no payment: a vendor payment must use an issued GA purchase order that contains
+    // this item, and stay within that PO line (incl. PPN) minus requests already linked to it.
+    // Reimbursements (claims) go through /claims and never need a PO.
+    const purchaseOrderId = parseInt(req.body.purchase_order_id, 10);
+    if (!Number.isInteger(purchaseOrderId)) {
+      return res.status(400).json({ error: 'Select the GA purchase order for this payment. GA must issue a PO for this item first.' });
+    }
+    const po = await prisma.purchase_orders.findUnique({
+      where: { id: purchaseOrderId },
+      include: {
+        lines: { where: { marketing_plan_item_id: planItem.id } },
+        payment_requests: { where: { marketing_plan_item_id: planItem.id, status: { not: 'REJECTED' } }, select: { amount: true } }
+      }
+    });
+    if (!po || po.company_id !== planItem.marketing_plan.company_id || !po.lines.length) {
+      return res.status(400).json({ error: 'This purchase order does not cover the selected item.' });
+    }
+    if (po.status !== 'ISSUED') return res.status(400).json({ error: `Purchase order ${po.po_number} is ${po.status.toLowerCase()}; only issued POs can be paid.` });
+    const poLineTotal = po.lines.reduce((sum, line) => sum + Number(line.amount), 0) * (1 + Number(po.tax_rate) / 100);
+    const poAvailable = Math.round((poLineTotal - po.payment_requests.reduce((sum, p) => sum + Number(p.amount), 0)) * 100) / 100;
+    if (itemAmt > poAvailable + 0.01) {
+      return res.status(400).json({ error: `Only Rp ${Math.max(0, Math.round(poAvailable)).toLocaleString('id-ID')} is left on ${po.po_number} for this item.` });
+    }
+
     // Remaining budget must also subtract requests already in flight (pending or
     // approved but not yet paid) — actual_amount only grows when a payment is PAID.
-    const inFlight = await prisma.payment_requests.aggregate({
+    const inFlight = await prisma.payment_requests.findMany({
       where: { marketing_plan_item_id: planItem.id, status: { in: OPEN_STATUSES } },
-      _sum: { amount: true }
+      select: { amount: true, purchase_order: { select: { tax_rate: true } } }
     });
-    const committed = Number(inFlight._sum.amount || 0);
-    const remainingBudget = parseFloat(planItem.budget_amount) - parseFloat(planItem.actual_amount) - committed;
-    const isOverbudget = itemAmt > remainingBudget;
+    const committed = toMoney(inFlight.reduce((total, request) => total + getBudgetImpact(request.amount, request.purchase_order), 0));
+    const remainingBudget = toMoney(parseFloat(planItem.budget_amount) - parseFloat(planItem.actual_amount) - committed);
+    const requestBudgetImpact = getBudgetImpact(itemAmt, po);
+    const isOverbudget = requestBudgetImpact > remainingBudget + TAX_EPSILON;
     const status = isOverbudget ? 'OVERBUDGET_WARN' : 'PENDING';
 
     const duplicate = await prisma.payment_requests.findFirst({
@@ -94,7 +167,8 @@ async function createPaymentRequest(req, res, next) {
         data: {
           marketing_plan_item_id: planItem.id,
           title, amount: itemAmt, status, notes, doc_url,
-          creator_id: employee.id
+          creator_id: employee.id,
+          purchase_order_id: po.id, po_number: po.po_number, po_issued_at: po.issued_at || new Date()
         }
       });
 
@@ -136,7 +210,9 @@ async function getPayments(req, res, next) {
     if (['PAYMENT', 'CLAIM'].includes(request_type)) where.request_type = request_type;
     const q = typeof search === 'string' ? search.trim() : '';
     if (q) {
+      const eventNo = q.match(/^(?:#|EVT-?(?:\d{4}-?)?)?0*(\d{1,7})$/i);
       where.OR = [
+        ...(eventNo ? [{ marketing_plan_item: { marketing_plan_id: parseInt(eventNo[1], 10) } }] : []),
         { title: { contains: q, mode: 'insensitive' } },
         { po_number: { contains: q, mode: 'insensitive' } },
         { creator: { name: { contains: q, mode: 'insensitive' } } },
@@ -183,7 +259,7 @@ async function getPayments(req, res, next) {
 
     const summary = {};
     for (const row of byStatus) summary[row.status] = { count: row._count._all, amount: Number(row._sum.amount || 0) };
-    res.json({ data: payments, total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)), summary });
+    res.json({ data: await enrichApprovalRecipients(payments), total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)), summary });
   } catch (err) { next(err); }
 }
 
@@ -194,10 +270,7 @@ async function getPaymentDetail(req, res, next) {
       where: { id: parseInt(req.params.id, 10) },
       include: {
         ...PAYMENT_INCLUDE,
-        approval_history: {
-          orderBy: { step_number: 'asc' },
-          include: { approver: { select: { id: true, name: true, email: true } } }
-        }
+        approval_history: PAYMENT_INCLUDE.approval_history
       }
     });
     if (!payment) return res.status(404).json({ error: 'Payment request not found.' });
@@ -205,7 +278,7 @@ async function getPaymentDetail(req, res, next) {
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(paymentCompanyId)) {
       return res.status(404).json({ error: 'Payment request not found.' });
     }
-    res.json(payment);
+    res.json(await enrichApprovalRecipients(payment));
   } catch (err) { next(err); }
 }
 
@@ -233,9 +306,8 @@ async function updatePayment(req, res, next) {
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(payment.marketing_plan_item.marketing_plan.company_id)) {
       return res.status(404).json({ error: 'Payment request not found.' });
     }
-    if (payment.request_type === 'CLAIM') {
-      return res.status(400).json({ error: 'A submitted claim cannot be edited. Delete it and submit again.' });
-    }
+    // Reimbursements have their own rules (and remove their extra "Others" line on delete).
+    if (payment.request_type === 'CLAIM') return require('./marketingClaimController').updateClaim(req, res, next);
 
     const editBlock = await editBlockReason(req, payment);
     if (editBlock) return res.status(editBlock.status).json({ error: editBlock.error.replace('{action}', 'edited').replace('{verb}', 'edit') });
@@ -262,6 +334,8 @@ async function deletePayment(req, res, next) {
       return res.status(404).json({ error: 'Payment request not found.' });
     }
 
+    if (payment.request_type === 'CLAIM') return require('./marketingClaimController').deleteClaim(req, res, next);
+
     const deleteBlock = await editBlockReason(req, payment);
     if (deleteBlock) return res.status(deleteBlock.status).json({ error: deleteBlock.error.replace('{action}', 'deleted').replace('{verb}', 'delete') });
 
@@ -287,9 +361,10 @@ async function markPaymentPaid(req, res, next) {
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(payment.marketing_plan_item.marketing_plan.company_id)) {
       return res.status(404).json({ error: 'Payment request not found.' });
     }
-    // Finance records claim payouts; vendor payments are recorded by GA (or admin).
-    if (payment.request_type !== 'CLAIM' && !hasRole(req, 'admin', 'ga')) {
-      return res.status(403).json({ error: 'Vendor payments are recorded by GA. Finance records reimbursement payouts.' });
+    // GA owns the PO lifecycle. Finance owns the transfer and is the only team that
+    // confirms a payment as paid, for both vendor payments and reimbursements.
+    if (!hasRole(req, 'admin', 'finance')) {
+      return res.status(403).json({ error: 'Only Finance can confirm a payment transfer. GA manages the purchase order, not the payment record.' });
     }
 
     if (payment.status !== 'APPROVED') {
@@ -305,14 +380,62 @@ async function markPaymentPaid(req, res, next) {
         }
       });
       if (claimed.count !== 1) throw new Error('This payment has already been processed.');
+      const budgetImpact = payment.request_type === 'PAYMENT'
+        ? getBudgetImpact(payment.amount, payment.purchase_order)
+        : toMoney(payment.amount);
       await tx.marketing_plan_items.update({
         where: { id: payment.marketing_plan_item_id },
-        data: { actual_amount: { increment: payment.amount } }
+        data: { actual_amount: { increment: budgetImpact } }
       });
       return tx.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
     });
 
     res.json(updated);
+  } catch (err) { next(err); }
+}
+
+// POST /payments/:id/recheck-budget — correct a legacy tax-only warning without
+// changing the approval chain. This lets existing requests created before tax-aware
+// budget accounting continue at their normal approval tier.
+async function recheckBudget(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const payment = await prisma.payment_requests.findUnique({ where: { id }, include: PAYMENT_INCLUDE });
+    if (!payment || !inScope(req, payment.marketing_plan_item.marketing_plan.company_id)) return res.status(404).json({ error: 'Payment request not found.' });
+    const block = await editBlockReason(req, payment);
+    if (block) return res.status(block.status).json({ error: block.error.replace('{action}', 'rechecked').replace('{verb}', 'recheck') });
+    if (payment.request_type !== 'PAYMENT' || !payment.purchase_order) {
+      return res.status(400).json({ error: 'A tax recheck is only available for vendor payments linked to a GA purchase order.' });
+    }
+
+    const item = payment.marketing_plan_item;
+    const inFlight = await prisma.payment_requests.findMany({
+      where: { marketing_plan_item_id: item.id, id: { not: id }, status: { in: OPEN_STATUSES } },
+      select: { amount: true, purchase_order: { select: { tax_rate: true } } }
+    });
+    const committed = toMoney(inFlight.reduce((total, request) => total + getBudgetImpact(request.amount, request.purchase_order), 0));
+    const remainingBudget = toMoney(Number(item.budget_amount) - Number(item.actual_amount) - committed);
+    const budgetImpact = getBudgetImpact(payment.amount, payment.purchase_order);
+    const nextStatus = budgetImpact > remainingBudget + TAX_EPSILON ? 'OVERBUDGET_WARN' : 'PENDING';
+    if (nextStatus === 'PENDING') {
+      const normalTier = await loadTierSteps(prisma, 'PAYMENT_REQUEST', item.marketing_plan.company_id, Number(payment.amount));
+      if (!normalTier.length) {
+        return res.status(400).json({ error: 'Set a normal Payment Request approval tier before clearing this overbudget warning.' });
+      }
+    }
+
+    const updated = await prisma.payment_requests.update({
+      where: { id },
+      data: { status: nextStatus, updated_at: new Date() },
+      include: PAYMENT_INCLUDE
+    });
+    res.json({
+      payment: updated,
+      budget_impact_amount: budgetImpact,
+      tax_amount: toMoney(Number(payment.amount) - budgetImpact),
+      remaining_budget: remainingBudget,
+      resolved: payment.status === 'OVERBUDGET_WARN' && nextStatus === 'PENDING'
+    });
   } catch (err) { next(err); }
 }
 
@@ -379,12 +502,14 @@ async function verifyPayment(req, res, next) {
 }
 
 module.exports = {
+  getBudgetImpact,
   verifyPayment,
   createPaymentRequest,
   getPayments,
   getPaymentDetail,
   updatePayment,
   deletePayment,
+  recheckBudget,
   markPaymentPaid,
   setPoNumber
 };

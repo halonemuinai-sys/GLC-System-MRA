@@ -17,7 +17,7 @@ const itemLabel = (item) => item.description || item.m_coa?.name || `Item #${ite
 
 const PLAN_INCLUDE = {
   company: true,
-  items: { include: { m_coa: true, vendors: true, payment_requests: true }, orderBy: { id: 'asc' } }
+  items: { include: { m_coa: true, vendors: true, payment_requests: true, po_lines: { select: { purchase_order: { select: { po_number: true, status: true } } } } }, orderBy: { id: 'asc' } }
 };
 const SIGNER_SELECT = { select: { id: true, name: true, email: true, position: true } };
 const CLOSING_INCLUDE = {
@@ -50,10 +50,15 @@ function buildRows(plan, closing) {
       final_amount: finalAmount,
       variance: finalAmount === null ? 0 : finalAmount - paid,
       note: ci?.note || '',
-      proof_url: ci?.proof_url || ''
+      proof_url: ci?.proof_url || '',
+      po_numbers: (item.po_lines || []).map(l => l.purchase_order).filter(po => po && po.status !== 'CANCELLED').map(po => po.po_number)
     };
   });
 }
+
+// Items bought through a GA PO must be paid via Payment Requests before closing; a closing
+// variance on them would otherwise show unpaid vendor costs as a "claim".
+const unpaidPoItems = rows => rows.filter(r => r.po_numbers.length && (r.final_amount === null ? r.paid === 0 : r.final_amount > r.paid));
 
 function summarize(rows) {
   const totalPaid = rows.reduce((s, r) => s + r.paid, 0);
@@ -74,6 +79,7 @@ function responseFor(plan, closing) {
     kpi: computeKpi(plan),
     window: closingWindow(plan, closing?.status),
     unsettled_payments: plan.items.flatMap(i => i.payment_requests).filter(p => UNSETTLED_PAYMENT_STATUSES.includes(p.status)).length,
+    unpaid_po_items: unpaidPoItems(rows).map(r => ({ plan_item_id: r.plan_item_id, label: r.label, po_numbers: r.po_numbers })),
     actuals_filled: !!plan.actuals_filled_at
   };
 }
@@ -212,6 +218,10 @@ async function submitClosing(req, res, next) {
     const saved = await persistClosing(plan, ctx.existing, req.body);
     const rows = buildRows(plan, await loadClosing(planId));
 
+    const unpaidPo = unpaidPoItems(rows);
+    if (unpaidPo.length > 0) {
+      return res.status(400).json({ error: `Pay these items through Payment Requests first (they have a GA PO): ${unpaidPo.map(r => `${r.label} (${r.po_numbers.join(', ')})`).join('; ')}.` });
+    }
     const missingFinal = rows.filter(r => r.final_amount === null);
     if (missingFinal.length > 0) {
       return res.status(400).json({ error: `Biaya final belum diisi untuk: ${missingFinal.map(r => r.label).join(', ')}.` });

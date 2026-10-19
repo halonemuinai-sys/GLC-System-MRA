@@ -10,6 +10,7 @@ import Cookies from 'js-cookie';
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
 import { isLateSubmission } from '@/lib/marketingGovernance';
+import ActionFailureModal from '@/components/ui/ActionFailureModal';
 import WizardStep1GeneralInfo, { CURRENT_YEAR, FISCAL_YEAR_OPTIONS, formatThousands } from './MarketingPlanWizardStep1';
 import WizardStep2BudgetItems from './MarketingPlanWizardStep2';
 import WizardStep3ReviewSubmit from './MarketingPlanWizardStep3';
@@ -32,12 +33,21 @@ const getMonthName = (monthNum, lang = 'en') => {
   return months[monthNum - 1] || '';
 };
 
+// Budget Control follows the month in which the event starts. The promotion period
+// measures campaign effectiveness only, so it never changes the budget month.
+const getEventBudgetMonth = (eventStartDate) => {
+  if (!eventStartDate) return null;
+  const date = new Date(eventStartDate);
+  return Number.isNaN(date.getTime()) ? null : date.getUTCMonth() + 1;
+};
+
 export default function MarketingPlanWizardModal({
   isOpen,
   onClose,
   draftPlanId,
   revisingPlanId,
   metadata,
+  onMetadataChanged,
   onSuccess,
   onError
 }) {
@@ -51,6 +61,12 @@ export default function MarketingPlanWizardModal({
   const [submitting, setSubmitting] = useState(false);
   const [submittingDraft, setSubmittingDraft] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState(false);
+  const [failureModal, setFailureModal] = useState({
+    isOpen: false,
+    title: '',
+    error: null,
+    actionContext: ''
+  });
 
   const getDefaultCompanyId = useCallback((companiesList) => {
     if (!companiesList || companiesList.length === 0) return '';
@@ -92,6 +108,7 @@ export default function MarketingPlanWizardModal({
 
   const [budgetAvailability, setBudgetAvailability] = useState(null);
   const [checkingBudget, setCheckingBudget] = useState(false);
+  const eventBudgetMonth = getEventBudgetMonth(wizardHeader.event_start_date);
 
   // Helper to load default recommended approvers from metadata or fallback.
   // Resolusi tingkat kontak sama seperti backend: PT spesifik > Holding Group > Global.
@@ -219,7 +236,8 @@ export default function MarketingPlanWizardModal({
           brand_id: firstItem.brand_id ? String(firstItem.brand_id) : '',
           lob_id: firstItem.lob_id ? String(firstItem.lob_id) : '',
           branch_ids: (() => {
-            const uniqueIds = [...new Set(plan.items.filter(it => it.branch_id).map(it => String(it.branch_id)))];
+            const items = plan.items || [];
+            const uniqueIds = [...new Set(items.filter(it => it && it.branch_id).map(it => String(it.branch_id)))];
             return uniqueIds;
           })(),
           event_location_id: firstItem.event_location_id ? String(firstItem.event_location_id) : '',
@@ -236,7 +254,7 @@ export default function MarketingPlanWizardModal({
 
         setWizardItems(plan.items && plan.items.length > 0
           ? plan.items.map(it => ({
-              period_month: it.period_month || '',
+              period_month: String(it.period_month || '1'),
               coa_id: it.coa_id ? String(it.coa_id) : '',
               vendor_id: it.vendor_id ? String(it.vendor_id) : '',
               budget_amount: String(it.budget_amount || '0'),
@@ -257,7 +275,8 @@ export default function MarketingPlanWizardModal({
             approver_role: a.approver_role || ''
           })));
         } else {
-          setWizardApprovers([]);
+          const defaults = getDefaultApproversForCompany(plan.company_id);
+          setWizardApprovers(defaults || []);
         }
 
         setWizardStep(1);
@@ -296,6 +315,14 @@ export default function MarketingPlanWizardModal({
     checkBudgetAvailability();
   }, [checkBudgetAvailability]);
 
+  // The event start date is the sole source for budget allocation month. This also
+  // normalizes imported and previously saved draft lines when the event is changed.
+  useEffect(() => {
+    if (!eventBudgetMonth) return;
+    const periodMonth = String(eventBudgetMonth);
+    setWizardItems(prev => prev.map(item => item.period_month === periodMonth ? item : { ...item, period_month: periodMonth }));
+  }, [eventBudgetMonth]);
+
   // Calculate over-budget months
   const overBudgetMonths = useMemo(() => {
     if (!budgetAvailability || !budgetAvailability.is_locked) return [];
@@ -327,7 +354,7 @@ export default function MarketingPlanWizardModal({
   const addWizardItem = () => {
     setWizardItems(prev => [
       ...prev,
-      { period_month: '1', coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }
+      { period_month: String(eventBudgetMonth || 1), coa_id: '', vendor_id: '', qty: '1', unit_price: '', budget_amount: '0', description: '', event_location_id: '', branch_id: 'global' }
     ]);
   };
 
@@ -379,17 +406,24 @@ export default function MarketingPlanWizardModal({
       coa_id: Number(item.coa_id),
       brand_id: wizardHeader.brand_id ? Number(wizardHeader.brand_id) : null,
       lob_id: wizardHeader.lob_id ? Number(wizardHeader.lob_id) : null,
-      branch_id: wizardHeader.branch_ids.length > 0 ? Number(wizardHeader.branch_ids[0]) : null,
+      branch_id: wizardHeader.branch_ids.length > 0 && !isNaN(Number(wizardHeader.branch_ids[0])) ? Number(wizardHeader.branch_ids[0]) : null,
       event_location_id: wizardHeader.event_location_id ? Number(wizardHeader.event_location_id) : null,
       vendor_id: item.vendor_id || null,
-      period_month: Number(item.period_month),
-      budget_amount: Number(item.budget_amount)
+      period_month: eventBudgetMonth || 1,
+      budget_amount: Number(item.budget_amount) || 0
     }))
   });
 
   const handleSaveDraft = async () => {
     if (!wizardHeader.title || !wizardHeader.company_id || !wizardHeader.fiscal_year) {
-      onError(t('errDraftRequired'));
+      const msg = t('errDraftRequired');
+      setFailureModal({
+        isOpen: true,
+        title: 'Formulir Belum Lengkap',
+        error: { message: msg, status: 400 },
+        actionContext: 'Penyimpanan Draft Plan (Langkah 1)'
+      });
+      onError?.(msg);
       return;
     }
     setSubmittingDraft(true);
@@ -403,7 +437,13 @@ export default function MarketingPlanWizardModal({
         onSuccess(t('successDraftSaved', result.id));
       }
     } catch (err) {
-      onError(err.message || t('errFailDraft'));
+      setFailureModal({
+        isOpen: true,
+        title: 'Gagal Menyimpan Draft Plan',
+        error: err,
+        actionContext: 'Penyimpanan Draft Marketing Plan'
+      });
+      onError?.(err.message || t('errFailDraft'));
     } finally {
       setSubmittingDraft(false);
     }
@@ -414,44 +454,85 @@ export default function MarketingPlanWizardModal({
     setSubmitting(true);
 
     if (!wizardHeader.title || !wizardHeader.company_id || !wizardHeader.fiscal_year) {
-      onError(t('errRequired'));
+      const msg = t('errRequired');
+      setFailureModal({
+        isOpen: true,
+        title: 'Informasi Umum Belum Lengkap',
+        error: { message: msg, status: 400 },
+        actionContext: 'Validasi Langkah 1 (Informasi Umum)'
+      });
+      onError?.(msg);
       setSubmitting(false);
       return;
     }
 
     const invalidItem = wizardItems.find(item => !item.coa_id || !item.budget_amount || Number(item.budget_amount) <= 0);
     if (invalidItem) {
-      onError(t('errItems'));
+      const msg = t('errItems');
+      setFailureModal({
+        isOpen: true,
+        title: 'Rincian Budget Belum Valid',
+        error: { message: msg, status: 400 },
+        actionContext: 'Validasi Langkah 2 (Rincian Anggaran)'
+      });
+      onError?.(msg);
       setSubmitting(false);
       return;
     }
 
     if (overBudgetMonths.length > 0 && !wizardHeader.over_budget_reason?.trim()) {
-      onError(t('errJustification'));
+      const msg = t('errJustification');
+      setFailureModal({
+        isOpen: true,
+        title: 'Alasan Over-Budget Wajib Diisi',
+        error: { message: msg, status: 400 },
+        actionContext: 'Pemeriksaan Batas Anggaran (Over-Budget)'
+      });
+      onError?.(msg);
       setSubmitting(false);
       return;
     }
 
     if (isLateSubmission(wizardHeader.event_start_date) && !wizardHeader.late_submission_reason?.trim()) {
-      onError(lang === 'id'
-        ? 'The event is less than 3 months away (H-3 rule). Enter the late-submission reason in step 3.'
-        : 'The event is less than 3 months away (H-3 rule). Fill in the late submission reason in Step 3.');
+      const msg = lang === 'id'
+        ? 'Event berjarak kurang dari 3 bulan (aturan H-3). Wajib mengisi alasan keterlambatan pengajuan di langkah 3.'
+        : 'The event is less than 3 months away (H-3 rule). Fill in the late submission reason in Step 3.';
+      setFailureModal({
+        isOpen: true,
+        title: 'Alasan Keterlambatan Wajib Diisi (H-3)',
+        error: { message: msg, status: 400 },
+        actionContext: 'Validasi Waktu Event (Aturan H-3)'
+      });
+      onError?.(msg);
       setSubmitting(false);
       return;
     }
 
     if (!wizardHeader.target_notes?.trim()) {
-      onError(lang === 'id'
-        ? 'Target notes / other indicators are required in the KPI Targets section.'
-        : 'Target Notes / Other Indicators is required in the KPI Targets section.');
+      const msg = lang === 'id'
+        ? 'Catatan target / indikator lainnya wajib diisi pada bagian Target KPI.'
+        : 'Target Notes / Other Indicators is required in the KPI Targets section.';
+      setFailureModal({
+        isOpen: true,
+        title: 'Target KPI Belum Lengkap',
+        error: { message: msg, status: 400 },
+        actionContext: 'Validasi Target KPI (Langkah 3)'
+      });
+      onError?.(msg);
       setSubmitting(false);
       return;
     }
 
-    // Validate DocHub-style signers
-    const validApprovers = wizardApprovers.filter(a => a.approver_name?.trim() && a.approver_email?.trim());
-    if (validApprovers.length === 0) {
-      onError(lang === 'id' ? 'At least one signer (approver) is required in step 3.' : 'Please define at least 1 signer in Step 3.');
+    // Every submitted plan must carry a complete, explicit document approval chain.
+    if (!wizardApprovers.length) {
+      const msg = lang === 'id' ? 'Alur penandatangan dan persetujuan wajib diisi di langkah 3.' : 'Document Signers & Approval Chain is required in Step 3.';
+      setFailureModal({
+        isOpen: true,
+        title: 'Approval Chain Wajib Diisi',
+        error: { message: msg, status: 400 },
+        actionContext: 'Validasi Alur Approval (Langkah 3)'
+      });
+      onError?.(msg);
       setSubmitting(false);
       return;
     }
@@ -459,12 +540,38 @@ export default function MarketingPlanWizardModal({
     for (let i = 0; i < wizardApprovers.length; i++) {
       const app = wizardApprovers[i];
       if (!app.approver_name || !app.approver_name.trim()) {
-        onError(lang === 'id' ? `Signer name in step ${i + 1} is empty.` : `Signer name at Step ${i + 1} is required.`);
+        const msg = lang === 'id' ? `Nama penandatangan pada langkah ${i + 1} masih kosong.` : `Signer name at Step ${i + 1} is required.`;
+        setFailureModal({
+          isOpen: true,
+          title: 'Nama Signer Belum Diisi',
+          error: { message: msg, status: 400 },
+          actionContext: `Validasi Penandatangan #${i + 1}`
+        });
+        onError?.(msg);
         setSubmitting(false);
         return;
       }
       if (!app.approver_email || !emailRegex.test(app.approver_email.trim())) {
-        onError(lang === 'id' ? `Signer email format in step ${i + 1} ("${app.approver_name}") is invalid.` : `Email format for signer at Step ${i + 1} is invalid.`);
+        const msg = lang === 'id' ? `Format email penandatangan #${i + 1} ("${app.approver_name}") tidak valid.` : `Email format for signer at Step ${i + 1} is invalid.`;
+        setFailureModal({
+          isOpen: true,
+          title: 'Format Email Signer Tidak Valid',
+          error: { message: msg, status: 400 },
+          actionContext: `Validasi Email Penandatangan #${i + 1}`
+        });
+        onError?.(msg);
+        setSubmitting(false);
+        return;
+      }
+      if (!app.approver_role || !app.approver_role.trim()) {
+        const msg = lang === 'id' ? `Role atau jabatan penandatangan pada langkah ${i + 1} masih kosong.` : `Signer role or position at Step ${i + 1} is required.`;
+        setFailureModal({
+          isOpen: true,
+          title: 'Role Signer Belum Diisi',
+          error: { message: msg, status: 400 },
+          actionContext: `Validasi Penandatangan #${i + 1}`
+        });
+        onError?.(msg);
         setSubmitting(false);
         return;
       }
@@ -484,7 +591,15 @@ export default function MarketingPlanWizardModal({
         onSuccess(t('successSubmitted'));
       }
     } catch (err) {
-      onError(err.message || t('errFailSubmit'));
+      setFailureModal({
+        isOpen: true,
+        title: 'Pengajuan Plan Gagal',
+        error: err,
+        actionContext: revisingPlanId
+          ? 'Revisi & Pengajuan Ulang Plan'
+          : (draftPlanId ? 'Pengajuan Draft Plan' : 'Pengajuan Plan Baru (Submit)'),
+      });
+      onError?.(err.message || t('errFailSubmit'));
     } finally {
       setSubmitting(false);
     }
@@ -573,6 +688,7 @@ export default function MarketingPlanWizardModal({
                       isDraftOrRevise={Boolean(draftPlanId || revisingPlanId)}
                       lang={lang}
                       metadata={metadata}
+                      onMetadataChanged={onMetadataChanged}
                       t={t}
                     />
                   )}
@@ -641,8 +757,18 @@ export default function MarketingPlanWizardModal({
                       type="button"
                       disabled={submitting || submittingDraft}
                       onClick={(e) => {
-                        if (wizardStep < 3) setWizardStep(prev => prev + 1);
-                        else handleWizardSubmit(e);
+                        if (wizardStep < 3) {
+                          if (wizardStep === 1 && !eventBudgetMonth) {
+                            setFailureModal({
+                              isOpen: true,
+                              title: 'Event Date Required',
+                              error: { message: 'Set the Event Date first. It determines the month used for budget allocation.', status: 400 },
+                              actionContext: 'Budget Month Allocation'
+                            });
+                            return;
+                          }
+                          setWizardStep(prev => prev + 1);
+                        } else handleWizardSubmit(e);
                       }}
                       className="px-4 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
@@ -659,6 +785,15 @@ export default function MarketingPlanWizardModal({
           </motion.div>
         </div>
       )}
+
+      {/* Pop-up feedback saat terjadi kegagalan (403/401/400/500) */}
+      <ActionFailureModal
+        isOpen={failureModal.isOpen}
+        onClose={() => setFailureModal(prev => ({ ...prev, isOpen: false }))}
+        title={failureModal.title}
+        error={failureModal.error}
+        actionContext={failureModal.actionContext}
+      />
     </AnimatePresence>
   );
 }

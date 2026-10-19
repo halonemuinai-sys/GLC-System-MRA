@@ -347,7 +347,7 @@ export default function MarketingPlanQuickModal({
     } catch (err) {
       const msg = err.message || 'Failed to save the quick campaign.';
       setErrMessage(msg);
-      if (onError) onError(msg);
+      if (onError) onError(err);
     } finally {
       setSubmitting(false);
       setSubmitMode(null);
@@ -535,7 +535,7 @@ export default function MarketingPlanQuickModal({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] font-extrabold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider block mb-1.5">
-                      Total Budget (IDR) *
+                      Total Budget, before PPN (IDR) *
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-xs">
@@ -559,6 +559,7 @@ export default function MarketingPlanQuickModal({
                       {[1000000, 3000000, 5000000].map(amount => <button key={amount} type="button" onClick={() => setFormData(prev => ({ ...prev, total_budget: String(amount) }))} aria-pressed={Number(formData.total_budget) === amount} className={`rounded-lg border px-2 py-1 text-[10px] font-medium transition-colors ${Number(formData.total_budget) === amount ? 'border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400' : 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800'}`}>Rp{amount / 1000000} juta</button>)}
                       <span className="text-[10px] text-slate-400">or type an amount</span>
                     </div>
+                    <p className="mt-1.5 text-[10px] text-emerald-700 dark:text-emerald-300">PPN is added on the GA Purchase Order and does not consume this plan budget.</p>
                   </div>
 
                   <div>

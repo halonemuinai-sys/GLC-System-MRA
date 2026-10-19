@@ -8,9 +8,14 @@ import { apiClient } from '@/lib/apiClient';
 const inputClass = 'mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-white';
 const localToday = () => new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
-export default function MarketingReimbursementModal({ plan, metadata, onClose, onSuccess }) {
-  const [form, setForm] = useState({
-    title: '', expense_date: localToday(), amount: '', marketing_plan_item_id: '', coa_id: '',
+// Reimbursements are additional transactions recorded under CoA 620110 - Others.
+// Pass `claim` to edit a pending reimbursement instead of creating one.
+export default function MarketingReimbursementModal({ plan, claim = null, onClose, onSuccess }) {
+  const [form, setForm] = useState(() => claim ? {
+    title: claim.title || '', expense_date: claim.expense_date ? String(claim.expense_date).slice(0, 10) : localToday(), amount: String(Math.round(Number(claim.amount) || 0)),
+    expense_vendor: claim.expense_vendor || '', reimbursement_payee: claim.reimbursement_payee || '', notes: claim.notes || '', doc_url: claim.doc_url || '', confirmed_paid: true
+  } : {
+    title: '', expense_date: localToday(), amount: '',
     expense_vendor: '', reimbursement_payee: Cookies.get('glc_user_name') || '', notes: '', doc_url: '', confirmed_paid: false
   });
   const [busy, setBusy] = useState(false);
@@ -40,7 +45,8 @@ export default function MarketingReimbursementModal({ plan, metadata, onClose, o
     setBusy(true);
     setError('');
     try {
-      await apiClient.post('/api/marketing/claims', { ...form, marketing_plan_id: plan.id, amount: Number(form.amount) });
+      if (claim) await apiClient.put(`/api/marketing/claims/${claim.id}`, { ...form, amount: Number(form.amount) });
+      else await apiClient.post('/api/marketing/claims', { ...form, marketing_plan_id: plan.id, amount: Number(form.amount) });
     } catch (err) {
       setError(err.message || 'Failed to submit the reimbursement.');
       setBusy(false);
@@ -56,7 +62,7 @@ export default function MarketingReimbursementModal({ plan, metadata, onClose, o
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10"><Receipt className="h-5 w-5" /></span>
-            <div><h3 id="reimbursement-title" className="text-base font-semibold text-slate-900 dark:text-white">Claim Reimbursement</h3><p className="mt-1 text-xs text-slate-500">Record personal expenses not yet recorded. Approved by Finance.</p></div>
+            <div><h3 id="reimbursement-title" className="text-base font-semibold text-slate-900 dark:text-white">{claim ? 'Edit reimbursement' : 'Claim Reimbursement'}</h3><p className="mt-1 text-xs text-slate-500">Personal expenses not yet recorded. Approved by Finance, no PO needed.</p></div>
           </div>
           <button type="button" aria-label="Close reimbursement" disabled={busy || uploading} onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-800"><X className="h-4 w-4" /></button>
         </div>
@@ -78,23 +84,10 @@ export default function MarketingReimbursementModal({ plan, metadata, onClose, o
                 <input required maxLength={150} value={form.reimbursement_payee} onChange={e => change('reimbursement_payee', e.target.value)} className={inputClass} />
               </label>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Vendor / place of purchase
-                <input maxLength={200} value={form.expense_vendor} onChange={e => change('expense_vendor', e.target.value)} placeholder="Nama toko / penyedia jasa" className={inputClass} />
+                <input maxLength={200} value={form.expense_vendor} onChange={e => change('expense_vendor', e.target.value)} placeholder="Shop or service provider" className={inputClass} />
               </label>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-700 dark:bg-slate-950/30">
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">Cost record
-                <select value={form.marketing_plan_item_id} onChange={e => change('marketing_plan_item_id', e.target.value)} className={inputClass}>
-                  <option value="">New line - not in the cost breakdown</option>
-                  {(plan.items || []).map(item => <option key={item.id} value={item.id}>{item.m_coa?.code} - {item.description || item.m_coa?.name} (month {item.period_month})</option>)}
-                </select>
-              </label>
-              {!form.marketing_plan_item_id && <label className="mt-3 block text-xs font-medium text-slate-600 dark:text-slate-300">Cost account / CoA *
-                <select required value={form.coa_id} onChange={e => change('coa_id', e.target.value)} className={inputClass}>
-                  <option value="">Select cost account</option>
-                  {(metadata.coas || []).map(coa => <option key={coa.id} value={coa.id}>{coa.code} - {coa.name}</option>)}
-                </select>
-              </label>}
-            </div>
+            <p className="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-300">Recorded as an additional transaction under <span className="font-semibold">620110 – Others</span>, outside the planned cost lines.</p>
             <div className="block text-xs font-medium text-slate-600 dark:text-slate-300"><label htmlFor="reimbursement-proof-url">Proof of payment *</label>
               <div className="mt-1.5 flex gap-2">
                 <input id="reimbursement-proof-url" type="url" required value={form.doc_url} onChange={e => change('doc_url', e.target.value)} placeholder="Paste a proof link or upload" className={`${inputClass} !mt-0 min-w-0 flex-1`} />
@@ -114,7 +107,7 @@ export default function MarketingReimbursementModal({ plan, metadata, onClose, o
           </fieldset>
           <div className="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
             <button type="button" disabled={busy || uploading} onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-medium text-slate-600 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300">Cancel</button>
-            <button type="submit" disabled={busy || uploading} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Submit to Finance</button>
+            <button type="submit" disabled={busy || uploading} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} {claim ? 'Save changes' : 'Submit to Finance'}</button>
           </div>
         </form>
       </section>

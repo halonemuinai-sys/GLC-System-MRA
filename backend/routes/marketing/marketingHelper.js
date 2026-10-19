@@ -28,12 +28,43 @@ function applyCompanyScope(where, scope, field = 'company_id') {
 
 // Helper: resolve identitas pengaju (creator) maupun penyetuju (approver) dari email login
 // (req.user.email) lewat direktori Master Signer (m_approval_signer) — satu direktori orang
-// dipakai untuk keduanya, menggantikan tabel karyawan helpdesk_user yang sebelumnya dipakai.
+// dipakai untuk keduanya. Jika belum ada di m_approval_signer namun ada di m_user dan aktif,
+// lakukan auto-sync/provisioning agar tidak timbul 403 Forbidden tak terduga.
 async function resolveEmployee(email) {
   if (!email) return null;
-  return prisma.m_approval_signer.findUnique({
-    where: { email: email.toLowerCase().trim() }
+  const cleanEmail = email.toLowerCase().trim();
+  let signer = await prisma.m_approval_signer.findUnique({
+    where: { email: cleanEmail }
   });
+
+  if (!signer) {
+    const user = await prisma.m_user.findUnique({
+      where: { email: cleanEmail }
+    });
+    if (user && user.is_active) {
+      try {
+        signer = await prisma.m_approval_signer.upsert({
+          where: { email: cleanEmail },
+          update: {
+            name: user.full_name || cleanEmail,
+            position: user.position || user.department || 'Staff',
+            is_active: true
+          },
+          create: {
+            name: user.full_name || cleanEmail,
+            email: cleanEmail,
+            position: user.position || user.department || 'Staff',
+            is_active: true
+          }
+        });
+      } catch (err) {
+        console.warn('Auto-provision signer warning:', err.message);
+        signer = await prisma.m_approval_signer.findUnique({ where: { email: cleanEmail } });
+      }
+    }
+  }
+
+  return signer;
 }
 
 // Resolve email penerima untuk 1 role — 3 tingkat: PT spesifik > Holding Group > default global

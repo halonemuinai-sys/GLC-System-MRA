@@ -7,9 +7,9 @@ import {
   BarChart3,
   Plus,
   Search,
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
+  Wallet,
+  Coins,
+  PieChart,
   Calendar,
   Loader2,
   X,
@@ -20,7 +20,6 @@ import {
   User,
   Paperclip,
   Layers,
-  Info,
   Check,
   FileSpreadsheet,
   Trash2,
@@ -40,11 +39,14 @@ import {
   ArrowUpRight,
   Megaphone
 } from 'lucide-react';
+import { eventNumber } from '@/lib/eventNumber';
 import { apiClient } from '@/lib/apiClient';
 import { getUserRoles, hasRole } from '@/lib/userRoles';
 import { useLanguage } from '@/lib/LanguageContext';
 import mpt from '@/lib/translations/marketingPlan';
 import { CLOSING_WINDOW_BADGE } from '@/lib/marketingGovernance';
+import InlineHelp from '@/components/ui/InlineHelp';
+import ActionFailureModal from '@/components/ui/ActionFailureModal';
 import MarketingPlanWizardModal from './MarketingPlanWizardModal';
 import MarketingPlanDetailModal from './MarketingPlanDetailModal';
 import MarketingPlanQuickModal from './MarketingPlanQuickModal';
@@ -57,6 +59,44 @@ const formatIDR = (val) => {
     maximumFractionDigits: 0
   }).format(Number(val));
 };
+
+const KPI_THEMES = {
+  blue: { color: '#2563EB', icon: 'bg-blue-50 text-blue-600', label: 'text-blue-600' },
+  emerald: { color: '#10B981', icon: 'bg-emerald-50 text-emerald-600', label: 'text-emerald-600' },
+  orange: { color: '#F97316', icon: 'bg-orange-50 text-orange-600', label: 'text-orange-600' },
+  rose: { color: '#F43F5E', icon: 'bg-rose-50 text-rose-600', label: 'text-rose-600' },
+};
+
+function KpiCircularAccent({ tone, icon: Icon, duration = '18s' }) {
+  const theme = KPI_THEMES[tone];
+  const ringFill = `conic-gradient(from 12deg, ${theme.color}66 0 13%, transparent 13% 22%, ${theme.color}4d 22% 34%, transparent 34% 48%, ${theme.color}66 48% 61%, transparent 61% 73%, ${theme.color}4d 73% 85%, transparent 85% 100%)`;
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute -right-5 -top-5 h-24 w-24">
+      <div className="marketing-plan-kpi-ring absolute inset-0 rounded-full" style={{ backgroundImage: ringFill, animationDuration: duration, WebkitMaskImage: 'radial-gradient(circle, transparent 0 58%, #000 60%)', maskImage: 'radial-gradient(circle, transparent 0 58%, #000 60%)' }} />
+      <span className={`absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white bg-white shadow-sm ${theme.label}`}><Icon className="h-4 w-4" /></span>
+    </div>
+  );
+}
+
+function MarketingKpiCard({ label, value, detail, icon: Icon, tone, duration, valueFormatter = formatIDR }) {
+  const theme = KPI_THEMES[tone];
+  return (
+    <section
+      className="relative min-h-[150px] overflow-hidden rounded-2xl border bg-white p-4 shadow-[0_8px_20px_-16px_rgba(15,23,42,0.35)]"
+      style={{ borderColor: `${theme.color}38`, backgroundImage: `linear-gradient(135deg, #ffffff 0%, #ffffff 63%, ${theme.color}0d 100%)` }}
+    >
+      <KpiCircularAccent tone={tone} icon={Icon} duration={duration} />
+      <div className="relative max-w-[78%]">
+        <div className="flex items-center gap-2">
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${theme.icon}`}><Icon className="h-4 w-4" /></span>
+          <p className={`text-[10px] font-bold uppercase tracking-[0.12em] ${theme.label}`}>{label}</p>
+        </div>
+        <p className="mt-3 truncate text-xl font-extrabold tracking-tight tabular-nums text-slate-950">{valueFormatter(value)}</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-slate-500">{detail}</p>
+      </div>
+    </section>
+  );
+}
 
 const formatPlanPeriod = (plan, locale) => {
   const start = plan.event_start_date || plan.start_date;
@@ -124,7 +164,7 @@ function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap,
         whileTap={{ scale: 0.97 }}
         className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer select-none ${
           isActive
-            ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/40 text-indigo-700 dark:text-indigo-300'
+            ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-300 dark:border-blue-500/40 text-blue-700 dark:text-blue-300'
             : 'bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800'
         }`}
       >
@@ -133,7 +173,7 @@ function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap,
           {selected ? selected.label : label}
         </span>
         {isActive && (
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
         )}
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.18 }}>
           <ChevronDown className="w-3 h-3 opacity-50 flex-shrink-0" />
@@ -159,7 +199,7 @@ function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap,
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     placeholder="Search company..."
-                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-7 pr-3 py-1.5 text-xs text-neutral-800 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-indigo-400 transition-colors"
+                    className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg pl-7 pr-3 py-1.5 text-xs text-neutral-800 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:border-blue-400 transition-colors"
                   />
                   {query && (
                     <button type="button" onClick={() => setQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer">
@@ -172,17 +212,17 @@ function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap,
             <div className="py-1.5 max-h-56 overflow-y-auto">
             {filtered.length === 0 ? (
               <p className="px-4 py-3 text-xs text-neutral-400 text-center">Not found</p>
-            ) : filtered.map((opt) => {
+            ) : filtered.map((opt, optIdx) => {
               const isSelected = value === opt.value;
               const color = colorMap?.[opt.value];
               return (
                 <button
-                  key={opt.value}
+                  key={`filter-opt-${opt.value || 'all'}-${optIdx}`}
                   type="button"
                   onClick={() => { onChange(opt.value); setOpen(false); setQuery(''); }}
                   className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-medium transition-all cursor-pointer text-left ${
                     isSelected
-                      ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
+                      ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300'
                       : 'text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800/70'
                   }`}
                 >
@@ -190,7 +230,7 @@ function FilterDropdown({ label, value, icon: Icon, options, onChange, colorMap,
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${color}`} />
                   )}
                   <span className="flex-1">{opt.label}</span>
-                  {isSelected && <Check className="w-3 h-3 text-indigo-500 flex-shrink-0" />}
+                  {isSelected && <Check className="w-3 h-3 text-blue-500 flex-shrink-0" />}
                 </button>
               );
             })}
@@ -225,6 +265,21 @@ export default function MarketingPlanPage() {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [recallingPlanId, setRecallingPlanId] = useState(null);
+  const [failureModal, setFailureModal] = useState({
+    isOpen: false,
+    title: '',
+    error: null,
+    actionContext: ''
+  });
+
+  const showFailureModal = useCallback((err, actionContext = 'Pengajuan Marketing Plan', title = 'Pengajuan Plan Gagal') => {
+    setFailureModal({
+      isOpen: true,
+      title,
+      error: err,
+      actionContext
+    });
+  }, []);
 
   // Filter States
   const [fiscalYear, setFiscalYear] = useState(String(new Date().getFullYear()));
@@ -242,13 +297,14 @@ export default function MarketingPlanPage() {
   const PAGE_SIZE = 25;
 
   // Summary for KPI (independent of page)
-  const [summary, setSummary] = useState({ totalBudget: 0, approved: 0, pending: 0, draft: 0, rejected: 0 });
+  const [summary, setSummary] = useState({ totalBudget: 0, totalActual: 0, approved: 0, pending: 0, draft: 0, rejected: 0, total: 0 });
 
   // Modals
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isQuickModalOpen, setIsQuickModalOpen] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [detailInitialTab, setDetailInitialTab] = useState('costs');
   const [planToDelete, setPlanToDelete] = useState(null);
   const [revisingPlanId, setRevisingPlanId] = useState(null);
   const [draftPlanId, setDraftPlanId] = useState(null);
@@ -261,6 +317,7 @@ export default function MarketingPlanPage() {
     try {
       const res = await apiClient.get('/api/marketing/metadata');
       setMetadata(res);
+      return res;
     } catch (err) {
       console.error('Failed to load marketing metadata:', err);
     }
@@ -321,17 +378,23 @@ export default function MarketingPlanPage() {
   const handleRefresh = () => { loadPlans(currentPage, searchQuery); };
 
   // KPI dari summary server — tidak terpengaruh pagination
-  const kpis = useMemo(() => ({
-    totalBudget: summary.totalBudget,
-    activeCampaigns: summary.approved,
-    burnRate: 0,
-    variance: 0,
-  }), [summary]);
+  const kpis = useMemo(() => {
+    const totalBudget = Number(summary.totalBudget) || 0;
+    const totalActual = Number(summary.totalActual) || 0;
+    return {
+      totalBudget,
+      totalActual,
+      activeCampaigns: Number(summary.approved) || 0,
+      burnRate: totalBudget > 0 ? (totalActual / totalBudget) * 100 : 0,
+      variance: totalBudget - totalActual,
+    };
+  }, [summary]);
 
   const handleWizardError = useCallback((err) => {
-    setError(err);
+    setError(typeof err === 'string' ? err : err?.message);
+    showFailureModal(err, 'Pengajuan Marketing Plan', 'Pengajuan Plan Gagal');
     setTimeout(() => setError(null), 6000);
-  }, []);
+  }, [showFailureModal]);
 
   // Action handlers
   const handleCreatePlan = () => {
@@ -352,8 +415,9 @@ export default function MarketingPlanPage() {
     setIsWizardOpen(true);
   };
 
-  const openDetail = (planId) => {
+  const openDetail = (planId, initialTab = 'costs') => {
     setSelectedPlanId(planId);
+    setDetailInitialTab(initialTab);
     setIsDetailOpen(true);
   };
 
@@ -367,7 +431,7 @@ export default function MarketingPlanPage() {
       loadPlans();
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      alert(err.message || t('errFailDelete'));
+      showFailureModal(err, `Hapus Plan: ${planToDelete.title || 'Plan'}`, 'Gagal Menghapus Plan');
     } finally {
       setSubmitting(false);
     }
@@ -382,7 +446,7 @@ export default function MarketingPlanPage() {
       loadPlans();
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      alert(err.message || t('errFailRecall'));
+      showFailureModal(err, 'Penarikan (Recall) Plan dari Alur Approval', 'Gagal Menarik Plan');
     } finally {
       setRecallingPlanId(null);
     }
@@ -405,7 +469,7 @@ export default function MarketingPlanPage() {
           return handleSubmitDraft(planId, reason.trim());
         }
       } else {
-        alert(err.message || t('errFailSubmitPlan'));
+        showFailureModal(err, 'Pengajuan Draft Plan ke Alur Approval', 'Pengajuan Plan Gagal');
       }
     } finally {
       setSubmitting(false);
@@ -421,7 +485,7 @@ export default function MarketingPlanPage() {
       loadPlans();
       setTimeout(() => setSuccessMsg(null), 5000);
     } catch (err) {
-      alert(err.message || 'Failed to duplicate the plan.');
+      showFailureModal(err, 'Duplikasi Marketing Plan', 'Gagal Menduplikasi Plan');
     } finally {
       setSubmitting(false);
     }
@@ -431,10 +495,20 @@ export default function MarketingPlanPage() {
 
   return (
     <div className="space-y-4 pb-12">
+      <style>{`
+        @keyframes marketingPlanKpiRingSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .marketing-plan-kpi-ring { animation: marketingPlanKpiRingSpin 18s linear infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .marketing-plan-kpi-ring { animation: none; }
+        }
+      `}</style>
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-600/25 shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-600/25 shrink-0">
             <BarChart3 className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -450,7 +524,7 @@ export default function MarketingPlanPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleRefresh}
-            className="w-9 h-9 flex items-center justify-center bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-400 hover:text-indigo-500 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-sm transition-all cursor-pointer"
+            className="w-9 h-9 flex items-center justify-center bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-neutral-400 hover:text-blue-500 hover:border-blue-300 dark:hover:border-blue-700 shadow-sm transition-all cursor-pointer"
             title={t('refreshData')}
           >
             <RefreshCw className="w-4 h-4" />
@@ -497,68 +571,40 @@ export default function MarketingPlanPage() {
       )}
 
       {/* KPI Highlight Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* KPI 1 */}
-        <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-4.5 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group">
-          <div className="absolute -right-4 -top-4 w-20 h-20 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-colors duration-300" />
-          <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-indigo-500 transition-all duration-300 group-hover:top-[12%] group-hover:bottom-[12%]" />
-          <div className="flex items-center gap-4.5 relative z-10">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/15 to-indigo-500/5 border border-indigo-500/20 flex items-center justify-center text-indigo-500 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-              <DollarSign className="w-5.5 h-5.5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiTotalBudget')}</p>
-              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalBudget)}</h3>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 2 */}
-        <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-4.5 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group">
-          <div className="absolute -right-4 -top-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-colors duration-300" />
-          <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-emerald-500 transition-all duration-300 group-hover:top-[12%] group-hover:bottom-[12%]" />
-          <div className="flex items-center gap-4.5 relative z-10">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-              <TrendingUp className="w-5.5 h-5.5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiRealized')}</p>
-              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5 truncate">{formatIDR(kpis.totalActual)}</h3>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 3 */}
-        <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-4.5 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group">
-          <div className="absolute -right-4 -top-4 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-colors duration-300" />
-          <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-blue-500 transition-all duration-300 group-hover:top-[12%] group-hover:bottom-[12%]" />
-          <div className="flex items-center gap-4.5 relative z-10">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500/15 to-blue-500/5 border border-blue-500/20 flex items-center justify-center text-blue-500 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-              <TrendingDown className="w-5.5 h-5.5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiRemaining')}</p>
-              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5 truncate">{formatIDR(kpis.variance)}</h3>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 4 */}
-        <div className="relative overflow-hidden bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800/60 p-4.5 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 group">
-          <div className="absolute -right-4 -top-4 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-colors duration-300" />
-          <div className="absolute left-0 top-1/4 bottom-1/4 w-1 rounded-r-md bg-amber-500 transition-all duration-300 group-hover:top-[12%] group-hover:bottom-[12%]" />
-          <div className="flex items-center gap-4.5 relative z-10">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
-              <Layers className="w-5.5 h-5.5" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">{t('kpiBurnRate')}</p>
-              <h3 className="text-lg font-black text-neutral-900 dark:text-white mt-0.5 truncate">
-                {kpis.burnRate.toFixed(1)}% <span className="text-xs font-normal text-neutral-400">({kpis.activeCampaigns} Approved)</span>
-              </h3>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MarketingKpiCard
+          label={t('kpiTotalBudget')}
+          value={kpis.totalBudget}
+          detail={`${summary.total || 0} campaign in the current view`}
+          icon={Wallet}
+          tone="blue"
+          duration="18s"
+        />
+        <MarketingKpiCard
+          label={t('kpiRealized')}
+          value={kpis.totalActual}
+          detail="Paid expenses recorded across campaign items"
+          icon={Coins}
+          tone="emerald"
+          duration="16s"
+        />
+        <MarketingKpiCard
+          label={t('kpiRemaining')}
+          value={kpis.variance}
+          detail={kpis.variance < 0 ? 'Over budget — review claims and settlement' : 'Available for the approved campaign budget'}
+          icon={PieChart}
+          tone="orange"
+          duration="20s"
+        />
+        <MarketingKpiCard
+          label={t('kpiBurnRate')}
+          value={kpis.burnRate}
+          valueFormatter={amount => `${amount.toFixed(1)}%`}
+          detail={`${kpis.activeCampaigns} approved campaign${kpis.activeCampaigns === 1 ? '' : 's'}`}
+          icon={Layers}
+          tone="rose"
+          duration="17s"
+        />
       </div>
 
       {/* Filter Bar */}
@@ -566,8 +612,8 @@ export default function MarketingPlanPage() {
         {/* Top row: title + filter pills */}
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 pb-3 border-b border-neutral-100 dark:border-neutral-800/80">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-500" />
+            <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-blue-500" />
             </div>
             <div>
               <p className="text-xs font-black text-neutral-800 dark:text-white leading-tight">{t('pipelineTitle')}</p>
@@ -614,7 +660,7 @@ export default function MarketingPlanPage() {
               searchable
               options={[
                 { value: '', label: t('allCompanies') },
-                ...metadata.companies.map(c => ({ value: String(c.id), label: c.name }))
+                ...metadata.companies.filter(c => c && c.id).map(c => ({ value: String(c.id), label: c.name }))
               ]}
               onChange={setCompanyId}
             />
@@ -664,7 +710,7 @@ export default function MarketingPlanPage() {
               placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={handleSearchChange}
-              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/10 text-neutral-800 dark:text-white transition-all placeholder:text-neutral-400"
+              className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 text-neutral-800 dark:text-white transition-all placeholder:text-neutral-400"
             />
             {searchQuery && (
               <button
@@ -681,7 +727,7 @@ export default function MarketingPlanPage() {
 
       {loading ? (
         <div className="py-24 flex flex-col items-center justify-center gap-3 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
           <span className="text-xs text-neutral-400 font-medium">{t('loading')}</span>
         </div>
       ) : (
@@ -691,13 +737,27 @@ export default function MarketingPlanPage() {
             <table className="w-full min-w-[1000px] table-fixed text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-neutral-100 dark:border-neutral-800/80 bg-slate-50 dark:bg-slate-950/50 text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase tracking-[0.08em]">
-                  <th className="px-3 py-3 w-[34%]">{t('colPlanName')}</th>
+                  <th className="px-3 py-3 w-[34%]">
+                    <InlineHelp summary={t('colPlanName')} label="About campaign plan names">
+                      This is the campaign or event name submitted by Marketing. Open Detail to see its scope, budget items, schedule, and approval history.
+                    </InlineHelp>
+                  </th>
                   <th className="px-3 py-3">{t('colCompany')}</th>
                   <th className="px-3 py-3">{t('colPeriod')}</th>
                   <th className="px-3 py-3 text-right">{t('colTotalBudget')}</th>
-                  <th className="px-3 py-3 text-center">Status</th>
+                  <th className="px-3 py-3 text-center">
+                    <InlineHelp summary="Status" label="About campaign statuses">
+                      <span className="space-y-1.5">
+                        <span className="block"><strong>Draft</strong> — still being prepared and has not been sent.</span>
+                        <span className="block"><strong>Pending Approval</strong> — sent and waiting for the current approver.</span>
+                        <span className="block"><strong>Approved</strong> — plan is approved and can proceed.</span>
+                        <span className="block"><strong>Completed</strong> — closing and accountability have been approved.</span>
+                        <span className="block"><strong>Rejected</strong> — needs revision before it can be submitted again.</span>
+                      </span>
+                    </InlineHelp>
+                  </th>
 
-                  <th className="px-3 py-3 w-[140px] text-right">{t('colActions')}</th>
+                  <th className="px-3 py-3 w-[235px] text-right">{t('colActions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-medium">
@@ -710,7 +770,7 @@ export default function MarketingPlanPage() {
                           <p className="text-xs text-neutral-400 font-medium">{t('noPlans')}</p>
                           <button
                             onClick={handleCreatePlan}
-                            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 transition-all cursor-pointer"
+                            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md shadow-blue-600/10 transition-all cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" /> {t('submitFirstPlan')}
                           </button>
@@ -748,6 +808,18 @@ export default function MarketingPlanPage() {
                       rowAccent = 'border-l-transparent hover:border-l-neutral-400';
                     }
 
+                    const canManageClosing = hasRole(userRoles, 'admin', 'marketing', 'marketing_manager');
+                    const closingAction = (() => {
+                      if (plan.status === 'COMPLETED') return { label: 'Closing', enabled: true, hint: 'View approved closing and campaign results.' };
+                      if (plan.status !== 'APPROVED') return null;
+                      if (!canManageClosing) return { label: 'Closing', enabled: false, hint: 'Only Marketing or an administrator can start closing.' };
+                      if (plan.closing_status === 'PENDING_APPROVAL') return { label: 'Closing', enabled: true, hint: 'Closing is waiting for approval.' };
+                      if (plan.closing_status === 'REJECTED') return { label: 'Resume closing', enabled: true, hint: 'Closing was returned for correction.' };
+                      if (plan.closing_ready) return { label: 'Start closing', enabled: true, hint: 'Record final costs, proof, and closing approvers.' };
+                      if (!plan.actuals_filled_at) return { label: 'Start closing', enabled: false, hint: 'Record event results first.' };
+                      return { label: 'Start closing', enabled: false, hint: `${plan.unsettled_payment_count || 0} payment request${plan.unsettled_payment_count === 1 ? '' : 's'} must be paid or rejected first.` };
+                    })();
+
                     return (
                       <tr key={plan.id} className={`border-l-[3px] ${rowAccent} group/row even:bg-slate-50/40 hover:bg-blue-50/60 dark:even:bg-slate-800/15 dark:hover:bg-blue-500/5 text-neutral-700 dark:text-neutral-300 transition-colors`}>
                         <td className="px-3 py-2">
@@ -759,7 +831,7 @@ export default function MarketingPlanPage() {
                             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400 transition-colors group-hover/row:bg-blue-100 group-hover/row:text-blue-500 dark:bg-slate-800 dark:group-hover/row:bg-blue-500/15">
                               <Megaphone className="h-3.5 w-3.5" />
                             </span>
-                            <span className="truncate">{plan.title}</span>
+                            <span className="min-w-0"><span className="block truncate">{plan.title}</span><span className="block font-mono text-[10px] font-medium text-slate-400">{eventNumber(plan)}</span></span>
                           </button>
 
                         </td>
@@ -790,6 +862,20 @@ export default function MarketingPlanPage() {
                             >
                               Detail <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover/detail:-translate-y-0.5 group-hover/detail:translate-x-0.5" />
                             </button>
+                            {closingAction && (
+                              <button
+                                type="button"
+                                disabled={!closingAction.enabled}
+                                title={closingAction.hint}
+                                onClick={() => closingAction.enabled && openDetail(plan.id, 'results')}
+                                aria-label={`${closingAction.label}: ${plan.title}`}
+                                className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${closingAction.enabled
+                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20 cursor-pointer'
+                                  : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 opacity-75 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-500'}`}
+                              >
+                                <CheckCircle className="h-3.5 w-3.5" /> {closingAction.label}
+                              </button>
+                            )}
                             <Menu.Root>
                               <Menu.Trigger
                                 aria-label={`${lang === 'id' ? 'Aksi lainnya' : 'More actions'}: ${plan.title}`}
@@ -853,7 +939,7 @@ export default function MarketingPlanPage() {
                 <button key={p} onClick={() => handlePageChange(p)}
                   className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
                     p === currentPage
-                      ? 'bg-indigo-600 text-white border border-indigo-600'
+                      ? 'bg-blue-600 text-white border border-blue-600'
                       : 'border border-neutral-200 dark:border-neutral-700 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                   }`}>
                   {p}
@@ -879,6 +965,7 @@ export default function MarketingPlanPage() {
         draftPlanId={draftPlanId}
         revisingPlanId={revisingPlanId}
         metadata={metadata}
+        onMetadataChanged={loadMetadata}
         onSuccess={(msg) => {
           setSuccessMsg(msg);
           loadPlans();
@@ -898,6 +985,7 @@ export default function MarketingPlanPage() {
           setSelectedPlanId(null);
         }}
         planId={selectedPlanId}
+        initialTab={detailInitialTab}
         metadata={metadata}
         loadPlans={loadPlans}
         onRevise={handleRevisePlan}
@@ -972,7 +1060,16 @@ export default function MarketingPlanPage() {
           loadPlans();
           setTimeout(() => setSuccessMsg(null), 5000);
         }}
-        onError={(err) => setError(err)}
+        onError={(err) => showFailureModal(err, 'Penyimpanan Quick Campaign', 'Pengajuan Plan Gagal')}
+      />
+
+      {/* GLOBAL POP-UP FEEDBACK SAAT KEGAGALAN (403, 401, 400, 500) */}
+      <ActionFailureModal
+        isOpen={failureModal.isOpen}
+        onClose={() => setFailureModal(prev => ({ ...prev, isOpen: false }))}
+        title={failureModal.title}
+        error={failureModal.error}
+        actionContext={failureModal.actionContext}
       />
     </div>
   );

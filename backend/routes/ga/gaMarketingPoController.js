@@ -322,15 +322,55 @@ async function cancelPurchaseOrder(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// POST /marketing-po/:id/close — ISSUED → CLOSED once the vendor work is settled.
+// POST /marketing-po/:id/close — ISSUED → CLOSED only after the PO is fully settled.
 async function closePurchaseOrder(req, res, next) {
   try {
     const id = parseInt(req.params.id, 10);
+    const po = await prisma.$transaction(async tx => {
+      // Reload inside the transaction so payment status and PO status cannot change between
+      // validation and the state transition.
+      const existing = Number.isInteger(id)
+        ? await tx.purchase_orders.findUnique({ where: { id }, include: DETAIL_INCLUDE })
+        : null;
+      if (!existing || !inScope(req, existing.company_id)) throw httpError(404, 'Purchase order not found.');
+      if (existing.status !== 'ISSUED') throw httpError(400, 'Only issued POs can be closed. Reopen a closed PO first if it needs correction.');
+
+      const unresolved = existing.payment_requests.filter(payment => !['PAID', 'REJECTED'].includes(payment.status));
+      if (unresolved.length) {
+        throw httpError(409, `${unresolved.length} payment request(s) on this PO are not paid or rejected yet.`);
+      }
+
+      // A PO represents the full vendor liability, including PPN. It is only settled when
+      // paid requests cover the complete PO total; rejected requests do not count as paid.
+      const paidTotal = toMoney(existing.payment_requests
+        .filter(payment => payment.status === 'PAID')
+        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
+      const outstanding = toMoney(Number(existing.total || 0) - paidTotal);
+      if (outstanding > 0.01) {
+        throw httpError(409, `PO still has Rp ${Math.ceil(outstanding).toLocaleString('id-ID')} unpaid. Record the remaining payment before closing.`);
+      }
+
+      const claimed = await tx.purchase_orders.updateMany({
+        where: { id, status: 'ISSUED' },
+        data: { status: 'CLOSED', updated_at: new Date() }
+      });
+      if (claimed.count !== 1) throw httpError(409, 'This PO was changed by someone else. Reload and review it before closing.');
+      return tx.purchase_orders.findUnique({ where: { id }, include: DETAIL_INCLUDE });
+    }, { isolationLevel: 'Serializable' });
+    res.json(po);
+  } catch (err) {
+    if (err.code === 'P2034') return res.status(409).json({ error: 'Payment data changed while closing. Reload and review the PO again.' });
+    next(err);
+  }
+}
+
+// POST /marketing-po/:id/reopen — CLOSED → ISSUED so further payments can be requested.
+async function reopenPurchaseOrder(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
     const existing = await loadPo(req, id);
-    if (existing.status !== 'ISSUED') return res.status(400).json({ error: 'Only issued POs can be closed.' });
-    const unpaid = existing.payment_requests.filter(p => ['PENDING', 'OVERBUDGET_WARN', 'APPROVED'].includes(p.status));
-    if (unpaid.length) return res.status(409).json({ error: `${unpaid.length} payment request(s) on this PO are not paid or rejected yet.` });
-    const po = await prisma.purchase_orders.update({ where: { id }, data: { status: 'CLOSED', updated_at: new Date() }, include: DETAIL_INCLUDE });
+    if (existing.status !== 'CLOSED') return res.status(400).json({ error: 'Only closed POs can be reopened.' });
+    const po = await prisma.purchase_orders.update({ where: { id }, data: { status: 'ISSUED', updated_at: new Date() }, include: DETAIL_INCLUDE });
     res.json(po);
   } catch (err) { next(err); }
 }
@@ -402,7 +442,7 @@ async function getVendorOptions(req, res, next) {
 
 module.exports = {
   getQueue, getPurchaseOrders, getPurchaseOrder, createPurchaseOrder, updatePurchaseOrder,
-  issuePurchaseOrder, cancelPurchaseOrder, closePurchaseOrder, deletePurchaseOrder,
+  issuePurchaseOrder, cancelPurchaseOrder, closePurchaseOrder, reopenPurchaseOrder, deletePurchaseOrder,
   exportForNetsuite, setNetsuiteRef, getPosForItem, getVendorOptions,
   // exported for tests
   computeTotals, validatePayload, TAX_RATES

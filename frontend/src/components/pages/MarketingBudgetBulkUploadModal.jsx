@@ -367,7 +367,7 @@ export async function downloadMarketingBudgetTemplate({
   // Subtitle / Guideline
   sheet.mergeCells('A2:G2');
   const noteCell = sheet.getCell('A2');
-  noteCell.value = 'Petunjuk: Kolom bertanda (*) wajib diisi. Isi kolom "Kode Akun CoA *" dengan KODE Akun dari tab "Referensi_CoA" (contoh: 61101). Vendor partner mendukung fuzzy matching otomatis.';
+  noteCell.value = 'Petunjuk: Kolom bertanda (*) wajib diisi. Isi kolom "Kode Akun CoA *" dengan KODE Akun dari tab "Referensi_CoA" (contoh: 61101). Bulan anggaran otomatis mengikuti Tanggal Event; kolom bulan tidak perlu diubah.';
   noteCell.font = { italic: true, size: 9, color: { argb: 'FF1E293B' } };
   noteCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }; // Blue-100
   noteCell.alignment = { vertical: 'middle', horizontal: 'left' };
@@ -379,11 +379,11 @@ export async function downloadMarketingBudgetTemplate({
   // Header row
   const headers = [
     { key: 'no', header: 'No', width: 6 },
-    { key: 'period_month', header: 'Bulan (1-12 atau Nama Bulan) *', width: 28 },
+    { key: 'period_month', header: 'Bulan Anggaran (otomatis dari Tanggal Event)', width: 28 },
     { key: 'coa_account', header: 'Kode Akun CoA *', width: 22 },
     { key: 'vendor_name', header: 'Vendor Partner', width: 32 },
     { key: 'qty', header: 'Qty *', width: 10 },
-    { key: 'unit_price', header: 'Harga Satuan (IDR) *', width: 22 },
+    { key: 'unit_price', header: 'Harga Satuan Netto (IDR) *', width: 22 },
     { key: 'description', header: 'Catatan Biaya (Cost Notes)', width: 38 }
   ];
 
@@ -682,10 +682,9 @@ export default function MarketingBudgetBulkUploadModal({
         const warnings = [];
 
         // 1. Month validation
-        const monthNum = parseMonth(rawMonth);
-        if (!monthNum) {
-          errors.push(`Bulan "${rawMonth || '-'}" tidak valid`);
-        }
+        // The wizard assigns the final budget month from Event Date. Keep this
+        // column optional to support older templates without making users enter it.
+        const monthNum = parseMonth(rawMonth) || 1;
 
         // 2. CoA validation (prioritize Code, fallback to Name, with fuzzy matching)
         let matchedCoa = null;
@@ -869,10 +868,10 @@ export default function MarketingBudgetBulkUploadModal({
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-neutral-900 dark:text-white tracking-tight">
-                    Bulk Upload Alokasi Anggaran (Monthly Budget)
+                    Bulk Upload Budget Lines
                   </h3>
                   <p className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-0.5">
-                    Unggah file Excel (.xlsx) untuk mengisi rincian alokasi biaya bulanan secara massal.
+                    Unggah file Excel (.xlsx) untuk mengisi rincian biaya secara massal. Bulan anggaran mengikuti Tanggal Event secara otomatis.
                   </p>
                 </div>
               </div>

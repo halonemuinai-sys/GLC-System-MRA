@@ -38,17 +38,26 @@ export default function MarketingPlanWizardStep2({
   lang
 }) {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const eventBudgetMonth = useMemo(() => {
+    if (!wizardHeader.event_start_date) return null;
+    const date = new Date(wizardHeader.event_start_date);
+    return Number.isNaN(date.getTime()) ? null : date.getUTCMonth() + 1;
+  }, [wizardHeader.event_start_date]);
 
   const handleApplyBulkUpload = (importedItems, mode) => {
+    const normalizedItems = importedItems.map(item => ({
+      ...item,
+      period_month: String(eventBudgetMonth || 1)
+    }));
     if (mode === 'replace') {
-      setWizardItems(importedItems);
+      setWizardItems(normalizedItems);
     } else {
       // mode === 'append': replace initial single blank row if it exists
       const isSingleBlank = wizardItems.length === 1 && !wizardItems[0].coa_id && (!wizardItems[0].unit_price || wizardItems[0].unit_price === '0');
       if (isSingleBlank) {
-        setWizardItems(importedItems);
+        setWizardItems(normalizedItems);
       } else {
-        setWizardItems(prev => [...prev, ...importedItems]);
+        setWizardItems(prev => [...prev, ...normalizedItems]);
       }
     }
   };
@@ -58,56 +67,14 @@ export default function MarketingPlanWizardStep2({
     return budgetAvailability.monthly.reduce((acc, m) => { acc[m.month] = m; return acc; }, {});
   }, [budgetAvailability]);
 
-  const getAvailableMonths = () => {
-    const start_date = wizardHeader.event_start_date || wizardHeader.cta_start_date || wizardHeader.start_date;
-    const end_date = wizardHeader.event_end_date || wizardHeader.cta_end_date || wizardHeader.end_date;
-    
-    if (!start_date || !end_date) {
-      return Array.from({ length: 12 }, (_, i) => i + 1);
-    }
-    
-    const dates = [];
-    if (wizardHeader.event_start_date) dates.push(new Date(wizardHeader.event_start_date));
-    if (wizardHeader.cta_start_date) dates.push(new Date(wizardHeader.cta_start_date));
-    if (wizardHeader.start_date) dates.push(new Date(wizardHeader.start_date));
-    
-    const minStart = new Date(Math.min(...dates));
-    
-    const endDates = [];
-    if (wizardHeader.event_end_date) endDates.push(new Date(wizardHeader.event_end_date));
-    if (wizardHeader.cta_end_date) endDates.push(new Date(wizardHeader.cta_end_date));
-    if (wizardHeader.end_date) endDates.push(new Date(wizardHeader.end_date));
-    
-    const maxEnd = new Date(Math.max(...endDates));
-
-    const months = [];
-    let current = new Date(minStart.getFullYear(), minStart.getMonth(), 1);
-    const limit = new Date(maxEnd.getFullYear(), maxEnd.getMonth(), 1);
-    
-    let iterations = 0;
-    while (current <= limit && iterations < 36) {
-      iterations++;
-      const m = current.getMonth() + 1;
-      if (!months.includes(m)) {
-        months.push(m);
-      }
-      current.setMonth(current.getMonth() + 1);
-    }
-    
-    if (months.length === 0) {
-      return Array.from({ length: 12 }, (_, i) => i + 1);
-    }
-    return months.sort((a, b) => a - b);
-  };
-
-  const availableMonths = getAvailableMonths();
-
   return (
     <div className="space-y-5 rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h4 className="text-sm font-semibold text-neutral-800 dark:text-white">{t('monthlyAllocationTitle')}</h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('monthlyAllocationSub')}</p>
+          <p className="mt-1.5 text-[10px] font-medium text-blue-700 dark:text-blue-300">Budget month is set automatically from the Event Date. Promotion Period is used for campaign effectiveness only.</p>
+          <p className="mt-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">Enter the plan amount before PPN. PPN is added on the GA Purchase Order and does not reduce this campaign budget.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
@@ -149,7 +116,7 @@ export default function MarketingPlanWizardStep2({
             <thead>
               <tr className="bg-neutral-50 dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-800 text-neutral-400 dark:text-neutral-500 font-semibold uppercase tracking-wider">
                 <th className="px-2 py-3 text-center w-[4%]">No</th>
-                <th className="px-2 py-3 w-[11%]">Month *</th>
+                <th className="px-2 py-3 w-[11%]">Budget Month</th>
                 <th className="px-2 py-3 w-[22%]">CoA Account *</th>
                 <th className="px-2 py-3 w-[16%]">Vendor Partner</th>
                 <th className="px-2 py-3 w-[8%] text-center">Qty *</th>
@@ -168,20 +135,13 @@ export default function MarketingPlanWizardStep2({
                       {idx + 1}
                     </td>
                     
-                    {/* Month */}
+                    {/* Budget month is derived from Event Date; never from the promotion period. */}
                     <td className="px-2 py-2.5">
-                      <select
-                        value={item.period_month}
-                        onChange={(e) => handleItemChange(idx, 'period_month', e.target.value)}
-                        className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
-                      >
-                        <option value="">{t('monthWord')}</option>
-                        {availableMonths.map((m) => (
-                          <option key={m} value={m}>{getMonthName(m, lang)}</option>
-                        ))}
-                      </select>
+                      <div className="rounded-lg border border-blue-100 bg-blue-50/70 px-2 py-2 text-[11px] font-semibold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                        {eventBudgetMonth ? getMonthName(eventBudgetMonth, lang) : 'Set Event Date'}
+                      </div>
                       {(() => {
-                        const m = parseInt(item.period_month, 10);
+                        const m = eventBudgetMonth;
                         if (!m || !budgetMonthlyMap[m]) return null;
                         const mb = budgetMonthlyMap[m];
                         if (!mb.limit) return null;
@@ -201,8 +161,8 @@ export default function MarketingPlanWizardStep2({
                         required
                       >
                         <option value="">Select Account</option>
-                        {metadata.coas.map(c => (
-                          <option key={c.id} value={c.id}>
+                        {(metadata.coas || []).map((c, cIdx) => (
+                          <option key={`coa-${c.id || cIdx}`} value={c.id}>
                             {c.code ? `[${c.code}] ${c.name}` : c.name}
                           </option>
                         ))}
@@ -217,14 +177,14 @@ export default function MarketingPlanWizardStep2({
                         placeholder={t('vendorNamePlaceholder')}
                         value={(() => {
                           if (/^\d+$/.test(item.vendor_id)) {
-                            const vObj = metadata.vendors.find(v => String(v.id) === String(item.vendor_id));
+                            const vObj = (metadata.vendors || []).find(v => String(v.id) === String(item.vendor_id));
                             return vObj ? vObj.vendor_name : '';
                           }
                           return item.vendor_id || '';
                         })()}
                         onChange={(e) => {
                           const val = e.target.value;
-                          const matched = metadata.vendors.find(v => v.vendor_name === val);
+                          const matched = (metadata.vendors || []).find(v => v.vendor_name === val);
                           if (matched) {
                             handleItemChange(idx, 'vendor_id', String(matched.id));
                           } else {
@@ -234,8 +194,8 @@ export default function MarketingPlanWizardStep2({
                         className="w-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg px-2 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500 font-medium text-neutral-800 dark:text-white"
                       />
                       <datalist id={`vendors-datalist-${idx}`}>
-                        {metadata.vendors.map(v => (
-                          <option key={v.id} value={v.vendor_name} />
+                        {(metadata.vendors || []).map((v, vIdx) => (
+                          <option key={`vendor-${v.id || vIdx}`} value={v.vendor_name} />
                         ))}
                       </datalist>
                       {(() => {

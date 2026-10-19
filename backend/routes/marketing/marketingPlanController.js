@@ -25,6 +25,49 @@ async function resolvePlanVendor(tx, value) {
   return created.id;
 }
 
+// Budget Control is tied to the month the event starts. Promotion/CTA dates are
+// reporting dates for campaign effectiveness and must never open another budget month.
+function eventBudgetMonth(eventStartDate, fallbackStartDate = null) {
+  const source = eventStartDate || fallbackStartDate;
+  if (!source) return null;
+  const date = new Date(source);
+  return Number.isNaN(date.getTime()) ? null : date.getUTCMonth() + 1;
+}
+
+function normalizeBudgetMonths(items, eventStartDate, fallbackStartDate = null) {
+  const month = eventBudgetMonth(eventStartDate, fallbackStartDate);
+  if (!month) return items;
+  return items.map(item => ({ ...item, period_month: month }));
+}
+
+const APPROVER_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Drafts may remain incomplete, but a plan that enters the approval workflow must carry
+// its own explicit DocHub-style chain. This prevents a missing recipient from silently
+// falling back to a different rule set after the plan has been submitted.
+function validateApprovalChain(approvers) {
+  if (!Array.isArray(approvers) || approvers.length === 0) {
+    return { error: 'Document Signers & Approval Chain is required before submitting this plan.' };
+  }
+
+  const normalized = [];
+  for (let index = 0; index < approvers.length; index += 1) {
+    const approver = approvers[index] || {};
+    const name = String(approver.approver_name || '').trim();
+    const email = String(approver.approver_email || '').trim().toLowerCase();
+    const role = String(approver.approver_role || '').trim();
+    const step = index + 1;
+    if (!name || !email || !role) {
+      return { error: `Approval step ${step} must include signer name, email, and role.` };
+    }
+    if (!APPROVER_EMAIL_PATTERN.test(email)) {
+      return { error: `Approval step ${step} has an invalid signer email.` };
+    }
+    normalized.push({ step_number: step, approver_name: name, approver_email: email, approver_role: role });
+  }
+  return { approvers: normalized };
+}
+
 /**
  * Helper function to check if the proposed marketing plan items exceed the locked monthly budget.
  */
@@ -89,7 +132,7 @@ async function createPlan(req, res, next) {
   try {
     const employee = await resolveEmployee(req.user.email);
     if (!employee) {
-      return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
+      return res.status(403).json({ error: 'Akses ditolak (403): Email login tidak terdaftar sebagai Master Signer dan tidak ditemukan akun pengguna aktif.' });
     }
 
     const { title, description, company_id, fiscal_year, start_date, end_date, event_start_date, event_end_date, cta_start_date, cta_end_date, items, approvers, doc_url, over_budget_reason, save_as_draft,
@@ -99,8 +142,16 @@ async function createPlan(req, res, next) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
     }
     if (!req.companyScope.all && !req.companyScope.companyIds.includes(parseInt(company_id, 10))) {
-      return res.status(403).json({ error: 'Company outside your access scope.' });
+      return res.status(403).json({ error: 'Akses ditolak (403): Perusahaan (PT) yang dipilih berada di luar izin scope unit bisnis akun Anda.' });
     }
+    if (!save_as_draft && !eventBudgetMonth(event_start_date, start_date)) {
+      return res.status(400).json({ error: 'Event Date is required before a marketing budget can be submitted.' });
+    }
+    const approvalChain = save_as_draft ? null : validateApprovalChain(approvers);
+    if (approvalChain?.error) return res.status(400).json({ error: approvalChain.error });
+    const planApproverInput = approvalChain?.approvers || approvers || [];
+
+    const budgetItems = normalizeBudgetMonths(items, event_start_date, start_date);
 
     const lateCheck = save_as_draft
       ? { late: false, reason: late_submission_reason ? String(late_submission_reason).trim() || null : null }
@@ -108,11 +159,11 @@ async function createPlan(req, res, next) {
     if (lateCheck.error) return res.status(400).json({ error: lateCheck.error, code: lateCheck.code });
 
     let totalBudget = 0;
-    for (const item of items) {
+    for (const item of budgetItems) {
       totalBudget += parseFloat(item.budget_amount || 0);
     }
 
-    const isOverBudget = save_as_draft ? false : await checkBudgetLimits(company_id, fiscal_year, items);
+    const isOverBudget = save_as_draft ? false : await checkBudgetLimits(company_id, fiscal_year, budgetItems);
 
     const magicLinkQueue = [];
     const newPlan = await prisma.$transaction(async (tx) => {
@@ -147,19 +198,21 @@ async function createPlan(req, res, next) {
         }
       });
 
-      for (const item of items) {
+      for (const item of budgetItems) {
+        const coaId = parseInt(item.coa_id, 10);
+        if (!coaId || isNaN(coaId)) continue;
         const resolvedVendorId = await resolvePlanVendor(tx, item.vendor_id);
 
         await tx.marketing_plan_items.create({
           data: {
             marketing_plan_id: plan.id,
-            coa_id: parseInt(item.coa_id, 10),
-            brand_id: item.brand_id ? parseInt(item.brand_id, 10) : null,
-            lob_id: item.lob_id ? parseInt(item.lob_id, 10) : null,
-            branch_id: item.branch_id ? parseInt(item.branch_id, 10) : null,
-            event_location_id: item.event_location_id ? parseInt(item.event_location_id, 10) : null,
+            coa_id: coaId,
+            brand_id: item.brand_id && !isNaN(parseInt(item.brand_id, 10)) ? parseInt(item.brand_id, 10) : null,
+            lob_id: item.lob_id && !isNaN(parseInt(item.lob_id, 10)) ? parseInt(item.lob_id, 10) : null,
+            branch_id: item.branch_id && !isNaN(parseInt(item.branch_id, 10)) ? parseInt(item.branch_id, 10) : null,
+            event_location_id: item.event_location_id && !isNaN(parseInt(item.event_location_id, 10)) ? parseInt(item.event_location_id, 10) : null,
             vendor_id: resolvedVendorId,
-            period_month: parseInt(item.period_month, 10),
+            period_month: parseInt(item.period_month, 10) || 1,
             budget_amount: parseFloat(item.budget_amount || 0),
             actual_amount: 0,
             description: item.description,
@@ -170,10 +223,9 @@ async function createPlan(req, res, next) {
       }
 
       // Save custom signers / approvers (DocHub style)
-      if (approvers && Array.isArray(approvers) && approvers.length > 0) {
-        for (let i = 0; i < approvers.length; i++) {
-          const app = approvers[i];
-          if (!app.approver_name || !app.approver_email) continue;
+      if (planApproverInput.length > 0) {
+        for (let i = 0; i < planApproverInput.length; i++) {
+          const app = planApproverInput[i];
           await tx.marketing_plan_approvers.create({
             data: {
               marketing_plan_id: plan.id,
@@ -302,8 +354,10 @@ async function updatePlan(req, res, next) {
       return res.status(403).json({ error: 'Company outside your access scope.' });
     }
 
+    const budgetItems = normalizeBudgetMonths(items, event_start_date, start_date);
+
     let totalBudget = 0;
-    for (const item of items) totalBudget += parseFloat(item.budget_amount || 0);
+    for (const item of budgetItems) totalBudget += parseFloat(item.budget_amount || 0);
 
     const updatedPlan = await prisma.$transaction(async (tx) => {
       const plan = await tx.marketing_plans.update({
@@ -332,18 +386,20 @@ async function updatePlan(req, res, next) {
       });
 
       await tx.marketing_plan_items.deleteMany({ where: { marketing_plan_id: planId } });
-      for (const item of items) {
+      for (const item of budgetItems) {
+        const coaId = parseInt(item.coa_id, 10);
+        if (!coaId || isNaN(coaId)) continue;
         const resolvedVendorId = await resolvePlanVendor(tx, item.vendor_id);
         await tx.marketing_plan_items.create({
           data: {
             marketing_plan_id: planId,
-            coa_id: parseInt(item.coa_id, 10),
-            brand_id: item.brand_id ? parseInt(item.brand_id, 10) : null,
-            lob_id: item.lob_id ? parseInt(item.lob_id, 10) : null,
-            branch_id: item.branch_id ? parseInt(item.branch_id, 10) : null,
-            event_location_id: item.event_location_id ? parseInt(item.event_location_id, 10) : null,
+            coa_id: coaId,
+            brand_id: item.brand_id && !isNaN(parseInt(item.brand_id, 10)) ? parseInt(item.brand_id, 10) : null,
+            lob_id: item.lob_id && !isNaN(parseInt(item.lob_id, 10)) ? parseInt(item.lob_id, 10) : null,
+            branch_id: item.branch_id && !isNaN(parseInt(item.branch_id, 10)) ? parseInt(item.branch_id, 10) : null,
+            event_location_id: item.event_location_id && !isNaN(parseInt(item.event_location_id, 10)) ? parseInt(item.event_location_id, 10) : null,
             vendor_id: resolvedVendorId,
-            period_month: parseInt(item.period_month, 10),
+            period_month: parseInt(item.period_month, 10) || 1,
             budget_amount: parseFloat(item.budget_amount || 0),
             actual_amount: 0,
             description: item.description,
@@ -386,16 +442,18 @@ async function submitPlan(req, res, next) {
   try {
     const planId = parseInt(req.params.id, 10);
     const employee = await resolveEmployee(req.user.email);
-    if (!employee) return res.status(403).json({ error: 'Email tidak terdaftar sebagai Master Signer.' });
+    if (!employee) return res.status(403).json({ error: 'Akses ditolak (403): Email login tidak terdaftar sebagai Master Signer dan tidak ditemukan akun aktif.' });
 
     const existingPlan = await prisma.marketing_plans.findUnique({
       where: { id: planId },
-      include: { company: true, items: true }
+      include: { company: true, items: true, approvers: { orderBy: { step_number: 'asc' } } }
     });
     if (!existingPlan) return res.status(404).json({ error: 'Marketing Plan not found.' });
     if (existingPlan.status !== 'DRAFT') return res.status(400).json({ error: 'Hanya rencana berstatus DRAFT yang dapat diajukan.' });
     if (!req.companyScope?.all && !req.companyScope?.companyIds.includes(existingPlan.company_id)) return res.status(404).json({ error: 'Marketing Plan not found.' });
-    if (!canManageDoc(req, existingPlan.creator_id, employee)) return res.status(403).json({ error: 'Only the plan creator or a Marketing Manager can change this plan.' });
+    if (!canManageDoc(req, existingPlan.creator_id, employee)) return res.status(403).json({ error: 'Akses ditolak (403): Hanya pembuat plan atau Marketing Manager yang dapat mengubah plan ini.' });
+    const approvalChain = validateApprovalChain(existingPlan.approvers);
+    if (approvalChain.error) return res.status(400).json({ error: approvalChain.error });
 
     const lateCheck = evaluateLateSubmission(
       existingPlan.event_start_date || existingPlan.start_date,
@@ -591,6 +649,26 @@ async function updatePlanActuals(req, res, next) {
 }
 
 // PUT /plans/:id/revise
+// DELETE /plans/:id/actuals — clears post-campaign actuals (sales, leads, reach, impressions, ROI, notes).
+// Not allowed once the closing is waiting for approval or approved, because the closing relies on them.
+async function clearPlanActuals(req, res, next) {
+  try {
+    const planId = parseInt(req.params.id, 10);
+    const employee = await resolveEmployee(req.user.email);
+    const existingPlan = Number.isInteger(planId) ? await prisma.marketing_plans.findUnique({ where: { id: planId }, include: { closing: { select: { status: true } } } }) : null;
+    if (!existingPlan || (!req.companyScope?.all && !req.companyScope?.companyIds.includes(existingPlan.company_id))) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    if (!canManageDoc(req, existingPlan.creator_id, employee)) return res.status(403).json({ error: 'Only the plan creator or a Marketing Manager can delete the actuals.' });
+    if (existingPlan.status !== 'APPROVED') return res.status(400).json({ error: 'Actuals can only be deleted while the plan is APPROVED.' });
+    if (['PENDING_APPROVAL', 'APPROVED'].includes(existingPlan.closing?.status)) return res.status(400).json({ error: 'The closing is already submitted or approved; its actuals cannot be deleted.' });
+    if (!existingPlan.actuals_filled_at) return res.status(400).json({ error: 'There are no actuals to delete.' });
+    const updated = await prisma.marketing_plans.update({
+      where: { id: planId },
+      data: { actual_sales: null, actual_leads: null, actual_reach: null, actual_impressions: null, actual_roi_pct: null, actual_notes: null, actuals_filled_at: null, actuals_filled_by: null, updated_at: new Date() }
+    });
+    res.json(updated);
+  } catch (err) { next(err); }
+}
+
 async function revisePlan(req, res, next) {
   try {
     const planId = parseInt(req.params.id, 10);
@@ -617,12 +695,20 @@ async function revisePlan(req, res, next) {
     if (!title || !company_id || !fiscal_year || !items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Title, company_id, fiscal_year, and budget items are required.' });
     }
+    const approvalChain = validateApprovalChain(approvers);
+    if (approvalChain.error) return res.status(400).json({ error: approvalChain.error });
+    const planApproverInput = approvalChain.approvers;
 
     const lateCheck = evaluateLateSubmission(event_start_date || start_date, late_submission_reason);
     if (lateCheck.error) return res.status(400).json({ error: lateCheck.error, code: lateCheck.code });
+    if (!eventBudgetMonth(event_start_date, start_date)) {
+      return res.status(400).json({ error: 'Event Date is required before a marketing budget can be resubmitted.' });
+    }
+
+    const budgetItems = normalizeBudgetMonths(items, event_start_date, start_date);
 
     let totalBudget = 0;
-    for (const item of items) {
+    for (const item of budgetItems) {
       totalBudget += parseFloat(item.budget_amount || 0);
     }
 
@@ -630,7 +716,7 @@ async function revisePlan(req, res, next) {
       return res.status(403).json({ error: 'Company outside your access scope.' });
     }
 
-    const isOverBudget = await checkBudgetLimits(company_id, fiscal_year, items);
+    const isOverBudget = await checkBudgetLimits(company_id, fiscal_year, budgetItems);
 
     const magicLinkQueue = [];
     const updatedPlan = await prisma.$transaction(async (tx) => {
@@ -672,7 +758,7 @@ async function revisePlan(req, res, next) {
         data: { status: 'REJECTED', comment: '[SISTEM] Digantikan oleh revisi rencana.', action_at: new Date() }
       });
 
-      for (const item of items) {
+      for (const item of budgetItems) {
         const resolvedVendorId = await resolvePlanVendor(tx, item.vendor_id);
 
         await tx.marketing_plan_items.create({
@@ -695,22 +781,19 @@ async function revisePlan(req, res, next) {
       }
 
       // Sync custom signers / approvers (DocHub style)
-      if (approvers && Array.isArray(approvers) && approvers.length > 0) {
-        await tx.marketing_plan_approvers.deleteMany({ where: { marketing_plan_id: planId } });
-        for (let i = 0; i < approvers.length; i++) {
-          const app = approvers[i];
-          if (!app.approver_name || !app.approver_email) continue;
-          await tx.marketing_plan_approvers.create({
-            data: {
-              marketing_plan_id: planId,
-              step_number: app.step_number || (i + 1),
-              approver_name: String(app.approver_name).trim(),
-              approver_email: String(app.approver_email).trim(),
-              approver_role: app.approver_role ? String(app.approver_role).trim() : null,
-              status: (app.step_number === 1 || i === 0) ? 'PENDING' : 'WAITING'
-            }
-          });
-        }
+      await tx.marketing_plan_approvers.deleteMany({ where: { marketing_plan_id: planId } });
+      for (let i = 0; i < planApproverInput.length; i++) {
+        const app = planApproverInput[i];
+        await tx.marketing_plan_approvers.create({
+          data: {
+            marketing_plan_id: planId,
+            step_number: app.step_number,
+            approver_name: app.approver_name,
+            approver_email: app.approver_email,
+            approver_role: app.approver_role,
+            status: i === 0 ? 'PENDING' : 'WAITING'
+          }
+        });
       }
 
       const planApprovers = await tx.marketing_plan_approvers.findMany({
@@ -834,7 +917,10 @@ async function getPlans(req, res, next) {
       filters.creator_id = employee?.id || -1;
     }
     if (search) {
+      // Event number search: "EVT-2026-0083", "EVT-0083", "#83" or "83" match plan id 83.
+      const eventNo = String(search).trim().match(/^(?:#|EVT-?(?:\d{4}-?)?)?0*(\d{1,7})$/i);
       filters.OR = [
+        ...(eventNo ? [{ id: parseInt(eventNo[1], 10) }] : []),
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
         { company: { name: { contains: search, mode: 'insensitive' } } },
@@ -842,13 +928,21 @@ async function getPlans(req, res, next) {
       ];
     }
 
-    const [plans, total, summaryRaw, allRules] = await Promise.all([
+    const [plans, total, summaryRaw, actualSummary, allRules] = await Promise.all([
       prisma.marketing_plans.findMany({
         where: filters,
         include: {
           company: { select: { id: true, name: true } },
           creator: { select: { id: true, name: true } },
-          items: { select: { actual_amount: true } },
+          items: {
+            select: {
+              actual_amount: true,
+              payment_requests: {
+                where: { status: { in: ['PENDING', 'APPROVED', 'OVERBUDGET_WARN'] } },
+                select: { id: true }
+              }
+            }
+          },
           approvers: { orderBy: { step_number: 'asc' } },
           approval_history: {
             where: { status: 'PENDING' },
@@ -869,10 +963,24 @@ async function getPlans(req, res, next) {
         _sum: { total_budget: true },
         _count: { _all: true }
       }),
+      // Realisasi hanya bertambah ketika payment request berstatus PAID. Menggunakan
+      // filter plan yang sama menjaga KPI selaras dengan daftar campaign yang tampil.
+      prisma.marketing_plan_items.aggregate({
+        where: { marketing_plan: filters },
+        _sum: { actual_amount: true }
+      }),
       prisma.approval_rules.findMany({ where: { module: 'MARKETING_PLAN' } })
     ]);
 
-    const summary = { totalBudget: 0, approved: 0, pending: 0, draft: 0, rejected: 0, total: 0 };
+    const summary = {
+      totalBudget: 0,
+      totalActual: Number(actualSummary._sum.actual_amount || 0),
+      approved: 0,
+      pending: 0,
+      draft: 0,
+      rejected: 0,
+      total: 0
+    };
     summaryRaw.forEach(g => {
       summary.total += g._count._all;
       summary.totalBudget += Number(g._sum.total_budget || 0);
@@ -884,7 +992,14 @@ async function getPlans(req, res, next) {
 
     const plansWithPipeline = plans.map(planRow => {
       const { closing, ...planNoClosing } = planRow;
-      const plan = { ...planNoClosing, closing_status: closing?.status || null, closing_window: closingWindow(planRow, closing?.status) };
+      const unsettledPaymentCount = (planRow.items || []).reduce((total, item) => total + (item.payment_requests || []).length, 0);
+      const plan = {
+        ...planNoClosing,
+        closing_status: closing?.status || null,
+        closing_window: closingWindow(planRow, closing?.status),
+        unsettled_payment_count: unsettledPaymentCount,
+        closing_ready: planRow.status === 'APPROVED' && Boolean(planRow.actuals_filled_at) && unsettledPaymentCount === 0
+      };
       const { approval_history, approvers, ...rest } = plan;
 
       // If plan has DocHub style custom approvers
@@ -946,8 +1061,26 @@ async function getPlanDetail(req, res, next) {
             m_event_location: true,
             vendors: true,
             payment_requests: {
-              include: { creator: true },
+              include: {
+                creator: true,
+                // Approval steps of each payment / reimbursement, shown in the plan's approval chain tab.
+                approval_history: {
+                  orderBy: [{ step_number: 'asc' }, { created_at: 'asc' }],
+                  select: {
+                    id: true, step_number: true, status: true, comment: true, action_at: true, created_at: true,
+                    approver: { select: { name: true, email: true, position: true } },
+                    magic_links: { where: { used_at: null }, orderBy: { created_at: 'desc' }, take: 1, select: { token: true, recipient_email: true, expires_at: true } }
+                  }
+                }
+              },
               orderBy: { created_at: 'desc' }
+            },
+            po_lines: {
+              include: {
+                purchase_order: {
+                  select: { id: true, po_number: true, status: true, tax_rate: true, netsuite_status: true, netsuite_ref: true, order_date: true, delivery_date: true, issued_at: true, vendor: { select: { vendor_name: true, vendor_code: true } } }
+                }
+              }
             }
           }
         },
@@ -989,9 +1122,20 @@ async function getPlanDetail(req, res, next) {
     }) : [];
     const committedMap = Object.fromEntries(committedGroups.map(g => [g.marketing_plan_item_id, Number(g._sum.amount || 0)]));
 
-    const itemsWithVariance = plan.items.map(item => ({
+    // GA purchase orders per item (cancelled ones dropped). `available` = line + PPN minus
+    // payment requests (not rejected) already linked to that PO for this item.
+    const itemsWithVariance = plan.items.map(({ po_lines: poLines = [], ...item }) => ({
       ...item,
-      committed_amount: committedMap[item.id] || 0
+      committed_amount: committedMap[item.id] || 0,
+      purchase_orders: poLines
+        .filter(line => line.purchase_order && line.purchase_order.status !== 'CANCELLED')
+        .map(line => {
+          const po = line.purchase_order;
+          const lineTotal = Math.round(Number(line.amount) * (1 + Number(po.tax_rate) / 100) * 100) / 100;
+          const used = (item.payment_requests || []).filter(pr => pr.purchase_order_id === po.id && pr.status !== 'REJECTED').reduce((sum, pr) => sum + Number(pr.amount), 0);
+          const paid = (item.payment_requests || []).filter(pr => pr.purchase_order_id === po.id && pr.status === 'PAID').reduce((sum, pr) => sum + Number(pr.amount), 0);
+          return { ...po, line_description: line.description, line_amount: Number(line.amount), line_total: lineTotal, requested: used, paid, available: Math.max(0, Math.round((lineTotal - used) * 100) / 100) };
+        })
     }));
 
     // Fetch amendments secara terpisah — aman kalau tabel belum ada (migrasi belum dijalankan)
@@ -1006,13 +1150,27 @@ async function getPlanDetail(req, res, next) {
       // tabel belum ada — abaikan saja
     }
 
-    const closingRow = await prisma.marketing_plan_closings.findUnique({ where: { marketing_plan_id: plan.id }, select: { status: true } });
+    const closingRow = await prisma.marketing_plan_closings.findUnique({
+      where: { marketing_plan_id: plan.id },
+      select: {
+        status: true, submitted_at: true, approved_at: true, rejection_reason: true, magic_link_token: true, magic_link_expires_at: true, magic_link_used_at: true,
+        submitted_by: { select: { name: true } },
+        approvers: { orderBy: { step_number: 'asc' }, select: { step_number: true, role_label: true, status: true, action_at: true, comment: true, signer: { select: { name: true, email: true, position: true } } } }
+      }
+    });
 
     res.json({
       ...plan,
       items: itemsWithVariance,
       amendments,
       closing_status: closingRow?.status || null,
+      // Closing approval chain (Marketing Head → Kadiv); the live link only while a step is pending.
+      closing_approval: closingRow ? {
+        status: closingRow.status, submitted_at: closingRow.submitted_at, approved_at: closingRow.approved_at,
+        submitted_by: closingRow.submitted_by?.name || null, rejection_reason: closingRow.rejection_reason,
+        magic_link_token: closingRow.status === 'PENDING_APPROVAL' && !closingRow.magic_link_used_at ? closingRow.magic_link_token : null,
+        approvers: closingRow.approvers
+      } : null,
       closing_window: closingWindow(plan, closingRow?.status)
     });
   } catch (err) {
@@ -1123,7 +1281,7 @@ async function duplicatePlan(req, res, next) {
     const { id } = req.params;
     const existing = await prisma.marketing_plans.findUnique({
       where: { id: parseInt(id, 10) },
-      include: { items: true }
+      include: { items: true, approvers: true }
     });
 
     if (!existing) {
@@ -1150,6 +1308,10 @@ async function duplicatePlan(req, res, next) {
           status: 'DRAFT',
           creator_id: employee.id,
           doc_url: existing.doc_url,
+          is_over_budget: existing.is_over_budget,
+          over_budget_reason: existing.over_budget_reason,
+          is_late_submission: existing.is_late_submission,
+          late_submission_reason: existing.late_submission_reason,
           target_sales: existing.target_sales,
           target_leads: existing.target_leads,
           target_reach: existing.target_reach,
@@ -1181,6 +1343,23 @@ async function duplicatePlan(req, res, next) {
         }
       }
 
+      if (existing.approvers && existing.approvers.length > 0) {
+        for (let i = 0; i < existing.approvers.length; i++) {
+          const app = existing.approvers[i];
+          if (!app.approver_name || !app.approver_email) continue;
+          await tx.marketing_plan_approvers.create({
+            data: {
+              marketing_plan_id: newPlan.id,
+              step_number: app.step_number || (i + 1),
+              approver_name: app.approver_name,
+              approver_email: app.approver_email,
+              approver_role: app.approver_role,
+              status: 'WAITING'
+            }
+          });
+        }
+      }
+
       return newPlan;
     });
 
@@ -1194,6 +1373,7 @@ async function duplicatePlan(req, res, next) {
 }
 
 module.exports = {
+  clearPlanActuals,
   createPlan,
   updatePlan,
   submitPlan,

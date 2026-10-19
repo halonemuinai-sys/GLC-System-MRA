@@ -10,9 +10,12 @@ import {
   ChevronDown,
   Paperclip,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  Plus,
+  Check
 } from 'lucide-react';
 import Cookies from 'js-cookie';
+import { apiClient } from '@/lib/apiClient';
 import CampaignDateRangePicker from '@/components/ui/CampaignDateRangePicker';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import SearchableCompanySelect from './SearchableCompanySelect';
@@ -166,11 +169,92 @@ export default function MarketingPlanWizardStep1({
   isDraftOrRevise,
   lang = 'id',
   metadata,
+  onMetadataChanged,
   t
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [branchSearch, setBranchSearch] = useState('');
+  const [showBranchCreate, setShowBranchCreate] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
+  const [branchNotice, setBranchNotice] = useState('');
+  // Quick-add master data straight from the form (saved to the database, then selected).
+  const [newLocation, setNewLocation] = useState(null); // null = closed, string = input value
+  const [quickBusy, setQuickBusy] = useState(null);
+  const [quickError, setQuickError] = useState({});
+
+  const addEventLocation = async () => {
+    const name = (newLocation || '').trim().replace(/\s+/g, ' ');
+    if (!name || quickBusy) return;
+    const list = metadata.event_locations || (metadata.event_locations = []);
+    const existing = list.find(l => String(l.name).toLowerCase() === name.toLowerCase());
+    if (existing) {
+      setWizardHeader(prev => ({ ...prev, event_location_id: String(existing.id) }));
+      setNewLocation(null);
+      return;
+    }
+    setQuickBusy('location');
+    setQuickError(e => ({ ...e, location: null }));
+    try {
+      const created = await apiClient.post('/api/marketing/event-locations', { name });
+      list.push(created);
+      list.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+      setWizardHeader(prev => ({ ...prev, event_location_id: String(created.id) }));
+      setNewLocation(null);
+    } catch (err) {
+      setQuickError(e => ({ ...e, location: err.message || 'Failed to add the location.' }));
+    } finally {
+      setQuickBusy(null);
+    }
+  };
+
+  const selectBranch = (branchId) => {
+    const id = String(branchId);
+    setWizardHeader(prev => {
+      const selected = Array.isArray(prev.branch_ids) ? prev.branch_ids.map(String) : [];
+      return selected.includes(id) ? prev : { ...prev, branch_ids: [...selected, id] };
+    });
+  };
+
+  const addBranch = async (rawName) => {
+    const name = rawName.trim().replace(/\s+/g, ' ');
+    if (!name || quickBusy) return;
+    if (!wizardHeader.company_id) {
+      setQuickError(e => ({ ...e, branch: 'Select the company (PT) first.' }));
+      return;
+    }
+
+    const matchingBranch = (metadata.branches || []).find((branch) =>
+      String(branch.name || '').trim().toLowerCase() === name.toLowerCase() &&
+      String(branch.company_id || '') === String(wizardHeader.company_id || '') &&
+      String(branch.brand_id || '') === String(wizardHeader.brand_id || '')
+    );
+    if (matchingBranch) {
+      selectBranch(matchingBranch.id);
+      setBranchNotice(`“${matchingBranch.name}” is already in the master list and has been selected.`);
+      setBranchSearch('');
+      setNewBranchName('');
+      setShowBranchCreate(false);
+      return;
+    }
+
+    setQuickBusy('branch');
+    setQuickError(e => ({ ...e, branch: null }));
+    setBranchNotice('');
+    try {
+      const created = await apiClient.post('/api/marketing/branches', { name, company_id: wizardHeader.company_id, brand_id: wizardHeader.brand_id || null });
+      selectBranch(created.id);
+      await onMetadataChanged?.();
+      setBranchSearch('');
+      setNewBranchName('');
+      setShowBranchCreate(false);
+      setBranchNotice(`“${created.name}” was added to the master list and selected for this plan.`);
+    } catch (err) {
+      setQuickError(e => ({ ...e, branch: err.message || 'Failed to add the branch.' }));
+    } finally {
+      setQuickBusy(null);
+    }
+  };
 
   const filteredBranches = useMemo(() => {
     const allBranches = metadata.branches || [];
@@ -337,26 +421,60 @@ export default function MarketingPlanWizardStep1({
             required
           >
             <option value="">{t('selectLob')}</option>
-            {metadata.lobs.map(l => (
-              <option key={l.id} value={l.id}>{l.name}</option>
+            {(metadata.lobs || []).map((l, idx) => (
+              <option key={`lob-${l.id || idx}`} value={l.id}>{l.name}</option>
             ))}
           </select>
         </div>
 
         <div className="space-y-2">
-          <FormLabel label={t('eventLocationLabel')} tooltip={t('eventLocationTooltip')} />
+          <div className="flex items-center justify-between">
+            <FormLabel label={t('eventLocationLabel')} tooltip={t('eventLocationTooltip')} />
+            {newLocation === null && (
+              <button type="button" onClick={() => { setNewLocation(''); setQuickError(e => ({ ...e, location: null })); }} className="mb-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:underline dark:text-blue-400 cursor-pointer">
+                <Plus className="h-3 w-3" /> Add new
+              </button>
+            )}
+          </div>
+          {newLocation !== null ? (
+            <div className="space-y-1">
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  type="text"
+                  maxLength={100}
+                  aria-label="New event location"
+                  placeholder="e.g. Grand Indonesia Atrium"
+                  value={newLocation}
+                  onChange={(e) => setNewLocation(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addEventLocation(); } if (e.key === 'Escape') setNewLocation(null); }}
+                  className="min-w-0 flex-1 bg-white dark:bg-slate-950/50 border border-blue-300 dark:border-blue-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+                />
+                <button type="button" onClick={addEventLocation} disabled={!newLocation.trim() || quickBusy === 'location'} className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer">
+                  {quickBusy === 'location' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Save
+                </button>
+                <button type="button" aria-label="Cancel" onClick={() => setNewLocation(null)} className="flex w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-slate-700 cursor-pointer"><X className="h-3.5 w-3.5" /></button>
+              </div>
+              {(() => {
+                const match = newLocation.trim() && (metadata.event_locations || []).find(l => String(l.name).toLowerCase() === newLocation.trim().toLowerCase());
+                return match ? <p className="text-[10px] text-amber-600">&ldquo;{match.name}&rdquo; already exists; saving will select it.</p> : <p className="text-[10px] text-slate-400">Saved to the master list so everyone can use it.</p>;
+              })()}
+              {quickError.location && <p className="text-[10px] text-rose-600">{quickError.location}</p>}
+            </div>
+          ) : (
           <select
             value={wizardHeader.event_location_id}
             onChange={(e) => setWizardHeader(prev => ({ ...prev, event_location_id: e.target.value }))}
             className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-neutral-800 rounded-xl px-3.5 py-2.5 text-xs text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer font-medium"
           >
             <option value="">{t('selectLocationOption')}</option>
-            {metadata.event_locations.map(loc => (
-              <option key={loc.id} value={loc.id}>
+            {(metadata.event_locations || []).map((loc, idx) => (
+              <option key={`loc-${loc.id || idx}`} value={loc.id}>
                 {loc.name}
               </option>
             ))}
           </select>
+          )}
         </div>
 
         {/* Event / Campaign Period Picker */}
@@ -389,7 +507,57 @@ export default function MarketingPlanWizardStep1({
 
         {/* Target Branch — Dropdown with Checklist */}
         <div className="space-y-2 relative">
-          <FormLabel label={t('targetBranchLabel')} tooltip={t('targetBranchTooltip')} />
+          <div className="flex items-center justify-between gap-3">
+            <FormLabel label={t('targetBranchLabel')} tooltip={t('targetBranchTooltip')} />
+            <button
+              type="button"
+              onClick={() => {
+                setShowBranchCreate(open => !open);
+                setQuickError(error => ({ ...error, branch: null }));
+                setBranchNotice('');
+              }}
+              className="mb-1.5 inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold text-blue-700 transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-blue-300 dark:hover:bg-blue-500/10"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add branch
+            </button>
+          </div>
+
+          {showBranchCreate && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-800 dark:text-white">Add target branch</p>
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">It will be saved in the branch master for the selected company and selected automatically.</p>
+                </div>
+                <button type="button" onClick={() => { setShowBranchCreate(false); setNewBranchName(''); setQuickError(error => ({ ...error, branch: null })); }} className="rounded-md p-1 text-slate-400 transition-colors hover:bg-white hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-slate-200" aria-label="Close add branch form"><X className="h-3.5 w-3.5" /></button>
+              </div>
+              <div className="mt-2.5 flex gap-2">
+                <input
+                  type="text"
+                  value={newBranchName}
+                  onChange={(event) => setNewBranchName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') { event.preventDefault(); addBranch(newBranchName); }
+                  }}
+                  placeholder={wizardHeader.company_id ? 'e.g. Kelapa Gading Store' : 'Choose a company (PT) first'}
+                  disabled={!wizardHeader.company_id || quickBusy === 'branch'}
+                  className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:disabled:bg-slate-900"
+                />
+                <button
+                  type="button"
+                  onClick={() => addBranch(newBranchName)}
+                  disabled={!newBranchName.trim() || !wizardHeader.company_id || quickBusy === 'branch'}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-[11px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {quickBusy === 'branch' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  Save
+                </button>
+              </div>
+              {!wizardHeader.company_id && <p className="mt-2 text-[10px] font-medium text-amber-700 dark:text-amber-300">Choose the company (PT) above before adding a branch.</p>}
+              {quickError.branch && <p className="mt-2 text-[10px] font-medium text-rose-600">{quickError.branch}</p>}
+            </div>
+          )}
           {/* Dropdown Trigger */}
           <button
             type="button"
@@ -408,6 +576,7 @@ export default function MarketingPlanWizardStep1({
             </span>
             <svg className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${wizardHeader._branchDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
           </button>
+          {branchNotice && <p className="flex items-center gap-1.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300"><Check className="h-3 w-3" />{branchNotice}</p>}
 
           {/* Dropdown Panel */}
           {wizardHeader._branchDropdownOpen && (
@@ -418,7 +587,7 @@ export default function MarketingPlanWizardStep1({
                 <div className="relative shrink-0">
                   <input
                     type="text"
-                    placeholder="Search branch / store name..."
+                    placeholder="Search or add a branch / store..."
                     value={branchSearch}
                     onChange={(e) => setBranchSearch(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
@@ -451,13 +620,25 @@ export default function MarketingPlanWizardStep1({
                   </label>
                   <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
 
+                  {branchSearch.trim() && !filteredBranches.some(b => String(b.name).toLowerCase() === branchSearch.trim().toLowerCase()) && (
+                    <button
+                      type="button"
+                      disabled={quickBusy === 'branch'}
+                      onClick={(e) => { e.stopPropagation(); addBranch(branchSearch); }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-50 dark:text-blue-400 dark:hover:bg-blue-950/20 cursor-pointer"
+                    >
+                      {quickBusy === 'branch' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                      Add branch &ldquo;{branchSearch.trim()}&rdquo;
+                    </button>
+                  )}
+                  {quickError.branch && !showBranchCreate && <p className="px-2 text-[10px] text-rose-600">{quickError.branch}</p>}
                   {filteredBranches.length === 0 ? (
                     <div className="py-4 text-center text-xs text-neutral-400">
-                      No branches found
+                      No branches found. Type a name above to add it.
                     </div>
                   ) : (
-                    filteredBranches.map(b => (
-                      <label key={b.id} className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
+                    filteredBranches.map((b, idx) => (
+                      <label key={`branch-${b.id || idx}`} className="flex items-center gap-2.5 cursor-pointer py-1.5 px-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-colors">
                         <input
                           type="checkbox"
                           checked={wizardHeader.branch_ids.includes(String(b.id))}
