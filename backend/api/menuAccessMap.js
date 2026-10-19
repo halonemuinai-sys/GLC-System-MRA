@@ -40,7 +40,7 @@ const MENU_GROUPS = [
     menus: [
       { label: 'Marketing Plan', path: '/dashboard/marketing', roles: only('admin', 'marketing', 'marketing_manager', 'auditor'), api_module: 'marketing' },
       { label: 'Overview & Analytics', path: '/dashboard/marketing/overview', roles: only('admin', 'marketing_manager', 'finance', 'manager', 'auditor'), api_module: 'marketing' },
-      { label: 'Overview Approval', path: '/dashboard/marketing/approval-overview', roles: only('admin', 'marketing_manager', 'finance', 'manager', 'auditor'), api_module: 'marketing' },
+      { label: 'Approval Control', path: '/dashboard/marketing/approval-overview', roles: only('admin', 'marketing_manager', 'finance', 'manager', 'auditor'), api_module: 'marketing' },
       { label: 'Budget Control', path: '/dashboard/marketing/budgeting', roles: only('admin', 'marketing', 'marketing_manager', 'finance', 'auditor'), api_module: 'marketing' },
       { label: 'Quarterly Alignment', path: '/dashboard/marketing/quarterly-alignment', roles: only('admin', 'marketing', 'marketing_manager', 'finance', 'auditor'), api_module: 'marketing' },
       { label: 'Payment Requests', path: '/dashboard/marketing/payments', roles: only('admin', 'marketing', 'marketing_manager', 'finance', 'ga', 'auditor'), api_module: 'marketing' },

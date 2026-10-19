@@ -19,9 +19,12 @@ import {
   Hourglass,
   CircleDashed,
   Link2,
-  Database
+  Database,
+  ShieldCheck,
+  Send
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { getUserRoles, hasRole } from '@/lib/userRoles';
 
 const THIS_YEAR = new Date().getFullYear();
 const FISCAL_YEAR_OPTIONS = [THIS_YEAR - 2, THIS_YEAR - 1, THIS_YEAR, THIS_YEAR + 1].map(String);
@@ -108,6 +111,8 @@ function MiniStepper({ steps }) {
 }
 
 export default function MarketingApprovalOverviewPage() {
+  const userRoles = useMemo(() => getUserRoles(), []);
+  const canAdminOverride = hasRole(userRoles, 'admin');
   const [companies, setCompanies] = useState([]);
   const [plans, setPlans] = useState([]);
   // Process-first: plans are fetched only after Load data; later filter changes reload.
@@ -205,8 +210,8 @@ export default function MarketingApprovalOverviewPage() {
         <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-300"><ClipboardCheck className="h-4 w-4" />Marketing approval</p>
-            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Approval Monitoring</h1>
-            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Track where each marketing plan sits in its approval chain: who it is waiting on, for how long, and the state of each magic link.</p>
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Marketing Approval Control</h1>
+            <p className="mt-1.5 max-w-xl text-xs text-slate-300">Track the exact approval step, assignee, wait time, and magic-link state for every marketing plan.{canAdminOverride ? ' Administrators can resolve the current step with a recorded override reason.' : ''}</p>
           </div>
           <div className="flex shrink-0 flex-col items-start gap-1.5 md:items-end">
             {processed && <button type="button" onClick={loadPlans} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:opacity-60 cursor-pointer">
@@ -379,16 +384,39 @@ export default function MarketingApprovalOverviewPage() {
       </>)}
 
       <AnimatePresence>
-        {selectedPlan && <AuditDrawer plan={selectedPlan} onClose={() => setSelectedPlan(null)} />}
+        {selectedPlan && <AuditDrawer plan={selectedPlan} canAdminOverride={canAdminOverride} onClose={() => setSelectedPlan(null)} onChanged={async () => { setSelectedPlan(null); await loadPlans(); }} />}
       </AnimatePresence>
     </div>
   );
 }
 
-function AuditDrawer({ plan, onClose }) {
+function AuditDrawer({ plan, onClose, canAdminOverride = false, onChanged }) {
   const meta = STATUS_META[plan.status] || STATUS_META.DRAFT;
   const waitDays = daysSince(plan.waiting_on?.since);
   const label = 'text-[10px] font-semibold uppercase tracking-wider text-slate-400';
+  const [overrideAction, setOverrideAction] = useState(null);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [overrideBusy, setOverrideBusy] = useState(false);
+  const [overrideError, setOverrideError] = useState(null);
+  const pendingStep = plan.steps.find(step => step.status === 'PENDING' && step.approval_history_id);
+
+  const submitAdminOverride = async () => {
+    if (!pendingStep || !overrideAction || overrideReason.trim().length < 8) return;
+    setOverrideBusy(true);
+    setOverrideError(null);
+    try {
+      await apiClient.post(`/api/marketing/approvals/${pendingStep.approval_history_id}`, {
+        action: overrideAction,
+        comment: overrideReason.trim(),
+        admin_override: true
+      });
+      await onChanged?.();
+    } catch (err) {
+      setOverrideError(err.message || 'The administrator decision could not be saved.');
+    } finally {
+      setOverrideBusy(false);
+    }
+  };
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -427,6 +455,37 @@ function AuditDrawer({ plan, onClose }) {
               <Hourglass className="mt-0.5 h-4 w-4 shrink-0" />
               <span>Waiting on <strong>{plan.waiting_on.name || roleLabel(plan.waiting_on.role)}</strong>{plan.waiting_on.email ? ` (${plan.waiting_on.email})` : ''} at step {plan.current_active_step}{waitDays !== null ? ` for ${waitDays} ${waitDays === 1 ? 'day' : 'days'}` : ''}.</span>
             </div>
+          )}
+          {canAdminOverride && pendingStep && (
+            <section className="rounded-2xl border border-blue-200 bg-blue-50/70 p-3.5 dark:border-blue-500/25 dark:bg-blue-500/10">
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white"><ShieldCheck className="h-3.5 w-3.5" /></span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-blue-900 dark:text-blue-100">Administrator control</p>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-blue-700 dark:text-blue-200">Resolve only the current pending step on behalf of the assigned approver. The next tier still receives its approval request. A reason is required and recorded in the audit log.</p>
+                </div>
+              </div>
+              {!overrideAction ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setOverrideAction('APPROVE')} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-[11px] font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 cursor-pointer"><CheckCircle className="h-3.5 w-3.5" />Approve current step</button>
+                  <button type="button" onClick={() => setOverrideAction('REJECT')} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 text-[11px] font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:border-rose-500/30 dark:bg-slate-950 dark:text-rose-300 dark:hover:bg-rose-500/10 cursor-pointer"><XCircle className="h-3.5 w-3.5" />Reject plan</button>
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2.5">
+                  <div className={`rounded-lg px-2.5 py-2 text-[11px] font-medium ${overrideAction === 'APPROVE' ? 'bg-emerald-100/70 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-rose-100/70 text-rose-800 dark:bg-rose-500/15 dark:text-rose-200'}`}>
+                    {overrideAction === 'APPROVE' ? `Approve step ${pendingStep.step_number} as administrator` : 'Reject this plan as administrator'}
+                  </div>
+                  <textarea rows={3} value={overrideReason} onChange={event => setOverrideReason(event.target.value)} placeholder="Required reason for this administrator override (minimum 8 characters)" className="w-full resize-none rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 dark:border-blue-500/30 dark:bg-slate-950 dark:text-slate-200" />
+                  {overrideError && <p className="text-[11px] font-medium text-rose-600 dark:text-rose-400">{overrideError}</p>}
+                  <div className="flex justify-end gap-2">
+                    <button type="button" disabled={overrideBusy} onClick={() => { setOverrideAction(null); setOverrideReason(''); setOverrideError(null); }} className="h-8 rounded-lg px-3 text-[11px] font-semibold text-slate-600 hover:bg-white disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-900 cursor-pointer">Cancel</button>
+                    <button type="button" disabled={overrideBusy || overrideReason.trim().length < 8} onClick={submitAdminOverride} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer ${overrideAction === 'APPROVE' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-rose-600 hover:bg-rose-700'}`}>
+                      {overrideBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}Confirm administrator decision
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
           )}
           {plan.is_over_budget && (
             <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-[11px] text-rose-700 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300">

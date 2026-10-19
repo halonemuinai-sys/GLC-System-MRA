@@ -30,6 +30,33 @@ function resolveContactPreview(allContacts, role, companyId, companyMasterId) {
 
 const normalizeEmail = email => String(email || '').trim().toLowerCase();
 
+// Admin overrides are exceptional actions: retain a separate audit record in addition
+// to the approval history so an auditor can distinguish them from the assigned approver.
+async function logAdminOverride(req, task, action, reason) {
+  try {
+    const actorId = Number(req.user?.id);
+    const actor = actorId ? await prisma.m_user.findUnique({ where: { id: actorId }, select: { id: true } }) : null;
+    await prisma.audit_log.create({
+      data: {
+        table_name: 'marketing_approval',
+        record_id: task.id,
+        action: 'OVERRIDE',
+        user_id: actor?.id || null,
+        old_data: { approval_history_id: task.id, status: task.status, step_number: task.step_number },
+        new_data: {
+          action,
+          reason,
+          marketing_plan_id: task.marketing_plan_id,
+          payment_request_id: task.payment_request_id,
+          actor_email: req.user?.email || null
+        }
+      }
+    });
+  } catch (err) {
+    console.error('[marketing approval] failed to record admin override:', err.message);
+  }
+}
+
 const TASK_INCLUDE = {
   marketing_plan: {
     include: {
@@ -127,7 +154,7 @@ async function processApproval(req, res, next) {
     }
 
     const { id } = req.params;
-    const { action, comment, signature } = req.body;
+    const { action, comment, signature, admin_override: adminOverrideRequested } = req.body;
 
     if (!action || !['APPROVE', 'REJECT'].includes(action)) {
       return res.status(400).json({ error: 'Action must be APPROVE or REJECT.' });
@@ -142,6 +169,16 @@ async function processApproval(req, res, next) {
     }
 
     const actor = { roles: approvalRoles(req), email: req.user.email };
+    const isAdminOverride = Boolean(adminOverrideRequested);
+    if (isAdminOverride && !actor.roles.includes('ADMIN')) {
+      return res.status(403).json({ error: 'Only an administrator can override an approval step.' });
+    }
+    if (isAdminOverride && !task.marketing_plan_id) {
+      return res.status(400).json({ error: 'Admin override from Approval Control is limited to marketing plan approval steps.' });
+    }
+    if (isAdminOverride && (typeof comment !== 'string' || comment.trim().length < 8)) {
+      return res.status(400).json({ error: 'Enter an override reason of at least 8 characters.' });
+    }
     if (!actor.roles.includes('ADMIN') && !inScope(req, taskCompanyId(task)) && !isDesignated(task, actor)) {
       return res.status(403).json({ error: 'Company outside your access scope.' });
     }
@@ -154,7 +191,7 @@ async function processApproval(req, res, next) {
     const { result, magicLinkQueue } = await executeApprovalDecision({
       task,
       action,
-      comment: typeof comment === 'string' ? comment.trim() || null : null,
+      comment: isAdminOverride ? `[ADMIN OVERRIDE] ${comment.trim()}` : (typeof comment === 'string' ? comment.trim() || null : null),
       signature,
       actingApproverId: employee.id
     });
@@ -166,7 +203,9 @@ async function processApproval(req, res, next) {
     await dispatchPaymentStatusEmail(result, task);
     await dispatchPlanStatusEmail(result, task, comment);
 
-    res.json(result);
+    if (isAdminOverride) await logAdminOverride(req, task, action, comment.trim());
+
+    res.json({ ...result, admin_override: isAdminOverride });
   } catch (err) {
     next(err);
   }
@@ -498,6 +537,7 @@ async function getApprovalsOverview(req, res, next) {
         for (const a of plan.approvers) {
           const record = latestByStep[a.step_number];
           steps.push({
+            approval_history_id: record?.id || null,
             step_number: a.step_number,
             role: a.approver_role || null,
             status: a.status === 'WAITING' ? 'WAITING' : a.status,
@@ -518,6 +558,7 @@ async function getApprovalsOverview(req, res, next) {
           const resolvedContact = resolveContactPreview(allContacts, rule.approver_role, plan.company_id, plan.company.company_master_id);
           const status = record ? record.status : 'WAITING';
           steps.push({
+            approval_history_id: record?.id || null,
             step_number: rule.step_number,
             role: rule.approver_role,
             status,
