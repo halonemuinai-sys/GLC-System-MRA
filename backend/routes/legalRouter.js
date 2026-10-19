@@ -18,6 +18,7 @@ const {
 const {
   getInsurances,
   getInsuranceDetail,
+  getVehicleOptions,
   createInsurance,
   updateInsurance,
   deleteInsurance
@@ -61,8 +62,11 @@ router.put('/documents/:id', allowWrite, updateContract);
 router.delete('/documents/:id', allowWrite, deleteContract);
 
 // Insurances
-router.get('/insurances', allowRead, getInsurances);
-router.get('/insurances/:id', allowRead, getInsuranceDetail);
+// Insurance is a GA / Legal menu: reading is limited to the roles that see it in the sidebar.
+const insuranceRead = [verifyToken, checkRole(['admin', 'ga', 'legal', 'legal_compliance', 'auditor'])];
+router.get('/insurances', insuranceRead, getInsurances);
+router.get('/insurances/vehicle-options', insuranceRead, getVehicleOptions);
+router.get('/insurances/:id', insuranceRead, getInsuranceDetail);
 router.post('/insurances', allowWrite, createInsurance);
 router.put('/insurances/:id', allowWrite, updateInsurance);
 router.delete('/insurances/:id', allowWrite, deleteInsurance);

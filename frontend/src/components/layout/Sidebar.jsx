@@ -535,7 +535,7 @@ function SidebarContent({
           children: [
             { name: 'Marketing Plan', path: '/dashboard/marketing', icon: ClipboardList, allowed: hasAccess(['marketing', 'marketing_manager', 'auditor']) },
             { name: 'Overview & Analytics', path: '/dashboard/marketing/overview', icon: LineChart, allowed: hasAccess(['marketing_manager', 'finance', 'manager', 'auditor']) },
-            { name: 'Overview Approval', path: '/dashboard/marketing/approval-overview', icon: ClipboardCheck, allowed: hasAccess(['marketing_manager', 'finance', 'manager', 'auditor']) },
+            { name: 'Approval Control', path: '/dashboard/marketing/approval-overview', icon: ClipboardCheck, allowed: hasAccess(['marketing_manager', 'finance', 'manager', 'auditor']) },
           ]
         },
         {
@@ -949,7 +949,7 @@ function SidebarContent({
 }
 
 // ─── Main Exported Sidebar Component ─────────────────────────────────────────────
-export function Sidebar({ open, onClose, role, roles = [], fullName, handleLogout }) {
+export function Sidebar({ open, onClose, role, roles = [], fullName, handleLogout, hidden = false }) {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -970,7 +970,9 @@ export function Sidebar({ open, onClose, role, roles = [], fullName, handleLogou
       {/* Desktop Sidebar */}
       <motion.div 
         className="hidden md:flex flex-col h-full overflow-hidden flex-shrink-0"
-        animate={{ width: collapsed ? 76 : 272 }}
+        animate={{ width: hidden ? 0 : collapsed ? 76 : 272 }}
+        aria-hidden={hidden || undefined}
+        inert={hidden || undefined}
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
       >
         <SidebarContent 

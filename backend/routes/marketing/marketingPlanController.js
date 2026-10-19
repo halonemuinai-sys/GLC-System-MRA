@@ -3,7 +3,7 @@ const prisma = require('../../api/db');
 const { sendMail } = require('../../api/mailer');
 const { resolveEmployee, queueMagicLink, dispatchMagicLinkEmails, applyCompanyScope, canManageDoc, seesAllMarketingDocs, hasRole } = require('./marketingHelper');
 const { evaluateLateSubmission, closingWindow } = require('./marketingGovernance');
-const { loadTierSteps } = require('./marketingTiers');
+const { loadTierSteps, tierStepsFor } = require('./marketingTiers');
 
 // Vendor on a plan item: an id from the vendor master, or a typed name. A name that is not in
 // the master is recorded as a Pending vendor (no vendor code) so GA registers and activates it;
@@ -932,7 +932,7 @@ async function getPlans(req, res, next) {
       prisma.marketing_plans.findMany({
         where: filters,
         include: {
-          company: { select: { id: true, name: true } },
+          company: { select: { id: true, name: true, company_master_id: true } },
           creator: { select: { id: true, name: true } },
           items: {
             select: {
@@ -1021,10 +1021,7 @@ async function getPlans(req, res, next) {
 
       const pendingStep = approval_history ? approval_history[0] : null;
       if (!pendingStep) return { ...rest, approvers: [], pipeline: null };
-      const amt = parseFloat(plan.total_budget);
-      const bracketRules = allRules.filter(r =>
-        amt >= parseFloat(r.min_amount) && (r.max_amount === null || amt <= parseFloat(r.max_amount))
-      );
+      const bracketRules = tierStepsFor(allRules, { companyId: plan.company_id, companyMasterId: plan.company?.company_master_id ?? null, module: 'MARKETING_PLAN' }, parseFloat(plan.total_budget));
       const currentRule = bracketRules.find(r => r.step_number === pendingStep.step_number);
       return {
         ...rest,

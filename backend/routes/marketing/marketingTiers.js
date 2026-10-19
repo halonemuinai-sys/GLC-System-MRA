@@ -20,9 +20,17 @@ function pickTierSet(rules, { companyId = null, companyMasterId = null, module =
   return pool.filter(r => !r.company_id && !r.company_master_id);
 }
 
-// Rules of the applicable set that cover an amount, ordered by step.
+// Rules of the applicable set that cover an amount, one per step, ordered by step.
+// Bands usually touch (0–10 jt and 10–50 jt both include exactly 10 jt). At such a boundary the
+// higher band wins for that step, so an amount never gets the same step twice.
 function tierStepsFor(rules, scope, amount) {
-  return pickTierSet(rules, scope).filter(r => matchesAmount(r, amount)).sort((a, b) => a.step_number - b.step_number);
+  const byStep = new Map();
+  for (const rule of pickTierSet(rules, scope)) {
+    if (!matchesAmount(rule, amount)) continue;
+    const current = byStep.get(rule.step_number);
+    if (!current || Number(rule.min_amount) > Number(current.min_amount)) byStep.set(rule.step_number, rule);
+  }
+  return [...byStep.values()].sort((a, b) => a.step_number - b.step_number);
 }
 
 async function loadTierSteps(db, module, companyId, amount) {
