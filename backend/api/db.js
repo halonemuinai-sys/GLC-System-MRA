@@ -36,7 +36,8 @@ const pool = new RetryingPool({
   idleTimeoutMillis: 60000,
   query_timeout: Number(process.env.DB_QUERY_TIMEOUT_MS) || 30000, // a query with no answer is abandoned
   keepAlive: true,                // TCP keep-alive detects dead peers on long-lived connections
-  keepAliveInitialDelayMillis: 10000
+  keepAliveInitialDelayMillis: 10000,
+  allowExitOnIdle: true           // scripts (migrations, one-offs) can still exit; the server stays up via its HTTP listener
 });
 
 // An idle connection that errors (e.g. closed by the pooler) must not crash the process.
