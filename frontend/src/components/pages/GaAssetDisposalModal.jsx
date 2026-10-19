@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { X, Loader2, FileMinus, CheckCircle } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import GaAssetPicker from './GaAssetPicker';
+import GaSignatoriesEditor, { defaultSignatories } from './GaSignatoriesEditor';
 
 const REASONS = ['Severely Damaged', 'Lost', 'Obsolete / Uneconomical', 'Other'];
 
@@ -24,6 +25,9 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
   const [selected, setSelected] = useState(new Map());
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState(null);
+  const [me, setMe] = useState(null);
+  const [signatories, setSignatories] = useState(() => defaultSignatories(null));
+  const [signatoriesTouched, setSignatoriesTouched] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,7 +40,18 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
     setCreated(null);
     apiClient.get('/api/master/companies/all').then(setCompanies).catch(() => setCompanies([]));
     apiClient.get('/api/ga/asset-disposal-signers').then(setSigners).catch(() => setSigners([]));
+    setSignatoriesTouched(false);
+    apiClient.get('/api/auth/me').then(u => { setMe(u); setSignatories(defaultSignatories(u)); }).catch(() => setSignatories(defaultSignatories(null)));
   }, [isOpen]);
+
+  // Prefill the signature row from the last BAP of the chosen company, unless edited already.
+  useEffect(() => {
+    if (!isOpen || !companyId || signatoriesTouched) return;
+    apiClient.get('/api/ga/asset-disposals/last-signatories', { params: { companyId } })
+      .then(rows => setSignatories(Array.isArray(rows) && rows.length ? rows : defaultSignatories(me)))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, companyId]);
 
   if (!isOpen) return null;
 
@@ -52,7 +67,8 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
         reason,
         reason_detail: reasonDetail || null,
         approver_signer_id: approverSignerId || null,
-        asset_ids: Array.from(selected.keys())
+        asset_ids: Array.from(selected.keys()),
+        signatories
       });
       setCreated(res);
     } catch (e) {
@@ -140,6 +156,8 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
                 </div>
                 <GaAssetPicker companyId={companyId} selected={selected} onChange={setSelected} />
               </div>
+
+              <GaSignatoriesEditor value={signatories} onChange={(rows) => { setSignatories(rows); setSignatoriesTouched(true); }} />
             </div>
 
             <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-neutral-100 dark:border-neutral-800 shrink-0">

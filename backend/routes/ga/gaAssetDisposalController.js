@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { Prisma } = require('@prisma/client');
 const prisma = require('../../api/db');
 const { sendAssetDocApprovalEmail } = require('../../api/mailer');
 const { nextDocNumber } = require('./gaDocNumber');
@@ -65,7 +66,7 @@ async function getAssetDisposals(req, res, next) {
         where,
         include: {
           m_company: { select: { name: true } },
-          requested_by: { select: { full_name: true } },
+          requested_by: { select: { full_name: true, position: true } },
           approver: { select: { name: true, position: true } },
           items: { select: { id: true } }
         },
@@ -111,10 +112,56 @@ async function getAssetDisposalDetail(req, res, next) {
   }
 }
 
+// Signature row printed on the BAP: names and titles typed by hand (not the approval flow).
+const SIGNATORY_GROUPS = ['prepared', 'checked', 'approved'];
+function cleanSignatories(input) {
+  if (input === undefined || input === null) return { value: null };
+  if (!Array.isArray(input)) return { error: 'Signatories must be a list.' };
+  const rows = input
+    .map(r => ({ group: String(r?.group || ''), name: String(r?.name || '').trim().slice(0, 120), title: String(r?.title || '').trim().slice(0, 100) }))
+    .filter(r => r.name || r.title);
+  if (rows.some(r => !SIGNATORY_GROUPS.includes(r.group))) return { error: 'Invalid signatory group.' };
+  if (rows.length > 10) return { error: 'At most 10 signatories.' };
+  return { value: rows.length ? rows : null };
+}
+
+// GET /api/ga/asset-disposals/last-signatories?companyId= — prefill from the latest BAP of a company.
+async function getLastSignatories(req, res, next) {
+  try {
+    const companyId = parseInt(req.query.companyId, 10);
+    if (!Number.isInteger(companyId)) return res.json([]);
+    const last = await prisma.asset_disposals.findFirst({
+      where: { company_id: companyId, signatories: { not: Prisma.AnyNull } },
+      orderBy: { created_at: 'desc' },
+      select: { signatories: true }
+    });
+    res.json(Array.isArray(last?.signatories) ? last.signatories : []);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/ga/asset-disposals/:id/signatories — any status; it only changes the printout.
+async function updateSignatories(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const disposal = Number.isInteger(id) ? await prisma.asset_disposals.findUnique({ where: { id }, select: { id: true } }) : null;
+    if (!disposal) return res.status(404).json({ error: 'Disposal report not found.' });
+    const parsed = cleanSignatories(req.body?.signatories);
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
+    const updated = await prisma.asset_disposals.update({ where: { id }, data: { signatories: parsed.value ?? Prisma.DbNull, updated_at: new Date() }, select: { id: true, signatories: true } });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // POST /api/ga/asset-disposals
 async function createAssetDisposal(req, res, next) {
   try {
     const { company_id, disposal_date, reason, reason_detail, notes, approver_signer_id, asset_ids } = req.body;
+    const signatories = cleanSignatories(req.body.signatories);
+    if (signatories.error) return res.status(400).json({ error: signatories.error });
     const userId = req.user?.id;
 
     if (!company_id || !disposal_date || !reason) {
@@ -142,6 +189,7 @@ async function createAssetDisposal(req, res, next) {
         reason,
         reason_detail: reason_detail || null,
         notes: notes || null,
+        ...(signatories.value ? { signatories: signatories.value } : {}),
         status: 'DRAFT',
         requested_by_id: userId,
         items: {
@@ -308,6 +356,8 @@ async function getApprovalSigners(req, res, next) {
 module.exports = {
   getAssetDisposals,
   getAssetDisposalDetail,
+  getLastSignatories,
+  updateSignatories,
   createAssetDisposal,
   submitAssetDisposal,
   approveAssetDisposal,

@@ -4,12 +4,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText, FileMinus, FileSignature, Loader2, Printer, Check, Ban, Eye, Download, X, Plus,
-  Trash2, Send, Search, Activity, ChevronLeft, ChevronRight, AlertTriangle
+  Trash2, Send, Search, Activity, ChevronLeft, ChevronRight, AlertTriangle, PenLine
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { buildDisposalPDF, buildHandoverPDF, docFileName } from './GaBeritaAcaraExport';
 import GaAssetDisposalModal from './GaAssetDisposalModal';
 import GaAssetHandoverModal from './GaAssetHandoverModal';
+import GaSignatoriesEditor, { defaultSignatories } from './GaSignatoriesEditor';
 import Cookies from 'js-cookie';
 
 const STATUS_STYLE = {
@@ -91,6 +92,7 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
   const [inlineValue, setInlineValue] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [sigEdit, setSigEdit] = useState(null); // { id, number, rows, saving, error }
   const [showCreate, setShowCreate] = useState(false);
   const iframeRef = useRef(null);
 
@@ -105,6 +107,7 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
   }, []);
 
   const isAdmin = mounted && (userRole === 'admin' || userRole === 'superadmin');
+  const canWrite = isAdmin || (mounted && userRole === 'ga');
 
   useEffect(() => {
     if (!filters) return;
@@ -159,6 +162,17 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
   }
 
   const reload = () => setReloadKey(k => k + 1);
+
+  async function saveSignatories() {
+    setSigEdit(s => ({ ...s, saving: true, error: null }));
+    try {
+      await apiClient.put(`/api/ga/asset-disposals/${sigEdit.id}/signatories`, { signatories: sigEdit.rows });
+      setSigEdit(null);
+      reload();
+    } catch (e) {
+      setSigEdit(s => ({ ...s, saving: false, error: e.message || 'Failed to save the signatures.' }));
+    }
+  }
 
   async function buildDoc(id) {
     const detail = await apiClient.get(`/api/ga/${cfg.endpoint}/${id}`);
@@ -402,6 +416,11 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
                                 <button title={r.status === 'APPROVED' ? 'Preview' : 'Preview (watermarked until approved)'} aria-label={`Preview ${cfg.number(r) || r.id}`} onClick={() => openPreview(r.id)} disabled={loadingPreviewId === r.id} className={`${iconBtn} text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40`}>
                                   {loadingPreviewId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
                                 </button>
+                                {type === 'bap' && canWrite && (
+                                  <button title="Signatures on the printout" aria-label={`Edit signatures of ${cfg.number(r) || r.id}`} onClick={() => setSigEdit({ id: r.id, number: cfg.number(r), rows: Array.isArray(r.signatories) && r.signatories.length ? r.signatories : defaultSignatories({ full_name: r.requested_by?.full_name, position: r.requested_by?.position }) })} className={`${iconBtn} text-neutral-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40`}>
+                                    <PenLine className="w-4 h-4" />
+                                  </button>
+                                )}
                                 <button title={r.status === 'APPROVED' ? 'Print' : 'Print (watermarked until approved)'} aria-label={`Print ${cfg.number(r) || r.id}`} onClick={() => printDirect(r.id)} disabled={loadingPreviewId === `print-${r.id}`} className={`${iconBtn} text-neutral-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-white dark:hover:bg-slate-800`}>
                                   {loadingPreviewId === `print-${r.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
                                 </button>
@@ -487,6 +506,26 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
       )}
 
       {/* PDF Preview Modal */}
+      {sigEdit && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div role="dialog" aria-label="Signatures" className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-neutral-900 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-100">Signatures — {sigEdit.number}</h3>
+                <p className="mt-0.5 text-[11px] text-neutral-400">Printed in the signature row of the PDF. The approval itself does not change.</p>
+              </div>
+              <button type="button" aria-label="Close" onClick={() => setSigEdit(null)} className="rounded-lg p-1.5 text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"><X className="h-4 w-4" /></button>
+            </div>
+            <GaSignatoriesEditor value={sigEdit.rows} onChange={rows => setSigEdit(s => ({ ...s, rows }))} />
+            {sigEdit.error && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">{sigEdit.error}</p>}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setSigEdit(null)} className="px-4 py-2 text-xs font-semibold text-neutral-500 hover:text-neutral-700 cursor-pointer">Cancel</button>
+              <button type="button" onClick={saveSignatories} disabled={sigEdit.saving} className="inline-flex items-center gap-2 rounded-xl bg-[#0f172a] px-4 py-2 text-xs font-semibold text-white hover:bg-[#1e293b] disabled:opacity-50 cursor-pointer">{sigEdit.saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Save signatures</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {preview && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden">

@@ -109,7 +109,7 @@ function drawSignatures(doc, y, date, groups) {
 // mistaken for the signed record.
 const WATERMARK = { DRAFT: 'DRAFT', PENDING_APPROVAL: 'MENUNGGU PERSETUJUAN', REJECTED: 'DITOLAK' };
 
-function drawFooter(doc, number, status) {
+function drawFooter(doc, number, status, approvedBy) {
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
@@ -128,7 +128,7 @@ function drawFooter(doc, number, status) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(148, 163, 184);
-    doc.text(`${number || ''}  ·  Printed ${new Date().toLocaleString('en-GB')}`, MARGIN, 203);
+    doc.text(`${number || ''}${approvedBy ? `  ·  ${approvedBy}` : ''}  ·  Printed ${new Date().toLocaleString('en-GB')}`, MARGIN, 203);
     doc.text(`Page ${i} of ${pages}`, PAGE_W - MARGIN, 203, { align: 'right' });
   }
 }
@@ -164,19 +164,22 @@ export async function buildDisposalPDF(disposal) {
     disposal.items.length
   );
 
-  drawSignatures(doc, endY + 22, disposal.disposal_date, [
+  // Names and titles typed on the BAP; older reports fall back to the requester + fixed titles.
+  const typed = Array.isArray(disposal.signatories) && disposal.signatories.length ? disposal.signatories : null;
+  const GROUP_LABELS = { prepared: 'Dibuat Oleh,', checked: 'Diperiksa Oleh,', approved: 'Disetujui Oleh,' };
+  const groups = typed
+    ? Object.entries(GROUP_LABELS)
+      .map(([key, label]) => ({ label, people: typed.filter(s => s.group === key).map(s => ({ name: s.name, position: s.title })) }))
+      .filter(g => g.people.length)
+    : null;
+  drawSignatures(doc, endY + 22, disposal.disposal_date, groups || [
     { label: 'Dibuat Oleh,', people: [{ name: disposal.requested_by?.full_name, position: disposal.requested_by?.position || 'Asset Management' }] },
     { label: 'Diperiksa Oleh,', people: [{ position: 'GA Business Partner' }, { position: 'GA Manager' }] },
-    {
-      label: 'Disetujui Oleh,',
-      people: [{
-        name: disposal.approver?.name,
-        position: disposal.approver?.position || 'Finance Manager',
-        note: disposal.approved_at ? `Approved ${fmtDate(disposal.approved_at)}` : ''
-      }, { position: 'Direksi' }]
-    }
+    { label: 'Disetujui Oleh,', people: [{ position: 'Finance Manager' }, { position: 'Direksi' }] }
   ]);
-  drawFooter(doc, disposal.disposal_number, disposal.status);
+  // The system approval stays traceable on the printout even when the signature row is typed by hand.
+  const approvedBy = disposal.status === 'APPROVED' && disposal.approver?.name ? `Approved in system by ${disposal.approver.name}${disposal.approved_at ? ` on ${fmtDate(disposal.approved_at)}` : ''}` : '';
+  drawFooter(doc, disposal.disposal_number, disposal.status, approvedBy);
   return doc;
 }
 
@@ -257,7 +260,7 @@ export async function buildHandoverPDF(handover) {
       }]
     }
   ]);
-  drawFooter(doc, handover.handover_number, handover.status);
+  drawFooter(doc, handover.handover_number, handover.status, handover.status === 'APPROVED' && handover.approver?.name ? `Approved in system by ${handover.approver.name}${handover.approved_at ? ` on ${fmtDate(handover.approved_at)}` : ''}` : '');
   return doc;
 }
 

@@ -36,6 +36,7 @@ model asset_disposals {
   approved_at        DateTime?              @db.Timestamp(6)
   rejection_reason   String?
   notes              String?
+  signatories        Json?                  // printed signature row: [{ group: prepared|checked|approved, name, title }]
   magic_link_token   String?                @unique @db.VarChar(64)
   magic_link_expires_at DateTime?            @db.Timestamp(6)
   magic_link_used_at DateTime?              @db.Timestamp(6)

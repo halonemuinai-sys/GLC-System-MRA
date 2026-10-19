@@ -52,7 +52,9 @@ router.get('/assets-statuses', allowRead, assetController.getAssetStatuses);
 router.get('/asset-disposals', allowRead, assetDisposalController.getAssetDisposals);
 // Active approver names/emails for signer pickers (Berita Acara and Marketing closing).
 router.get('/asset-disposal-signers', [verifyToken, checkRole(['admin', 'ga', 'auditor', 'marketing', 'marketing_manager', 'finance', 'manager'])], assetDisposalController.getApprovalSigners);
+router.get('/asset-disposals/last-signatories', allowRead, assetDisposalController.getLastSignatories);
 router.get('/asset-disposals/:id', allowRead, assetDisposalController.getAssetDisposalDetail);
+router.put('/asset-disposals/:id/signatories', allowWrite, assetDisposalController.updateSignatories);
 router.post('/asset-disposals', allowWrite, assetDisposalController.createAssetDisposal);
 router.put('/asset-disposals/:id/submit', allowWrite, assetDisposalController.submitAssetDisposal);
 router.put('/asset-disposals/:id/approve', allowWrite, assetDisposalController.approveAssetDisposal);
