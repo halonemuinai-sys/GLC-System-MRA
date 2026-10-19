@@ -160,13 +160,40 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
 
   const reload = () => setReloadKey(k => k + 1);
 
+  async function buildDoc(id) {
+    const detail = await apiClient.get(`/api/ga/${cfg.endpoint}/${id}`);
+    const doc = await cfg.buildPdf(detail);
+    const number = cfg.number(detail);
+    return { url: URL.createObjectURL(doc.output('blob')), doc, title: number, fileName: docFileName(number, cfg.fallbackName), status: detail.status };
+  }
+
   async function openPreview(id) {
     setLoadingPreviewId(id);
     try {
-      const detail = await apiClient.get(`/api/ga/${cfg.endpoint}/${id}`);
-      const doc = cfg.buildPdf(detail);
-      const number = cfg.number(detail);
-      setPreview({ url: URL.createObjectURL(doc.output('blob')), doc, title: number, fileName: docFileName(number, cfg.fallbackName) });
+      setPreview(await buildDoc(id));
+    } catch (e) {
+      alert(e.message || 'Failed to generate PDF.');
+    } finally {
+      setLoadingPreviewId(null);
+    }
+  }
+
+  // Print straight away: load the PDF in a hidden frame and open the browser print dialog.
+  async function printDirect(id) {
+    setLoadingPreviewId(`print-${id}`);
+    try {
+      const { url } = await buildDoc(id);
+      const frame = document.createElement('iframe');
+      frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+      frame.src = url;
+      frame.onload = () => {
+        setTimeout(() => {
+          frame.contentWindow?.focus();
+          frame.contentWindow?.print();
+          setTimeout(() => { frame.remove(); URL.revokeObjectURL(url); }, 60000);
+        }, 300);
+      };
+      document.body.appendChild(frame);
     } catch (e) {
       alert(e.message || 'Failed to generate PDF.');
     } finally {
@@ -223,7 +250,7 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-2">Asset Reports</h1>
             <p className="text-slate-400 text-xs sm:text-sm mt-1.5 max-w-lg">
-              Official asset reports — disposals (BAP) and handovers (BAST). Approved reports can be previewed and printed.
+              Official asset reports — disposals (BAP) and handovers (BAST). Every report can be previewed and printed; until it is approved the print carries a watermark.
             </p>
           </div>
           <button
@@ -372,11 +399,12 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
                             </td>
                             <td className="p-4">
                               <div className="flex items-center justify-end gap-1">
-                                {r.status === 'APPROVED' && (
-                                  <button title="Preview & Print" onClick={() => openPreview(r.id)} disabled={loadingPreviewId === r.id} className={`${iconBtn} text-neutral-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40`}>
-                                    {loadingPreviewId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-                                  </button>
-                                )}
+                                <button title={r.status === 'APPROVED' ? 'Preview' : 'Preview (watermarked until approved)'} aria-label={`Preview ${cfg.number(r) || r.id}`} onClick={() => openPreview(r.id)} disabled={loadingPreviewId === r.id} className={`${iconBtn} text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40`}>
+                                  {loadingPreviewId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                                <button title={r.status === 'APPROVED' ? 'Print' : 'Print (watermarked until approved)'} aria-label={`Print ${cfg.number(r) || r.id}`} onClick={() => printDirect(r.id)} disabled={loadingPreviewId === `print-${r.id}`} className={`${iconBtn} text-neutral-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-white dark:hover:bg-slate-800`}>
+                                  {loadingPreviewId === `print-${r.id}` ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                                </button>
                                 {isAdmin && r.status === 'PENDING_APPROVAL' && (
                                   <>
                                     <button title="Approve" onClick={() => approve(r.id)} disabled={busy} className={`${iconBtn} text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40`}>
@@ -463,7 +491,7 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="w-full max-w-4xl h-[90vh] bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3.5 bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white shrink-0">
-              <h2 className="font-bold text-sm truncate">Preview — {preview.title}</h2>
+              <h2 className="font-bold text-sm truncate">Preview — {preview.title}{preview.status !== 'APPROVED' && <span className="ml-2 rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold text-amber-200">Not approved yet — watermarked</span>}</h2>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button onClick={() => iframeRef.current?.contentWindow?.print()} className={`${pillBtn} bg-white/10 hover:bg-white/20 text-white`}>
                   <Printer className="w-3.5 h-3.5" /> Print

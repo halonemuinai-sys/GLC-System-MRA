@@ -1,205 +1,263 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const NAVY = [15, 23, 42];
-const INK = [30, 41, 59];
-const MUTED = [100, 116, 139];
+// Berita Acara PDFs follow the MRA Group form layout (see docs/pdf sample):
+// A4 landscape, logo top left, bold form title + company, a dotted-grid asset table with a
+// "Total Asset" row, "Tanggal :" and a signature row (Dibuat / Diperiksa / Disetujui Oleh).
 
-function drawLetterhead(doc, title, subtitle, companyName) {
-  doc.setFillColor(...NAVY);
-  doc.rect(0, 0, 210, 32, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text(title, 105, 13, { align: 'center' });
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(8);
-  doc.text(subtitle, 105, 18, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(companyName || '-', 105, 24, { align: 'center' });
-  doc.setFontSize(8);
-  doc.text('General Affairs Department - MRA Hub', 105, 28.5, { align: 'center' });
+const INK = [0, 0, 0];
+const MUTED = [100, 116, 139];
+const PAGE_W = 297;
+const MARGIN = 15;
+
+let logoCache = null;
+async function loadLogo() {
+  if (logoCache !== null) return logoCache;
+  try {
+    const blob = await (await fetch('/mra_logo.png')).blob();
+    logoCache = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    logoCache = '';
+  }
+  return logoCache;
 }
 
-function drawAssetTable(doc, startY, head, body) {
+const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }) : '');
+const idDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const money = (v) => (Number(v) > 0 ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(v)) : '');
+
+function drawHeader(doc, logo, title, companyName, rightLines = []) {
+  if (logo) doc.addImage(logo, 'PNG', MARGIN, 10, 38, 38 * 327 / 763, 'mra-logo', 'FAST');
+  doc.setTextColor(...INK);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text(title, MARGIN, 36);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text(companyName || '-', MARGIN, 41);
+  doc.setFontSize(8);
+  rightLines.forEach((line, i) => doc.text(line, PAGE_W - MARGIN, 36 + i * 4.5, { align: 'right' }));
+}
+
+// Dotted cell borders like the sample form; the total row gets a solid border.
+const dottedGrid = (totalCols) => (data) => {
+  const { doc, cell, section } = data;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.15);
+  if (section === 'foot') {
+    if (data.column.index > totalCols) return; // total row stops at Qty, as on the form
+    doc.setLineDashPattern([], 0);
+    doc.rect(cell.x, cell.y, cell.width, cell.height);
+    return;
+  }
+  doc.setLineDashPattern([0.4, 0.6], 0);
+  doc.rect(cell.x, cell.y, cell.width, cell.height);
+  doc.setLineDashPattern([], 0);
+};
+
+function drawTable(doc, startY, head, body, columnStyles, totalCols, total) {
   autoTable(doc, {
     startY,
     head: [head],
     body,
-    headStyles: { fillColor: NAVY, textColor: 255, fontSize: 9, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 8.5, textColor: INK },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-    margin: { left: 15, right: 15 }
+    foot: [[{ content: 'Total Asset', colSpan: totalCols, styles: { halign: 'center' } }, { content: String(total), styles: { halign: 'center' } }]],
+    theme: 'plain',
+    styles: { font: 'helvetica', fontSize: 7.5, textColor: INK, cellPadding: { top: 0.9, bottom: 0.9, left: 1.2, right: 1.2 }, overflow: 'linebreak' },
+    headStyles: { fontStyle: 'bold', halign: 'center' },
+    footStyles: { fontStyle: 'bold' },
+    showFoot: 'lastPage',
+    columnStyles,
+    margin: { left: MARGIN, right: MARGIN, top: 15 },
+    didDrawCell: dottedGrid(totalCols)
   });
   return doc.lastAutoTable.finalY;
 }
 
-function drawSignatures(doc, y, left, right) {
-  if (y > 225) { doc.addPage(); y = 25; }
-  const col2 = 110;
-  doc.setFontSize(9);
+// groups: [{ label: 'Dibuat Oleh,', people: [{ name, position }] }]
+function drawSignatures(doc, y, date, groups) {
+  const columns = groups.reduce((n, g) => n + g.people.length, 0);
+  const colW = Math.min(62, (PAGE_W - MARGIN * 2) / Math.max(columns, 1));
+  if (y + 62 > 200) { doc.addPage(); y = 25; }
   doc.setTextColor(...INK);
-  doc.setFont('helvetica', 'bold');
-  doc.text(left.label, 15, y);
-  doc.text(right.label, col2, y);
-
-  y += 25;
-  doc.setLineWidth(0.3);
-  doc.line(15, y, 85, y);
-  doc.line(col2, y, col2 + 70, y);
-
-  y += 5;
-  doc.text(left.name || '-', 15, y);
-  doc.text(right.name || '-', col2, y);
-
-  y += 5;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.text(left.position || '', 15, y);
-  doc.text(right.position || '', col2, y);
-  if (right.note) {
-    doc.setTextColor(...MUTED);
-    doc.text(right.note, col2, y + 4);
+  doc.text(`Tanggal : ${idDate(date)}`, MARGIN, y);
+
+  let col = 0;
+  for (const group of groups) {
+    const x0 = MARGIN + col * colW;
+    doc.setFont('helvetica', 'normal');
+    doc.text(group.label, x0 + 4, y + 9);
+    group.people.forEach((p, i) => {
+      const x = x0 + i * colW;
+      doc.setFont('helvetica', 'bold');
+      doc.text(p.name || '(...........................)', x, y + 39);
+      doc.setFont('helvetica', 'normal');
+      doc.text(p.position || '', x, y + 44);
+      if (p.note) { doc.setTextColor(...MUTED); doc.setFontSize(7); doc.text(p.note, x, y + 48); doc.setFontSize(8); doc.setTextColor(...INK); }
+    });
+    col += group.people.length;
   }
 }
 
-function drawFooter(doc) {
-  doc.setFontSize(7);
-  doc.setTextColor(148, 163, 184);
-  doc.text(`Printed: ${new Date().toLocaleString('en-GB')}`, 15, 287);
+// Documents that are not approved yet carry a diagonal watermark so a print is never
+// mistaken for the signed record.
+const WATERMARK = { DRAFT: 'DRAFT', PENDING_APPROVAL: 'MENUNGGU PERSETUJUAN', REJECTED: 'DITOLAK' };
+
+function drawFooter(doc, number, status) {
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    if (WATERMARK[status]) {
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({ opacity: 0.12 }));
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(44);
+      doc.setTextColor(status === 'REJECTED' ? 190 : 100, 30, 30);
+      // Rotate around the text start, so offset it to keep the text centred on the page.
+      const half = doc.getTextWidth(WATERMARK[status]) / 2;
+      const angle = 18 * Math.PI / 180;
+      doc.text(WATERMARK[status], PAGE_W / 2 - half * Math.cos(angle), 110 + half * Math.sin(angle), { angle: 18 });
+      doc.restoreGraphicsState();
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`${number || ''}  ·  Printed ${new Date().toLocaleString('en-GB')}`, MARGIN, 203);
+    doc.text(`Page ${i} of ${pages}`, PAGE_W - MARGIN, 203, { align: 'right' });
+  }
 }
 
-const longDate = (d) => new Date(d).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+export async function buildDisposalPDF(disposal) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const logo = await loadLogo();
+  drawHeader(doc, logo, 'FORM LIST DATA DISPOSAL ASET', disposal.m_company?.name, [
+    `No. ${disposal.disposal_number || '-'}`,
+    `Alasan: ${disposal.reason}${disposal.reason_detail ? ` - ${disposal.reason_detail}` : ''}`.slice(0, 90)
+  ]);
 
-export function buildDisposalPDF(disposal) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  drawLetterhead(doc, 'ASSET DISPOSAL REPORT', 'Asset Disposal Record (BAP)', disposal.m_company?.name);
-
-  doc.setTextColor(...INK);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text(`No: ${disposal.disposal_number || '-'}`, 15, 42);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  const intro = doc.splitTextToSize(
-    `On ${longDate(disposal.disposal_date)}, the following assets owned by ${disposal.m_company?.name || '-'} have been disposed of for the reason "${disposal.reason}"${disposal.reason_detail ? `: ${disposal.reason_detail}` : '.'} The disposed assets are listed below.`,
-    180
-  );
-  doc.text(intro, 15, 52);
-
-  const endY = drawAssetTable(
-    doc,
-    52 + intro.length * 5 + 6,
-    ['No', 'Asset Code', 'Asset Name', 'Category', 'Condition'],
-    disposal.items.map((it, i) => [i + 1, it.assets?.asset_code || '-', it.assets?.asset_name || '-', it.assets?.m_asset_category?.name || '-', it.condition_snapshot || '-'])
-  );
-
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text(`Total: ${disposal.items.length} asset(s)`, 15, endY + 8);
-
-  drawSignatures(doc, endY + 22,
-    { label: 'REQUESTED BY,', name: disposal.requested_by?.full_name, position: disposal.requested_by?.position || 'Requester' },
+  const endY = drawTable(
+    doc, 47,
+    ['No.', 'Asset Code', 'Category', 'Asset Name', 'Qty', 'Acquisition Date', 'Acquisition Cost', 'Condition', 'Estimated Price'],
+    disposal.items.map((it, i) => [
+      i + 1,
+      it.assets?.asset_code || '-',
+      it.assets?.m_asset_category?.name || '-',
+      it.assets?.asset_name || '-',
+      1,
+      fmtDate(it.assets?.acquisition_date),
+      money(it.assets?.acquisition_cost),
+      it.condition_snapshot || '',
+      ''
+    ]),
     {
-      label: 'APPROVED BY,',
-      name: disposal.approver?.name,
-      position: disposal.approver?.position || 'Approver',
-      note: disposal.approved_at ? `Approved on ${new Date(disposal.approved_at).toLocaleDateString('en-GB')}` : ''
-    }
+      0: { cellWidth: 9, halign: 'right' }, 1: { cellWidth: 34 }, 2: { cellWidth: 36 }, 3: { cellWidth: 'auto' },
+      4: { cellWidth: 9, halign: 'center' }, 5: { cellWidth: 25, halign: 'right' }, 6: { cellWidth: 25, halign: 'right' },
+      7: { cellWidth: 22 }, 8: { cellWidth: 24, halign: 'right' }
+    },
+    4,
+    disposal.items.length
   );
-  drawFooter(doc);
+
+  drawSignatures(doc, endY + 22, disposal.disposal_date, [
+    { label: 'Dibuat Oleh,', people: [{ name: disposal.requested_by?.full_name, position: disposal.requested_by?.position || 'Asset Management' }] },
+    { label: 'Diperiksa Oleh,', people: [{ position: 'GA Business Partner' }, { position: 'GA Manager' }] },
+    {
+      label: 'Disetujui Oleh,',
+      people: [{
+        name: disposal.approver?.name,
+        position: disposal.approver?.position || 'Finance Manager',
+        note: disposal.approved_at ? `Approved ${fmtDate(disposal.approved_at)}` : ''
+      }, { position: 'Direksi' }]
+    }
+  ]);
+  drawFooter(doc, disposal.disposal_number, disposal.status);
   return doc;
 }
 
-export function buildHandoverPDF(handover) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  drawLetterhead(doc, 'ASSET HANDOVER REPORT', 'Asset Handover Record (BAST)', handover.m_company?.name);
+const locationName = (loc) => (loc ? loc.name : '');
 
-  doc.setTextColor(...INK);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text(`No: ${handover.handover_number || '-'}`, 15, 42);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Type: ${handover.handover_type}`, 195, 42, { align: 'right' });
+export async function buildHandoverPDF(handover) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const logo = await loadLogo();
+  drawHeader(doc, logo, 'FORM SERAH TERIMA ASET', handover.m_company?.name, [
+    `No. ${handover.handover_number || '-'}`,
+    `Jenis: ${handover.handover_type}`
+  ]);
 
-  doc.setFontSize(10);
-  doc.text(`On ${longDate(handover.handover_date)}, the undersigned:`, 15, 52);
-
-  autoTable(doc, {
-    startY: 56,
-    head: [['FIRST PARTY (Handed Over By)', 'SECOND PARTY (Received By)']],
-    body: [
-      [`Name      : ${handover.giver_name}`, `Name      : ${handover.recipient_name}`],
-      [`Position  : ${handover.giver_position || '-'}`, `Position  : ${handover.recipient_position || '-'}`],
-      ['', `Unit        : ${handover.recipient_department || '-'}`]
-    ],
-    theme: 'plain',
-    headStyles: { fontSize: 8.5, fontStyle: 'bold', textColor: INK, lineWidth: { bottom: 0.3 }, lineColor: [203, 213, 225] },
-    bodyStyles: { fontSize: 9, textColor: INK, cellPadding: 1.2 },
-    margin: { left: 15, right: 15 }
-  });
-
-  let y = doc.lastAutoTable.finalY + 7;
-  const destination = [handover.to_company?.name, handover.to_location?.name, handover.to_room ? `room ${handover.to_room}` : null].filter(Boolean).join(', ');
-  if (destination) {
-    doc.setFont('helvetica', 'bold');
-    const moved = doc.splitTextToSize(`Assets move to: ${destination}${handover.transfer_applied_at ? ` (recorded ${longDate(handover.transfer_applied_at)})` : ' (on approval)'}`, 180);
-    doc.text(moved, 15, y);
-    doc.setFont('helvetica', 'normal');
-    y += moved.length * 5 + 2;
-  }
-  const statement = doc.splitTextToSize(
-    'The First Party hands over the following assets to the Second Party, and the Second Party accepts them in the condition stated below:',
-    180
-  );
-  doc.text(statement, 15, y);
-
-  const endY = drawAssetTable(
-    doc,
-    y + statement.length * 5 + 2,
-    ['No', 'Asset Code', 'Asset Name', 'Category', 'Condition', 'Accessories'],
-    handover.items.map((it, i) => [i + 1, it.assets?.asset_code || '-', it.assets?.asset_name || '-', it.assets?.m_asset_category?.name || '-', it.condition_snapshot || '-', it.accessories || '-'])
-  );
-
-  y = endY + 7;
-  if (handover.notes) {
-    const notes = doc.splitTextToSize(`Notes: ${handover.notes}`, 180);
-    doc.setFontSize(9);
-    doc.text(notes, 15, y);
-    y += notes.length * 4.5 + 3;
-  }
-
-  const clause = doc.splitTextToSize(
-    '* The Second Party is fully responsible for the physical security of the assets and the confidentiality of company data. Damage or loss due to negligence is subject to company policy.',
-    176
-  );
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(203, 213, 225);
-  doc.rect(15, y, 180, clause.length * 4 + 5, 'FD');
-  doc.setFont('helvetica', 'italic');
+  // Parties and destination, as short label / value lines.
+  const destination = [handover.to_company?.name, handover.to_location?.name, handover.to_room ? `Ruang ${handover.to_room}` : null].filter(Boolean).join(', ');
+  const lines = [
+    ['Pihak Pertama (Menyerahkan)', `${handover.giver_name}${handover.giver_position ? ` - ${handover.giver_position}` : ''}`],
+    ['Pihak Kedua (Menerima)', `${handover.recipient_name}${handover.recipient_position ? ` - ${handover.recipient_position}` : ''}${handover.recipient_department ? ` (${handover.recipient_department})` : ''}`],
+    ...(destination ? [['Dipindahkan ke', `${destination}${handover.transfer_applied_at ? '' : ' (berlaku setelah disetujui)'}`]] : []),
+    ...(handover.notes ? [['Catatan', handover.notes]] : [])
+  ];
   doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text(clause, 17, y + 4.5);
-  doc.setFont('helvetica', 'normal');
-  y += clause.length * 4 + 5;
-
-  if (handover.approver && handover.approved_at) {
-    doc.setFontSize(8);
-    doc.setTextColor(...INK);
-    doc.text(
-      `Approved by ${handover.approver.name}${handover.approver.position ? ` (${handover.approver.position})` : ''} on ${new Date(handover.approved_at).toLocaleDateString('en-GB')}.`,
-      15, y + 5
-    );
-    y += 5;
+  let y = 49;
+  for (const [label, value] of lines) {
+    doc.setFont('helvetica', 'normal');
+    doc.text(label, MARGIN, y);
+    doc.text(':', MARGIN + 42, y);
+    const wrapped = doc.splitTextToSize(String(value), PAGE_W - MARGIN * 2 - 46);
+    doc.text(wrapped, MARGIN + 45, y);
+    y += wrapped.length * 4;
   }
 
-  drawSignatures(doc, y + 13,
-    { label: 'HANDED OVER BY,', name: handover.giver_name, position: handover.giver_position || 'First Party' },
-    { label: 'RECEIVED BY,', name: handover.recipient_name, position: handover.recipient_position || 'Second Party' }
+  // After the transfer is applied the asset already sits at the destination, so show where it came from.
+  const fromLocation = (it) => {
+    const applied = !!handover.transfer_applied_at;
+    const loc = applied ? it.from_location : it.assets?.m_location;
+    const room = applied ? it.from_room : it.assets?.room;
+    return [locationName(loc), room].filter(Boolean).join(' · ');
+  };
+  const endY = drawTable(
+    doc, y + 2,
+    ['No.', 'Asset Code', 'Category', 'Asset Name', 'Qty', handover.transfer_applied_at ? 'Previous Location' : 'Current Location', 'Condition', 'Accessories'],
+    handover.items.map((it, i) => [
+      i + 1,
+      it.assets?.asset_code || '-',
+      it.assets?.m_asset_category?.name || '-',
+      it.assets?.asset_name || '-',
+      1,
+      fromLocation(it) || '-',
+      it.condition_snapshot || '',
+      it.accessories || ''
+    ]),
+    {
+      0: { cellWidth: 9, halign: 'right' }, 1: { cellWidth: 34 }, 2: { cellWidth: 34 }, 3: { cellWidth: 'auto' },
+      4: { cellWidth: 9, halign: 'center' }, 5: { cellWidth: 42 }, 6: { cellWidth: 22 }, 7: { cellWidth: 40 }
+    },
+    4,
+    handover.items.length
   );
-  drawFooter(doc);
+
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(...MUTED);
+  const clause = doc.splitTextToSize('Pihak Kedua bertanggung jawab atas keamanan fisik aset dan kerahasiaan data perusahaan. Kerusakan atau kehilangan akibat kelalaian mengikuti kebijakan perusahaan.', PAGE_W - MARGIN * 2);
+  let clauseY = endY + 6;
+  if (clauseY > 190) { doc.addPage(); clauseY = 20; }
+  doc.text(clause, MARGIN, clauseY);
+
+  drawSignatures(doc, clauseY + clause.length * 3.5 + 10, handover.handover_date, [
+    { label: 'Diserahkan Oleh,', people: [{ name: handover.giver_name, position: handover.giver_position || 'Pihak Pertama' }] },
+    { label: 'Diterima Oleh,', people: [{ name: handover.recipient_name, position: handover.recipient_position || 'Pihak Kedua' }] },
+    {
+      label: 'Disetujui Oleh,',
+      people: [{
+        name: handover.approver?.name,
+        position: handover.approver?.position || 'GA Manager',
+        note: handover.approved_at ? `Approved ${fmtDate(handover.approved_at)}` : ''
+      }]
+    }
+  ]);
+  drawFooter(doc, handover.handover_number, handover.status);
   return doc;
 }
 
