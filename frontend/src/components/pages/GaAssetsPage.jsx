@@ -43,7 +43,7 @@ import GaAssetHandoverModal from './GaAssetHandoverModal';
 import { handleExportPDF, handleExportExcel } from './GaAssetsExports';
 
 // Searchable Dropdown for Companies (PT)
-function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)' }) {
+function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Select Company (Type to search...)', onEmptyOpen }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -55,7 +55,7 @@ function SearchableCompanySelect({ companies, value, onChange, placeholder = 'Se
   return (
     <div className="relative w-full">
       <div 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => { if (!isOpen && !companies.length && onEmptyOpen) onEmptyOpen(); setIsOpen(!isOpen); }}
         className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2.5 text-xs text-neutral-800 dark:text-white focus-within:border-indigo-500 flex items-center justify-between cursor-pointer min-h-[38px] select-none"
       >
         <span className={selectedCompany ? 'text-neutral-900 dark:text-neutral-200 font-medium truncate' : 'text-neutral-400 truncate'}>
@@ -269,22 +269,26 @@ export default function GaAssetsPage() {
     }
   };
 
-  const fetchDropdowns = async () => {
-    try {
-      const [cats, locs, stats, comps, conds] = await Promise.all([
-        apiClient.get('/api/ga/assets-categories').catch(() => []),
-        apiClient.get('/api/ga/assets-locations').catch(() => []),
-        apiClient.get('/api/ga/assets-statuses').catch(() => []),
-        apiClient.get('/api/master/companies/all').catch(() => []),
-        apiClient.get('/api/ga/assets-conditions').catch(() => [])
-      ]);
-      setCategories(cats);
-      setLocations(locs);
-      setStatuses(stats);
-      setCompanies(comps);
-      setConditions(conds);
-    } catch (err) {
-      console.error('Failed to load filter options', err);
+  // Filter lists are loaded once; a failed request (e.g. the server restarting during a
+  // deploy) is retried a few times instead of leaving the dropdowns empty for good.
+  const fetchDropdowns = async (attempt = 1) => {
+    const failed = Symbol('failed');
+    const get = (url) => apiClient.get(url).catch(() => failed);
+    const [cats, locs, stats, comps, conds] = await Promise.all([
+      get('/api/ga/assets-categories'),
+      get('/api/ga/assets-locations'),
+      get('/api/ga/assets-statuses'),
+      get('/api/master/companies/all'),
+      get('/api/ga/assets-conditions')
+    ]);
+    const apply = (value, setter) => { if (Array.isArray(value)) setter(value); };
+    apply(cats, setCategories);
+    apply(locs, setLocations);
+    apply(stats, setStatuses);
+    apply(comps, setCompanies);
+    apply(conds, setConditions);
+    if ([cats, locs, stats, comps, conds].includes(failed) && attempt < 4) {
+      setTimeout(() => fetchDropdowns(attempt + 1), attempt * 3000);
     }
   };
 
@@ -320,6 +324,7 @@ export default function GaAssetsPage() {
     setConditionId(tempConditionId);
     setCompanyId(tempCompanyId);
     setHasProcessed(true);
+    if (!companies.length || !categories.length) fetchDropdowns();
   };
 
   const handleUploadImport = async () => {
@@ -660,6 +665,7 @@ export default function GaAssetsPage() {
               value={tempCompanyId}
               onChange={(val) => setTempCompanyId(val)}
               placeholder={t('allCompanies')}
+              onEmptyOpen={() => fetchDropdowns()}
             />
 
             <select
