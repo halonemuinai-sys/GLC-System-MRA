@@ -142,6 +142,14 @@ export function buildHandoverPDF(handover) {
   });
 
   let y = doc.lastAutoTable.finalY + 7;
+  const destination = [handover.to_company?.name, handover.to_location?.name, handover.to_room ? `room ${handover.to_room}` : null].filter(Boolean).join(', ');
+  if (destination) {
+    doc.setFont('helvetica', 'bold');
+    const moved = doc.splitTextToSize(`Assets move to: ${destination}${handover.transfer_applied_at ? ` (recorded ${longDate(handover.transfer_applied_at)})` : ' (on approval)'}`, 180);
+    doc.text(moved, 15, y);
+    doc.setFont('helvetica', 'normal');
+    y += moved.length * 5 + 2;
+  }
   const statement = doc.splitTextToSize(
     'The First Party hands over the following assets to the Second Party, and the Second Party accepts them in the condition stated below:',
     180

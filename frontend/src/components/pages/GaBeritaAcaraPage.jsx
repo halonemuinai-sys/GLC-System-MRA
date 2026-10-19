@@ -28,6 +28,7 @@ const STATUS_OPTIONS = [
 const STATUS_LABEL = Object.fromEntries(STATUS_OPTIONS.map(o => [o.value, o.label]));
 
 const PAGE_SIZE = 15;
+const handoverDestination = h => [h.to_company?.name, h.to_location ? (h.to_location.location && h.to_location.location !== h.to_location.name ? `${h.to_location.name} - ${h.to_location.location}` : h.to_location.name) : null, h.to_room ? `room ${h.to_room}` : null].filter(Boolean).join(' · ');
 const fmtDate = d => new Date(d).toLocaleDateString('en-GB');
 
 const TYPES = {
@@ -57,7 +58,7 @@ const TYPES = {
     fallbackName: 'Asset-Handover',
     searchPlaceholder: 'Search BA number, first / second party...',
     extraHeaders: ['Type', 'First → Second Party'],
-    extraCells: h => [h.handover_type, `${h.giver_name} → ${h.recipient_name}${h.recipient_department ? ` (${h.recipient_department})` : ''}`]
+    extraCells: h => [handoverDestination(h) ? `${h.handover_type} → ${handoverDestination(h)}${h.transfer_applied_at ? ' (moved)' : ''}` : h.handover_type, `${h.giver_name} → ${h.recipient_name}${h.recipient_department ? ` (${h.recipient_department})` : ''}`]
   }
 };
 

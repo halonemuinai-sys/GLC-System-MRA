@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { X, Loader2, FileSignature, CheckCircle } from 'lucide-react';
+import { X, Loader2, FileSignature, CheckCircle, ArrowRight, MapPin } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import GaAssetPicker from './GaAssetPicker';
 
@@ -30,6 +30,10 @@ export default function GaAssetHandoverModal({ isOpen, onClose }) {
   const [recipientPosition, setRecipientPosition] = useState('');
   const [recipientDepartment, setRecipientDepartment] = useState('');
   const [notes, setNotes] = useState('');
+  const [locations, setLocations] = useState([]);
+  const [toCompanyId, setToCompanyId] = useState('');
+  const [toLocationId, setToLocationId] = useState('');
+  const [toRoom, setToRoom] = useState('');
   const [selected, setSelected] = useState(new Map());
   const [accessories, setAccessories] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -44,12 +48,16 @@ export default function GaAssetHandoverModal({ isOpen, onClose }) {
     setRecipientPosition('');
     setRecipientDepartment('');
     setNotes('');
+    setToCompanyId('');
+    setToLocationId('');
+    setToRoom('');
     setSelected(new Map());
     setAccessories({});
     setApproverSignerId('');
     setCreated(null);
     apiClient.get('/api/master/companies/all').then(setCompanies).catch(() => setCompanies([]));
     apiClient.get('/api/ga/asset-disposal-signers').then(setSigners).catch(() => setSigners([]));
+    apiClient.get('/api/ga/assets-locations').then(setLocations).catch(() => setLocations([]));
     apiClient.get('/api/auth/me').then(u => {
       setGiverName(u.full_name || '');
       setGiverPosition(u.position || 'General Affairs');
@@ -58,7 +66,17 @@ export default function GaAssetHandoverModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const canSubmit = companyId && handoverDate && handoverType && giverName.trim() && recipientName.trim() && selected.size > 0 && !submitting;
+  // Destination: another company and/or location and room, applied to the assets on approval.
+  const destCompanyId = toCompanyId || companyId;
+  const destCompany = companies.find(c => String(c.id) === String(destCompanyId));
+  const holdingLocations = locations.filter(l => l.is_active !== false && (!destCompany?.company_master_id || !l.company_master_id || l.company_master_id === destCompany.company_master_id));
+  const locationOptions = holdingLocations.length ? holdingLocations : locations;
+  const otherCompany = toCompanyId && String(toCompanyId) !== String(companyId);
+  const movesAssets = otherCompany || toLocationId || toRoom.trim();
+  const destinationProblem = handoverType === 'Transfer' && !toLocationId && !otherCompany ? 'A transfer needs a destination location or another company.' : null;
+  const locName = (id) => { const l = locations.find(x => String(x.id) === String(id)); return l ? (l.full_name || l.name) : null; };
+
+  const canSubmit = companyId && handoverDate && handoverType && giverName.trim() && recipientName.trim() && selected.size > 0 && !destinationProblem && !submitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -74,6 +92,9 @@ export default function GaAssetHandoverModal({ isOpen, onClose }) {
         recipient_position: recipientPosition.trim() || null,
         recipient_department: recipientDepartment.trim() || null,
         notes: notes.trim() || null,
+        to_company_id: otherCompany ? toCompanyId : null,
+        to_location_id: toLocationId || null,
+        to_room: toRoom.trim() || null,
         approver_signer_id: approverSignerId || null,
         items: Array.from(selected.keys()).map(id => ({ asset_id: id, accessories: accessories[id]?.trim() || null }))
       });
@@ -104,6 +125,7 @@ export default function GaAssetHandoverModal({ isOpen, onClose }) {
               {created.status === 'PENDING_APPROVAL'
                 ? 'An approval email with a magic link has been sent to the approver. It can be printed once approved.'
                 : 'Saved as Draft (no approver selected). You can request approval later from Asset Reports.'}
+              {(created.to_company_id || created.to_location_id || created.to_room) ? ' The assets move to the new company / location when the report is approved.' : ''}
             </p>
             <div className="flex gap-2 mt-2">
               <Link
@@ -121,7 +143,7 @@ export default function GaAssetHandoverModal({ isOpen, onClose }) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className={labelCls}>Company (PT) *</label>
-                  <select value={companyId} onChange={e => { setCompanyId(e.target.value); setSelected(new Map()); }} className={fieldCls}>
+                  <select value={companyId} onChange={e => { setCompanyId(e.target.value); setSelected(new Map()); setToCompanyId(''); setToLocationId(''); }} className={fieldCls}>
                     <option value="">-- Select Company --</option>
                     {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -175,6 +197,46 @@ export default function GaAssetHandoverModal({ isOpen, onClose }) {
                   <span className="text-[11px] text-neutral-400">{selected.size} selected</span>
                 </div>
                 <GaAssetPicker companyId={companyId} selected={selected} onChange={setSelected} />
+              </div>
+
+              <div className="border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 space-y-3">
+                <div>
+                  <p className="text-[11px] font-black text-neutral-700 dark:text-neutral-200 uppercase flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-sky-500" />Asset Destination {handoverType === 'Transfer' ? '*' : '(optional)'}</p>
+                  <p className="text-[11px] text-neutral-400 mt-0.5">When the report is approved, the selected assets are moved to this company, location and room automatically. Leave empty to keep them where they are.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className={labelCls}>To Company (PT)</label>
+                    <select value={toCompanyId} onChange={e => { setToCompanyId(e.target.value); setToLocationId(''); }} className={fieldCls} disabled={!companyId}>
+                      <option value="">Same company</option>
+                      {companies.filter(c => String(c.id) !== String(companyId)).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>To Location</label>
+                    <select value={toLocationId} onChange={e => setToLocationId(e.target.value)} className={fieldCls} disabled={!companyId}>
+                      <option value="">Keep current location</option>
+                      {locationOptions.map(l => <option key={l.id} value={l.id}>{l.full_name || l.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelCls}>To Room</label>
+                    <input value={toRoom} maxLength={100} onChange={e => setToRoom(e.target.value)} placeholder="Keep current room" className={fieldCls} disabled={!companyId} />
+                  </div>
+                </div>
+                {destinationProblem && selected.size > 0 && <p className="text-[11px] text-amber-600">{destinationProblem}</p>}
+                {movesAssets && selected.size > 0 && (
+                  <div className="rounded-lg bg-sky-50/60 dark:bg-sky-500/5 border border-sky-100 dark:border-sky-500/20 p-2.5 space-y-1 max-h-40 overflow-y-auto">
+                    {Array.from(selected.values()).map(a => (
+                      <div key={a.id} className="flex items-center gap-2 text-[11px] text-neutral-600 dark:text-neutral-300">
+                        <span className="w-1/4 truncate font-medium" title={a.asset_name}>{a.asset_code || a.asset_name}</span>
+                        <span className="flex-1 truncate text-neutral-400" title="Current">{a.m_company?.name || '-'} · {a.m_location ? (a.m_location.name) : 'No location'}{a.room ? ` · ${a.room}` : ''}</span>
+                        <ArrowRight className="w-3 h-3 shrink-0 text-sky-500" />
+                        <span className="flex-1 truncate font-medium text-sky-700 dark:text-sky-300">{(otherCompany ? destCompany?.name : a.m_company?.name) || '-'} · {toLocationId ? locName(toLocationId) : (a.m_location?.name || 'No location')}{(toRoom.trim() || a.room) ? ` · ${toRoom.trim() || a.room}` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {selected.size > 0 && (

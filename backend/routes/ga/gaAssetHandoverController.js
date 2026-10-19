@@ -11,13 +11,97 @@ const DETAIL_INCLUDE = {
   m_company: true,
   created_by: { select: { full_name: true, position: true } },
   approver: { select: { name: true, email: true, position: true } },
-  items: { include: { assets: { include: { m_asset_category: true } } } }
+  items: { include: { assets: { include: { m_asset_category: true, m_company: { select: { id: true, name: true } }, m_location: { select: { id: true, name: true, location: true } } } } } }
 };
+
+const locationLabel = (loc) => (loc ? `${loc.name}${loc.location && loc.location !== loc.name ? ` - ${loc.location}` : ''}` : null);
+
+// Adds readable names for the destination and for each item's previous place.
+async function withTransfer(handover) {
+  if (!handover) return handover;
+  const companyIds = new Set([handover.to_company_id, ...(handover.items || []).map(it => it.from_company_id)].filter(Boolean));
+  const locationIds = new Set([handover.to_location_id, ...(handover.items || []).map(it => it.from_location_id)].filter(Boolean));
+  const [companies, locations] = await Promise.all([
+    companyIds.size ? prisma.m_company.findMany({ where: { id: { in: [...companyIds] } }, select: { id: true, name: true } }) : [],
+    locationIds.size ? prisma.m_company_branch.findMany({ where: { id: { in: [...locationIds] } }, select: { id: true, name: true, location: true } }) : []
+  ]);
+  const company = new Map(companies.map(c => [c.id, c]));
+  const location = new Map(locations.map(l => [l.id, l]));
+  return {
+    ...handover,
+    to_company: handover.to_company_id ? company.get(handover.to_company_id) || null : null,
+    to_location: handover.to_location_id ? location.get(handover.to_location_id) || null : null,
+    items: (handover.items || []).map(it => ({
+      ...it,
+      from_company: it.from_company_id ? company.get(it.from_company_id) || null : null,
+      from_location: it.from_location_id ? location.get(it.from_location_id) || null : null
+    }))
+  };
+}
+
+// Human summary of where the assets go, for e-mails.
+function destinationText(h) {
+  const parts = [];
+  if (h.to_company) parts.push(h.to_company.name);
+  if (h.to_location) parts.push(locationLabel(h.to_location));
+  if (h.to_room) parts.push(`room ${h.to_room}`);
+  return parts.join(' · ');
+}
+
+// Validates the destination fields. Returns { data } or { error }.
+async function parseDestination(body, sourceCompanyId, handoverType) {
+  const toCompanyId = body.to_company_id ? parseInt(body.to_company_id, 10) : null;
+  const toLocationId = body.to_location_id ? parseInt(body.to_location_id, 10) : null;
+  const toRoom = body.to_room ? String(body.to_room).trim().slice(0, 100) || null : null;
+  if (toCompanyId) {
+    const c = await prisma.m_company.findUnique({ where: { id: toCompanyId }, select: { id: true } });
+    if (!c) return { error: 'Destination company not found.' };
+  }
+  if (toLocationId) {
+    const l = await prisma.m_company_branch.findUnique({ where: { id: toLocationId }, select: { id: true } });
+    if (!l) return { error: 'Destination location not found.' };
+  }
+  if (handoverType === 'Transfer' && !toLocationId && (!toCompanyId || toCompanyId === sourceCompanyId)) {
+    return { error: 'A transfer needs a destination location or another company.' };
+  }
+  return { data: { to_company_id: toCompanyId && toCompanyId !== sourceCompanyId ? toCompanyId : null, to_location_id: toLocationId, to_room: toRoom } };
+}
+
+// Approves a BAST and applies the transfer to its assets in one transaction.
+async function approveAndApply(id, extra = {}, actorId = null) {
+  return prisma.$transaction(async (tx) => {
+    const handover = await tx.asset_handovers.findUnique({ where: { id }, include: { items: { include: { assets: true } } } });
+    const moves = !!(handover.to_company_id || handover.to_location_id || handover.to_room);
+    const changes = [];
+    if (moves && !handover.transfer_applied_at) {
+      for (const item of handover.items) {
+        const a = item.assets;
+        await tx.asset_handover_items.update({
+          where: { id: item.id },
+          data: { from_company_id: a.company_id, from_location_id: a.location_id, from_room: a.room }
+        });
+        const data = { updated_at: new Date() };
+        if (handover.to_company_id) data.company_id = handover.to_company_id;
+        if (handover.to_location_id) data.location_id = handover.to_location_id;
+        if (handover.to_room) data.room = handover.to_room;
+        await tx.assets.update({ where: { id: a.id }, data });
+        changes.push({ asset_id: a.id, asset_code: a.asset_code, from: { company_id: a.company_id, location_id: a.location_id, room: a.room }, to: { company_id: data.company_id ?? a.company_id, location_id: data.location_id ?? a.location_id, room: data.room ?? a.room } });
+      }
+      await tx.audit_log.create({
+        data: { table_name: 'asset_handovers', record_id: id, action: 'TRANSFER', user_id: actorId, old_data: { handover_number: handover.handover_number }, new_data: { assets: changes } }
+      });
+    }
+    return tx.asset_handovers.update({
+      where: { id },
+      data: { status: 'APPROVED', approved_at: new Date(), rejection_reason: null, ...(moves ? { transfer_applied_at: new Date() } : {}), ...extra }
+    });
+  });
+}
 
 // Pasang approver + magic link baru ke BAST, set PENDING_APPROVAL, lalu kirim email ke approver.
 async function issueApprovalRequest(handoverId, approverSignerId) {
   const token = crypto.randomBytes(32).toString('hex');
-  const handover = await prisma.asset_handovers.update({
+  const handover = await withTransfer(await prisma.asset_handovers.update({
     where: { id: handoverId },
     data: {
       status: 'PENDING_APPROVAL',
@@ -28,8 +112,9 @@ async function issueApprovalRequest(handoverId, approverSignerId) {
       magic_link_used_at: null
     },
     include: DETAIL_INCLUDE
-  });
+  }));
 
+  const destination = destinationText(handover);
   sendAssetDocApprovalEmail({
     to: handover.approver.email,
     approverName: handover.approver.name,
@@ -41,6 +126,7 @@ async function issueApprovalRequest(handoverId, approverSignerId) {
       ['Type', handover.handover_type],
       ['Handed over by', `${handover.giver_name}${handover.giver_position ? ` (${handover.giver_position})` : ''}`],
       ['Received by', `${handover.recipient_name}${handover.recipient_position ? ` (${handover.recipient_position})` : ''}${handover.recipient_department ? ` - ${handover.recipient_department}` : ''}`],
+      ...(destination ? [['Assets move to', destination]] : []),
       ['Submitted by', handover.created_by.full_name]
     ],
     assets: handover.items.map(it => ({
@@ -89,7 +175,7 @@ async function getAssetHandovers(req, res, next) {
     ]);
 
     res.json({
-      data,
+      data: await Promise.all(data.map(withTransfer)),
       meta: { total, page: parseInt(page), limit: parseInt(limit), totalPages: Math.ceil(total / parseInt(limit)) }
     });
   } catch (err) {
@@ -105,7 +191,7 @@ async function getAssetHandoverDetail(req, res, next) {
       include: DETAIL_INCLUDE
     });
     if (!handover) return res.status(404).json({ error: 'Asset handover report not found.' });
-    res.json(handover);
+    res.json(await withTransfer(handover));
   } catch (err) {
     next(err);
   }
@@ -130,8 +216,9 @@ async function createAssetHandover(req, res, next) {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Select at least one asset to hand over.' });
     }
+    const sourceCompanyId = parseInt(company_id);
 
-    const assetIds = items.map(it => Number(it.asset_id));
+    const assetIds = [...new Set(items.map(it => Number(it.asset_id)))];
     const assets = await prisma.assets.findMany({
       where: { id: { in: assetIds } },
       include: { m_condition: true }
@@ -139,14 +226,29 @@ async function createAssetHandover(req, res, next) {
     if (assets.length !== assetIds.length) {
       return res.status(400).json({ error: 'Some selected assets were not found.' });
     }
-    const assetMap = new Map(assets.map(a => [a.id, a]));
+    const foreign = assets.filter(a => a.company_id !== sourceCompanyId);
+    if (foreign.length) {
+      return res.status(400).json({ error: `These assets do not belong to the selected company: ${foreign.map(a => a.asset_code || a.asset_name).join(', ')}.` });
+    }
+    // An asset cannot be in two open handovers at once (the later transfer would undo the first).
+    const busy = await prisma.asset_handover_items.findMany({
+      where: { asset_id: { in: assetIds }, asset_handovers: { status: { in: ['DRAFT', 'PENDING_APPROVAL'] } } },
+      select: { asset_id: true, asset_handovers: { select: { handover_number: true } } }
+    });
+    if (busy.length) {
+      const names = busy.map(b => `${assets.find(a => a.id === b.asset_id)?.asset_code || b.asset_id} (${b.asset_handovers.handover_number})`);
+      return res.status(409).json({ error: `Already in an open handover report: ${names.join(', ')}.` });
+    }
+    const destination = await parseDestination(req.body, sourceCompanyId, handover_type);
+    if (destination.error) return res.status(400).json({ error: destination.error });
 
+    const assetMap = new Map(assets.map(a => [a.id, a]));
     const handoverNumber = await nextDocNumber(prisma.asset_handovers, 'handover_number', 'BAST/GA');
 
     const draft = await prisma.asset_handovers.create({
       data: {
         handover_number: handoverNumber,
-        company_id: parseInt(company_id),
+        company_id: sourceCompanyId,
         handover_date: new Date(handover_date),
         handover_type,
         giver_name,
@@ -155,13 +257,14 @@ async function createAssetHandover(req, res, next) {
         recipient_position: recipient_position || null,
         recipient_department: recipient_department || null,
         notes: notes || null,
+        ...destination.data,
         status: 'DRAFT',
         created_by_id: req.user.id,
         items: {
-          create: items.map(it => ({
-            asset_id: Number(it.asset_id),
-            condition_snapshot: assetMap.get(Number(it.asset_id))?.m_condition?.name || null,
-            accessories: it.accessories || null
+          create: assetIds.map(assetId => ({
+            asset_id: assetId,
+            condition_snapshot: assetMap.get(assetId)?.m_condition?.name || null,
+            accessories: items.find(it => Number(it.asset_id) === assetId)?.accessories || null
           }))
         }
       }
@@ -191,7 +294,7 @@ async function submitAssetHandover(req, res, next) {
   }
 }
 
-// PUT /api/ga/asset-handovers/:id/approve
+// PUT /api/ga/asset-handovers/:id/approve — also moves the assets to the destination.
 async function approveAssetHandover(req, res, next) {
   try {
     const id = parseInt(req.params.id);
@@ -200,10 +303,7 @@ async function approveAssetHandover(req, res, next) {
     if (handover.status !== 'PENDING_APPROVAL') {
       return res.status(400).json({ error: 'Only reports pending approval can be approved.' });
     }
-    res.json(await prisma.asset_handovers.update({
-      where: { id },
-      data: { status: 'APPROVED', approved_at: new Date(), rejection_reason: null }
-    }));
+    res.json(await approveAndApply(id, {}, req.user?.id || null));
   } catch (err) {
     next(err);
   }
@@ -251,7 +351,7 @@ async function findValidMagicHandover(token, res) {
   if (handover.magic_link_used_at) { res.status(410).json({ error: 'Link approval ini sudah pernah digunakan.' }); return null; }
   if (new Date() > handover.magic_link_expires_at) { res.status(410).json({ error: 'Link approval ini sudah kedaluwarsa.' }); return null; }
   if (handover.status !== 'PENDING_APPROVAL') { res.status(410).json({ error: 'Berita Acara ini sudah diproses melalui jalur lain.' }); return null; }
-  return handover;
+  return withTransfer(handover);
 }
 
 // GET /api/ga/asset-handovers/magic/:token (PUBLIK — tanpa login)
@@ -277,14 +377,12 @@ async function processHandoverByToken(req, res, next) {
     const handover = await findValidMagicHandover(req.params.token, res);
     if (!handover) return;
 
+    if (action === 'APPROVE') {
+      return res.json(await approveAndApply(handover.id, { magic_link_used_at: new Date() }));
+    }
     res.json(await prisma.asset_handovers.update({
       where: { id: handover.id },
-      data: {
-        status: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
-        approved_at: action === 'APPROVE' ? new Date() : null,
-        rejection_reason: action === 'REJECT' ? rejection_reason : null,
-        magic_link_used_at: new Date()
-      }
+      data: { status: 'REJECTED', approved_at: null, rejection_reason, magic_link_used_at: new Date() }
     }));
   } catch (err) {
     next(err);

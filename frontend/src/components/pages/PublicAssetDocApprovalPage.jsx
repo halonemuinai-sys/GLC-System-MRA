@@ -33,6 +33,7 @@ const KINDS = {
       ['Type', d.handover_type],
       ['Handed over by', `${d.giver_name}${d.giver_position ? ` (${d.giver_position})` : ''}`],
       ['Received by', `${d.recipient_name}${d.recipient_position ? ` (${d.recipient_position})` : ''}${d.recipient_department ? ` - ${d.recipient_department}` : ''}`],
+      ...((d.to_company || d.to_location || d.to_room) ? [['Assets move to (on approval)', [d.to_company?.name, d.to_location?.name, d.to_room ? `room ${d.to_room}` : null].filter(Boolean).join(' · ')]] : []),
       ...(d.notes ? [['Notes', d.notes]] : []),
       ['Submitted by', d.created_by?.full_name]
     ]
