@@ -606,9 +606,10 @@ export default function MarketingPlanWizardModal({
   };
 
   return (
+    <>
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5">
+        <div key="wizard" className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -785,15 +786,16 @@ export default function MarketingPlanWizardModal({
           </motion.div>
         </div>
       )}
-
-      {/* Pop-up feedback saat terjadi kegagalan (403/401/400/500) */}
-      <ActionFailureModal
-        isOpen={failureModal.isOpen}
-        onClose={() => setFailureModal(prev => ({ ...prev, isOpen: false }))}
-        title={failureModal.title}
-        error={failureModal.error}
-        actionContext={failureModal.actionContext}
-      />
     </AnimatePresence>
+
+    {/* Pop-up feedback saat terjadi kegagalan (403/401/400/500) */}
+    <ActionFailureModal
+      isOpen={failureModal.isOpen}
+      onClose={() => setFailureModal(prev => ({ ...prev, isOpen: false }))}
+      title={failureModal.title}
+      error={failureModal.error}
+      actionContext={failureModal.actionContext}
+    />
+    </>
   );
 }
