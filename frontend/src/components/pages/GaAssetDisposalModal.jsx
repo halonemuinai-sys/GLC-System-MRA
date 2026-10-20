@@ -14,7 +14,8 @@ const labelCls = 'text-[11px] font-bold text-neutral-500 uppercase mb-1 block';
 
 const today = () => new Date().toLocaleDateString('en-CA');
 
-export default function GaAssetDisposalModal({ isOpen, onClose }) {
+// `editing` = an existing report (detail) to edit instead of creating a new one.
+export default function GaAssetDisposalModal({ isOpen, onClose, editing = null, onSaved }) {
   const [companies, setCompanies] = useState([]);
   const [signers, setSigners] = useState([]);
   const [companyId, setCompanyId] = useState('');
@@ -31,18 +32,24 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
 
   useEffect(() => {
     if (!isOpen) return;
-    setCompanyId('');
-    setDisposalDate(today());
-    setReason('');
-    setReasonDetail('');
-    setApproverSignerId('');
-    setSelected(new Map());
+    setCompanyId(editing ? String(editing.company_id) : '');
+    setDisposalDate(editing ? String(editing.disposal_date).slice(0, 10) : today());
+    setReason(editing?.reason || '');
+    setReasonDetail(editing?.reason_detail || '');
+    setApproverSignerId(editing?.approver_signer_id ? String(editing.approver_signer_id) : '');
+    setSelected(new Map((editing?.items || []).filter(it => it.assets).map(it => [it.assets.id, it.assets])));
     setCreated(null);
     apiClient.get('/api/master/companies/all').then(setCompanies).catch(() => setCompanies([]));
     apiClient.get('/api/ga/asset-disposal-signers').then(setSigners).catch(() => setSigners([]));
-    setSignatoriesTouched(false);
-    apiClient.get('/api/auth/me').then(u => { setMe(u); setSignatories(defaultSignatories(u)); }).catch(() => setSignatories(defaultSignatories(null)));
-  }, [isOpen]);
+    if (editing) {
+      // Keep the report's own signature row; do not prefill from another report.
+      setSignatoriesTouched(true);
+      setSignatories(Array.isArray(editing.signatories) && editing.signatories.length ? editing.signatories : defaultSignatories({ full_name: editing.requested_by?.full_name, position: editing.requested_by?.position }));
+    } else {
+      setSignatoriesTouched(false);
+      apiClient.get('/api/auth/me').then(u => { setMe(u); setSignatories(defaultSignatories(u)); }).catch(() => setSignatories(defaultSignatories(null)));
+    }
+  }, [isOpen, editing]);
 
   // Prefill the signature row from the last BAP of the chosen company, unless edited already.
   useEffect(() => {
@@ -55,12 +62,27 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const canSubmit = companyId && disposalDate && reason && selected.size > 0 && !submitting;
+  const isPending = editing?.status === 'PENDING_APPROVAL';
+  const reasonOptions = reason && !REASONS.includes(reason) ? [reason, ...REASONS] : REASONS;
+  const canSubmit = companyId && disposalDate && reason && selected.size > 0 && (!isPending || approverSignerId) && !submitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
+      if (editing) {
+        const saved = await apiClient.put(`/api/ga/asset-disposals/${editing.id}`, {
+          disposal_date: disposalDate,
+          reason,
+          reason_detail: reasonDetail || null,
+          approver_signer_id: approverSignerId || null,
+          asset_ids: Array.from(selected.keys()),
+          signatories
+        });
+        onSaved?.(saved);
+        onClose();
+        return;
+      }
       const res = await apiClient.post('/api/ga/asset-disposals', {
         company_id: companyId,
         disposal_date: disposalDate,
@@ -72,7 +94,7 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
       });
       setCreated(res);
     } catch (e) {
-      alert(e.message || 'Failed to create disposal report.');
+      alert(e.message || (editing ? 'Failed to save the disposal report.' : 'Failed to create disposal report.'));
     } finally {
       setSubmitting(false);
     }
@@ -84,7 +106,7 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
         <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-br from-[#0f172a] to-[#1e293b] text-white shrink-0">
           <div className="flex items-center gap-2.5">
             <FileMinus className="w-4 h-4 text-rose-400" />
-            <h2 className="font-bold text-sm">New Asset Disposal Report (BAP)</h2>
+            <h2 className="font-bold text-sm">{editing ? `Edit Asset Disposal Report — ${editing.disposal_number}` : 'New Asset Disposal Report (BAP)'}</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-lg"><X className="w-4 h-4" /></button>
         </div>
@@ -111,10 +133,17 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
         ) : (
           <>
             <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {editing && (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                  {isPending
+                    ? 'This report is waiting for approval. Saving sends a new approval e-mail to the approver below; the previous link stops working.'
+                    : 'Choose an approver to send the report for approval after saving, or leave it empty to keep it as a draft.'}
+                </p>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Company (PT) *</label>
-                  <select value={companyId} onChange={e => { setCompanyId(e.target.value); setSelected(new Map()); }} className={fieldCls}>
+                  <select value={companyId} onChange={e => { setCompanyId(e.target.value); setSelected(new Map()); }} className={fieldCls} disabled={!!editing} title={editing ? 'The company of a report cannot be changed.' : undefined}>
                     <option value="">-- Select Company --</option>
                     {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
@@ -127,13 +156,13 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
                   <label className={labelCls}>Disposal Reason *</label>
                   <select value={reason} onChange={e => setReason(e.target.value)} className={fieldCls}>
                     <option value="">-- Select Reason --</option>
-                    {REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                    {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Approver (optional — empty = save as Draft)</label>
+                  <label className={labelCls}>{isPending ? 'Approver * (receives a new approval e-mail)' : 'Approver (optional — empty = save as Draft)'}</label>
                   <select value={approverSignerId} onChange={e => setApproverSignerId(e.target.value)} className={fieldCls}>
-                    <option value="">-- Save as Draft --</option>
+                    <option value="">{isPending ? '-- Select approver --' : '-- Save as Draft --'}</option>
                     {signers.map(s => <option key={s.id} value={s.id}>{s.name}{s.position ? ` (${s.position})` : ''}</option>)}
                   </select>
                 </div>
@@ -168,7 +197,9 @@ export default function GaAssetDisposalModal({ isOpen, onClose }) {
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#0f172a] hover:bg-[#1e293b] disabled:opacity-50 text-white text-xs font-bold rounded-xl"
               >
                 {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Create Report ({selected.size} Asset{selected.size === 1 ? '' : 's'})
+                {editing
+                  ? (approverSignerId ? 'Save & Send for Approval' : 'Save Changes')
+                  : `Create Report (${selected.size} Asset${selected.size === 1 ? '' : 's'})`}
               </button>
             </div>
           </>

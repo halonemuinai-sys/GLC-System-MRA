@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText, FileMinus, FileSignature, Loader2, Printer, Check, Ban, Eye, Download, X, Plus,
-  Trash2, Send, Search, Activity, ChevronLeft, ChevronRight, AlertTriangle, PenLine
+  Trash2, Send, Search, Activity, ChevronLeft, ChevronRight, AlertTriangle, PenLine, FilePen
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { buildDisposalPDF, buildHandoverPDF, docFileName } from './GaBeritaAcaraExport';
@@ -93,6 +93,8 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
   const [busyId, setBusyId] = useState(null);
   const [preview, setPreview] = useState(null);
   const [sigEdit, setSigEdit] = useState(null); // { id, number, rows, saving, error }
+  const [editingDoc, setEditingDoc] = useState(null); // BAP detail being edited
+  const [loadingEditId, setLoadingEditId] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const iframeRef = useRef(null);
 
@@ -162,6 +164,17 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
   }
 
   const reload = () => setReloadKey(k => k + 1);
+
+  async function openEdit(id) {
+    setLoadingEditId(id);
+    try {
+      setEditingDoc(await apiClient.get(`/api/ga/${cfg.endpoint}/${id}`));
+    } catch (e) {
+      alert(e.message || 'Failed to load the report.');
+    } finally {
+      setLoadingEditId(null);
+    }
+  }
 
   async function saveSignatories() {
     setSigEdit(s => ({ ...s, saving: true, error: null }));
@@ -417,6 +430,11 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
                                 <button title={r.status === 'APPROVED' ? 'Preview' : 'Preview (watermarked until approved)'} aria-label={`Preview ${cfg.number(r) || r.id}`} onClick={() => openPreview(r.id)} disabled={loadingPreviewId === r.id} className={`${iconBtn} text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40`}>
                                   {loadingPreviewId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
                                 </button>
+                                {type === 'bap' && canWrite && r.status !== 'APPROVED' && (
+                                  <button title={r.status === 'PENDING_APPROVAL' ? 'Edit report or change approver' : 'Edit report'} aria-label={`Edit ${cfg.number(r) || r.id}`} onClick={() => openEdit(r.id)} disabled={loadingEditId === r.id} className={`${iconBtn} text-neutral-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40`}>
+                                    {loadingEditId === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FilePen className="w-4 h-4" />}
+                                  </button>
+                                )}
                                 {type === 'bap' && canWrite && (
                                   <button title="Signatures on the printout" aria-label={`Edit signatures of ${cfg.number(r) || r.id}`} onClick={() => setSigEdit({ id: r.id, number: cfg.number(r), rows: Array.isArray(r.signatories) && r.signatories.length ? r.signatories : defaultSignatories({ full_name: r.requested_by?.full_name, position: r.requested_by?.position }) })} className={`${iconBtn} text-neutral-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40`}>
                                     <PenLine className="w-4 h-4" />
@@ -560,6 +578,7 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
 
       <GaAssetDisposalModal isOpen={showCreate && type === 'bap'} onClose={closeCreate} />
       <GaAssetHandoverModal isOpen={showCreate && type === 'bast'} onClose={closeCreate} />
+      <GaAssetDisposalModal isOpen={!!editingDoc} editing={editingDoc} onClose={() => setEditingDoc(null)} onSaved={() => reload()} />
     </div>
   );
 }

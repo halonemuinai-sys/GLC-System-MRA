@@ -58,6 +58,7 @@ router.get('/asset-disposals/last-signatories', allowRead, assetDisposalControll
 router.get('/asset-disposals/:id', allowRead, assetDisposalController.getAssetDisposalDetail);
 router.put('/asset-disposals/:id/signatories', allowWrite, assetDisposalController.updateSignatories);
 router.post('/asset-disposals', allowWrite, assetDisposalController.createAssetDisposal);
+router.put('/asset-disposals/:id', allowWrite, assetDisposalController.updateAssetDisposal);
 router.put('/asset-disposals/:id/submit', allowWrite, assetDisposalController.submitAssetDisposal);
 router.put('/asset-disposals/:id/approve', adminOnly, assetDisposalController.approveAssetDisposal);
 router.put('/asset-disposals/:id/reject', adminOnly, assetDisposalController.rejectAssetDisposal);

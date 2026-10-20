@@ -209,6 +209,75 @@ async function createAssetDisposal(req, res, next) {
   }
 }
 
+// PUT /api/ga/asset-disposals/:id — edit a report that is not approved yet (date, reason,
+// assets, signatures, approver). The company stays fixed. A pending report gets a new
+// approval link (the old one stops working), to the same or a newly chosen approver.
+const EDITABLE_STATUSES = ['DRAFT', 'PENDING_APPROVAL', 'REJECTED'];
+async function updateAssetDisposal(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const current = Number.isInteger(id) ? await prisma.asset_disposals.findUnique({ where: { id }, include: { items: { select: { asset_id: true } } } }) : null;
+    if (!current) return res.status(404).json({ error: 'Disposal report not found.' });
+    if (!EDITABLE_STATUSES.includes(current.status)) {
+      return res.status(400).json({ error: 'An approved report cannot be edited.' });
+    }
+
+    const body = req.body || {};
+    const reason = typeof body.reason === 'string' ? body.reason.trim() : current.reason;
+    if (!reason || reason.length > 50) return res.status(400).json({ error: 'Disposal reason is required.' });
+    const date = body.disposal_date ? new Date(body.disposal_date) : current.disposal_date;
+    if (Number.isNaN(new Date(date).getTime())) return res.status(400).json({ error: 'Invalid disposal date.' });
+
+    let assetIds = current.items.map(it => it.asset_id);
+    if (body.asset_ids !== undefined) {
+      if (!Array.isArray(body.asset_ids) || !body.asset_ids.length) return res.status(400).json({ error: 'Select at least one asset to dispose.' });
+      assetIds = [...new Set(body.asset_ids.map(Number))];
+    }
+    const assets = await prisma.assets.findMany({ where: { id: { in: assetIds } }, include: { m_condition: true } });
+    if (assets.length !== assetIds.length) return res.status(400).json({ error: 'Some selected assets were not found.' });
+    const foreign = assets.filter(a => a.company_id !== current.company_id);
+    if (foreign.length) return res.status(400).json({ error: `These assets do not belong to this company: ${foreign.map(a => a.asset_code || a.asset_name).join(', ')}.` });
+
+    const signatories = body.signatories !== undefined ? cleanSignatories(body.signatories) : { value: undefined };
+    if (signatories.error) return res.status(400).json({ error: signatories.error });
+
+    // Pending reports always go back to an approver; drafts / rejected ones only when one is chosen.
+    const approverId = body.approver_signer_id ? parseInt(body.approver_signer_id, 10) : (current.status === 'PENDING_APPROVAL' ? current.approver_signer_id : null);
+    if (approverId) {
+      const signer = await prisma.m_approval_signer.findUnique({ where: { id: approverId }, select: { is_active: true } });
+      if (!signer || !signer.is_active) return res.status(400).json({ error: 'Select an active approver.' });
+    }
+
+    const keep = new Map(current.items.map(it => [it.asset_id, true]));
+    await prisma.$transaction(async (tx) => {
+      // Re-create items only for assets that changed, keeping condition snapshots of the others.
+      await tx.asset_disposal_items.deleteMany({ where: { disposal_id: id, asset_id: { notIn: assetIds } } });
+      const added = assets.filter(a => !keep.has(a.id));
+      if (added.length) {
+        await tx.asset_disposal_items.createMany({ data: added.map(a => ({ disposal_id: id, asset_id: a.id, condition_snapshot: a.m_condition?.name || null })) });
+      }
+      await tx.asset_disposals.update({
+        where: { id },
+        data: {
+          disposal_date: new Date(date),
+          reason,
+          reason_detail: body.reason_detail !== undefined ? (String(body.reason_detail || '').trim() || null) : undefined,
+          ...(signatories.value !== undefined ? { signatories: signatories.value ?? Prisma.DbNull } : {}),
+          updated_at: new Date()
+        }
+      });
+      await tx.audit_log.create({
+        data: { table_name: 'asset_disposals', record_id: id, action: 'UPDATE', user_id: req.user?.id || null, old_data: { status: current.status, approver_signer_id: current.approver_signer_id, asset_ids: current.items.map(it => it.asset_id) }, new_data: { approver_signer_id: approverId, asset_ids: assetIds } }
+      });
+    });
+
+    const result = approverId ? await issueApprovalRequest(id, approverId) : await prisma.asset_disposals.findUnique({ where: { id } });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // PUT /api/ga/asset-disposals/:id/submit — kirim Draft / Rejected ke approver
 async function submitAssetDisposal(req, res, next) {
   try {
@@ -380,6 +449,7 @@ module.exports = {
   approveAssetDisposal,
   rejectAssetDisposal,
   deleteAssetDisposal,
+  updateAssetDisposal,
   getApprovalSigners,
   getDisposalByToken,
   processDisposalByToken
