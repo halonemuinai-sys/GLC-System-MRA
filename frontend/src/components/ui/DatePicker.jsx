@@ -1,37 +1,58 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react';
+
+// 'YYYY-MM-DD' is read as a local date (new Date('2027-08-01') would be UTC midnight).
+const parseValue = (value) => {
+  if (!value) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+};
+
+const POPOVER_W = 256;
+const POPOVER_H = 340;
 
 export default function DatePicker({ value, onChange, placeholder = 'Pilih tanggal', required = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
+  const popoverRef = useRef(null);
+  const [position, setPosition] = useState(null);
+
+  // The calendar is rendered in a portal with fixed positioning, so a drawer or table with
+  // overflow hidden cannot cut it off (it used to lose the Sunday column inside the vehicle form).
+  useLayoutEffect(() => {
+    if (!isOpen) return undefined;
+    const place = () => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const left = Math.min(Math.max(8, rect.left), window.innerWidth - POPOVER_W - 8);
+      const below = rect.bottom + 6;
+      const top = below + POPOVER_H > window.innerHeight - 8 && rect.top - POPOVER_H - 6 > 8 ? rect.top - POPOVER_H - 6 : below;
+      setPosition({ top, left });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [isOpen]);
 
   // Parse initial value (expected: YYYY-MM-DD)
-  const [currentDate, setCurrentDate] = useState(() => {
-    if (value) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) return d;
-    }
-    return new Date();
-  });
+  const [currentDate, setCurrentDate] = useState(() => parseValue(value) || new Date());
 
-  const [selectedDate, setSelectedDate] = useState(() => {
-    if (value) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) return d;
-    }
-    return null;
-  });
+  const [selectedDate, setSelectedDate] = useState(() => parseValue(value));
 
   useEffect(() => {
-    if (value) {
-      const d = new Date(value);
-      if (!isNaN(d.getTime())) {
-        setSelectedDate(d);
-        setCurrentDate(d);
-      }
+    const d = parseValue(value);
+    if (d) {
+      setSelectedDate(d);
+      setCurrentDate(d);
     } else {
       setSelectedDate(null);
     }
@@ -40,7 +61,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Pilih tangg
   // Click outside handler
   useEffect(() => {
     function handleClickOutside(event) {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
+      if (containerRef.current && !containerRef.current.contains(event.target) && !popoverRef.current?.contains(event.target)) {
         setIsOpen(false);
       }
     }
@@ -194,14 +215,17 @@ export default function DatePicker({ value, onChange, placeholder = 'Pilih tangg
         </div>
       </div>
 
-      {/* Date Picker Popover */}
+      {/* Date Picker Popover (portal, fixed position) */}
+      {typeof document !== 'undefined' && createPortal(
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && position && (
           <motion.div
+            ref={popoverRef}
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            className="absolute z-50 mt-1.5 w-64 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl p-3 flex flex-col gap-3 right-0"
+            style={{ position: 'fixed', top: position.top, left: position.left, width: POPOVER_W }}
+            className="z-[200] bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-xl p-3 flex flex-col gap-3"
           >
             {/* Header: Controls */}
             <div className="flex items-center justify-between gap-1 pb-2 border-b border-neutral-100 dark:border-neutral-800/60">
@@ -303,7 +327,9 @@ export default function DatePicker({ value, onChange, placeholder = 'Pilih tangg
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
     </div>
   );
 }
