@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, XCircle, Clock, Hourglass, Copy, Check, CircleDollarSign, Receipt, ClipboardCheck, Banknote } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Hourglass, Copy, Check, CircleDollarSign, Receipt, ClipboardCheck, Banknote, RefreshCw, Loader2 } from 'lucide-react';
+import { apiClient } from '@/lib/apiClient';
 
 const formatIDR = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(val || 0));
 const fmt = (v) => (v ? new Date(v).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '');
@@ -39,6 +40,30 @@ function CopyLink({ path }) {
   );
 }
 
+// New approval link for a pending step: the old link stops working and the approver gets a fresh e-mail.
+export function ResendLinkButton({ endpoint, method = 'post', label = 'Resend link' }) {
+  const [state, setState] = useState('idle'); // idle | busy | sent | error
+  const [message, setMessage] = useState('');
+  const resend = async () => {
+    if (state === 'busy') return;
+    setState('busy');
+    try {
+      const res = await apiClient[method](endpoint, {});
+      setMessage(res?.sent_to ? `Sent to ${res.sent_to}` : 'New link sent');
+      setState('sent');
+    } catch (err) {
+      setMessage(err.message || 'Could not send the link');
+      setState('error');
+    }
+  };
+  return (
+    <button type="button" onClick={resend} disabled={state === 'busy'} title={message || 'Send a new approval link (the old one stops working); valid 3 days'} className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold cursor-pointer disabled:opacity-60 ${state === 'sent' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : state === 'error' ? 'bg-rose-50 text-rose-600 dark:bg-rose-500/10' : 'border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'}`}>
+      {state === 'busy' ? <Loader2 className="h-3 w-3 animate-spin" /> : state === 'sent' ? <Check className="h-3 w-3" /> : <RefreshCw className="h-3 w-3" />}
+      {state === 'sent' ? 'Link sent' : state === 'error' ? 'Failed' : label}
+    </button>
+  );
+}
+
 // One vertical step list: each step = who, role, status, when, comment, and a link while pending.
 function Steps({ steps }) {
   return (
@@ -54,7 +79,7 @@ function Steps({ steps }) {
                 <p className="text-[10px] text-slate-400">{st.subtitle}</p>
                 {st.comment && <p className="mt-1 text-[11px] italic text-slate-600 dark:text-slate-300">“{st.comment}”</p>}
               </div>
-              {st.link && <CopyLink path={st.link} />}
+              {(st.link || st.resend) && <div className="flex flex-wrap items-center gap-1.5">{st.link && <CopyLink path={st.link} />}{st.resend && <ResendLinkButton endpoint={st.resend} />}</div>}
             </div>
           </li>
         );
@@ -74,6 +99,7 @@ function paymentSteps(pr) {
     subtitle: h.status === 'PENDING' ? [h.magic_links?.[0]?.recipient_email && `Sent to ${h.magic_links[0].recipient_email}`, `since ${fmt(h.created_at)}`].filter(Boolean).join(' · ') : fmt(h.action_at),
     comment: h.comment,
     link: h.status === 'PENDING' && h.magic_links?.[0]?.token ? `/approve/${h.magic_links[0].token}` : null,
+    resend: h.status === 'PENDING' && !isClaim ? `/api/marketing/approvals/${h.id}/resend-link` : null,
   }));
   // Last step: Finance confirms the transfer. GA is responsible for the PO only.
   if (pr.status !== 'REJECTED') {
@@ -154,6 +180,7 @@ export default function MarketingPlanApprovalLedger({ plan }) {
               subtitle: a.status === 'PENDING' ? `Waiting · ${a.signer?.email || ''}` : a.status === 'WAITING' ? 'Waiting for the previous step' : fmt(a.action_at),
               comment: a.comment,
               link: a.status === 'PENDING' && closing.magic_link_token ? `/approve-closing/${closing.magic_link_token}` : null,
+              resend: a.status === 'PENDING' ? `/api/marketing/plans/${plan.id}/closing/resend-link` : null,
             }))} />
           ) : <p className="text-[11px] text-slate-400">Approvers are chosen when the closing is submitted.</p>}
           {closing.rejection_reason && closing.status === 'REJECTED' && <p className="mt-2 text-[11px] text-rose-600 dark:text-rose-400">Rejected: {closing.rejection_reason}</p>}

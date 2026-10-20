@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+const { linkRecipient, logLinkDecision } = require('../../api/magicLinkGuard');
 const prisma = require('../../api/db');
 const { rolesOf, hasRole } = require('../../api/roles');
 const { tierStepsFor } = require('./marketingTiers');
@@ -13,7 +15,8 @@ const {
   dispatchMagicLinkEmails,
   dispatchPaymentStatusEmail,
   dispatchPlanStatusEmail,
-  applyCompanyScope
+  applyCompanyScope,
+  MAGIC_LINK_EXPIRY_DAYS
 } = require('./marketingHelper');
 
 // Versi in-memory dari resolveApproverContact (marketingHelper.js) — dipakai untuk PREVIEW
@@ -443,6 +446,8 @@ async function processMagicLink(req, res, next) {
       return res.status(410).json({ error: 'Approval ini sudah diproses melalui jalur lain.' });
     }
 
+    const verifiedEmail = await linkRecipient('MKT', req.params.token);
+
     const approverEmployee = await resolveEmployee(link.recipient_email);
     const actingApproverId = approverEmployee ? approverEmployee.id : task.approver_id;
 
@@ -461,8 +466,44 @@ async function processMagicLink(req, res, next) {
     }
     await dispatchPaymentStatusEmail(result, task);
     await dispatchPlanStatusEmail(result, task, note || null);
+    await logLinkDecision('MKT', task.id, action, req, verifiedEmail);
 
     res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /approvals/:historyId/resend-link — new approval link for a pending step (old links stop
+// working), e-mailed to the same recipient.
+async function resendApprovalLink(req, res, next) {
+  try {
+    const historyId = parseInt(req.params.historyId, 10);
+    const task = Number.isInteger(historyId) ? await prisma.approval_history.findUnique({
+      where: { id: historyId },
+      include: {
+        marketing_plan: { select: { company_id: true } },
+        payment_request: { select: { request_type: true, marketing_plan_item: { select: { marketing_plan: { select: { company_id: true } } } } } },
+        magic_links: { orderBy: { created_at: 'desc' }, take: 1 }
+      }
+    }) : null;
+    const companyId = task?.marketing_plan?.company_id ?? task?.payment_request?.marketing_plan_item?.marketing_plan?.company_id;
+    if (!task || (req.companyScope && !req.companyScope.all && !req.companyScope.companyIds.includes(companyId))) {
+      return res.status(404).json({ error: 'Approval step not found.' });
+    }
+    if (task.status !== 'PENDING') return res.status(400).json({ error: 'Only a step waiting for approval can get a new link.' });
+    const last = task.magic_links[0];
+    if (!last) return res.status(400).json({ error: 'This step is decided in the app, not by e-mail link.' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await prisma.$transaction([
+      prisma.approval_magic_links.updateMany({ where: { approval_history_id: historyId, used_at: null }, data: { expires_at: new Date() } }),
+      prisma.approval_magic_links.create({
+        data: { token, approval_history_id: historyId, recipient_email: last.recipient_email, expires_at: new Date(Date.now() + MAGIC_LINK_EXPIRY_DAYS * 24 * 60 * 60 * 1000) }
+      })
+    ]);
+    await dispatchMagicLinkEmails([{ email: last.recipient_email, role: 'APPROVER', token, stepNumber: task.step_number }], await getDocContextForTask(task));
+    res.json({ message: `A new approval link was sent to ${last.recipient_email}.`, sent_to: last.recipient_email });
   } catch (err) {
     next(err);
   }
@@ -605,6 +646,7 @@ async function getApprovalsOverview(req, res, next) {
 }
 
 module.exports = {
+  resendApprovalLink,
   getPendingTasks,
   processApproval,
   getApprovalHistory,

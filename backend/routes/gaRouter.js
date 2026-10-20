@@ -26,6 +26,8 @@ const gaNotificationsOrEmpty = [verifyToken, (req, res, next) => (hasRole(req, '
 const allowWrite = [verifyToken, checkRole(['admin', 'ga'])];
 // Deciding a Berita Acara from inside the app bypasses the approver, so it is admin only.
 const adminOnly = [verifyToken, checkRole(['admin'])];
+const { linkRateLimit } = require('../api/magicLinkGuard');
+const publicLink = linkRateLimit();
 const allowAdminOnly = [verifyToken, checkRole(['admin', 'superadmin'])];
 // Marketing no longer registers vendors directly: unknown vendors on a plan become Pending for GA.
 const allowVendorWrite = [verifyToken, checkRole(['admin', 'ga', 'legal', 'compliance', 'legal_compliance'])];
@@ -64,8 +66,9 @@ router.put('/asset-disposals/:id/approve', adminOnly, assetDisposalController.ap
 router.put('/asset-disposals/:id/reject', adminOnly, assetDisposalController.rejectAssetDisposal);
 router.delete('/asset-disposals/:id', allowWrite, assetDisposalController.deleteAssetDisposal);
 // Approval via magic link email — publik, tanpa login
-router.get('/asset-disposals/magic/:token', assetDisposalController.getDisposalByToken);
-router.post('/asset-disposals/magic/:token', assetDisposalController.processDisposalByToken);
+router.get('/asset-disposals/magic/:token', publicLink, assetDisposalController.getDisposalByToken);
+router.post('/asset-disposals/magic/:token', publicLink, assetDisposalController.processDisposalByToken);
+router.put('/asset-disposals/:id/resend-link', allowWrite, assetDisposalController.resendDisposalLink);
 
 // Asset Handovers (Berita Acara Serah Terima / BAST)
 router.get('/asset-handovers', allowRead, assetHandoverController.getAssetHandovers);
@@ -76,8 +79,9 @@ router.put('/asset-handovers/:id/approve', adminOnly, assetHandoverController.ap
 router.put('/asset-handovers/:id/reject', adminOnly, assetHandoverController.rejectAssetHandover);
 router.delete('/asset-handovers/:id', allowWrite, assetHandoverController.deleteAssetHandover);
 // Approval BAST via magic link email — publik, tanpa login
-router.get('/asset-handovers/magic/:token', assetHandoverController.getHandoverByToken);
-router.post('/asset-handovers/magic/:token', assetHandoverController.processHandoverByToken);
+router.get('/asset-handovers/magic/:token', publicLink, assetHandoverController.getHandoverByToken);
+router.post('/asset-handovers/magic/:token', publicLink, assetHandoverController.processHandoverByToken);
+router.put('/asset-handovers/:id/resend-link', allowWrite, assetHandoverController.resendHandoverLink);
 
 // Marketing purchase orders (basis for NetSuite POs). Scoped to the user's companies.
 const poRead = [verifyToken, checkRole(['admin', 'ga', 'finance', 'marketing', 'marketing_manager', 'auditor']), attachCompanyScope];

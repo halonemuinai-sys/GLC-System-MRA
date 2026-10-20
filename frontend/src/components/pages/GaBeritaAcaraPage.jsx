@@ -11,6 +11,7 @@ import { buildDisposalPDF, buildHandoverPDF, docFileName } from './GaBeritaAcara
 import GaAssetDisposalModal from './GaAssetDisposalModal';
 import GaAssetHandoverModal from './GaAssetHandoverModal';
 import GaSignatoriesEditor, { defaultSignatories } from './GaSignatoriesEditor';
+import { ResendLinkButton } from './MarketingPlanApprovalLedger';
 import Cookies from 'js-cookie';
 
 const STATUS_STYLE = {
@@ -466,7 +467,10 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}
-                                {r.status === 'PENDING_APPROVAL' && !isAdmin && (
+                                {canWrite && r.status === 'PENDING_APPROVAL' && (
+                                  <ResendLinkButton endpoint={`/api/ga/${cfg.endpoint}/${r.id}/resend-link`} method="put" label="Resend" />
+                                )}
+                                {r.status === 'PENDING_APPROVAL' && !isAdmin && !canWrite && (
                                   <span className="text-[10px] text-neutral-400 italic">Awaiting approver</span>
                                 )}
                               </div>

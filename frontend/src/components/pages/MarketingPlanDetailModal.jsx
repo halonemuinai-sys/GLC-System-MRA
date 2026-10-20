@@ -18,7 +18,7 @@ import mpt from '@/lib/translations/marketingPlan';
 import MarketingPlanClosingSection from './MarketingPlanClosingSection';
 import PlanPoTracker, { PoActionCell, poSummary } from './MarketingPlanPoTracker';
 import MarketingAmendmentPanel from './MarketingAmendmentPanel';
-import MarketingPlanApprovalLedger from './MarketingPlanApprovalLedger';
+import MarketingPlanApprovalLedger, { ResendLinkButton } from './MarketingPlanApprovalLedger';
 import InlineHelp from '@/components/ui/InlineHelp';
 import MarketingReimbursementModal from './MarketingReimbursementModal';
 import ActionFailureModal from '@/components/ui/ActionFailureModal';
@@ -902,6 +902,7 @@ export default function MarketingPlanDetailModal({
                                            (lang === 'id' ? 'Waiting' : 'Waiting in Queue')}
                                         </span>
 
+                                        {isPending && matchingHistory?.id && <ResendLinkButton endpoint={`/api/marketing/approvals/${matchingHistory.id}/resend-link`} />}
                                         {/* Copy Magic Link Button for PENDING step */}
                                         {isPending && activeMagicLink && (
                                           <button

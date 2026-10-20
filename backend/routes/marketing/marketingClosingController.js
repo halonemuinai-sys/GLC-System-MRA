@@ -1,10 +1,11 @@
+const { linkRecipient, logLinkDecision } = require('../../api/magicLinkGuard');
 const crypto = require('crypto');
 const prisma = require('../../api/db');
 const { resolveEmployee, FRONTEND_URL, canManageDoc } = require('./marketingHelper');
 const { sendPlanClosingApprovalEmail, sendMail } = require('../../api/mailer');
 const { closingWindow, computeKpi } = require('./marketingGovernance');
 
-const MAGIC_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MAGIC_LINK_TTL_MS = 3 * 24 * 60 * 60 * 1000; // re-send from the app when it expires
 const UNSETTLED_PAYMENT_STATUSES = ['PENDING', 'APPROVED', 'OVERBUDGET_WARN'];
 const STEPS = [
   { step: 1, role: 'Marketing Head', bodyKey: 'head_signer_id' },
@@ -380,12 +381,33 @@ async function processClosingByToken(req, res, next) {
     if (action === 'REJECT' && !comment) return res.status(400).json({ error: 'Alasan penolakan wajib diisi.' });
     const closing = await findValidMagicClosing(req.params.token, res);
     if (!closing) return;
+    const verifiedEmail = await linkRecipient('CLOSING', req.params.token);
     const isLastStep = closing.current_step === closing.approvers.length;
     await applyDecision(closing, action, comment);
+    await logLinkDecision('CLOSING', closing.id, action, req, verifiedEmail);
     res.json({
       message: action === 'REJECT' ? 'Closing ditolak.' : isLastStep ? 'Closing disetujui. Plan COMPLETED.' : 'Disetujui. Diteruskan ke approver berikutnya.',
       final: action === 'REJECT' || isLastStep
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /plans/:id/closing/resend-link — new link for the approver of the current step.
+async function resendClosingLink(req, res, next) {
+  try {
+    const planId = parseInt(req.params.id, 10);
+    const plan = await loadPlan(planId);
+    if (!plan || !inScope(req, plan)) return res.status(404).json({ error: 'Marketing Plan not found.' });
+    const closing = await loadClosing(planId);
+    if (!closing || closing.status !== 'PENDING_APPROVAL') return res.status(400).json({ error: 'Only a closing waiting for approval can get a new link.' });
+    await prisma.marketing_plan_closings.update({
+      where: { id: closing.id },
+      data: { magic_link_token: crypto.randomBytes(32).toString('hex'), magic_link_expires_at: new Date(Date.now() + MAGIC_LINK_TTL_MS), magic_link_used_at: null, updated_at: new Date() }
+    });
+    await notifyStepApprover(closing.id);
+    res.json(responseFor(await loadPlan(planId), await loadClosing(planId)));
   } catch (err) {
     next(err);
   }
@@ -417,6 +439,7 @@ async function settleClosing(req, res, next) {
 }
 
 module.exports = {
+  resendClosingLink,
   settleClosing,
   getClosing,
   saveClosing,

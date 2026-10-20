@@ -1,6 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const { verifyToken, checkRole, attachCompanyScope } = require('../api/authMiddleware');
+const { linkRateLimit } = require('../api/magicLinkGuard');
+const publicLink = linkRateLimit();
 
 const planController = require('./marketing/marketingPlanController');
 const paymentController = require('./marketing/marketingPaymentController');
@@ -49,8 +51,9 @@ router.post('/plans/:id/closing/submit', verifyToken, attachCompanyScope, checkR
 router.put('/plans/:id/closing/approve', verifyToken, attachCompanyScope, checkRole(['admin']), closingController.approveClosing);
 router.put('/plans/:id/closing/reject', verifyToken, attachCompanyScope, checkRole(['admin']), closingController.rejectClosing);
 router.put('/plans/:id/closing/settle', verifyToken, attachCompanyScope, checkRole(FIN), closingController.settleClosing);
-router.get('/closing/magic/:token', closingController.getClosingByToken);
-router.post('/closing/magic/:token', closingController.processClosingByToken);
+router.post('/plans/:id/closing/resend-link', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing', 'marketing_manager', 'finance']), closingController.resendClosingLink);
+router.get('/closing/magic/:token', publicLink, closingController.getClosingByToken);
+router.post('/closing/magic/:token', publicLink, closingController.processClosingByToken);
 
 // Governance: pengingat closing (bell) & Quarterly Plan Alignment
 router.get('/notifications', verifyToken, attachCompanyScope, checkRole(MKT_READ), governanceController.getNotifications);
@@ -90,8 +93,9 @@ router.put('/payments/:id/verify', verifyToken, attachCompanyScope, checkRole(FI
 router.get('/tasks', verifyToken, attachCompanyScope, approvalController.getPendingTasks);
 router.post('/approvals/:id', verifyToken, attachCompanyScope, approvalController.processApproval);
 router.get('/history', verifyToken, attachCompanyScope, approvalController.getApprovalHistory);
-router.get('/magic/:token', approvalController.getMagicLinkDetail);
-router.post('/magic/:token', approvalController.processMagicLink);
+router.post('/approvals/:historyId/resend-link', verifyToken, attachCompanyScope, checkRole(['admin', 'marketing', 'marketing_manager', 'finance']), approvalController.resendApprovalLink);
+router.get('/magic/:token', publicLink, approvalController.getMagicLinkDetail);
+router.post('/magic/:token', publicLink, approvalController.processMagicLink);
 router.get('/approvals-overview', verifyToken, attachCompanyScope, checkRole(OVERVIEW), approvalController.getApprovalsOverview);
 
 // Approval Contacts (Admin only)

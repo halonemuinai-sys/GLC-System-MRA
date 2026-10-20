@@ -3,9 +3,10 @@ const prisma = require('../../api/db');
 const { sendAssetDocApprovalEmail } = require('../../api/mailer');
 const { nextDocNumber } = require('./gaDocNumber');
 const { overrideReason, logOverride, loadOverride } = require('./gaDocOverride');
+const { linkRecipient, logLinkDecision } = require('../../api/magicLinkGuard');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
-const MAGIC_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MAGIC_LINK_TTL_MS = 3 * 24 * 60 * 60 * 1000; // re-send from the app when it expires
 const HANDOVER_TYPES = ['Assignment', 'Return', 'Transfer'];
 
 const DETAIL_INCLUDE = {
@@ -389,20 +390,36 @@ async function processHandoverByToken(req, res, next) {
     }
     const handover = await findValidMagicHandover(req.params.token, res);
     if (!handover) return;
+    const verifiedEmail = await linkRecipient('BAST', req.params.token);
 
-    if (action === 'APPROVE') {
-      return res.json(await approveAndApply(handover.id, { magic_link_used_at: new Date() }));
-    }
-    res.json(await prisma.asset_handovers.update({
-      where: { id: handover.id },
-      data: { status: 'REJECTED', approved_at: null, rejection_reason, magic_link_used_at: new Date() }
-    }));
+    const result = action === 'APPROVE'
+      ? await approveAndApply(handover.id, { magic_link_used_at: new Date() })
+      : await prisma.asset_handovers.update({
+        where: { id: handover.id },
+        data: { status: 'REJECTED', approved_at: null, rejection_reason, magic_link_used_at: new Date() }
+      });
+    await logLinkDecision('BAST', handover.id, action, req, verifiedEmail);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/ga/asset-handovers/:id/resend-link — new approval link (old one stops working).
+async function resendHandoverLink(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const handover = Number.isInteger(id) ? await prisma.asset_handovers.findUnique({ where: { id }, select: { status: true, approver_signer_id: true } }) : null;
+    if (!handover) return res.status(404).json({ error: 'Asset handover report not found.' });
+    if (handover.status !== 'PENDING_APPROVAL' || !handover.approver_signer_id) return res.status(400).json({ error: 'Only a report waiting for approval can get a new link.' });
+    res.json(await issueApprovalRequest(id, handover.approver_signer_id));
   } catch (err) {
     next(err);
   }
 }
 
 module.exports = {
+  resendHandoverLink,
   getAssetHandovers,
   getAssetHandoverDetail,
   createAssetHandover,

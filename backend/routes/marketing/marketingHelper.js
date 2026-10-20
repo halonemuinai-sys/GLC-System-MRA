@@ -14,7 +14,7 @@ const isMarketingManager = req => hasRole(req, MARKETING_MANAGERS);
 const seesAllMarketingDocs = req => hasRole(req, SEES_ALL_MARKETING_DOCS);
 const canManageDoc = (req, creatorId, employee) => isMarketingManager(req) || (!!employee && creatorId === employee.id);
 
-const MAGIC_LINK_EXPIRY_DAYS = 7;
+const MAGIC_LINK_EXPIRY_DAYS = 3; // approval links stay valid 3 days; they can be re-sent from the app
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 
 // Terapkan req.companyScope ke sebuah Prisma where-object secara in-place, lalu return where itu.
@@ -234,7 +234,7 @@ async function executeApprovalDecision({ task, action, comment, signature, actin
           });
 
           const token = crypto.randomBytes(32).toString('hex');
-          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          const expiresAt = new Date(Date.now() + MAGIC_LINK_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
           await tx.approval_magic_links.create({
             data: {
               token,
@@ -371,6 +371,7 @@ async function dispatchPlanStatusEmail(result, task, comment) {
 }
 
 module.exports = {
+  MAGIC_LINK_EXPIRY_DAYS,
   applyCompanyScope,
   isMarketingManager,
   seesAllMarketingDocs,

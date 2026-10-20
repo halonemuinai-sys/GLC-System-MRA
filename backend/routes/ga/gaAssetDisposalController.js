@@ -4,9 +4,10 @@ const prisma = require('../../api/db');
 const { sendAssetDocApprovalEmail } = require('../../api/mailer');
 const { nextDocNumber } = require('./gaDocNumber');
 const { overrideReason, logOverride, loadOverride } = require('./gaDocOverride');
+const { linkRecipient, logLinkDecision } = require('../../api/magicLinkGuard');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
-const MAGIC_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MAGIC_LINK_TTL_MS = 3 * 24 * 60 * 60 * 1000; // re-send from the app when it expires
 
 // Pasang approver + magic link baru ke BAP, set PENDING_APPROVAL, lalu kirim email ke approver.
 async function issueApprovalRequest(disposalId, approverSignerId) {
@@ -278,6 +279,19 @@ async function updateAssetDisposal(req, res, next) {
   }
 }
 
+// PUT /api/ga/asset-disposals/:id/resend-link — new approval link (old one stops working).
+async function resendDisposalLink(req, res, next) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const disposal = Number.isInteger(id) ? await prisma.asset_disposals.findUnique({ where: { id }, select: { status: true, approver_signer_id: true } }) : null;
+    if (!disposal) return res.status(404).json({ error: 'Disposal report not found.' });
+    if (disposal.status !== 'PENDING_APPROVAL' || !disposal.approver_signer_id) return res.status(400).json({ error: 'Only a report waiting for approval can get a new link.' });
+    res.json(await issueApprovalRequest(id, disposal.approver_signer_id));
+  } catch (err) {
+    next(err);
+  }
+}
+
 // PUT /api/ga/asset-disposals/:id/submit — kirim Draft / Rejected ke approver
 async function submitAssetDisposal(req, res, next) {
   try {
@@ -392,6 +406,7 @@ async function processDisposalByToken(req, res, next) {
     if (disposal.magic_link_used_at) return res.status(410).json({ error: 'Link approval ini sudah pernah digunakan.' });
     if (new Date() > disposal.magic_link_expires_at) return res.status(410).json({ error: 'Link approval ini sudah kedaluwarsa.' });
     if (disposal.status !== 'PENDING_APPROVAL') return res.status(410).json({ error: 'Berita Acara ini sudah diproses melalui jalur lain.' });
+    const verifiedEmail = await linkRecipient('BAP', req.params.token);
 
     const updated = await prisma.asset_disposals.update({
       where: { id: disposal.id },
@@ -402,6 +417,7 @@ async function processDisposalByToken(req, res, next) {
         magic_link_used_at: new Date()
       }
     });
+    await logLinkDecision('BAP', disposal.id, action, req, verifiedEmail);
 
     res.json(updated);
   } catch (err) {
@@ -454,6 +470,7 @@ module.exports = {
   rejectAssetDisposal,
   deleteAssetDisposal,
   updateAssetDisposal,
+  resendDisposalLink,
   getApprovalSigners,
   getDisposalByToken,
   processDisposalByToken
