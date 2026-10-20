@@ -24,6 +24,8 @@ const allowVendorRead = [verifyToken, checkRole(['admin', 'ga', 'auditor', 'lega
 // Bell in the header: users without GA access simply get no GA notifications.
 const gaNotificationsOrEmpty = [verifyToken, (req, res, next) => (hasRole(req, 'admin', 'ga', 'auditor') ? next() : res.json({ total: 0, items: [] }))];
 const allowWrite = [verifyToken, checkRole(['admin', 'ga'])];
+// Deciding a Berita Acara from inside the app bypasses the approver, so it is admin only.
+const adminOnly = [verifyToken, checkRole(['admin'])];
 const allowAdminOnly = [verifyToken, checkRole(['admin', 'superadmin'])];
 // Marketing no longer registers vendors directly: unknown vendors on a plan become Pending for GA.
 const allowVendorWrite = [verifyToken, checkRole(['admin', 'ga', 'legal', 'compliance', 'legal_compliance'])];
@@ -57,8 +59,8 @@ router.get('/asset-disposals/:id', allowRead, assetDisposalController.getAssetDi
 router.put('/asset-disposals/:id/signatories', allowWrite, assetDisposalController.updateSignatories);
 router.post('/asset-disposals', allowWrite, assetDisposalController.createAssetDisposal);
 router.put('/asset-disposals/:id/submit', allowWrite, assetDisposalController.submitAssetDisposal);
-router.put('/asset-disposals/:id/approve', allowWrite, assetDisposalController.approveAssetDisposal);
-router.put('/asset-disposals/:id/reject', allowWrite, assetDisposalController.rejectAssetDisposal);
+router.put('/asset-disposals/:id/approve', adminOnly, assetDisposalController.approveAssetDisposal);
+router.put('/asset-disposals/:id/reject', adminOnly, assetDisposalController.rejectAssetDisposal);
 router.delete('/asset-disposals/:id', allowWrite, assetDisposalController.deleteAssetDisposal);
 // Approval via magic link email — publik, tanpa login
 router.get('/asset-disposals/magic/:token', assetDisposalController.getDisposalByToken);
@@ -69,8 +71,8 @@ router.get('/asset-handovers', allowRead, assetHandoverController.getAssetHandov
 router.get('/asset-handovers/:id', allowRead, assetHandoverController.getAssetHandoverDetail);
 router.post('/asset-handovers', allowWrite, assetHandoverController.createAssetHandover);
 router.put('/asset-handovers/:id/submit', allowWrite, assetHandoverController.submitAssetHandover);
-router.put('/asset-handovers/:id/approve', allowWrite, assetHandoverController.approveAssetHandover);
-router.put('/asset-handovers/:id/reject', allowWrite, assetHandoverController.rejectAssetHandover);
+router.put('/asset-handovers/:id/approve', adminOnly, assetHandoverController.approveAssetHandover);
+router.put('/asset-handovers/:id/reject', adminOnly, assetHandoverController.rejectAssetHandover);
 router.delete('/asset-handovers/:id', allowWrite, assetHandoverController.deleteAssetHandover);
 // Approval BAST via magic link email — publik, tanpa login
 router.get('/asset-handovers/magic/:token', assetHandoverController.getHandoverByToken);

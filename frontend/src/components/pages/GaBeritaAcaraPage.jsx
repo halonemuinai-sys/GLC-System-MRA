@@ -88,7 +88,7 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [loadingPreviewId, setLoadingPreviewId] = useState(null);
-  const [inlineAction, setInlineAction] = useState(null); // { id, kind: 'reject' | 'submit' }
+  const [inlineAction, setInlineAction] = useState(null); // { id, kind: 'approve' | 'reject' | 'submit' }
   const [inlineValue, setInlineValue] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -234,7 +234,8 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
     }
   }
 
-  const approve = id => runAction(id, () => apiClient.put(`/api/ga/${cfg.endpoint}/${id}/approve`, {}));
+  // Admin decision in the app = bypassing the approver: a reason is required and audited.
+  const approve = id => inlineValue.trim().length >= 8 && runAction(id, () => apiClient.put(`/api/ga/${cfg.endpoint}/${id}/approve`, { override_reason: inlineValue.trim() }));
   const reject = id => inlineValue.trim() && runAction(id, () => apiClient.put(`/api/ga/${cfg.endpoint}/${id}/reject`, { rejection_reason: inlineValue.trim() }));
   const submit = id => inlineValue && runAction(id, () => apiClient.put(`/api/ga/${cfg.endpoint}/${id}/submit`, { approver_signer_id: inlineValue }));
   const remove = id => confirm('Delete this report?') && runAction(id, () => apiClient.delete(`/api/ga/${cfg.endpoint}/${id}`));
@@ -426,10 +427,10 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
                                 </button>
                                 {isAdmin && r.status === 'PENDING_APPROVAL' && (
                                   <>
-                                    <button title="Approve" onClick={() => approve(r.id)} disabled={busy} className={`${iconBtn} text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40`}>
+                                    <button title="Approve on the approver's behalf (admin override)" onClick={() => toggleInline(r.id, 'approve')} disabled={busy} className={`${iconBtn} ${inline === 'approve' ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' : 'text-neutral-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'}`}>
                                       <Check className="w-4 h-4" />
                                     </button>
-                                    <button title="Reject" onClick={() => toggleInline(r.id, 'reject')} className={`${iconBtn} ${inline === 'reject' ? 'text-rose-600 bg-rose-50 dark:bg-rose-950/40' : 'text-neutral-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40'}`}>
+                                    <button title="Reject on the approver's behalf (admin override)" onClick={() => toggleInline(r.id, 'reject')} className={`${iconBtn} ${inline === 'reject' ? 'text-rose-600 bg-rose-50 dark:bg-rose-950/40' : 'text-neutral-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40'}`}>
                                       <Ban className="w-4 h-4" />
                                     </button>
                                   </>
@@ -454,9 +455,18 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
                             <tr className="bg-neutral-50/70 dark:bg-neutral-950/30">
                               <td colSpan={columnCount} className="px-4 py-3">
                                 <div className="flex items-center gap-2 justify-end">
-                                  {inline === 'reject' ? (
+                                  {inline === 'approve' ? (
                                     <>
-                                      <input type="text" autoFocus value={inlineValue} onChange={e => setInlineValue(e.target.value)} placeholder="Rejection reason..." className={`w-full max-w-md ${fieldCls} py-2`} />
+                                      <span className="hidden md:block max-w-xs text-[11px] leading-snug text-amber-700 dark:text-amber-300">Approving here bypasses {r.approver?.name || 'the approver'}. It is recorded as an admin override{type === 'bast' ? ' and the assets move right away' : ''}.</span>
+                                      <input type="text" autoFocus value={inlineValue} onChange={e => setInlineValue(e.target.value)} placeholder="Reason for approving on the approver's behalf (min. 8 characters)" className={`w-full max-w-md ${fieldCls} py-2`} />
+                                      <button onClick={() => approve(r.id)} disabled={inlineValue.trim().length < 8 || busy} className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg whitespace-nowrap">
+                                        {busy && <Loader2 className="w-3 h-3 animate-spin" />}
+                                        Approve (override)
+                                      </button>
+                                    </>
+                                  ) : inline === 'reject' ? (
+                                    <>
+                                      <input type="text" autoFocus value={inlineValue} onChange={e => setInlineValue(e.target.value)} placeholder="Rejection reason (recorded as an admin decision)..." className={`w-full max-w-md ${fieldCls} py-2`} />
                                       <button onClick={() => reject(r.id)} disabled={!inlineValue.trim() || busy} className="px-3 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg whitespace-nowrap">
                                         Submit Rejection
                                       </button>

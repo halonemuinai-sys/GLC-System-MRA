@@ -14,7 +14,7 @@ let logoCache = null;
 async function loadLogo() {
   if (logoCache !== null) return logoCache;
   try {
-    const blob = await (await fetch('/mra_logo.png')).blob();
+    const blob = await (await fetch('/mra_group_logo_print.png')).blob();
     logoCache = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
@@ -32,7 +32,7 @@ const idDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: 'numeric', 
 const money = (v) => (Number(v) > 0 ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(v)) : '');
 
 function drawHeader(doc, logo, title, companyName, rightLines = []) {
-  if (logo) doc.addImage(logo, 'PNG', MARGIN, 10, 38, 38 * 327 / 763, 'mra-logo', 'FAST');
+  if (logo) doc.addImage(logo, 'PNG', MARGIN, 10, 40, 40 * 515 / 1200, 'mra-logo', 'FAST');
   doc.setTextColor(...INK);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
@@ -109,6 +109,14 @@ function drawSignatures(doc, y, date, groups) {
 // mistaken for the signed record.
 const WATERMARK = { DRAFT: 'DRAFT', PENDING_APPROVAL: 'MENUNGGU PERSETUJUAN', REJECTED: 'DITOLAK' };
 
+// How the document was approved, for the footer: by the approver, or by an admin override.
+function approvalNote(d) {
+  if (d.status !== 'APPROVED') return '';
+  const on = d.approved_at ? ` on ${fmtDate(d.approved_at)}` : '';
+  if (d.admin_override?.decision === 'APPROVE') return `Approved by admin override (${d.admin_override.by || 'admin'})${on}: ${String(d.admin_override.reason || '').slice(0, 80)}`;
+  return d.approver?.name ? `Approved in system by ${d.approver.name}${on}` : '';
+}
+
 function drawFooter(doc, number, status, approvedBy) {
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
@@ -178,8 +186,7 @@ export async function buildDisposalPDF(disposal) {
     { label: 'Disetujui Oleh,', people: [{ position: 'Finance Manager' }, { position: 'Direksi' }] }
   ]);
   // The system approval stays traceable on the printout even when the signature row is typed by hand.
-  const approvedBy = disposal.status === 'APPROVED' && disposal.approver?.name ? `Approved in system by ${disposal.approver.name}${disposal.approved_at ? ` on ${fmtDate(disposal.approved_at)}` : ''}` : '';
-  drawFooter(doc, disposal.disposal_number, disposal.status, approvedBy);
+  drawFooter(doc, disposal.disposal_number, disposal.status, approvalNote(disposal));
   return doc;
 }
 
@@ -260,7 +267,7 @@ export async function buildHandoverPDF(handover) {
       }]
     }
   ]);
-  drawFooter(doc, handover.handover_number, handover.status, handover.status === 'APPROVED' && handover.approver?.name ? `Approved in system by ${handover.approver.name}${handover.approved_at ? ` on ${fmtDate(handover.approved_at)}` : ''}` : '');
+  drawFooter(doc, handover.handover_number, handover.status, approvalNote(handover));
   return doc;
 }
 

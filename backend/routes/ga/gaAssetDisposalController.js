@@ -3,6 +3,7 @@ const { Prisma } = require('@prisma/client');
 const prisma = require('../../api/db');
 const { sendAssetDocApprovalEmail } = require('../../api/mailer');
 const { nextDocNumber } = require('./gaDocNumber');
+const { overrideReason, logOverride, loadOverride } = require('./gaDocOverride');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 const MAGIC_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -106,7 +107,7 @@ async function getAssetDisposalDetail(req, res, next) {
       }
     });
     if (!disposal) return res.status(404).json({ error: 'Berita Acara Penghapusan tidak ditemukan.' });
-    res.json(disposal);
+    res.json({ ...disposal, admin_override: await loadOverride(prisma, 'asset_disposals', disposal.id) });
   } catch (err) {
     next(err);
   }
@@ -226,18 +227,25 @@ async function submitAssetDisposal(req, res, next) {
 }
 
 // PUT /api/ga/asset-disposals/:id/approve
+// Admin only: approves on the approver's behalf (reason required, audited).
 async function approveAssetDisposal(req, res, next) {
   try {
-    const { id } = req.params;
-    const disposal = await prisma.asset_disposals.findUnique({ where: { id: parseInt(id) } });
-    if (!disposal) return res.status(404).json({ error: 'Berita Acara Penghapusan tidak ditemukan.' });
-    if (disposal.status === 'APPROVED') {
-      return res.status(400).json({ error: 'Berita Acara ini sudah disetujui sebelumnya.' });
+    const id = parseInt(req.params.id, 10);
+    const disposal = Number.isInteger(id) ? await prisma.asset_disposals.findUnique({ where: { id } }) : null;
+    if (!disposal) return res.status(404).json({ error: 'Disposal report not found.' });
+    if (disposal.status !== 'PENDING_APPROVAL') {
+      return res.status(400).json({ error: 'Only reports pending approval can be approved. Send a draft to an approver first.' });
     }
+    const parsed = overrideReason(req.body);
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
 
-    const updated = await prisma.asset_disposals.update({
-      where: { id: parseInt(id) },
-      data: { status: 'APPROVED', approved_at: new Date(), rejection_reason: null }
+    const updated = await prisma.$transaction(async (tx) => {
+      const row = await tx.asset_disposals.update({
+        where: { id },
+        data: { status: 'APPROVED', approved_at: new Date(), rejection_reason: null, magic_link_used_at: new Date(), updated_at: new Date() }
+      });
+      await logOverride(tx, 'asset_disposals', id, req.user?.id, 'APPROVE', parsed.reason);
+      return row;
     });
     res.json(updated);
   } catch (err) {
@@ -248,14 +256,23 @@ async function approveAssetDisposal(req, res, next) {
 // PUT /api/ga/asset-disposals/:id/reject
 async function rejectAssetDisposal(req, res, next) {
   try {
-    const { id } = req.params;
-    const { rejection_reason } = req.body;
+    const id = parseInt(req.params.id, 10);
+    const rejection_reason = typeof req.body?.rejection_reason === 'string' ? req.body.rejection_reason.trim() : '';
     if (!rejection_reason) {
-      return res.status(400).json({ error: 'Alasan penolakan wajib diisi.' });
+      return res.status(400).json({ error: 'Rejection reason is required.' });
     }
-    const updated = await prisma.asset_disposals.update({
-      where: { id: parseInt(id) },
-      data: { status: 'REJECTED', rejection_reason }
+    const disposal = Number.isInteger(id) ? await prisma.asset_disposals.findUnique({ where: { id }, select: { status: true } }) : null;
+    if (!disposal) return res.status(404).json({ error: 'Disposal report not found.' });
+    if (disposal.status !== 'PENDING_APPROVAL') {
+      return res.status(400).json({ error: 'Only reports pending approval can be rejected.' });
+    }
+    const updated = await prisma.$transaction(async (tx) => {
+      const row = await tx.asset_disposals.update({
+        where: { id },
+        data: { status: 'REJECTED', rejection_reason, magic_link_used_at: new Date(), updated_at: new Date() }
+      });
+      await logOverride(tx, 'asset_disposals', id, req.user?.id, 'REJECT', rejection_reason);
+      return row;
     });
     res.json(updated);
   } catch (err) {

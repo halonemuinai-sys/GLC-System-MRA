@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../../api/db');
 const { sendAssetDocApprovalEmail } = require('../../api/mailer');
 const { nextDocNumber } = require('./gaDocNumber');
+const { overrideReason, logOverride, loadOverride } = require('./gaDocOverride');
 
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 const MAGIC_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -68,8 +69,10 @@ async function parseDestination(body, sourceCompanyId, handoverType) {
 }
 
 // Approves a BAST and applies the transfer to its assets in one transaction.
-async function approveAndApply(id, extra = {}, actorId = null) {
+// adminReason set = an admin approving on the approver's behalf (audited).
+async function approveAndApply(id, extra = {}, actorId = null, adminReason = null) {
   return prisma.$transaction(async (tx) => {
+    if (adminReason) await logOverride(tx, 'asset_handovers', id, actorId, 'APPROVE', adminReason);
     const handover = await tx.asset_handovers.findUnique({ where: { id }, include: { items: { include: { assets: true } } } });
     const moves = !!(handover.to_company_id || handover.to_location_id || handover.to_room);
     const changes = [];
@@ -191,7 +194,7 @@ async function getAssetHandoverDetail(req, res, next) {
       include: DETAIL_INCLUDE
     });
     if (!handover) return res.status(404).json({ error: 'Asset handover report not found.' });
-    res.json(await withTransfer(handover));
+    res.json({ ...(await withTransfer(handover)), admin_override: await loadOverride(prisma, 'asset_handovers', handover.id) });
   } catch (err) {
     next(err);
   }
@@ -301,9 +304,11 @@ async function approveAssetHandover(req, res, next) {
     const handover = await prisma.asset_handovers.findUnique({ where: { id } });
     if (!handover) return res.status(404).json({ error: 'Asset handover report not found.' });
     if (handover.status !== 'PENDING_APPROVAL') {
-      return res.status(400).json({ error: 'Only reports pending approval can be approved.' });
+      return res.status(400).json({ error: 'Only reports pending approval can be approved. Send a draft to an approver first.' });
     }
-    res.json(await approveAndApply(id, {}, req.user?.id || null));
+    const parsed = overrideReason(req.body);
+    if (parsed.error) return res.status(400).json({ error: parsed.error });
+    res.json(await approveAndApply(id, { magic_link_used_at: new Date() }, req.user?.id || null, parsed.reason));
   } catch (err) {
     next(err);
   }
@@ -320,9 +325,13 @@ async function rejectAssetHandover(req, res, next) {
     if (handover.status !== 'PENDING_APPROVAL') {
       return res.status(400).json({ error: 'Only reports pending approval can be rejected.' });
     }
-    res.json(await prisma.asset_handovers.update({
-      where: { id },
-      data: { status: 'REJECTED', rejection_reason }
+    res.json(await prisma.$transaction(async (tx) => {
+      const row = await tx.asset_handovers.update({
+        where: { id },
+        data: { status: 'REJECTED', rejection_reason, magic_link_used_at: new Date() }
+      });
+      await logOverride(tx, 'asset_handovers', id, req.user?.id, 'REJECT', rejection_reason);
+      return row;
     }));
   } catch (err) {
     next(err);
