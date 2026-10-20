@@ -341,13 +341,17 @@ async function rejectAssetHandover(req, res, next) {
 // DELETE /api/ga/asset-handovers/:id (hanya Draft / Rejected)
 async function deleteAssetHandover(req, res, next) {
   try {
-    const id = parseInt(req.params.id);
-    const handover = await prisma.asset_handovers.findUnique({ where: { id } });
+    // Any report not approved yet can be deleted; an approved BAST has already moved its assets.
+    const id = parseInt(req.params.id, 10);
+    const handover = Number.isInteger(id) ? await prisma.asset_handovers.findUnique({ where: { id }, include: { items: { select: { asset_id: true } } } }) : null;
     if (!handover) return res.status(404).json({ error: 'Asset handover report not found.' });
-    if (!['DRAFT', 'REJECTED'].includes(handover.status)) {
-      return res.status(400).json({ error: 'Only Draft or Rejected reports can be deleted.' });
+    if (handover.status === 'APPROVED') {
+      return res.status(400).json({ error: 'An approved report cannot be deleted.' });
     }
-    await prisma.asset_handovers.delete({ where: { id } });
+    await prisma.$transaction([
+      prisma.audit_log.create({ data: { table_name: 'asset_handovers', record_id: id, action: 'DELETE', user_id: req.user?.id || null, old_data: { handover_number: handover.handover_number, status: handover.status, company_id: handover.company_id, approver_signer_id: handover.approver_signer_id, asset_ids: handover.items.map(it => it.asset_id) } } }),
+      prisma.asset_handovers.delete({ where: { id } })
+    ]);
     res.json({ message: 'Asset handover report deleted.' });
   } catch (err) {
     next(err);

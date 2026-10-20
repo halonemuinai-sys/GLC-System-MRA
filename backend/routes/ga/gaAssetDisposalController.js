@@ -412,14 +412,18 @@ async function processDisposalByToken(req, res, next) {
 // DELETE /api/ga/asset-disposals/:id (hanya untuk status DRAFT)
 async function deleteAssetDisposal(req, res, next) {
   try {
-    const { id } = req.params;
-    const disposal = await prisma.asset_disposals.findUnique({ where: { id: parseInt(id) } });
-    if (!disposal) return res.status(404).json({ error: 'Berita Acara Penghapusan tidak ditemukan.' });
-    if (!['DRAFT', 'REJECTED'].includes(disposal.status)) {
-      return res.status(400).json({ error: 'Only Draft or Rejected reports can be deleted.' });
+    // Any report not approved yet can be deleted; deleting a pending one also voids its approval link.
+    const id = parseInt(req.params.id, 10);
+    const disposal = Number.isInteger(id) ? await prisma.asset_disposals.findUnique({ where: { id }, include: { items: { select: { asset_id: true } } } }) : null;
+    if (!disposal) return res.status(404).json({ error: 'Disposal report not found.' });
+    if (disposal.status === 'APPROVED') {
+      return res.status(400).json({ error: 'An approved report cannot be deleted.' });
     }
-    await prisma.asset_disposals.delete({ where: { id: parseInt(id) } });
-    res.json({ message: 'Berita Acara Penghapusan berhasil dihapus.' });
+    await prisma.$transaction([
+      prisma.audit_log.create({ data: { table_name: 'asset_disposals', record_id: id, action: 'DELETE', user_id: req.user?.id || null, old_data: { disposal_number: disposal.disposal_number, status: disposal.status, company_id: disposal.company_id, approver_signer_id: disposal.approver_signer_id, asset_ids: disposal.items.map(it => it.asset_id) } } }),
+      prisma.asset_disposals.delete({ where: { id } })
+    ]);
+    res.json({ message: 'Disposal report deleted.' });
   } catch (err) {
     next(err);
   }

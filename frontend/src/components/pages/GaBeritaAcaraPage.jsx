@@ -251,7 +251,8 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
   const approve = id => inlineValue.trim().length >= 8 && runAction(id, () => apiClient.put(`/api/ga/${cfg.endpoint}/${id}/approve`, { override_reason: inlineValue.trim() }));
   const reject = id => inlineValue.trim() && runAction(id, () => apiClient.put(`/api/ga/${cfg.endpoint}/${id}/reject`, { rejection_reason: inlineValue.trim() }));
   const submit = id => inlineValue && runAction(id, () => apiClient.put(`/api/ga/${cfg.endpoint}/${id}/submit`, { approver_signer_id: inlineValue }));
-  const remove = id => confirm('Delete this report?') && runAction(id, () => apiClient.delete(`/api/ga/${cfg.endpoint}/${id}`));
+  const [deleteTarget, setDeleteTarget] = useState(null); // row to delete (confirmation modal)
+  const remove = id => runAction(id, () => apiClient.delete(`/api/ga/${cfg.endpoint}/${id}`)).then(() => setDeleteTarget(null));
 
   function toggleInline(id, kind) {
     setInlineValue('');
@@ -458,10 +459,12 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
                                     <button title="Request Approval" onClick={() => toggleInline(r.id, 'submit')} className={`${iconBtn} ${inline === 'submit' ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/40' : 'text-neutral-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40'}`}>
                                       <Send className="w-4 h-4" />
                                     </button>
-                                    <button title="Delete" onClick={() => remove(r.id)} disabled={busy} className={`${iconBtn} text-neutral-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40`}>
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
                                   </>
+                                )}
+                                {canWrite && r.status !== 'APPROVED' && (
+                                  <button title="Delete report" aria-label={`Delete ${cfg.number(r) || r.id}`} onClick={() => setDeleteTarget(r)} disabled={busy} className={`${iconBtn} text-neutral-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40`}>
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
                                 )}
                                 {r.status === 'PENDING_APPROVAL' && !isAdmin && (
                                   <span className="text-[10px] text-neutral-400 italic">Awaiting approver</span>
@@ -534,6 +537,26 @@ export default function GaBeritaAcaraPage({ initialType = 'bap' }) {
       )}
 
       {/* PDF Preview Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} onClick={() => setDeleteTarget(null)} className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm" />
+          <motion.div role="alertdialog" aria-label="Delete report" initial={{ scale: 0.96, opacity: 0, y: 8 }} animate={{ scale: 1, opacity: 1, y: 0 }} className="relative w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"><Trash2 className="h-5 w-5" /></span>
+            <div>
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Delete {cfg.number(deleteTarget) || 'this report'}?</h4>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                The report and its {deleteTarget.items?.length || 0} asset line(s) are deleted permanently. The assets themselves are not changed.
+                {deleteTarget.status === 'PENDING_APPROVAL' && <> The approval link sent to {deleteTarget.approver?.name || 'the approver'} stops working.</>}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setDeleteTarget(null)} disabled={busyId === deleteTarget.id} className="h-9 flex-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 cursor-pointer">Cancel</button>
+              <button type="button" onClick={() => remove(deleteTarget.id)} disabled={busyId === deleteTarget.id} className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-rose-600 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer">{busyId === deleteTarget.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}Delete</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {sigEdit && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div role="dialog" aria-label="Signatures" className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl dark:bg-neutral-900 space-y-4">
