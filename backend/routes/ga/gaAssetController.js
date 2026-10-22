@@ -40,9 +40,13 @@ async function getAssets(req, res, next) {
       status_id: { not: 4 }
     };
 
+    // Without a status filter the list shows active assets only; disposed assets live in
+    // their own registry (/api/ga/assets-disposed). Filtering status = Disposed still works.
+    const listWhere = statusId ? where : activeWhere;
+
     const [assetsList, totalCount, costAggregate, goodCount, repairCount, companyGroup, categoryGroup, categoriesList, activeCount, disposedCount] = await Promise.all([
       prisma.assets.findMany({
-        where,
+        where: listWhere,
         skip,
         take,
         orderBy: { id: 'desc' },
@@ -63,7 +67,7 @@ async function getAssets(req, res, next) {
           m_status: true
         }
       }),
-      prisma.assets.count({ where }),
+      prisma.assets.count({ where: listWhere }),
       // Jika user memfilter Disposed, total nilai buku aktif adalah 0.
       // Jika filter umum (All Statuses), kecualikan aset Disposed dari nilai buku.
       isDisposedFilter

@@ -626,6 +626,12 @@ export default function GaAssetsPage() {
                   >
                     View all reports &rarr;
                   </a>
+                  <a
+                    href="/dashboard/disposed-assets"
+                    className="block px-3 py-2 rounded-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 text-[11px] font-bold text-neutral-500"
+                  >
+                    Disposed assets registry &rarr;
+                  </a>
                 </div>
               </>
             )}
@@ -700,7 +706,8 @@ export default function GaAssetsPage() {
                   className="w-full bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-600 dark:text-neutral-400 focus:outline-none"
                 >
                   <option value="">{t('allStatuses')}</option>
-                  {statuses.map(s => (
+                  {/* Disposed assets have their own registry menu */}
+                  {statuses.filter(s => s.id !== 4).map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>

@@ -45,7 +45,8 @@ import {
   Tag,
   MapPin,
   LineChart,
-  CreditCard
+  CreditCard,
+  Archive
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
@@ -482,6 +483,7 @@ function SidebarContent({
           icon: Package,
           children: [
             { name: 'Assets', path: '/dashboard/assets', icon: Box, allowed: hasAccess(['ga', 'auditor']) },
+            { name: 'Disposed Assets', path: '/dashboard/disposed-assets', icon: Archive, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'Stock Opname', path: '/dashboard/stock-opname', icon: ClipboardCheck, allowed: hasAccess(['ga', 'auditor']) },
             { name: 'Barcode Generator', path: '/dashboard/barcode', icon: Barcode, allowed: hasAccess(['ga', 'auditor']) },
           ]

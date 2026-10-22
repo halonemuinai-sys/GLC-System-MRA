@@ -190,9 +190,9 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                     {maskNum(summary.activeAssetsCount !== undefined ? summary.activeAssetsCount : meta.total)}
                   </h3>
                   {summary.disposedCount > 0 && (
-                    <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium block">
-                      ({maskNum(summary.disposedCount)} Disposed excl.)
-                    </span>
+                    <a href="/dashboard/disposed-assets" title="Open the disposed assets registry" className="text-[9px] text-amber-600 dark:text-amber-400 font-medium block hover:underline">
+                      ({maskNum(summary.disposedCount)} Disposed excl. &rarr;)
+                    </a>
                   )}
                 </div>
               </div>

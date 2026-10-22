@@ -12,6 +12,7 @@ const itRentalController = require('./ga/gaItRentalController');
 const dashboardController = require('./ga/gaDashboardController');
 const assetDisposalController = require('./ga/gaAssetDisposalController');
 const assetHandoverController = require('./ga/gaAssetHandoverController');
+const disposedAssetController = require('./ga/gaDisposedAssetController');
 const marketingPoController = require('./ga/gaMarketingPoController');
 
 const router = express.Router();
@@ -51,6 +52,10 @@ router.get('/assets-types', allowRead, assetController.getAssetTypes);
 router.get('/assets-conditions', allowRead, assetController.getAssetConditions);
 router.get('/assets-locations', allowRead, assetController.getAssetLocations);
 router.get('/assets-statuses', allowRead, assetController.getAssetStatuses);
+
+// Disposed assets registry (read-only; written off through approved BAPs)
+router.get('/assets-disposed', allowRead, disposedAssetController.getDisposedAssets);
+router.get('/assets-disposed/reasons', allowRead, disposedAssetController.getDisposalReasons);
 
 // Asset Disposals (Berita Acara Penghapusan Aset / BAP)
 router.get('/asset-disposals', allowRead, assetDisposalController.getAssetDisposals);
