@@ -64,7 +64,8 @@ export async function handleExportPDF({ search, categoryId, locationId, statusId
     doc.text('TOTAL ASSET UNITS', 234, 14);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(`${maskNum(allAssets.length)} units`, 234, 24);
+    const activeUnitsCount = res.summary?.activeAssetsCount !== undefined ? res.summary.activeAssetsCount : allAssets.length;
+    doc.text(`${maskNum(activeUnitsCount)} units`, 234, 24);
     
     const conditionNameMap = {
       'Bagus': 'Good', 'Good': 'Good',
@@ -87,7 +88,8 @@ export async function handleExportPDF({ search, categoryId, locationId, statusId
     
     allAssets.forEach(asset => {
       const catName = asset.m_asset_category?.name || 'Uncategorized';
-      const cost = Number(asset.acquisition_cost || 0);
+      const isDisposed = asset.status_id === 4 || asset.m_status?.name === 'Disposed' || asset.m_status?.name === 'Disposal';
+      const cost = isDisposed ? 0 : Number(asset.acquisition_cost || 0);
       if (!catMap[catName]) catMap[catName] = { name: catName, count: 0, value: 0 };
       catMap[catName].count++;
       catMap[catName].value += cost;

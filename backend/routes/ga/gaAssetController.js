@@ -32,7 +32,15 @@ async function getAssets(req, res, next) {
       where.company_id = parseInt(companyId);
     }
 
-    const [assetsList, totalCount, costAggregate, goodCount, repairCount, companyGroup, categoryGroup, categoriesList] = await Promise.all([
+    const isDisposedFilter = statusId && parseInt(statusId) === 4;
+
+    // Filter kondisi aset aktif: mengecualikan aset Disposed (status_id = 4)
+    const activeWhere = {
+      ...where,
+      status_id: { not: 4 }
+    };
+
+    const [assetsList, totalCount, costAggregate, goodCount, repairCount, companyGroup, categoryGroup, categoriesList, activeCount, disposedCount] = await Promise.all([
       prisma.assets.findMany({
         where,
         skip,
@@ -56,21 +64,25 @@ async function getAssets(req, res, next) {
         }
       }),
       prisma.assets.count({ where }),
-      prisma.assets.aggregate({
-        where,
-        _sum: {
-          acquisition_cost: true
-        }
-      }),
+      // Jika user memfilter Disposed, total nilai buku aktif adalah 0.
+      // Jika filter umum (All Statuses), kecualikan aset Disposed dari nilai buku.
+      isDisposedFilter
+        ? Promise.resolve({ _sum: { acquisition_cost: 0 } })
+        : prisma.assets.aggregate({
+            where: statusId ? where : activeWhere,
+            _sum: {
+              acquisition_cost: true
+            }
+          }),
       prisma.assets.count({
         where: {
-          ...where,
+          ...(statusId ? where : activeWhere),
           condition_id: 1
         }
       }),
       prisma.assets.count({
         where: {
-          ...where,
+          ...(statusId ? where : activeWhere),
           NOT: {
             condition_id: 1
           }
@@ -78,11 +90,11 @@ async function getAssets(req, res, next) {
       }),
       prisma.assets.groupBy({
         by: ['company_id'],
-        where
+        where: statusId ? where : activeWhere
       }),
       prisma.assets.groupBy({
         by: ['asset_category_id'],
-        where,
+        where: statusId ? where : activeWhere,
         _count: {
           id: true
         },
@@ -90,7 +102,18 @@ async function getAssets(req, res, next) {
           acquisition_cost: true
         }
       }),
-      prisma.m_asset_category.findMany()
+      prisma.m_asset_category.findMany(),
+      // Active assets count (excluding Disposed)
+      isDisposedFilter
+        ? Promise.resolve(0)
+        : prisma.assets.count({ where: statusId ? where : activeWhere }),
+      // Disposed assets count
+      prisma.assets.count({
+        where: {
+          ...where,
+          status_id: 4
+        }
+      })
     ]);
 
     const categoryBreakdown = categoryGroup.map(cg => {
@@ -99,7 +122,7 @@ async function getAssets(req, res, next) {
         id: cg.asset_category_id || 0,
         name: cat ? cat.name : 'Unknown',
         count: cg._count.id,
-        value: cg._sum.acquisition_cost || 0
+        value: isDisposedFilter ? 0 : (cg._sum.acquisition_cost || 0)
       };
     });
 
@@ -112,7 +135,9 @@ async function getAssets(req, res, next) {
         totalPages: Math.ceil(totalCount / parseInt(limit))
       },
       summary: {
-        totalAcquisitionCost: costAggregate._sum.acquisition_cost || 0,
+        totalAcquisitionCost: isDisposedFilter ? 0 : (costAggregate._sum.acquisition_cost || 0),
+        activeAssetsCount: activeCount,
+        disposedCount,
         goodConditionCount: goodCount,
         needRepairCount: repairCount,
         uniqueCompaniesCount: companyGroup.length,

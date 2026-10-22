@@ -327,6 +327,15 @@ async function approveAssetDisposal(req, res, next) {
         where: { id },
         data: { status: 'APPROVED', approved_at: new Date(), rejection_reason: null, magic_link_used_at: new Date(), updated_at: new Date() }
       });
+      // Mark all assets in this BAP as Disposed (status_id = 4)
+      const items = await tx.asset_disposal_items.findMany({ where: { disposal_id: id }, select: { asset_id: true } });
+      const assetIds = items.map(it => it.asset_id).filter(Boolean);
+      if (assetIds.length > 0) {
+        await tx.assets.updateMany({
+          where: { id: { in: assetIds } },
+          data: { status_id: 4 }
+        });
+      }
       await logOverride(tx, 'asset_disposals', id, req.user?.id, 'APPROVE', parsed.reason);
       return row;
     });
@@ -417,6 +426,16 @@ async function processDisposalByToken(req, res, next) {
         magic_link_used_at: new Date()
       }
     });
+    if (action === 'APPROVE') {
+      const items = await prisma.asset_disposal_items.findMany({ where: { disposal_id: disposal.id }, select: { asset_id: true } });
+      const assetIds = items.map(it => it.asset_id).filter(Boolean);
+      if (assetIds.length > 0) {
+        await prisma.assets.updateMany({
+          where: { id: { in: assetIds } },
+          data: { status_id: 4 }
+        });
+      }
+    }
     await logLinkDecision('BAP', disposal.id, action, req, verifiedEmail);
 
     res.json(updated);

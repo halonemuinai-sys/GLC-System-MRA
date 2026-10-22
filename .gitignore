@@ -46,6 +46,8 @@ Database_Backups/
 
 # Local utility scripts (run locally, not needed on server)
 scripts/
+# RYODAN reports (PAKUNODA changelog, RYODAN-ARES rekap) — local only
+rekap/
 backend/scripts/
 google-sheets-asset-sync/
 

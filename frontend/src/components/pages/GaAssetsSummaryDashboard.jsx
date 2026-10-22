@@ -174,7 +174,7 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                 </div>
                 <div className="text-right hidden sm:block">
                   <span className="text-[10px] bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-1 rounded-full font-bold">
-                    Acquisition Cost
+                    {summary.disposedCount > 0 && totalCost === 0 ? 'Disposed (Write-off)' : 'Acquisition Cost'}
                   </span>
                 </div>
               </div>
@@ -186,7 +186,14 @@ export default function GaAssetsSummaryDashboard({ showDashboard, summary, meta,
                 </div>
                 <div>
                   <p className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Total Assets</p>
-                  <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">{maskNum(meta.total)}</h3>
+                  <h3 className="text-xl font-black text-neutral-800 dark:text-white mt-0.5">
+                    {maskNum(summary.activeAssetsCount !== undefined ? summary.activeAssetsCount : meta.total)}
+                  </h3>
+                  {summary.disposedCount > 0 && (
+                    <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium block">
+                      ({maskNum(summary.disposedCount)} Disposed excl.)
+                    </span>
+                  )}
                 </div>
               </div>
 
