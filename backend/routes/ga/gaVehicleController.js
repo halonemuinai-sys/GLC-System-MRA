@@ -22,8 +22,10 @@ async function getVehicles(req, res, next) {
       where.company_id = parseInt(companyId);
     }
 
+    // Tax warning = already overdue or due within 30 days (calendar days).
     const today = new Date();
-    const thirtyDaysFromNow = new Date();
+    today.setHours(0, 0, 0, 0);
+    const thirtyDaysFromNow = new Date(today);
     thirtyDaysFromNow.setDate(today.getDate() + 30);
 
     const [list, count, activeCount, inServiceCount, taxWarningCount, companyGroup, typeGroup] = await Promise.all([
@@ -53,7 +55,7 @@ async function getVehicles(req, res, next) {
         where: {
           ...where,
           tax_date: {
-            gte: today,
+            not: null,
             lte: thirtyDaysFromNow
           }
         }

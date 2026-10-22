@@ -455,15 +455,18 @@ export default function GaVehiclesPage() {
     }
   };
 
-  // Check if tax is near expiration (within 30 days)
-  const isTaxNearExpiration = (dateStr) => {
-    if (!dateStr) return false;
+  // Tax due-date state by calendar day: 'overdue' (date has passed), 'soon' (due within 30 days) or null.
+  const taxStatus = (dateStr) => {
+    if (!dateStr) return { state: null, days: null };
     const today = new Date();
-    const taxDate = new Date(dateStr);
-    const diffTime = taxDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays >= 0 && diffDays <= 30;
+    today.setHours(0, 0, 0, 0);
+    const d = new Date(dateStr);
+    const due = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const days = Math.round((due - today) / (1000 * 60 * 60 * 24));
+    return { state: days < 0 ? 'overdue' : days <= 30 ? 'soon' : null, days };
   };
+  // Needs attention (overdue or due within 30 days) — used by the detail drawer.
+  const isTaxNearExpiration = (dateStr) => taxStatus(dateStr).state !== null;
 
   return (
     <div className="space-y-6 relative pb-10">
@@ -676,7 +679,7 @@ export default function GaVehiclesPage() {
                   </thead>
                   <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 text-xs">
                     {data.map((vehicle, idx) => {
-                      const nearTax = isTaxNearExpiration(vehicle.tax_date);
+                      const tax = taxStatus(vehicle.tax_date);
                       return (
                         <motion.tr 
                           initial={{ opacity: 0, y: 4 }}
@@ -696,10 +699,14 @@ export default function GaVehiclesPage() {
                             {formatIDR(vehicle.last_km)}
                           </td>
                           <td className="p-4">
-                            <span className={`inline-flex items-center gap-1.5 font-medium ${nearTax ? 'text-red-500 font-bold' : 'text-neutral-500'}`}>
+                            <span
+                              title={tax.state === 'overdue' ? `Tax overdue by ${-tax.days} day(s)` : tax.state === 'soon' ? (tax.days === 0 ? 'Tax due today' : `Tax due in ${tax.days} day(s)`) : undefined}
+                              className={`inline-flex items-center gap-1.5 font-medium ${tax.state === 'overdue' ? 'text-red-500 font-bold' : tax.state === 'soon' ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-neutral-500'}`}
+                            >
                               <Calendar className="w-3.5 h-3.5" />
                               {vehicle.tax_date ? new Date(vehicle.tax_date).toLocaleDateString('id-ID', { dateStyle: 'medium' }) : '-'}
-                              {nearTax && <span className="text-[8px] uppercase tracking-wider bg-red-100 dark:bg-red-950/40 text-red-500 px-1 rounded">Exp</span>}
+                              {tax.state === 'overdue' && <span className="text-[8px] uppercase tracking-wider bg-red-100 dark:bg-red-950/40 text-red-500 px-1 rounded">Overdue</span>}
+                              {tax.state === 'soon' && <span className="text-[8px] uppercase tracking-wider bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 px-1 rounded">{tax.days === 0 ? 'Today' : `${tax.days}d`}</span>}
                             </span>
                           </td>
                           <td className="p-4">

@@ -1107,7 +1107,7 @@ export default function DashboardPage() {
           }`}>
             <span className="text-[10px] font-bold block uppercase opacity-70 flex items-center justify-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" />
-              Tax Expiry &lt; 30 Days
+              Tax Overdue / Due ≤ 30 Days
             </span>
             <span className={`text-3xl font-extrabold block mt-1 font-mono ${stats?.expiringTaxVehicles > 0 ? 'text-red-500' : 'text-neutral-400 dark:text-neutral-500'}`}>
               {maskNum(stats?.expiringTaxVehicles || 0)} <span className="text-sm font-semibold opacity-70 font-sans">units</span>

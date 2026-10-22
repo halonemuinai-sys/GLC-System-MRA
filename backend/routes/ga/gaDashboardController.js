@@ -135,7 +135,8 @@ async function getDashboardStats(req, res, next) {
       prisma.vehicles.count(),
       prisma.vehicles.count({ where: { status: 'Aktif' } }),
       prisma.vehicles.count({ where: { status: 'Dalam Service' } }),
-      prisma.vehicles.count({ where: { tax_date: { gte: today, lte: thirtyDaysFromNow } } }),
+      // Overdue taxes are the most urgent, so they count too (not only those due within 30 days).
+      prisma.vehicles.count({ where: { tax_date: { not: null, lte: thirtyDaysFromNow } } }),
       prisma.vehicles.groupBy({ by: ['vehicle_type'], _count: { id: true } }),
       prisma.insurances.aggregate({ _sum: { premium_idr: true, coverage_idr: true } }),
       prisma.insurances.count(),
