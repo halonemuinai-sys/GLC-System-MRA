@@ -2,7 +2,15 @@ const jwt = require('jsonwebtoken');
 const prisma = require('./db');
 const { combineRoles } = require('./roles');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'glc-mra-secret-key-2026-auth-token';
+const JWT_SECRET = process.env.JWT_SECRET || (
+  process.env.NODE_ENV === 'production'
+    ? (() => { throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable is missing.'); })()
+    : 'dev-ephemeral-jwt-secret-do-not-use-in-production'
+);
+
+if (!process.env.JWT_SECRET) {
+  console.warn('[SECURITY WARNING] JWT_SECRET is not configured in environment variables. Using development fallback.');
+}
 const COMPANY_SCOPE_BYPASS_ROLES = ['admin', 'auditor'];
 
 // Account state is re-read from the DB (cached briefly) so that deactivating a user or

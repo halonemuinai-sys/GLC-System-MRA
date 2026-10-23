@@ -56,6 +56,11 @@ excel sample/
 HANDOFF.md
 frontend/AGENTS.md
 frontend/CLAUDE.md
+docs/
+
+# Backend migration helper scripts and tests
+backend/migrations/
+backend/tests/
 
 # Office & Document files (strictly local)
 *.docx
